@@ -53,11 +53,34 @@ int initialize_yosemite(std::string& id)
     DecPciBridge *sec_bridge = dynamic_cast<DecPciBridge*>(gMachineObj->get_comp_by_name("Dec21154"));
 
     // connect PCI devices
-    grackle_obj->pci_register_device(DEV_FUN(13,0),
+
+    // 00:0D.0 PCI Bridge
+    grackle_obj->pci_register_device(DEV_FUN(0x0D,0),
         dynamic_cast<PCIBase*>(gMachineObj->get_comp_by_name("Dec21154")));
 
+    // 00:10.0 slot J12 GPU
+
+    // 01:00.0 FireWire
+    //sec_bridge->pci_register_device(DEV_FUN(0,0),
+    //    dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("TiPciLynx")));
+
+    // 01:01.0 IDE
+    //sec_bridge->pci_register_device(DEV_FUN(1,0),
+    //    dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("SiPci0646")));
+
+    // 01:02.0 slot J11
+    // 01:03.0 slot J10
+    // 01:04.0 slot J9
+
+    // 01:05.0 mac-io
     sec_bridge->pci_register_device(DEV_FUN(5,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("Heathrow")));
+
+    // 01:06.0 USB
+#if 0
+    sec_bridge->pci_register_device(DEV_FUN(6,0),
+        dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("OptiOhci")));
+#endif
 
     // allocate ROM region
     if (!grackle_obj->add_rom_region(0xFFF00000, 0x100000)) {
@@ -100,7 +123,14 @@ static const PropMap yosemite_settings = {
 };
 
 static vector<string> yosemite_devices = {
-    "Grackle", "Dec21154", "BurgundySnd", "Heathrow", "AtapiCdrom"
+    "Grackle",
+    "Dec21154",
+    "BurgundySnd",
+    "Heathrow",
+    "AtapiCdrom",
+#if 0
+    "OptiOhci",
+#endif
 };
 
 static const MachineDescription yosemite_descriptor = {
