@@ -52,21 +52,42 @@ int initialize_yosemite(std::string& id)
     // get pointer to the bridge of the secondary PCI bus
     DecPciBridge *sec_bridge = dynamic_cast<DecPciBridge*>(gMachineObj->get_comp_by_name("Dec21154"));
 
-    // attach PCI devices to the PCI bridges
+    // attach PCI devices
+
+    // 00:0D.0 PCI Bridge
+    grackle_obj->pci_register_device(DEV_FUN(0x0D,0),
+        dynamic_cast<PCIBase*>(gMachineObj->get_comp_by_name("Dec21154")));
+
 #if 0
-    grackle_obj->pci_register_device(DEV_FUN(16,0),
+    // 00:10.0 slot J12 GPU
+    grackle_obj->pci_register_device(DEV_FUN(0x10,0),
         dynamic_cast<PCIBase*>(gMachineObj->get_comp_by_name("AtiRage128")));
 #endif
 
-    grackle_obj->pci_register_device(DEV_FUN(13,0),
-        dynamic_cast<PCIBase*>(gMachineObj->get_comp_by_name("Dec21154")));
+#if 0
+    // 01:00.0 FireWire
+    sec_bridge->pci_register_device(DEV_FUN(0,0),
+        dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("TiPciLynx")));
+#endif
 
+    // 01:01.0 IDE
     // register CMD646U2 PCI Ultra ATA Controller
     sec_bridge->pci_register_device(DEV_FUN(1,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("CmdAta")));
 
+    // 01:02.0 slot J11
+    // 01:03.0 slot J10
+    // 01:04.0 slot J9
+
+    // 01:05.0 mac-io
     sec_bridge->pci_register_device(DEV_FUN(5,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("Heathrow")));
+
+    // 01:06.0 USB
+#if 0
+    sec_bridge->pci_register_device(DEV_FUN(6,0),
+        dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("OptiOhci")));
+#endif
 
     InterruptCtrl *int_ctrl_obj =
         dynamic_cast<InterruptCtrl*>(gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
@@ -134,8 +155,16 @@ static const PropMap yosemite_settings = {
 };
 
 static vector<string> yosemite_devices = {
-    "Grackle", "Dec21154", "CmdAta", "BurgundySnd", "Heathrow", "AtaHardDisk",
-    "AtapiCdrom"
+    "Grackle",
+    "Dec21154",
+    "CmdAta",
+    "BurgundySnd",
+    "Heathrow",
+    "AtaHardDisk",
+    "AtapiCdrom",
+#if 0
+    "OptiOhci",
+#endif
 };
 
 static const MachineDescription yosemite_descriptor = {
