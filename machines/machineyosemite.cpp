@@ -73,15 +73,35 @@ int MachineYosemite::initialize(const std::string &id) {
     DecPciBridge *sec_bridge = dynamic_cast<DecPciBridge*>(gMachineObj->get_comp_by_name("Dec21154Yosemite"));
     sec_bridge->set_irq_map(pci_bridge_irq_map);
 
+    // attach PCI devices
+
     // 00:0D.0 PCI Bridge
     grackle_obj->add_device(DEV_FUN(0x0D,0), dynamic_cast<PCIBase*>(sec_bridge));
 
+#if 0
+    // 01:00.0 FireWire
+    sec_bridge->add_device(DEV_FUN(0,0),
+        dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("TiPciLynx")));
+#endif
+
+    // 01:01.0 IDE
     // register CMD646U2 PCI Ultra ATA Controller
     sec_bridge->add_device(DEV_FUN(1,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("CmdAta")));
 
+    // 01:02.0 slot J11
+    // 01:03.0 slot J10
+    // 01:04.0 slot J9
+
+    // 01:05.0 mac-io
     sec_bridge->add_device(DEV_FUN(5,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("Paddington")));
+
+    // 01:06.0 USB
+#if 0
+    sec_bridge->add_device(DEV_FUN(6,0),
+        dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("OptiOhci")));
+#endif
 
     // allocate ROM region
     if (!grackle_obj->add_rom_region(0xFFF00000, 0x100000)) {
@@ -135,6 +155,9 @@ static std::vector<std::string> yosemite_devices = {
     "CmdAta@1",
     "BurgundySnd@14000",
     "Paddington@5",
+#if 0
+    "OptiOhci@6",
+#endif
 };
 
 static const DeviceDescription MachineYosemite_descriptor = {
