@@ -23,6 +23,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <devices/storage/blockstoragedevice.h>
 
+#include <loguru.hpp>
+
 using namespace std;
 
 BlockStorageDevice::BlockStorageDevice(const uint32_t cache_blocks, const uint32_t block_size, const uint64_t max_blocks) {
@@ -72,6 +74,7 @@ int BlockStorageDevice::read_begin(int nblocks, uint32_t max_len) {
         this->remain_size = 0;
     }
 
+    LOG_F(WARNING, "read_begin %lld %d", (long long)this->cur_fpos, read_size);
     this->img_file.read(this->data_cache.get(), this->cur_fpos, read_size);
     this->cur_fpos += read_size;
 
@@ -92,6 +95,7 @@ int BlockStorageDevice::read_more() {
         this->remain_size = 0;
     }
 
+    LOG_F(WARNING, "read_more %lld %d", (long long)this->cur_fpos, read_size);
     this->img_file.read(this->data_cache.get(), this->cur_fpos, read_size);
     this->cur_fpos += read_size;
 
