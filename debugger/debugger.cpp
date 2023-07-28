@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -753,6 +753,9 @@ void DppcDebugger::enter_debugger() {
                     delete_prompt();
                 }
                 for (; --count >= 0;) {
+                    addr_str = "R24";
+                    addr     = static_cast<uint32_t>(get_reg(addr_str) - 2);
+                    disasm_68k(1, addr);
                     exec_single_68k();
                 }
 #endif
@@ -762,6 +765,7 @@ void DppcDebugger::enter_debugger() {
                 }
                 for (; --count >= 0;) {
                     addr = ppc_state.pc;
+                    disasm(1, addr);
                     ppc_exec_single();
                 }
             }
