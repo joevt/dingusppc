@@ -636,6 +636,9 @@ void DppcDebugger::enter_debugger() {
                     delete_prompt();
                 }
                 for (; --count >= 0;) {
+                    addr_str = "R24";
+                    addr     = get_reg(addr_str) - 2;
+                    disasm_68k(1, addr);
                     exec_single_68k();
                 }
 #endif
@@ -644,6 +647,9 @@ void DppcDebugger::enter_debugger() {
                     delete_prompt();
                 }
                 for (; --count >= 0;) {
+                    addr_str = "PC";
+                    addr     = (uint32_t)get_reg(addr_str);
+                    disasm(1, addr);
                     ppc_exec_single();
                 }
             }
