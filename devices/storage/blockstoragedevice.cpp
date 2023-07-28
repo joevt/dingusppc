@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -22,6 +22,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 /** @file Block storage device implementation. */
 
 #include <devices/storage/blockstoragedevice.h>
+
+#include <loguru.hpp>
 
 #include <cstring>
 
@@ -109,6 +111,7 @@ int BlockStorageDevice::read_begin(int nblocks, uint32_t max_len) {
         this->remain_size = 0;
     }
 
+    LOG_F(WARNING, "read_begin %lld %d", (long long)this->cur_fpos, read_size);
     this->fill_cache(read_size / this->block_size);
 
     return read_size;
@@ -127,6 +130,7 @@ int BlockStorageDevice::read_more() {
         this->remain_size = 0;
     }
 
+    LOG_F(WARNING, "read_more %lld %d", (long long)this->cur_fpos, read_size);
     this->fill_cache(read_size / this->block_size);
 
     return read_size;
