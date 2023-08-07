@@ -438,6 +438,13 @@ static void mysig_handler(int signum)
 }
 #endif
 
+static void delete_prompt() {
+#ifndef _WIN32
+    // move up, carriage return (move to column 0), erase from cursor to end of line
+    cout << "\e[A\r\e[0K";
+#endif
+}
+
 void enter_debugger() {
     string inp, cmd, addr_str, expr_str, reg_expr, last_cmd, reg_value_str,
            inst_string, inst_num_str, profile_name, sub_cmd;
@@ -620,6 +627,9 @@ void enter_debugger() {
 
             if (context == 2) {
 #ifdef ENABLE_68K_DEBUGGER
+                if (cmd_repeat) {
+                    delete_prompt();
+                }
                 for (; --count >= 0;) {
                     addr_str = "R24";
                     addr     = get_reg(addr_str) - 2;
@@ -628,6 +638,9 @@ void enter_debugger() {
                 }
 #endif
             } else {
+                if (cmd_repeat) {
+                    delete_prompt();
+                }
                 for (; --count >= 0;) {
                     addr_str = "PC";
                     addr     = (uint32_t)get_reg(addr_str);
@@ -709,6 +722,7 @@ void enter_debugger() {
                     if (context == 2) {
 #ifdef ENABLE_68K_DEBUGGER
                         if (cmd_repeat) {
+                            delete_prompt();
                             addr = next_addr_68k;
                         }
                         else {
@@ -719,6 +733,7 @@ void enter_debugger() {
 #endif
                     } else {
                         if (cmd_repeat) {
+                            delete_prompt();
                             addr = next_addr_ppc;
                         }
                         else {
