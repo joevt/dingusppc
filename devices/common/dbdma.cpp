@@ -324,8 +324,11 @@ uint32_t DMAChannel::reg_read(uint32_t offset, int size) {
         result = this->wait_select;
         break;
     default:
-        LOG_F(WARNING, "%s: Unsupported DMA channel register read  @%02x.%c",
-            this->get_name().c_str(), offset, SIZE_ARG(size));
+        if (!(this->unsupported_register_read & (1LL << offset))) {
+            this->unsupported_register_read |= (1LL << offset);
+            LOG_F(WARNING, "%s: Unsupported DMA channel register read  @%02x.%c",
+                this->get_name().c_str(), offset, SIZE_ARG(size));
+        }
     }
 
     if ((offset & 3) || size != 4)
@@ -426,8 +429,11 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
         this->wait_select = value & 0xFF00FFUL;
         break;
     default:
-        LOG_F(WARNING, "%s: Unsupported DMA channel register write @%02x.%c = %0*x",
-            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
+        if (!(this->unsupported_register_write & (1LL << offset))) {
+            this->unsupported_register_write |= (1LL << offset);
+            LOG_F(WARNING, "%s: Unsupported DMA channel register write @%02x.%c = %0*x",
+                this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
+        }
     }
 }
 
