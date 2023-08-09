@@ -25,6 +25,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/ethernet/bigmac.h>
 #include <loguru.hpp>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_BIGMAC_UNIMPLEMENTED_REG = loguru::Verbosity_9,
+        Verbosity_BIGMAC_UNIMPLEMENTED_PHY_REG_ONCE = loguru::Verbosity_ERROR,
+    };
+}
+
 BigMac::BigMac(uint8_t id) {
     set_name("BigMac");
     supports_types(HWCompType::MMIO_DEV | HWCompType::ETHER_MAC);
@@ -152,7 +159,8 @@ uint16_t BigMac::read(uint16_t reg_offset) {
         return this->addr_filt_mask;
 
     default:
-        LOG_F(WARNING, "%s: unimplemented register at 0x%X", this->name.c_str(), reg_offset);
+        LOG_F(BIGMAC_UNIMPLEMENTED_REG, "%s: unimplemented register read  @%03x",
+            this->name.c_str(), reg_offset);
     }
 
     return 0;
@@ -315,12 +323,12 @@ void BigMac::write(uint16_t reg_offset, uint16_t value) {
     case BigMacReg::CHIP_ID:
     case BigMacReg::TX_SM:
     case BigMacReg::RX_ST_MCHN:
-        LOG_F(WARNING, "%s: Attempted write to read-only register at 0x%X with 0x%X",
+        LOG_F(WARNING, "%s: read-only register write @%03x = %04x",
             this->name.c_str(), reg_offset, value);
         break;
     default:
-        LOG_F(WARNING, "%s: unimplemented register at 0x%X is written with 0x%X",
-              this->name.c_str(), reg_offset, value);
+        LOG_F(BIGMAC_UNIMPLEMENTED_REG, "%s: unimplemented register write @%03x = %04x",
+            this->name.c_str(), reg_offset, value);
 
     }
 }
@@ -493,7 +501,11 @@ uint16_t BigMac::phy_reg_read(uint8_t reg_num) {
     case PHY_ANAR:
         return this->phy_anar;
     default:
-        LOG_F(ERROR, "Reading unimplemented PHY register %d", reg_num);
+        if (!(this->unsupported_register_read & (1LL << reg_num))) {
+            this->unsupported_register_read |= (1LL << reg_num);
+            LOG_F(BIGMAC_UNIMPLEMENTED_PHY_REG_ONCE, "%s: unimplemented PHY register read  @%d",
+                this->name.c_str(), reg_num);
+        }
     }
 
     return 0;
@@ -512,7 +524,11 @@ void BigMac::phy_reg_write(uint8_t reg_num, uint16_t value) {
         this->phy_anar = value;
         break;
     default:
-        LOG_F(ERROR, "Writing unimplemented PHY register %d", reg_num);
+        if (!(this->unsupported_register_write & (1LL << reg_num))) {
+            this->unsupported_register_write |= (1LL << reg_num);
+            LOG_F(BIGMAC_UNIMPLEMENTED_PHY_REG_ONCE, "%s: unimplemented PHY register write @%d = %04x",
+                this->name.c_str(), reg_num, value);
+        }
     }
 }
 
