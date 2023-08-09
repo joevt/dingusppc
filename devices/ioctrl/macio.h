@@ -427,6 +427,9 @@ private:
     std::unique_ptr<DMAChannel>     enet_rcv_dma;
     std::unique_ptr<DMAChannel>     escc_b_rcv_dma;
     std::unique_ptr<DMAChannel>     snd_out_dma;
+
+    uint16_t unsupported_dma_channel_read = 0;
+    uint16_t unsupported_dma_channel_write = 0;
 };
 
 #endif /* MACIO_H */
