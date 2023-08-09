@@ -259,6 +259,8 @@ private:
     uint8_t         srom_state = Srom_Start;
     uint16_t        srom_data[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                      0xDEAD, 0xBEEF, 0xBABE}; // bogus MAC!!!
+    uint64_t        unsupported_register_read = 0;
+    uint64_t        unsupported_register_write = 0;
 };
 
 #endif // BIG_MAC_H
