@@ -77,7 +77,7 @@ uint16_t BigMac::read(uint16_t reg_offset) {
     case BigMacReg::RX_CONFIG:
         return this->rx_config;
     default:
-        LOG_F(WARNING, "%s: unimplemented register at 0x%X", this->name.c_str(),
+        LOG_F(9, "%s: unimplemented register at 0x%X", this->name.c_str(),
               reg_offset);
     }
 
@@ -183,7 +183,7 @@ void BigMac::write(uint16_t reg_offset, uint16_t value) {
         this->hash_table[(reg_offset >> 4) & 3] = value;
         break;
     default:
-        LOG_F(WARNING, "%s: unimplemented register at 0x%X is written with 0x%X",
+        LOG_F(9, "%s: unimplemented register at 0x%X is written with 0x%X",
               this->name.c_str(), reg_offset, value);
     }
 }
@@ -356,7 +356,10 @@ uint16_t BigMac::phy_reg_read(uint8_t reg_num) {
     case PHY_ANAR:
         return this->phy_anar;
     default:
-        LOG_F(ERROR, "Reading unimplemented PHY register %d", reg_num);
+        if (!(this->unsupported_register_read & (1LL << reg_num))) {
+            this->unsupported_register_read |= (1LL << reg_num);
+            LOG_F(ERROR, "Reading unimplemented PHY register %d", reg_num);
+        }
     }
 
     return 0;
@@ -375,7 +378,10 @@ void BigMac::phy_reg_write(uint8_t reg_num, uint16_t value) {
         this->phy_anar = value;
         break;
     default:
-        LOG_F(ERROR, "Writing unimplemented PHY register %d", reg_num);
+        if (!(this->unsupported_register_write & (1LL << reg_num))) {
+            this->unsupported_register_write |= (1LL << reg_num);
+            LOG_F(ERROR, "Writing unimplemented PHY register %d", reg_num);
+        }
     }
 }
 
