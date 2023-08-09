@@ -242,6 +242,9 @@ private:
     NVram*              nvram;   // NVRAM module
     ViaCuda*            viacuda; // VIA cell with Cuda MCU attached to it
     EsccController*     escc;    // ESCC serial controller
+
+    uint16_t unsupported_dma_channel_read = 0;
+    uint16_t unsupported_dma_channel_write = 0;
 };
 
 /**
@@ -407,6 +410,9 @@ private:
     std::unique_ptr<DMAChannel>     enet_xmit_dma;
     std::unique_ptr<DMAChannel>     enet_rcv_dma;
     std::unique_ptr<DMAChannel>     snd_out_dma;
+
+    uint16_t unsupported_dma_channel_read = 0;
+    uint16_t unsupported_dma_channel_write = 0;
 };
 
 #endif /* MACIO_H */
