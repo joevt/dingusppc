@@ -167,6 +167,9 @@ private:
     // Interrupt related stuff
     InterruptCtrl* int_ctrl = nullptr;
     uint64_t       irq_id   = 0;
+
+    uint64_t unsupported_register_read = 0;
+    uint64_t unsupported_register_write = 0;
 };
 
 #endif // DB_DMA_H
