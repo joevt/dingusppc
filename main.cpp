@@ -30,6 +30,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <debugger/debugger.h>
 #include <devices/common/ofnvram.h>
 #include <machines/machinebase.h>
+#include <debugger/symbols.h>
 #include <machines/machinefactory.h>
 #include <utils/profiler.h>
 #include <main.h>
@@ -127,6 +128,7 @@ int main(int argc, char** argv) {
 
     string bootrom_path("bootrom.bin");
     string working_directory_path(".");
+    string symbols_path;
 
     auto emu = app.add_subcommand("", "Emulation");
     auto execution_mode_group = emu->add_option_group("execution mode")
@@ -185,6 +187,9 @@ int main(int argc, char** argv) {
         "The guest cursor causes mouse to be grabbed");
     emu->add_flag("--swap-command-option", g_swap_command_option,
         "Swap the Command and Option keys (physical Alt/AltGr becomes Command)");
+
+    emu->add_option("-s,--symbols", symbols_path, "Specifies symbols path")
+        ->check(CLI::ExistingFile);
 
     auto list_cmd = app.add_subcommand("list",
         "Display available machine configurations and exit");
@@ -262,6 +267,10 @@ int main(int argc, char** argv) {
         if (machine_str.empty()) {
         LOG_F(ERROR, "Must specify a machine or provide a supported ROM.");
             return 1;
+    }
+
+    if (symbols_path.length()) {
+        load_symbols(symbols_path);
     }
 
     // Hook to allow properties to be read from the command-line, regardless
