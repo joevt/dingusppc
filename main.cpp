@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cpu/ppc/ppcemu.h>
 #include <debugger/debugger.h>
 #include <machines/machinebase.h>
+#include <debugger/symbols.h>
 #include <machines/machinefactory.h>
 #include <utils/profiler.h>
 #include <main.h>
@@ -75,6 +76,7 @@ int main(int argc, char** argv) {
     bool   realtime_enabled, debugger_enabled;
     string machine_str;
     string bootrom_path("bootrom.bin");
+    string symbols_path;
 
     app.add_flag("-r,--realtime", realtime_enabled,
         "Run the emulator in real-time");
@@ -87,6 +89,9 @@ int main(int argc, char** argv) {
 
     CLI::Option* machine_opt = app.add_option("-m,--machine",
         machine_str, "Specify machine ID");
+
+    app.add_option("-s,--symbols", symbols_path, "Specifies symbols path")
+        ->check(CLI::ExistingFile);
 
     auto list_cmd = app.add_subcommand("list",
         "Display available machine configurations and exit");
@@ -140,6 +145,10 @@ int main(int argc, char** argv) {
         else {
             LOG_F(INFO, "Machine was autodetected as: %s", machine_str.c_str());
         }
+    }
+
+    if (symbols_path.length()) {
+        load_symbols(symbols_path);
     }
 
     /* handle overriding of machine settings from command line */
