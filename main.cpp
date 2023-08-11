@@ -30,6 +30,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <debugger/debugger.h>
 #include <devices/common/ofnvram.h>
 #include <machines/machinebase.h>
+#include <debugger/symbols.h>
 #include <machines/machinefactory.h>
 #include <utils/profiler.h>
 #include <main.h>
@@ -118,6 +119,7 @@ int main(int argc, char** argv) {
 
     string bootrom_path("bootrom.bin");
     string working_directory_path(".");
+    string symbols_path;
 
     auto execution_mode_group = app.add_option_group("execution mode")
         ->require_option(-1);
@@ -157,6 +159,9 @@ int main(int argc, char** argv) {
     string       machine_str;
     CLI::Option* machine_opt = app.add_option("-m,--machine",
         machine_str, "Specify machine ID");
+
+    app.add_option("-s,--symbols", symbols_path, "Specifies symbols path")
+        ->check(CLI::ExistingFile);
 
     auto list_cmd = app.add_subcommand("list",
         "Display available machine configurations and exit");
@@ -219,6 +224,10 @@ int main(int argc, char** argv) {
         if (machine_str.empty()) {
         LOG_F(ERROR, "Must specificy a machine or provide a supported ROM.");
             return 1;
+    }
+
+    if (symbols_path.length()) {
+        load_symbols(symbols_path);
     }
 
     // Hook to allow properties to be read from the command-line, regardless
