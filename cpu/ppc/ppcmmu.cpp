@@ -672,17 +672,18 @@ static TLBEntry* dtlb2_refill(uint32_t guest_va, int is_write, bool is_dbg = fal
         tlb_entry->phys_tag = phys_addr & ~0xFFFUL;
         return tlb_entry;
     } else {
-        if (!is_dbg) {
-        static uint32_t last_phys_addr = -1;
-        static uint32_t first_phys_addr = -1;
-        if (phys_addr != last_phys_addr + 4) {
-            if (last_phys_addr != -1 && last_phys_addr != first_phys_addr) {
-                LOG_F(WARNING, "                                                         ... phys_addr=0x%08X", last_phys_addr);
+        if (!is_dbg && mmu_exception_handler != dbg_exception_handler) {
+            static uint32_t last_phys_addr = -1;
+            static uint32_t first_phys_addr = -1;
+            if (phys_addr < last_phys_addr || phys_addr > last_phys_addr + 8) {
+                if (last_phys_addr != -1 && last_phys_addr != first_phys_addr) {
+                    LOG_F(WARNING, "                                                         ... phys_addr=0x%08X",
+                        last_phys_addr);
+                }
+                first_phys_addr = phys_addr;
+                LOG_F(WARNING, "Access to unmapped physical memory, phys_addr=0x%08X, PC=%08x", first_phys_addr, ppc_state.pc);
             }
-            first_phys_addr = phys_addr;
-            LOG_F(WARNING, "Access to unmapped physical memory, phys_addr=0x%08X", first_phys_addr);
-        }
-        last_phys_addr = phys_addr;
+            last_phys_addr = phys_addr;
         }
         return &UnmappedMem;
     }
