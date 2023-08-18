@@ -189,6 +189,9 @@ void AtaBaseDevice::device_control(const uint8_t new_ctrl) {
             }
         }
     }
+    if ((this->r_dev_ctrl ^ new_ctrl) & IEN) {
+        LOG_F(ERROR, "ATA Interrupt %s", (new_ctrl & IEN) ? "disabled" : "enabled");
+    }
     this->r_dev_ctrl = new_ctrl;
 }
 
