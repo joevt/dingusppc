@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -188,6 +188,9 @@ void AtaBaseDevice::device_control(const uint8_t new_ctrl) {
                 this->host_obj->assert_pdiag();
             }
         }
+    }
+    if ((this->r_dev_ctrl ^ new_ctrl) & IEN) {
+        LOG_F(ERROR, "ATA Interrupt %s", (new_ctrl & IEN) ? "disabled" : "enabled");
     }
     this->r_dev_ctrl = new_ctrl;
 }
