@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -143,6 +143,9 @@ void AtapiBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
 }
 
 int AtapiBaseDevice::perform_command() {
+    VLOG_SCOPE_F(this->r_command != ATAPI_PACKET ? loguru::Verbosity_WARNING : 10, "%s: perform_command 0x%X",
+        this->name.c_str(), this->r_command);
+
     this->r_error  &= ~ATA_Error::ABRT;
     this->r_status &= ~ATA_Status::ERR;
     this->r_status |= BSY;
