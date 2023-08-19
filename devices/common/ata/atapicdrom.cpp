@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -68,6 +68,8 @@ int AtapiCdrom::device_postinit() {
 }
 
 void AtapiCdrom::perform_packet_command() {
+    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: perform_packet_command 0x%X", this->name.c_str(), this->cmd_pkt[0]);
+
     uint32_t lba, xfer_len;
 
     this->r_status |= BSY;
