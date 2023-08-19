@@ -68,6 +68,8 @@ int AtapiCdrom::device_postinit() {
 }
 
 void AtapiCdrom::perform_packet_command() {
+    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: perform_packet_command 0x%X", this->name.c_str(), this->cmd_pkt[0]);
+
     uint32_t lba, xfer_len;
 
     this->r_status |= BSY;
