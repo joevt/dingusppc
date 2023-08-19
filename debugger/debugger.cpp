@@ -338,19 +338,51 @@ static void dump_mem(string& params) {
     cout << endl << endl;
 }
 
+// 0 = all
+// 1 = named
+// 2 = named && !offset
+
 static uint32_t disasm(PPCDisasmContext &ctx) {
     uint32_t phys_addr;
     ctx.instr_code = READ_DWORD_BE_A(mmu_translate_imem(ctx.instr_addr, &phys_addr));
+
+    int offset;
+    binary_kind_t kind;
+    int kinds = ctx.kinds;
+    if (kinds == 1)
+        kinds = -1;
+
+    std::string name = get_name(ctx.instr_addr, phys_addr, &offset, &kind, kinds);
+
+    if (
+        (
+            ctx.level == 0 || (
+                !name.empty() && (
+                    offset == 0 || ctx.level == 1
+                )
+            )
+        ) && (
+            ctx.kinds == 0 || (
+                ctx.kinds & (1 << kind)
+            ) || (
+                ctx.kinds == 1 && name.empty()
+            )
+        )
+    ) {
+        ctx.diddisasm = true;
         cout << setfill('0') << setw(8) << right << uppercase << hex << ctx.instr_addr;
-    if (phys_addr != ctx.instr_addr) {
-        cout << "->" << setfill('0') << setw(8) << right << uppercase << hex << phys_addr;
-    }
-    std::string name = get_name(ctx.instr_addr, phys_addr, nullptr, nullptr, 0);
-    if (!name.empty()) {
-        cout << " " << setw(27) << left << setfill(' ') << name;
-    }
+        if (phys_addr != ctx.instr_addr) {
+            cout << "->" << setfill('0') << setw(8) << right << uppercase << hex << phys_addr;
+        }
+        if (!name.empty()) {
+            cout << " " << setw(27) << left << setfill(' ') << name;
+        }
         cout << ": " << setfill('0') << setw(8) << right << uppercase << hex << ctx.instr_code;
-    cout << "    " << disassemble_single(&ctx) << setfill(' ') << left << dec;
+        cout << "    " << disassemble_single(&ctx) << setfill(' ') << left << dec;
+    }
+    else {
+        ctx.diddisasm = false;
+    }
     return ctx.instr_addr;
 }
 
@@ -358,6 +390,8 @@ static uint32_t disasm(uint32_t count, uint32_t address) {
     PPCDisasmContext ctx;
     ctx.instr_addr = address;
     ctx.simplified = true;
+    ctx.kinds = 0;
+    ctx.level = 0;
     for (int i = 0; power_on && i < count; i++) {
         disasm(ctx);
         cout << endl;
@@ -369,7 +403,7 @@ static void disasm_in(PPCDisasmContext &ctx, uint32_t address) {
     ctx.instr_addr = address;
     ctx.simplified = true;
     disasm(ctx);
-    if (ctx.regs_in.size() > 0 || ctx.regs_out.size() > 0) {
+    if (ctx.diddisasm && (ctx.regs_in.size() > 0 || ctx.regs_out.size() > 0)) {
         if (ctx.instr_str.length() < 28)
             cout << setw(28 - (int)ctx.instr_str.length()) << " ";
         cout << " ;";
@@ -384,14 +418,16 @@ static void disasm_in(PPCDisasmContext &ctx, uint32_t address) {
 }
 
 static void disasm_out(PPCDisasmContext &ctx) {
-    if (ctx.regs_out.size() > 0) {
-        cout << " out{" << uppercase << hex;
-        for (auto & reg_name : ctx.regs_out) {
-            cout << " " << reg_name << ":" << get_reg(reg_name);
+    if (ctx.diddisasm) {
+        if (ctx.regs_out.size() > 0) {
+            cout << " out{" << uppercase << hex;
+            for (auto & reg_name : ctx.regs_out) {
+                cout << " " << reg_name << ":" << get_reg(reg_name);
+            }
+            cout << " }" << dec;
         }
-        cout << " }" << dec;
+        cout << endl;
     }
-    cout << endl;
 }
 
 static void print_gprs() {
@@ -720,6 +756,8 @@ void DppcDebugger::enter_debugger() {
                 for (; --count >= 0;) {
                     addr = ppc_state.pc;
                     PPCDisasmContext ctx;
+                    ctx.kinds = 0; // (1 << kind_darwin_kernel) | (1 << kind_darwin_kext);
+                    ctx.level = 0;
                     disasm_in(ctx, addr);
                     ppc_exec_single();
                     disasm_out(ctx);
