@@ -43,6 +43,8 @@ ScsiCdrom::ScsiCdrom(std::string name, int my_id) : CdromDrive(), ScsiDevice(nam
 
 void ScsiCdrom::process_command()
 {
+    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: process_command 0x%X", this->name.c_str(), cmd_buf[0]);
+
     uint32_t lba;
 
     this->pre_xfer_action  = nullptr;
