@@ -29,6 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <machines/machinebase.h>
 #include <machines/machineproperties.h>
 #include <memaccess.h>
+#include <debugger/backtrace.h>
 
 #include <string>
 
@@ -67,6 +68,9 @@ int AtapiCdrom::device_postinit() {
 
 void AtapiCdrom::perform_packet_command() {
     uint32_t lba, xfer_len;
+
+    LOG_F(WARNING, "%s: perform_packet_command 0x%X", this->name.c_str(), this->cmd_pkt[0]);
+    // dump_backtrace();
 
     this->r_status |= BSY;
     this->sector_areas = 0;

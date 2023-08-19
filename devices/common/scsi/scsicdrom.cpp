@@ -40,6 +40,8 @@ void ScsiCdrom::process_command()
 {
     uint32_t lba;
 
+    LOG_F(WARNING, "%s: process_command 0x%X", this->name.c_str(), cmd_buf[0]);
+
     this->pre_xfer_action  = nullptr;
     this->post_xfer_action = nullptr;
 

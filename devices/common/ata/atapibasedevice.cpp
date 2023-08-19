@@ -29,6 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 #include <cstring>
+#include <debugger/backtrace.h>
 
 using namespace ata_interface;
 
@@ -144,6 +145,12 @@ void AtapiBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
 }
 
 int AtapiBaseDevice::perform_command() {
+
+    if (this->r_command != ATAPI_PACKET) {
+        LOG_F(WARNING, "%s: perform_command 0x%X", this->name.c_str(), this->r_command);
+        // dump_backtrace();
+    }
+
     this->r_error  &= ~ATA_Error::ABRT;
     this->r_status &= ~ATA_Status::ERR;
     this->r_status |= BSY;
