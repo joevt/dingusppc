@@ -31,6 +31,9 @@ typedef struct PPCDisasmContext {
     uint32_t instr_code;
     std::string instr_str;
     bool simplified; /* true if we should output simplified mnemonics */
+    bool diddisasm; /* true if it was disassembled */
+    int kinds;
+    int level;
     std::vector<std::string> regs_in;
     std::vector<std::string> regs_out;
 } PPCDisasmContext;
