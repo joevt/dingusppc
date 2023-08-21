@@ -121,9 +121,16 @@ void AtapiBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
         break; // unused in ATAPI, NoOp them here for compatibility
     case ATAPI_Reg::BYTE_COUNT_LO:
         this->r_byte_count = (this->r_byte_count & 0xFF00U) | (value & 0xFFU);
+#if 0
+        LOG_F(WARNING, "%s: setting size %d", this->name.c_str(), this->r_byte_count);
+#endif
         break;
     case ATAPI_Reg::BYTE_COUNT_HI:
         this->r_byte_count = (this->r_byte_count & 0xFFU) | ((value & 0xFFU) << 8);
+#if 0
+        LOG_F(WARNING, "%s: setting size %d", this->name.c_str(), this->r_byte_count);
+        dump_backtrace();
+#endif
         break;
     case ATA_Reg::DEVICE_HEAD:
         this->r_dev_head = value;
