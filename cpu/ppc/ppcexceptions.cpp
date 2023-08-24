@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -135,7 +135,15 @@ void ppc_exception_handler(Except_Type exception_type, uint32_t srr1_bits) {
         do_ctx_sync();
     }
 
+#ifdef DBG_MMU_MODE_CHANGE
+    uint8_t cur_mode = CurITLBMode;
+#endif
     mmu_change_mode();
+#ifdef DBG_MMU_MODE_CHANGE
+    if (CurITLBMode != cur_mode) {
+        LOG_F(ERROR, "exception %d; mmu mode changed from %d to %d.", exception_type, cur_mode, CurITLBMode);
+    }
+#endif
 
     if (exception_type != Except_Type::EXC_EXT_INT && exception_type != Except_Type::EXC_DECR) {
         longjmp(exc_env, 2); /* return to the main execution loop. */
