@@ -33,6 +33,8 @@ class MMIODevice;
 
 /* Uncomment this to exhaustive MMU integrity checks. */
 //#define MMU_INTEGRITY_CHECKS
+/* Uncomment this to track changes to MMU mode. */
+//#define DBG_MMU_MODE_CHANGE
 
 /** generic PowerPC BAT descriptor (MMU internal state) */
 typedef struct PPC_BAT_entry {
@@ -121,6 +123,9 @@ extern std::function<void(uint32_t bat_reg)> ibat_update;
 extern std::function<void(uint32_t bat_reg)> dbat_update;
 
 extern MapDmaResult mmu_map_dma_mem(uint32_t addr, uint32_t size, bool allow_mmio);
+
+extern uint8_t CurITLBMode;
+extern uint8_t CurDTLBMode;
 
 extern void mmu_change_mode(void);
 extern void mmu_pat_ctx_changed();
