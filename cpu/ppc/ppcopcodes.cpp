@@ -2037,7 +2037,8 @@ void dppc_interpreter::ppc_tlbia() {
 #ifdef CPU_PROFILING
     num_supervisor_instrs++;
 #endif
-    /* placeholder */
+    LOG_F(ERROR, "tlbia");
+    dump_backtrace();
 }
 
 void dppc_interpreter::ppc_tlbld() {
