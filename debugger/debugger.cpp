@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <debugger/debugger.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/common/ofnvram.h>
+#include <debugger/backtrace.h>
 #include "memaccess.h"
 #include <utils/profiler.h>
 #include "symbols.h"
@@ -955,6 +956,9 @@ void DppcDebugger::enter_debugger() {
                     cout << exc.what() << endl;
                 }
             }
+        } else if (cmd == "backtrace" || cmd == "bt") {
+            cmd = "";
+            dump_backtrace();
         } else if (cmd == "dump") {
             expr_str = "";
             ss >> expr_str;
