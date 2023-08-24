@@ -29,6 +29,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "ppcmmu.h"
 #include <cinttypes>
 #include <vector>
+#include <debugger/backtrace.h>
+#include <loguru.hpp>
 
 //Extract the registers desired and the values of the registers.
 
@@ -789,6 +791,10 @@ void dppc_interpreter::ppc_mfmsr(uint32_t opcode) {
     ppc_state.gpr[reg_d] = ppc_state.msr;
 }
 
+#ifdef DBG_MMU_MODE_CHANGE
+static int mtmsrcountdown = 10;
+#endif
+
 void dppc_interpreter::ppc_mtmsr(uint32_t opcode) {
 #ifdef CPU_PROFILING
     num_supervisor_instrs++;
@@ -801,6 +807,20 @@ void dppc_interpreter::ppc_mtmsr(uint32_t opcode) {
     uint32_t new_msr_val = ppc_state.gpr[reg_s];
     ppc_msr_did_change(old_msr_val, new_msr_val);
 
+#ifdef DBG_MMU_MODE_CHANGE
+    uint8_t cur_mode = CurITLBMode;
+#endif
+        mmu_change_mode();
+#ifdef DBG_MMU_MODE_CHANGE
+    if (CurITLBMode != cur_mode) {
+        LOG_F(ERROR, "MTMSR; 1 mmu mode changed from %d to %d.", cur_mode, CurITLBMode);
+        if (mtmsrcountdown > 0) {
+            mtmsrcountdown--;
+            dump_backtrace();
+        }
+    }
+#endif
+
     // generate External Interrupt Exception
     // if CPU interrupt line is asserted
     if (ppc_state.msr & MSR::EE && int_pin) {
@@ -811,7 +831,19 @@ void dppc_interpreter::ppc_mtmsr(uint32_t opcode) {
         //LOG_F(WARNING, "MTMSR: decrementer exception triggered");
         ppc_exception_handler(Except_Type::EXC_DECR, 0);
     } else {
+#ifdef DBG_MMU_MODE_CHANGE
+        uint8_t cur_mode = CurITLBMode;
+#endif
         mmu_change_mode();
+#ifdef DBG_MMU_MODE_CHANGE
+        if (CurITLBMode != cur_mode) {
+            LOG_F(ERROR, "MTMSR; mmu mode changed from %d to %d.", cur_mode, CurITLBMode);
+            if (mtmsrcountdown > 0) {
+                mtmsrcountdown--;
+                dump_backtrace();
+            }
+        }
+#endif
     }
 }
 
@@ -1471,6 +1503,16 @@ void dppc_interpreter::ppc_rfi(uint32_t opcode) {
 
     ppc_msr_did_change(ppc_state.msr, new_msr_val);
 
+#ifdef DBG_MMU_MODE_CHANGE
+    uint8_t cur_mode = CurITLBMode;
+#endif
+    mmu_change_mode();
+#ifdef DBG_MMU_MODE_CHANGE
+    if (CurITLBMode != cur_mode) {
+        LOG_F(ERROR, "ppc_rfi; 1 mmu mode changed from %d to %d.", cur_mode, CurITLBMode);
+    }
+#endif
+
     // setting MSR[EE] may enable pending exceptions
     if ((ppc_state.msr & MSR::EE) && (int_pin || dec_exception_pending)) {
         uint32_t save_srr0 = ppc_state.spr[SPR::SRR0] & ~3UL;
@@ -1488,7 +1530,15 @@ void dppc_interpreter::ppc_rfi(uint32_t opcode) {
 
     do_ctx_sync(); // RFI is context synchronizing
 
+#ifdef DBG_MMU_MODE_CHANGE
+    uint8_t cur_mode = CurITLBMode;
+#endif
     mmu_change_mode();
+#ifdef DBG_MMU_MODE_CHANGE
+    if (CurITLBMode != cur_mode) {
+        LOG_F(ERROR, "ppc_rfi; mmu mode changed from %d to %d.", cur_mode, CurITLBMode);
+    }
+#endif
 
     exec_flags |= EXEF_RFI;
 }
