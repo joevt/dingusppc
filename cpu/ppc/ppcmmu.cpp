@@ -1692,7 +1692,15 @@ void ppc_mmu_init()
     invalidate_tlb_entries(dtlb2_mode2);
     invalidate_tlb_entries(dtlb2_mode3);
 
+#ifdef DBG_MMU_MODE_CHANGE
+    uint8_t cur_mode = CurITLBMode;
+#endif
     mmu_change_mode();
+#ifdef DBG_MMU_MODE_CHANGE
+    if (CurITLBMode != cur_mode) {
+        LOG_F(ERROR, "ppc_mmu_init; mmu mode changed from %d to %d.", cur_mode, CurITLBMode);
+    }
+#endif
 
 #ifdef MMU_PROFILING
     gProfilerObj->register_profile("PPC:MMU",
