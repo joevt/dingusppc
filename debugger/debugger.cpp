@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cpu/ppc/ppcdisasm.h>
 #include <cpu/ppc/ppcemu.h>
 #include <cpu/ppc/ppcmmu.h>
+#include <debugger/backtrace.h>
 #include <debugger/debugger.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/common/ofnvram.h>
@@ -1066,6 +1067,9 @@ void DppcDebugger::enter_debugger() {
                     cout << exc.what() << endl;
                 }
             }
+        } else if (cmd == "backtrace" || cmd == "bt") {
+            cmd = "";
+            dump_backtrace();
 #ifdef LOG_INSTRUCTIONS
         } else if (cmd == "dumpinstructionlog") {
             cmd = "";
