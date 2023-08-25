@@ -24,6 +24,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "ppcemu.h"
 #include "ppcmmu.h"
 #include "ppcdisasm.h"
+#include <debugger/backtrace.h>
+#include <memaccess.h>
 
 #include <algorithm>
 #include <chrono>
@@ -290,6 +292,19 @@ static void force_cycle_counter_reload()
     exec_timer = true;
 }
 
+#ifdef WATCH_POINT
+static uint32_t watch_point_value = 0x01234567;
+static uint32_t watch_point_address = 0x30B404;
+uint32_t *watch_point_dma = nullptr;
+bool got_watch_point_value = false;
+static uint32_t watch_point_paddr = watch_point_address;
+#endif
+
+#ifdef LOG_TAG
+static uint32_t lastphystag = -2;
+static int gotCallKernel = 0;
+#endif
+
 typedef enum {
     main,
     until,
@@ -320,6 +335,91 @@ static void ppc_exec_inner(uint32_t start_addr, uint32_t size)
             exec_flags = 0;
             pc_real    = mmu_translate_imem(eb_start);
         }
+
+#ifdef LOG_TAG
+        if (ppc_state.pc == 0x1c01e74) // CallKernel
+            gotCallKernel = true;
+        else if (ppc_state.pc == 0x00083F3C) // cpu_init
+            gotCallKernel = false;
+
+        if (gotCallKernel) {
+            mmu_exception_handler = dbg_exception_handler;
+            uint32_t saved_msr = ppc_state.msr;
+            ppc_state.msr = (saved_msr & ~(1<<14)) | (1<<4); // mode 2 supervisor
+            mmu_change_mode();
+            try {
+                TLBEntry *tlb2_entry = dtlb2_refill(0x0030b000, 0, true);
+                if (tlb2_entry) {
+                    if (tlb2_entry->tag == 0x0030b000 && tlb2_entry->phys_tag != lastphystag) {
+                        LOG_F(ERROR, "translation changed: mode:2 tag:0x%08x phys_tag:0x%08x",
+                            tlb2_entry->tag, tlb2_entry->phys_tag);
+                        dump_backtrace();
+                        lastphystag = tlb2_entry->phys_tag;
+                    }
+                    tlb2_entry->tag = -1;
+                }
+            }
+            catch (...) {
+            }
+            ppc_state.msr = saved_msr;
+            mmu_change_mode();
+            mmu_exception_handler = ppc_exception_handler;
+        }
+#endif
+
+#ifdef WATCH_POINT
+        uint32_t paddr;
+        if (mmu_translate_dbg(watch_point_address, paddr)) {
+            if (paddr != watch_point_paddr) {
+                LOG_F(ERROR, "cpu_type guest_pa changed from %08x to %08x", watch_point_paddr, paddr);
+                watch_point_paddr = paddr;
+                if (paddr != watch_point_address) {
+                    dump_backtrace();
+                }
+            }
+        }
+
+        if (got_watch_point_value) {
+            do {
+                uint32_t cur_value;
+                try {
+                    if (watch_point_dma) {
+                        cur_value = READ_DWORD_BE_A(watch_point_dma);
+                    }
+                    else {
+                        break;
+                    }
+                }
+                catch (...) {
+                    break;
+                }
+
+                if (cur_value != watch_point_value) {
+                    LOG_F(ERROR, "1 cpu_type Watch point at 0x%08x changed from 0x%08x to 0x%08x",
+                        watch_point_address, watch_point_value, cur_value);
+                    if (cur_value != 0x12) {
+                        dump_backtrace();
+                        uint32_t save_cur_value = cur_value;
+                        try {
+                            cur_value = (uint32_t)mem_read_dbg(watch_point_address, 4);
+                        }
+                        catch (...) {
+                            break;
+                        }
+                        if (cur_value != watch_point_value) {
+                            if (cur_value != save_cur_value) {
+                                LOG_F(ERROR, "2 cpu_type Watch point at 0x%08x changed from 0x%08x to 0x%08x",
+                                    watch_point_address, save_cur_value, cur_value);
+                            }
+                            watch_point_value = cur_value;
+                            // dump_backtrace();
+                        }
+                    }
+                    watch_point_value = cur_value;
+                }
+            } while (0);
+        }
+#endif
 
         opcode = ppc_read_instruction(pc_real);
         ppc_main_opcode(opcode_grabber, opcode);
