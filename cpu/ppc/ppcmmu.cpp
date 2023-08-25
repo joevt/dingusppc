@@ -1578,7 +1578,7 @@ bool mmu_translate_dbg(uint32_t guest_va, uint32_t &guest_pa) {
             is_mapped = true;
         } while (0);
     } catch (std::invalid_argument& exc) {
-        LOG_F(WARNING, "Unmapped address 0x%08X", guest_va);
+        //LOG_F(WARNING, "Unmapped address 0x%08X", guest_va);
         is_mapped = false;
     }
 
