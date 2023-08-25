@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define PPCMMU_H
 
 #include <devices/memctrl/memctrlbase.h>
+#include "ppcemu.h"
 
 #include <cinttypes>
 #include <functional>
@@ -35,6 +36,10 @@ class MMIODevice;
 //#define MMU_INTEGRITY_CHECKS
 /* Uncomment this to track changes to MMU mode. */
 //#define DBG_MMU_MODE_CHANGE
+/* Uncomment this to log access to cpu_type in Jaguar installer. */
+//#define WATCH_POINT
+/* Uncomment this to log accesses to a certain page of memory. */
+//#define LOG_TAG
 
 /** generic PowerPC BAT descriptor (MMU internal state) */
 typedef struct PPC_BAT_entry {
@@ -124,12 +129,15 @@ extern std::function<void(uint32_t bat_reg)> dbat_update;
 
 extern MapDmaResult mmu_map_dma_mem(uint32_t addr, uint32_t size, bool allow_mmio);
 
+extern void (*mmu_exception_handler)(Except_Type exception_type, uint32_t srr1_bits);
+
 extern uint8_t CurITLBMode;
 extern uint8_t CurDTLBMode;
 
 extern void mmu_change_mode(void);
 extern void mmu_pat_ctx_changed();
 extern void tlb_flush_entry(uint32_t ea);
+TLBEntry* dtlb2_refill(uint32_t guest_va, int is_write, bool is_dbg = false);
 
 extern uint64_t mem_read_dbg(uint32_t virt_addr, uint32_t size);
 extern void mem_write_dbg(uint32_t virt_addr, uint64_t value, int size);
