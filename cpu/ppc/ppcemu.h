@@ -37,6 +37,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 //#define CPU_PROFILING // enable CPU profiling
 
+// Uncomment this to have characters output by __doprnt to appear in stdout.
+//#define LOG__doprnt
+
 /** type of compiler used during execution */
 enum EXEC_MODE:uint32_t {
     interpreter     = 0,
