@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "ppcemu.h"
 #include "ppcmmu.h"
 #include "ppcdisasm.h"
+#include <debugger/symbols.h>
 
 #include <algorithm>
 #include <atomic>
@@ -259,6 +260,12 @@ public:
 
 #endif
 
+#ifdef LOG__doprnt
+static bool try_doprint = false;
+static uint32_t addr_doprint = 0;
+static uint32_t addr_putc = 0;
+#endif
+
 #ifdef LOG_INSTRUCTIONS
 InstructionRec InstructionLog[InstructionLogSize] = {0};
 uint64_t InstructionNumber = 0;
@@ -359,6 +366,21 @@ void ppc_main_opcode(PPCOpcode *opcodeGrabber, uint32_t opcode)
     irec->msr = ppc_state.msr;
     irec->flags_before = exec_flags | ((uint32_t)exec_timer.load(std::memory_order_relaxed) << 7);
     irec->flags_after = 0;
+#endif
+
+#ifdef LOG__doprnt
+    if (try_doprint) {
+        if (ppc_state.pc == addr_doprint) {
+            addr_putc = ppc_state.gpr[5];
+            #if 0
+                std::string name = get_name(addr_putc);
+                printf("\n__doprnt(%s):", name.c_str());
+            #endif
+        }
+        if (ppc_state.pc == addr_putc) {
+            printf("%c", ppc_state.gpr[3]);
+        }
+    }
 #endif
 
     opcodeGrabber[(opcode >> 15 & 0x1F800) | (opcode & 0x7FF)](opcode);
@@ -1698,6 +1720,13 @@ void ppc_cpu_init(MemCtrlBase* mem_ctrl, const PPC_CPU_Config& config)
 #ifdef CPU_PROFILING
     gProfilerObj->register_profile("PPC_CPU",
         std::unique_ptr<BaseProfile>(new CPUProfile()));
+#endif
+
+#ifdef LOG__doprnt
+    if (!addr_doprint) {
+        lookup_name_kernel("__doprnt", addr_doprint);
+        try_doprint = (addr_doprint != 0);
+    }
 #endif
 }
 
