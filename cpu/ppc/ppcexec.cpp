@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "ppcmmu.h"
 #include "ppcdisasm.h"
 #include <debugger/backtrace.h>
+#include <debugger/symbols.h>
 #include <memaccess.h>
 
 #include <algorithm>
@@ -187,6 +188,12 @@ public:
 
 #endif
 
+#ifdef LOG__doprnt
+static bool try_doprint = false;
+static uint32_t addr_doprint = 0;
+static uint32_t addr_putc = 0;
+#endif
+
 /** Opcode lookup table, indexed by
     primary opcode (bits 0...5) and modifier (bits 21...31). */
 static PPCOpcode OpcodeGrabber[64 * 2048];
@@ -253,6 +260,21 @@ void ppc_main_opcode(PPCOpcode *opcodeGrabber, uint32_t opcode)
     num_opcodes[opcode]++;
 #endif
 #endif
+#ifdef LOG__doprnt
+    if (try_doprint) {
+        if (ppc_state.pc == addr_doprint) {
+            addr_putc = ppc_state.gpr[5];
+            #if 0
+                std::string name = get_name(addr_putc);
+                printf("\n__doprnt(%s):", name.c_str());
+            #endif
+        }
+        if (ppc_state.pc == addr_putc) {
+            printf("%c", ppc_state.gpr[3]);
+        }
+    }
+#endif
+
     opcodeGrabber[(opcode >> 15 & 0x1F800) | (opcode & 0x7FF)](opcode);
 }
 
@@ -979,6 +1001,13 @@ void ppc_cpu_init(MemCtrlBase* mem_ctrl, uint32_t cpu_version, bool do_include_6
 #ifdef CPU_PROFILING
     gProfilerObj->register_profile("PPC_CPU",
         std::unique_ptr<BaseProfile>(new CPUProfile()));
+#endif
+
+#ifdef LOG__doprnt
+    if (!addr_doprint) {
+        lookup_name_kernel("__doprnt", addr_doprint);
+        try_doprint = (addr_doprint != 0);
+    }
 #endif
 }
 
