@@ -37,6 +37,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 //#define CPU_PROFILING // enable CPU profiling
 
+// Uncomment this to have characters output by __doprnt to appear in stdout.
+//#define LOG__doprnt
+
 // Uncomment this to enable logging of executed instructions.
 //#define LOG_INSTRUCTIONS
 
