@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "ppcemu.h"
 #include "ppcmmu.h"
 #include <debugger/backtrace.h>
+#include <debugger/symbols.h>
 #include <memaccess.h>
 
 #include <algorithm>
@@ -152,6 +153,12 @@ public:
     };
 };
 
+#endif
+
+#ifdef LOG__doprnt
+static bool try_doprint = false;
+static uint32_t addr_doprint = 0;
+static uint32_t addr_putc = 0;
 #endif
 
 /** Opcode lookup tables. */
@@ -292,6 +299,21 @@ void ppc_main_opcode()
 #ifdef CPU_PROFILING
     num_executed_instrs++;
 #endif
+#ifdef LOG__doprnt
+        if (try_doprint) {
+            if (ppc_state.pc == addr_doprint) {
+                addr_putc = ppc_state.gpr[5];
+                /*
+                std::string name = get_name(addr_putc);
+                printf("\n__doprnt(%s):", name.c_str());
+                */
+            }
+            if (ppc_state.pc == addr_putc) {
+                printf("%c", ppc_state.gpr[3]);
+            }
+        }
+#endif
+
     OpcodeGrabber[(ppc_cur_instruction >> 26) & 0x3F]();
 }
 
@@ -996,6 +1018,13 @@ void ppc_cpu_init(MemCtrlBase* mem_ctrl, uint32_t cpu_version, bool include_601,
 #ifdef CPU_PROFILING
     gProfilerObj->register_profile("PPC_CPU",
         std::unique_ptr<BaseProfile>(new CPUProfile()));
+#endif
+
+#ifdef LOG__doprnt
+    if (!addr_doprint) {
+        lookup_name_kernel("__doprnt", addr_doprint);
+        try_doprint = (addr_doprint != 0);
+    }
 #endif
 }
 
