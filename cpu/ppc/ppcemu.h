@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -36,6 +36,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //#define ILLEGAL_OP_SAFE 1
 
 //#define CPU_PROFILING // enable CPU profiling
+
+// Uncomment this to have characters output by __doprnt to appear in stdout.
+//#define LOG__doprnt
 
 /** type of compiler used during execution */
 enum EXEC_MODE:uint32_t {
