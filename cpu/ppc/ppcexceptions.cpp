@@ -36,6 +36,9 @@ void ppc_exception_handler(Except_Type exception_type, uint32_t srr1_bits) {
 #ifdef CPU_PROFILING
     exceptions_processed++;
 #endif
+#ifdef POSTPONE_DECREMENTER
+    in_exception = true;
+#endif
 
     switch (exception_type) {
     case Except_Type::EXC_SYSTEM_RESET:
