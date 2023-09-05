@@ -32,6 +32,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <debugger/backtrace.h>
 #include <loguru.hpp>
 
+#ifdef POSTPONE_DECREMENTER
+bool in_lwarx = false;
+bool in_exception = false;
+#endif
+
 //Extract the registers desired and the values of the registers.
 
 // Affects CR Field 0 - For integer operations
@@ -916,6 +921,13 @@ static uint32_t decrementer_timer_id = 0;
 static void update_decrementer(uint32_t oldval, uint32_t newval);
 
 static void trigger_decrementer_exception() {
+#ifdef POSTPONE_DECREMENTER
+    if (in_lwarx || in_exception) {
+        decrementer_timer_id = TimerManager::get_instance()->add_oneshot_timer(400, trigger_decrementer_exception);
+        return;
+    }
+#endif
+
     decrementer_timer_id = 0;
 
     uint32_t new_val = calc_dec_value();
@@ -1289,6 +1301,11 @@ template void dppc_interpreter::ppc_bcctr<LK1, IS601>(uint32_t opcode);
 
 template <field_lk l>
 void dppc_interpreter::ppc_bclr(uint32_t opcode) {
+
+#ifdef POSTPONE_DECREMENTER
+    in_lwarx = false;
+#endif
+
     uint32_t br_bo = (opcode >> 21) & 0x1F;
     uint32_t br_bi = (opcode >> 16) & 0x1F;
     uint32_t ctr_ok;
@@ -1520,6 +1537,10 @@ void dppc_interpreter::ppc_rfi(uint32_t opcode) {
     if (CurITLBMode != cur_mode) {
         LOG_F(ERROR, "ppc_rfi; mmu mode changed from %d to %d.", cur_mode, CurITLBMode);
     }
+#endif
+
+#ifdef POSTPONE_DECREMENTER
+    in_exception = false;
 #endif
 
     exec_flags |= EXEF_RFI;
@@ -1898,6 +1919,11 @@ void dppc_interpreter::ppc_lwarx(uint32_t opcode) {
 #ifdef CPU_PROFILING
     num_int_loads++;
 #endif
+
+#ifdef POSTPONE_DECREMENTER
+    in_lwarx = true;
+#endif
+
     // Placeholder - Get the reservation of memory implemented!
     ppc_grab_regsdab(opcode);
     uint32_t ea = ppc_result_b + (reg_a ? ppc_result_a : 0);
