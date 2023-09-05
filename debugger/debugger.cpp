@@ -956,6 +956,14 @@ void DppcDebugger::enter_debugger() {
                     cout << exc.what() << endl;
                 }
             }
+#ifdef DECREMENTER_TOGGLE
+        } else if (cmd == "disabledecrementer") {
+            cmd = "";
+            decrementer_enabled = false;
+        } else if (cmd == "enabledecrementer") {
+            cmd = "";
+            decrementer_enabled = true;
+#endif
         } else if (cmd == "backtrace" || cmd == "bt") {
             cmd = "";
             dump_backtrace();
