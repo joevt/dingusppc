@@ -29,6 +29,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "memaccess.h"
 #include <utils/profiler.h>
 #include "symbols.h"
+#if INCLUDE_KGMACROS
+#include "kgmacros.h"
+#endif
 
 #include <array>
 #include <cstring>
@@ -1197,10 +1200,41 @@ void DppcDebugger::enter_debugger() {
             ppc_state.pc -= 4;
             via_obj->assert_int(irq_bit);
 #endif
-        } else if (cmd == "showallkmods") {
-            cmd = "";
-            showallkmods();
-        } else {
+        }
+#if INCLUDE_KGMACROS
+        else if (cmd == "showalltasks"  ) { cmd = ""; showalltasks  (); }
+        else if (cmd == "showallacts"   ) { cmd = ""; showallacts   (); }
+        else if (cmd == "showallstacks" ) { cmd = ""; showallstacks (); }
+        else if (cmd == "showallvm"     ) { cmd = ""; showallvm     (); }
+        else if (cmd == "showallvme"    ) { cmd = ""; showallvme    (); }
+        else if (cmd == "showallipc"    ) { cmd = ""; showallipc    (); }
+        else if (cmd == "showallrights" ) { cmd = ""; showallrights (); }
+        else if (cmd == "showallkmods"  ) { cmd = ""; showallkmods  (); }
+        else if (cmd == "zprint"        ) { cmd = ""; zprint        (); }
+        else if (cmd == "paniclog"      ) { cmd = ""; paniclog      (); }
+#define ONEARG string value; int arg0; ss >> value; try { arg0 = str2num(value); } \
+    catch(invalid_argument& exc) { cout << exc.what() << endl; continue; }
+        else if (cmd == "showtask"      ) { cmd = ""; ONEARG showtask      (arg0); }
+        else if (cmd == "showtaskacts"  ) { cmd = ""; ONEARG showtaskacts  (arg0); }
+        else if (cmd == "showtaskstacks") { cmd = ""; ONEARG showtaskstacks(arg0); }
+        else if (cmd == "showtaskvm"    ) { cmd = ""; ONEARG showtaskvm    (arg0); }
+        else if (cmd == "showtaskvme"   ) { cmd = ""; ONEARG showtaskvme   (arg0); }
+        else if (cmd == "showtaskipc"   ) { cmd = ""; ONEARG showtaskipc   (arg0); }
+        else if (cmd == "showtaskrights") { cmd = ""; ONEARG showtaskrights(arg0); }
+        else if (cmd == "showact"       ) { cmd = ""; ONEARG showact       (arg0); }
+        else if (cmd == "showactstack"  ) { cmd = ""; ONEARG showactstack  (arg0); }
+        else if (cmd == "showmap"       ) { cmd = ""; ONEARG showmap       (arg0); }
+        else if (cmd == "showmapvme"    ) { cmd = ""; ONEARG showmapvme    (arg0); }
+        else if (cmd == "showipc"       ) { cmd = ""; ONEARG showipc       (arg0); }
+        else if (cmd == "showrights"    ) { cmd = ""; ONEARG showrights    (arg0); }
+        else if (cmd == "showpid"       ) { cmd = ""; ONEARG showpid       (arg0); }
+        else if (cmd == "showproc"      ) { cmd = ""; ONEARG showproc      (arg0); }
+        else if (cmd == "showkmod"      ) { cmd = ""; ONEARG showkmod      (arg0); }
+        else if (cmd == "switchtoact"   ) { cmd = ""; ONEARG switchtoact   (arg0); }
+        else if (cmd == "switchtoctx"   ) { cmd = ""; ONEARG switchtoctx   (arg0); }
+        else if (cmd == "showkmodaddr"  ) { cmd = ""; ONEARG showkmodaddr  (arg0); printf("\n"); }
+#endif
+        else {
             if (!cmd.empty()) {
                 cout << "Unknown command: " << cmd << endl;
                 cmd = "";
