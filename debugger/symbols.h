@@ -70,6 +70,5 @@ std::string get_offset_string(const std::string &name, int offset, int *offset_o
 std::string get_name(uint32_t addr, uint32_t addr_p = 0, int *offset = nullptr, binary_kind_t *kind = nullptr, int kinds = 0);
 bool lookup_name_kernel(const std::string &name, uint32_t &addr);
 bool lookup_name(binary_kind_t kind, const std::string &name, uint32_t &addr);
-void showallkmods();
 
 #endif // SYMBOLS_H_
