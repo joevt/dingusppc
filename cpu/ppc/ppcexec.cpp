@@ -63,6 +63,12 @@ bool power_on = false;
 Po_Cause power_off_reason = po_enter_debugger;
 
 SetPRS ppc_state;
+#ifdef LOG_INSTRUCTIONS
+uint32_t pcp;
+#define ATPCP , &pcp
+#else
+#define ATPCP
+#endif
 
 bool grab_return;
 bool grab_breakpoint;
@@ -159,6 +165,11 @@ public:
 static bool try_doprint = false;
 static uint32_t addr_doprint = 0;
 static uint32_t addr_putc = 0;
+#endif
+
+#ifdef LOG_INSTRUCTIONS
+InstructionRec InstructionLog[InstructionLogSize] = {0};
+uint64_t InstructionNumber = 0;
 #endif
 
 /** Opcode lookup tables. */
@@ -299,6 +310,22 @@ void ppc_main_opcode()
 #ifdef CPU_PROFILING
     num_executed_instrs++;
 #endif
+
+#ifdef LOG_INSTRUCTIONS
+    if (InstructionNumber && !InstructionLog[(InstructionNumber - 1) & (InstructionLogSize - 1)].flags_after) {
+        // This happens for all exceptions except EXC_EXT_INT && EXC_DECR
+        //LOG_F(ERROR, "previous instruction did not complete");
+    }
+    InstructionRec * irec = &InstructionLog[InstructionNumber & (InstructionLogSize - 1)];
+    irec->cycle = InstructionNumber++;
+    irec->addr = ppc_state.pc;
+    irec->paddr = pcp;
+    irec->ins = ppc_cur_instruction;
+    irec->msr = ppc_state.msr;
+    irec->flags_before = exec_flags | (exec_timer << 7);
+    irec->flags_after = 0;
+#endif
+
 #ifdef LOG__doprnt
         if (try_doprint) {
             if (ppc_state.pc == addr_doprint) {
@@ -315,6 +342,10 @@ void ppc_main_opcode()
 #endif
 
     OpcodeGrabber[(ppc_cur_instruction >> 26) & 0x3F]();
+#ifdef LOG_INSTRUCTIONS
+    irec->flags_after = exec_flags | (exec_timer << 7) | 0x80000000;
+    irec->msr_after = ppc_state.msr;
+#endif
 }
 
 long long now_ns() {
@@ -371,7 +402,7 @@ static void ppc_exec_inner()
         eb_end     = page_start + PPC_PAGE_SIZE - 1;
         exec_flags = 0;
 
-        pc_real    = mmu_translate_imem(eb_start);
+        pc_real    = mmu_translate_imem(eb_start ATPCP); // &pcp
 
         // interpret execution block
         while (power_on && ppc_state.pc < eb_end) {
@@ -385,17 +416,23 @@ static void ppc_exec_inner()
                 eb_start = ppc_next_instruction_address;
                 if (!(exec_flags & EXEF_RFI) && (eb_start & PPC_PAGE_MASK) == page_start) {
                     pc_real += (int)eb_start - (int)ppc_state.pc;
+#ifdef LOG_INSTRUCTIONS
+                    pcp += (int)eb_start - (int)ppc_state.pc;
+#endif
                     ppc_set_cur_instruction(pc_real);
                 } else {
                     page_start = eb_start & PPC_PAGE_MASK;
                     eb_end = page_start + PPC_PAGE_SIZE - 1;
-                    pc_real = mmu_translate_imem(eb_start);
+                    pc_real = mmu_translate_imem(eb_start ATPCP); // &pcp
                 }
                 ppc_state.pc = eb_start;
                 exec_flags = 0;
             } else {
                 ppc_state.pc += 4;
                 pc_real += 4;
+#ifdef LOG_INSTRUCTIONS
+                pcp += 4;
+#endif
                 ppc_set_cur_instruction(pc_real);
             }
         }
@@ -427,7 +464,7 @@ void ppc_exec_single()
         return;
     }
 
-    mmu_translate_imem(ppc_state.pc);
+    mmu_translate_imem(ppc_state.pc ATPCP); // &pcp
     ppc_main_opcode();
     g_icycles++;
     process_events();
@@ -472,7 +509,7 @@ static void ppc_exec_until_inner(const uint32_t goal_addr)
         eb_end     = page_start + PPC_PAGE_SIZE - 1;
         exec_flags = 0;
 
-        pc_real    = mmu_translate_imem(eb_start);
+        pc_real    = mmu_translate_imem(eb_start ATPCP); // &pcp
 
         // interpret execution block
         while (power_on && ppc_state.pc < eb_end) {
@@ -569,17 +606,23 @@ static void ppc_exec_until_inner(const uint32_t goal_addr)
                 eb_start = ppc_next_instruction_address;
                 if (!(exec_flags & EXEF_RFI) && (eb_start & PPC_PAGE_MASK) == page_start) {
                     pc_real += (int)eb_start - (int)ppc_state.pc;
+#ifdef LOG_INSTRUCTIONS
+                    pcp += (int)eb_start - (int)ppc_state.pc;
+#endif
                     ppc_set_cur_instruction(pc_real);
                 } else {
                     page_start = eb_start & PPC_PAGE_MASK;
                     eb_end = page_start + PPC_PAGE_SIZE - 1;
-                    pc_real = mmu_translate_imem(eb_start);
+                    pc_real = mmu_translate_imem(eb_start ATPCP); // &pcp
                 }
                 ppc_state.pc = eb_start;
                 exec_flags = 0;
             } else {
                 ppc_state.pc += 4;
                 pc_real += 4;
+#ifdef LOG_INSTRUCTIONS
+                pcp += 4;
+#endif
                 ppc_set_cur_instruction(pc_real);
             }
 
@@ -622,7 +665,7 @@ static void ppc_exec_dbg_inner(const uint32_t start_addr, const uint32_t size)
         eb_end     = page_start + PPC_PAGE_SIZE - 1;
         exec_flags = 0;
 
-        pc_real    = mmu_translate_imem(eb_start);
+        pc_real    = mmu_translate_imem(eb_start ATPCP); // &pcp
 
         // interpret execution block
         while (power_on && (ppc_state.pc < start_addr || ppc_state.pc >= start_addr + size)
@@ -637,17 +680,23 @@ static void ppc_exec_dbg_inner(const uint32_t start_addr, const uint32_t size)
                 eb_start = ppc_next_instruction_address;
                 if (!(exec_flags & EXEF_RFI) && (eb_start & PPC_PAGE_MASK) == page_start) {
                     pc_real += (int)eb_start - (int)ppc_state.pc;
+#ifdef LOG_INSTRUCTIONS
+                    pcp += (int)eb_start - (int)ppc_state.pc;
+#endif
                     ppc_set_cur_instruction(pc_real);
                 } else {
                     page_start = eb_start & PPC_PAGE_MASK;
                     eb_end = page_start + PPC_PAGE_SIZE - 1;
-                    pc_real = mmu_translate_imem(eb_start);
+                    pc_real = mmu_translate_imem(eb_start ATPCP); // &pcp
                 }
                 ppc_state.pc = eb_start;
                 exec_flags = 0;
             } else {
                 ppc_state.pc += 4;
                 pc_real += 4;
+#ifdef LOG_INSTRUCTIONS
+                pcp += 4;
+#endif
                 ppc_set_cur_instruction(pc_real);
             }
         }
@@ -1001,6 +1050,9 @@ void ppc_cpu_init(MemCtrlBase* mem_ctrl, uint32_t cpu_version, bool include_601,
     timebase_counter = 0;
     dec_wr_value = 0;
 
+#ifdef LOG_INSTRUCTIONS
+    pcp = 0;
+#endif
 
     if (is_601) {
         /* MPC601 sets MSR[ME] bit during hard reset / Power-On */
