@@ -241,6 +241,13 @@ PPCOpcode* ppc_opcode_grabber = OpcodeGrabberNoFPU;
 /** Exception helpers. */
 
 void ppc_illegalop(uint32_t opcode) {
+    if (ppc_state.pc == 0xFF809A64 && opcode == 0) {
+        // back-to-MacOS from cientry in OF 1.0.5
+    }
+    else {
+        LOG_F(ERROR, "Illegal Operation 0x%08x", opcode);
+        dump_backtrace();
+    }
     ppc_exception_handler(Except_Type::EXC_PROGRAM, Exc_Cause::ILLEGAL_OP);
 }
 
