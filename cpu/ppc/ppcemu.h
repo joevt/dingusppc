@@ -43,6 +43,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // Uncomment this to enable logging of executed instructions.
 //#define LOG_INSTRUCTIONS
 
+// Uncomment this to allow enabling/disabling decrementer exceptions.
+//#define DECREMENTER_TOGGLE
+
 // Uncomment this to postpone decrementer exceptions to code that is
 // not inside an exception handler or a lwarx atomic method.
 //#define POSTPONE_DECREMENTER
@@ -741,6 +744,10 @@ extern InstructionRec InstructionLog[InstructionLogSize];
 extern uint64_t InstructionNumber;
 
 void dumpinstructionlog();
+#endif
+
+#ifdef DECREMENTER_TOGGLE
+extern bool decrementer_enabled;
 #endif
 
 #endif /* PPCEMU_H */
