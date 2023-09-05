@@ -40,6 +40,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // Uncomment this to have characters output by __doprnt to appear in stdout.
 //#define LOG__doprnt
 
+// Uncomment this to be allow enabling/disabling decrementer exceptions.
+//#define DECREMENTER_TOGGLE
+
 // Uncomment this to postpone decrementer exceptions to code that is
 // not inside an exception handler or a lwarx atomic method.
 //#define POSTPONE_DECREMENTER
@@ -662,5 +665,9 @@ extern void ppc_exec_dbg(uint32_t start_addr, uint32_t size);
 void print_fprs(void);                   /* print content of the floating-point registers  */
 uint64_t get_reg(std::string reg_name); /* get content of the register reg_name */
 void set_reg(std::string reg_name, uint64_t val); /* set reg_name to val */
+
+#ifdef DECREMENTER_TOGGLE
+extern bool decrementer_enabled;
+#endif
 
 #endif /* PPCEMU_H */
