@@ -952,11 +952,20 @@ static void update_timebase(uint64_t mask, uint64_t new_val)
     tbr_wr_timestamp = get_virt_time_ns();
 }
 
+#ifdef DECREMENTER_TOGGLE
+bool decrementer_enabled = true;
+#endif
+
 static TimerInfo decrementer_timer;
 
 static void update_decrementer(bool update_time_stamp, uint32_t oldval, uint32_t newval);
 
 static void trigger_decrementer_exception(uint64_t = 0, uint64_t = 0) {
+#ifdef DECREMENTER_TOGGLE
+    if (!decrementer_enabled)
+        return;
+#endif
+
 #ifdef POSTPONE_DECREMENTER
     if (in_lwarx || in_exception) {
         TimerManager::get_instance()->add_oneshot_timer(decrementer_timer, 400, trigger_decrementer_exception);
