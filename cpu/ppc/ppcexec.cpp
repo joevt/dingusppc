@@ -286,6 +286,7 @@ PPCOpcode* ppc_opcode_grabber = OpcodeGrabberNoFPU;
 /** Exception helpers. */
 
 void ppc_illegalop(uint32_t opcode) {
+    // ciexit in Old World Open Firmware uses opcode 0.
     ppc_exception_handler(Except_Type::EXC_PROGRAM, Exc_Cause::ILLEGAL_OP);
 }
 
