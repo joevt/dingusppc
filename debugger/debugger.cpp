@@ -809,8 +809,7 @@ void enter_debugger() {
                     delete_prompt();
                 }
                 for (; --count >= 0;) {
-                    addr_str = "PC";
-                    addr     = (uint32_t)get_reg(addr_str);
+                    addr = ppc_state.pc;
                     PPCDisasmContext ctx;
                     ctx.kinds = 0; // (1 << kind_darwin_kernel) | (1 << kind_darwin_kext);
                     ctx.level = 0;
