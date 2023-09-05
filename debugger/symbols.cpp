@@ -20,6 +20,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "symbols.h"
+#if INCLUDE_KGMACROS
+#include "kgmacros.h"
+#endif
 #include "symbolsopenfirmware.h"
 #include "memaccess.h"
 #include <cpu/ppc/ppcmmu.h>
@@ -267,59 +270,7 @@ bool lookup_name_kernel(const std::string &name, uint32_t &addr) {
     return lookup_name(kind_darwin_kernel, name, addr);
 }
 
-typedef struct {
-    // [ start of guest kmod_info_t
-    uint32_t next;
-    uint32_t info_version;
-    uint32_t id;
-    char     name[64];
-    char     version[64];
-    int32_t  reference_count;
-    uint32_t reference_list;
-    uint32_t address;
-    uint32_t size;
-    uint32_t hdr_size;
-    uint32_t start;
-    uint32_t stop;
-    // ] end of guest kmod_info_t
-    uint32_t kmod; // guest virtual address pointer to kmod info
-} kmod_info_t;
-
-vector<kmod_info_t> get_kmod_infos() {
-    static uint32_t _kmod = 0;
-    kmod_info_t info;
-    vector<kmod_info_t> kmod_infos;
-    if (!_kmod)
-        lookup_name_kernel("_kmod", _kmod);
-    if (_kmod) {
-        try {
-            uint32_t kmod = (uint32_t)mem_read_dbg(_kmod, 4);
-            while ((!(kmod & 3)) && kmod) {
-                info.kmod = kmod;
-                uint64_t val;
-                info.next               = (uint32_t)mem_read_dbg(kmod + offsetof(kmod_info_t, next           ), 4);
-                info.info_version       = (uint32_t)mem_read_dbg(kmod + offsetof(kmod_info_t, info_version   ), 4);
-                info.id                 = (uint32_t)mem_read_dbg(kmod + offsetof(kmod_info_t, id             ), 4);
-                info.reference_count    = (uint32_t)mem_read_dbg(kmod + offsetof(kmod_info_t, reference_count), 4);
-                info.reference_list     = (uint32_t)mem_read_dbg(kmod + offsetof(kmod_info_t, reference_list ), 4);
-                info.address            = (uint32_t)mem_read_dbg(kmod + offsetof(kmod_info_t, address        ), 4);
-                info.size               = (uint32_t)mem_read_dbg(kmod + offsetof(kmod_info_t, size           ), 4);
-                info.hdr_size           = (uint32_t)mem_read_dbg(kmod + offsetof(kmod_info_t, hdr_size       ), 4);
-                info.start              = (uint32_t)mem_read_dbg(kmod + offsetof(kmod_info_t, start          ), 4);
-                info.stop               = (uint32_t)mem_read_dbg(kmod + offsetof(kmod_info_t, stop           ), 4);
-                for (int i = 0; i < 8; i++) { val = mem_read_dbg(kmod + offsetof(kmod_info_t, name           ) + i * 8, 8);
-                    WRITE_QWORD_BE_A(&(((uint64_t*)(&info.name   ))[i]), val); if (!val) break; };
-                for (int i = 0; i < 8; i++) { val = mem_read_dbg(kmod + offsetof(kmod_info_t, version        ) + i * 8, 8);
-                    WRITE_QWORD_BE_A(&(((uint64_t*)(&info.version))[i]), val); if (!val) break; };
-                kmod_infos.push_back(info);
-                kmod = info.next;
-            }
-        } catch (invalid_argument& exc) {
-        }
-    }
-    return kmod_infos;
-}
-
+#if INCLUDE_KGMACROS
 std::string get_name_kext(uint32_t addr, int *offset) {
     std::string str;
 #ifdef __APPLE__
@@ -449,6 +400,7 @@ std::string get_name_kext(uint32_t addr, int *offset) {
 #endif
     return str;
 }
+#endif
 
 std::string get_name(uint32_t addr, uint32_t addr_p, int *offset, binary_kind_t *kind, int kinds) {
     std::string str;
@@ -471,6 +423,7 @@ std::string get_name(uint32_t addr, uint32_t addr_p, int *offset, binary_kind_t 
         }
     }
 
+#if INCLUDE_KGMACROS
     if (kinds == 0 || (kinds & (1 << kind_darwin_kext))) {
         str = get_name_kext(addr, offset);
         if (!str.empty()) {
@@ -479,33 +432,11 @@ std::string get_name(uint32_t addr, uint32_t addr_p, int *offset, binary_kind_t 
             return str;
         }
     }
+#endif
 
     if (kind)
         *kind = kind_unknown;
     if (offset)
         *offset = 0;
     return str;
-}
-
-void showkmodheader() {
-    printf("kmod        address     hdr_size    size        id    refs     version  name\n");
-}
-
-void showkmodint(kmod_info_t &info) {
-    printf("0x%08x  ", info.kmod);
-    printf("0x%08x  ", info.address);
-    printf("0x%08x  ", info.hdr_size);
-    printf("0x%08x  ", info.size);
-    printf("%3d  ", info.id);
-    printf("%5d  ", info.reference_count);
-    printf("%10s  ", info.version);
-    printf("%s\n", info.name);
-}
-
-void showallkmods() {
-    vector<kmod_info_t> kmod_infos = get_kmod_infos();
-    showkmodheader();
-    for (auto &info : kmod_infos) {
-        showkmodint(info);
-    }
 }
