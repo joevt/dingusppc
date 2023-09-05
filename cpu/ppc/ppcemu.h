@@ -40,6 +40,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // Uncomment this to have characters output by __doprnt to appear in stdout.
 //#define LOG__doprnt
 
+// Uncomment this to postpone decrementer exceptions to code that is
+// not inside an exception handler or a lwarx atomic method.
+//#define POSTPONE_DECREMENTER
+
 /** type of compiler used during execution */
 enum EXEC_MODE:uint32_t {
     interpreter     = 0,
@@ -85,6 +89,11 @@ typedef struct struct_ppc_state {
 } SetPRS;
 
 extern SetPRS ppc_state;
+
+#ifdef POSTPONE_DECREMENTER
+extern bool in_lwarx;
+extern bool in_exception;
+#endif
 
 /** symbolic names for frequently used SPRs */
 enum SPR : int {
