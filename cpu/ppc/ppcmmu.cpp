@@ -35,6 +35,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 //#define MMU_PROFILING // uncomment this to enable MMU profiling
 //#define TLB_PROFILING // uncomment this to enable SoftTLB profiling
+//#define VERIFY_DATA_READ // uncomment this to verify TLB entries for read
+//#define VERIFY_DATA_WRITE // uncomment this to verify TLB entries for write
+//#define VERIFY_INSTRUCTION_READ // uncomment this to verify TLB entries for instructions
 
 /* pointer to exception handler to be called when a MMU exception is occurred. */
 void (*mmu_exception_handler)(Except_Type exception_type, uint32_t srr1_bits);
@@ -1033,6 +1036,22 @@ void mmu_dcbz(uint32_t opcode, uint32_t guest_va)
     mmu_write_vmem<uint64_t>(opcode, guest_va + 24, 0);
 }
 
+static void tlb_flush_primary_entry(TLBEntry *tlb1, uint32_t tag) {
+    TLBEntry *tlb_entry = &tlb1[(tag >> PPC_PAGE_SIZE_BITS) & tlb_size_mask];
+    if (tlb_entry->tag == tag) {
+        tlb_entry->tag = TLB_INVALID_TAG;
+    }
+}
+
+static void tlb_flush_secondary_entry(TLBEntry *tlb2, uint32_t tag) {
+    TLBEntry *tlb_entry = &tlb2[((tag >> PPC_PAGE_SIZE_BITS) & tlb_size_mask) * TLB2_WAYS];
+    for (int i = 0; i < TLB2_WAYS; i++) {
+        if (tlb_entry[i].tag == tag) {
+            tlb_entry[i].tag = TLB_INVALID_TAG;
+        }
+    }
+}
+
 uint8_t *mmu_translate_imem(uint32_t vaddr, uint32_t *paddr)
 {
 #if SUPPORTS_PPC_LITTLE_ENDIAN_MODE
@@ -1046,6 +1065,9 @@ uint8_t *mmu_translate_imem(uint32_t vaddr, uint32_t *paddr)
 
 #ifdef MMU_PROFILING
     exec_reads_total++;
+#endif
+#ifdef VERIFY_INSTRUCTION_READ
+    bool verify = true;
 #endif
 
     const uint32_t tag = vaddr & ~0xFFFUL;
@@ -1066,6 +1088,9 @@ uint8_t *mmu_translate_imem(uint32_t vaddr, uint32_t *paddr)
             // secondary ITLB miss ->
             // perform full address translation and refill the secondary ITLB
             tlb2_entry = itlb2_refill(vaddr);
+#ifdef VERIFY_INSTRUCTION_READ
+            verify = false;
+#endif
         }
 #ifdef TLB_PROFILING
         else {
@@ -1076,6 +1101,20 @@ uint8_t *mmu_translate_imem(uint32_t vaddr, uint32_t *paddr)
         promote_tlb_entry<TLBType::ITLB>(tlb1_entry, tlb2_entry);
         host_va = (uint8_t *)(tlb1_entry->host_va_offs_r + vaddr);
     }
+
+#ifdef VERIFY_INSTRUCTION_READ
+    if (verify) {
+        uint32_t savedphys = tlb1_entry->phys_tag;
+        tlb_flush_primary_entry(pCurITLB1, tag);
+        tlb_flush_secondary_entry(pCurITLB2, tag);
+        tlb2_entry = itlb2_refill(vaddr);
+        if (tlb2_entry->phys_tag != savedphys) {
+            LOG_F(ERROR, "mmu_translate_imem; phystag mismatch address:0x%08x tag:0x%08x phys:0x%08x correctedphys:%08x",
+                vaddr, tag, savedphys, tlb2_entry->phys_tag);
+            dump_backtrace();
+        }
+    }
+#endif
 
     if (paddr)
         *paddr = tlb1_entry->phys_tag | (vaddr & 0xFFFUL);
@@ -1252,6 +1291,9 @@ inline T mmu_read_vmem(uint32_t opcode, uint32_t guest_va)
     TLBEntry *tlb1_entry, *tlb2_entry;
     uint8_t *host_va;
 
+#ifdef VERIFY_DATA_READ
+    bool verify = true;
+#endif
     const uint32_t tag = guest_va & ~0xFFFUL;
 
     // look up guest virtual address in the primary and secondary TLBs
@@ -1286,6 +1328,9 @@ inline T mmu_read_vmem(uint32_t opcode, uint32_t guest_va)
             if (tlb2_entry->flags & PAGE_NOPHYS) {
                 return (T)UnmappedVal;
             }
+#ifdef VERIFY_DATA_READ
+            verify = false;
+#endif
         }
 #ifdef TLB_PROFILING
         else {
@@ -1368,6 +1413,20 @@ inline T mmu_read_vmem(uint32_t opcode, uint32_t guest_va)
     dmem_reads_total++;
 #endif
 
+#ifdef VERIFY_DATA_READ
+    if (verify) {
+        uint32_t savedphys = tlb1_entry->phys_tag;
+        tlb_flush_primary_entry(pCurDTLB1, tag);
+        tlb_flush_secondary_entry(pCurDTLB2, tag);
+        tlb2_entry = dtlb2_refill(guest_va, 0);
+        if (tlb2_entry->phys_tag != savedphys) {
+            LOG_F(ERROR, "mmu_read_vmem; phystag mismatch address:0x%08x tag:0x%08x phys:0x%08x correctedphys:%08x",
+                guest_va, tag, savedphys, tlb2_entry->phys_tag);
+            dump_backtrace();
+        }
+    }
+#endif
+
     // handle unaligned memory accesses
     if (sizeof(T) > 1 && (guest_va & (sizeof(T) - 1))) {
 #if SUPPORTS_PPC_LITTLE_ENDIAN_MODE || SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
@@ -1424,6 +1483,9 @@ inline void mmu_write_vmem(uint32_t opcode, uint32_t guest_va, T value)
     TLBEntry *tlb1_entry, *tlb2_entry;
     uint8_t *host_va;
 
+#ifdef VERIFY_DATA_WRITE
+    bool verify = true;
+#endif
     const uint32_t tag = guest_va & ~0xFFFUL;
 
     // look up guest virtual address in the primary and secondary TLBs
@@ -1463,6 +1525,9 @@ inline void mmu_write_vmem(uint32_t opcode, uint32_t guest_va, T value)
             if (tlb2_entry->flags & PAGE_NOPHYS) {
                 return;
             }
+#ifdef VERIFY_DATA_WRITE
+            verify = false;
+#endif
         }
 #ifdef TLB_PROFILING
         else {
@@ -1537,6 +1602,20 @@ inline void mmu_write_vmem(uint32_t opcode, uint32_t guest_va, T value)
 
 #ifdef MMU_PROFILING
     dmem_writes_total++;
+#endif
+
+#ifdef VERIFY_DATA_WRITE
+    if (verify) {
+        uint32_t savedphys = tlb1_entry->phys_tag;
+        tlb_flush_primary_entry(pCurDTLB1, tag);
+        tlb_flush_secondary_entry(pCurDTLB2, tag);
+        tlb2_entry = dtlb2_refill(guest_va, 0);
+        if (tlb2_entry->phys_tag != savedphys) {
+            LOG_F(ERROR, "mmu_read_vmem; phystag mismatch address:0x%08x tag:0x%08x phys:0x%08x correctedphys:%08x",
+                guest_va, tag, savedphys, tlb2_entry->phys_tag);
+            dump_backtrace();
+        }
+    }
 #endif
 
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
