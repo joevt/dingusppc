@@ -40,6 +40,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 // Uncomment this to have characters output by __doprnt to appear in stdout.
 //#define LOG__doprnt
 
+// Uncomment this to enable logging of executed instructions.
+//#define LOG_INSTRUCTIONS
+
 // Uncomment this to allow enabling/disabling decrementer exceptions.
 //#define DECREMENTER_TOGGLE
 
@@ -704,6 +707,32 @@ extern void ppc_msr_did_change(uint32_t old_msr_val, uint32_t new_msr_val, bool 
 /* debugging support API */
 uint64_t get_reg(std::string reg_name); /* get content of the register reg_name */
 void set_reg(std::string reg_name, uint64_t val); /* set reg_name to val */
+
+#ifdef LOG_INSTRUCTIONS
+typedef struct {
+    uint64_t cycle;
+    uint32_t addr;
+    uint32_t paddr;
+    uint32_t ins;
+    uint32_t msr;
+    uint32_t msr_after;
+    uint32_t flags_before;
+    uint32_t flags_after;
+    uint32_t reserved1;
+    uint32_t reserved2;
+    uint32_t reserved3;
+    uint32_t reserved4;
+    uint32_t reserved5;
+    uint32_t reserved6;
+    uint32_t reserved7;
+} InstructionRec; // 64 bytes
+
+#define InstructionLogSize 0x1000000
+extern InstructionRec InstructionLog[InstructionLogSize];
+extern uint64_t InstructionNumber;
+
+void dumpinstructionlog();
+#endif
 
 #ifdef DECREMENTER_TOGGLE
 extern bool decrementer_enabled;
