@@ -1764,7 +1764,8 @@ uint64_t mem_read_dbg(uint32_t virt_addr, uint32_t size) {
         default:
             ret_val = mmu_read_vmem<uint8_t>(virt_addr);
         }
-    } catch (std::invalid_argument& exc) {
+    }
+    catch (std::invalid_argument& exc) {
         /* restore MMU-related CPU state */
         mmu_exception_handler     = ppc_exception_handler;
         ppc_state.spr[SPR::DSISR] = save_dsisr;
@@ -1772,6 +1773,15 @@ uint64_t mem_read_dbg(uint32_t virt_addr, uint32_t size) {
 
         /* rethrow MMU exception */
         throw exc;
+    }
+    catch (...) {
+        /* restore MMU-related CPU state */
+        mmu_exception_handler     = ppc_exception_handler;
+        ppc_state.spr[SPR::DSISR] = save_dsisr;
+        ppc_state.spr[SPR::DAR]   = save_dar;
+
+        /* rethrow MMU exception */
+        throw(false);
     }
 
     /* restore MMU-related CPU state */
@@ -1824,7 +1834,12 @@ bool mmu_translate_dbg(uint32_t guest_va, uint32_t &guest_pa) {
             guest_pa = tlb1_entry->phys_tag | (guest_va & 0xFFFUL);
             is_mapped = true;
         } while (0);
-    } catch (std::invalid_argument& exc) {
+    }
+    catch (std::invalid_argument& exc) {
+        //LOG_F(WARNING, "Unmapped address 0x%08X", guest_va);
+        is_mapped = false;
+    }
+    catch (...) {
         //LOG_F(WARNING, "Unmapped address 0x%08X", guest_va);
         is_mapped = false;
     }
