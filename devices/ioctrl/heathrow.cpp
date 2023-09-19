@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <cpu/ppc/ppcemu.h>
+#include <debugger/backtrace.h>
 #include <devices/deviceregistry.h>
 #include <devices/common/ata/idechannel.h>
 #include <devices/common/dbdma.h>
@@ -36,6 +37,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <functional>
 #include <memory>
+
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_INTERRUPT = loguru::Verbosity_9
+    };
+}
 
 /** Heathrow Mac I/O device emulation.
 
@@ -343,6 +350,8 @@ void HeathrowIC::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
     switch (offset & 0xFC) {
     case MIO_INT_MASK2:
         this->int_mask2 |= BYTESWAP_32(value) & ~MACIO_INT_MODE;
+        LOG_F(INTERRUPT, "%s: int_mask2:0x%08x", name.c_str(), this->int_mask2);
+        //dump_backtrace();
         break;
     case MIO_INT_CLEAR2:
         this->int_events2 &= ~(BYTESWAP_32(value) & 0x7FFFFFFFUL);
@@ -352,6 +361,8 @@ void HeathrowIC::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
         this->int_mask1 = BYTESWAP_32(value);
         // copy IntMode bit to InterruptMask2 register
         this->int_mask2 = (this->int_mask2 & ~MACIO_INT_MODE) | (this->int_mask1 & MACIO_INT_MODE);
+        LOG_F(INTERRUPT, "%s: int_mask1:0x%08x", name.c_str(), this->int_mask1);
+        //dump_backtrace();
         break;
     case MIO_INT_CLEAR1:
         if ((this->int_mask1 & MACIO_INT_MODE) && (value & MACIO_INT_CLR)) {
