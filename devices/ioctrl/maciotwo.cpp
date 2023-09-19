@@ -26,6 +26,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 #include <machines/machinebase.h>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_INTERRUPT = loguru::Verbosity_9,
+    };
+}
+
 MacIoTwo::MacIoTwo(std::string name, uint16_t dev_id) : MacIoBase(name, dev_id) {
     // NVRAM connection
     this->nvram = dynamic_cast<NVram*>(gMachineObj->get_comp_by_name("NVRAM"));
@@ -372,6 +378,7 @@ void MacIoTwo::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
         // Preserve the first bank and the read-only IntMode bit.
         this->int_mask = (this->int_mask & 0x80000000FFFFFFFFULL) |
             (uint64_t(value & ~MACIO_INT_MODE) << 32);
+        LOG_F(INTERRUPT, "%s: int_mask2:0x%08x", name.c_str(), uint32_t(this->int_mask >> 32));
         this->clear_cpu_int();
         this->signal_cpu_int();
         break;
@@ -383,6 +390,7 @@ void MacIoTwo::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
         this->int_mask = (this->int_mask & 0x7FFFFFFF00000000ULL) | value;
         // copy IntMode bit to InterruptMask2 register
         this->int_mask |= uint64_t(this->int_mask & MACIO_INT_MODE) << 32;
+        LOG_F(INTERRUPT, "%s: int_mask1:0x%08x", name.c_str(), uint32_t(this->int_mask));
         this->clear_cpu_int();
         this->signal_cpu_int();
         break;
