@@ -47,8 +47,11 @@ uint32_t PCIDevice::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
         return this->exp_rom_bar;
     case PCI_CFG_DWORD_13:
         return cap_ptr;
-    case PCI_CFG_DWORD_15:
-        return (max_lat << 24) | (min_gnt << 16) | (irq_pin << 8) | irq_line;
+    case PCI_CFG_DWORD_15: {
+        uint32_t value = (max_lat << 24) | (min_gnt << 16) | (irq_pin << 8) | irq_line;
+        LOG_READ_NAMED_CONFIG_REGISTER("MAX LAT, MIN GRANT, IRQ PIN, IRQ LINE");
+        return value;
+    }
     default:
         return PCIBase::pci_cfg_read(reg_offs, details);
     }
@@ -70,6 +73,7 @@ void PCIDevice::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &
         break;
     case PCI_CFG_DWORD_15:
         this->irq_line = value >> 24;
+        LOG_WRITE_NAMED_CONFIG_REGISTER("MAX LAT, MIN GRANT, IRQ PIN, IRQ LINE");
         break;
     default:
         PCIBase::pci_cfg_write(reg_offs, value, details);
