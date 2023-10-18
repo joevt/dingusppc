@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /** Bandit/Chaos ARBus-to-PCI Bridge emulation. */
 
+#include <debugger/backtrace.h>
 #include <devices/common/pci/bandit.h>
 #include <devices/deviceregistry.h>
 #include <devices/memctrl/memctrlbase.h>
@@ -83,6 +84,7 @@ uint32_t BanditPciDevice::pci_cfg_read(uint32_t reg_offs, AccessDetails &details
         return 0;
     default:
         LOG_READ_UNIMPLEMENTED_CONFIG_REGISTER();
+        dump_backtrace();
     }
     return 0;
 }
@@ -110,6 +112,7 @@ void BanditPciDevice::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDet
         return;
     default:
         LOG_WRITE_UNIMPLEMENTED_CONFIG_REGISTER();
+        dump_backtrace();
     }
 }
 
