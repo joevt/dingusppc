@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <devices/common/pci/pcibase.h>
+#include <debugger/backtrace.h>
 #include <endianswap.h>
 #include <loguru.hpp>
 #include <memaccess.h>
@@ -71,6 +72,7 @@ uint32_t PCIBase::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
                (pci_rd_lat_timer() << 8) | pci_rd_cache_lnsz();
     }
     LOG_READ_UNIMPLEMENTED_CONFIG_REGISTER();
+    dump_backtrace();
     return 0;
 }
 
