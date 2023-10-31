@@ -32,6 +32,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <sstream>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_SCSIBUS = loguru::Verbosity_9
+    };
+}
+
 ScsiBus::ScsiBus(const std::string name)
 {
     this->set_name(name);
@@ -60,8 +66,26 @@ void ScsiBus::register_device(int id, ScsiDevice* dev_obj)
     dev_obj->set_bus_object_ptr(this);
 }
 
+const char *get_name_bus_phase(int phase) {
+    switch (phase) {
+    case ScsiPhase::BUS_FREE       : return "BUS_FREE";
+    case ScsiPhase::ARBITRATION    : return "ARBITRATION";
+    case ScsiPhase::SELECTION      : return "SELECTION";
+    case ScsiPhase::RESELECTION    : return "RESELECTION";
+    case ScsiPhase::COMMAND        : return "COMMAND";
+    case ScsiPhase::DATA_IN        : return "DATA_IN";
+    case ScsiPhase::DATA_OUT       : return "DATA_OUT";
+    case ScsiPhase::STATUS         : return "STATUS";
+    case ScsiPhase::MESSAGE_IN     : return "MESSAGE_IN";
+    case ScsiPhase::MESSAGE_OUT    : return "MESSAGE_OUT";
+    case ScsiPhase::RESET          : return "RESET";
+    default                        : return "unknown";
+    }
+}
+
 void ScsiBus::change_bus_phase(int initiator_id)
 {
+    LOG_F(SCSIBUS, "%s: initiator:%d changing bus phase to %s", name.c_str(), initiator_id, get_name_bus_phase(this->cur_phase));
     for (int i = 0; i < SCSI_MAX_DEVS; i++) {
         if (i == initiator_id)
             continue; // don't notify the initiator
@@ -139,6 +163,9 @@ uint16_t ScsiBus::test_ctrl_lines(uint16_t mask)
 int ScsiBus::switch_phase(int id, int new_phase)
 {
     int old_phase = this->cur_phase;
+
+    LOG_F(SCSIBUS, "%s: changing bus phase from %s to %s",
+        name.c_str(), get_name_bus_phase(old_phase), get_name_bus_phase(new_phase));
 
     // leave the current phase (low-level)
     switch (old_phase) {
@@ -222,11 +249,13 @@ bool ScsiBus::begin_selection(int initiator_id, int target_id, bool atn)
     if (this->cur_phase != ScsiPhase::ARBITRATION || this->arb_winner_id != initiator_id)
         return false;
 
+    LOG_F(SCSIBUS, "%s: assert SCSI_CTRL_SEL in %s", this->get_name().c_str(), __func__);
     this->assert_ctrl_line(initiator_id, SCSI_CTRL_SEL);
 
     this->data_lines = (1 << initiator_id) | (1 << target_id);
 
     if (atn) {
+        LOG_F(SCSIBUS, "%s: assert SCSI_CTRL_ATN", this->get_name().c_str());
         assert_ctrl_line(initiator_id, SCSI_CTRL_ATN);
     }
 
@@ -238,6 +267,7 @@ bool ScsiBus::begin_selection(int initiator_id, int target_id, bool atn)
 
 void ScsiBus::confirm_selection(int target_id)
 {
+    LOG_F(SCSIBUS, "%s: confirm_selection %d", this->get_name().c_str(), target_id);
     this->target_id = target_id;
 
     // notify initiator about selection confirmation from target
@@ -312,6 +342,7 @@ bool ScsiBus::negotiate_xfer(int& bytes_in, int& bytes_out)
 
 void ScsiBus::disconnect(int dev_id)
 {
+    LOG_F(SCSIBUS, "%s: release all", this->get_name().c_str());
     this->release_ctrl_lines(dev_id);
     if (!(this->ctrl_lines & SCSI_CTRL_BSY) && !(this->ctrl_lines & SCSI_CTRL_SEL)) {
         this->cur_phase = ScsiPhase::BUS_FREE;
