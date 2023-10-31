@@ -47,7 +47,10 @@ public:
     HWComponent* get_comp_by_type(HWCompType type);
     int postinit_devices();
 
+    int indent();
+    int outdent();
 private:
+    int indent_val = 0;
     std::string name;
     std::map<std::string, std::unique_ptr<HWComponent>> device_map;
 };
