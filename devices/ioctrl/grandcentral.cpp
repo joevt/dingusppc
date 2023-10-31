@@ -187,6 +187,10 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
 
         switch (subdev_num) {
         case 0: // Curio SCSI
+            if (offset & 15)
+                LOG_F(ERROR, "Curio offset is %d instead of 0", offset & 15);
+            if (size != 1)
+                LOG_F(ERROR, "Curio size is %d instead of 1", size);
             return this->curio->read((offset >> 4) & 0xF);
         case 1: // MACE
             return this->mace->read((offset >> 4) & 0x1F);
@@ -320,6 +324,10 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
 
         switch (subdev_num) {
         case 0: // Curio SCSI
+            if (offset & 15)
+                LOG_F(ERROR, "Curio offset is not 0");
+            if (size != 1)
+                LOG_F(ERROR, "Curio size is not 1");
             this->curio->write((offset >> 4) & 0xF, value);
             break;
         case 1: // MACE registers
