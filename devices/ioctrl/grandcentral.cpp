@@ -33,6 +33,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <memory>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_INTERRUPT = loguru::Verbosity_9,
+        Verbosity_DBDMA = loguru::Verbosity_9
+    };
+}
+
 NvramDev::NvramDev(NvramAddrHiDev *addr_hi) {
     // NVRAM connection
     this->nvram = dynamic_cast<NVram*>(gMachineObj->get_comp_by_name("NVRAM"));
@@ -157,6 +164,28 @@ void GrandCentral::notify_bar_change(int bar_num)
     }
 }
 
+static const char *get_name_gc_subdev(unsigned subdev_num) {
+    switch (subdev_num) {
+        case   0: return "curio"     ;
+        case   1: return "mace"      ;
+        case   2: return "escc"      ;
+        case   3: return "escc-risc" ;
+        case   4: return "awacs"     ;
+        case   5: return "swim3"     ;
+        case   6: return "cuda6"     ;
+        case   7: return "cuda7"     ;
+        case   8: return "mesh"      ;
+        case   9: return "enetrom"   ;
+        case 0xa: return "bandit1"   ;
+        case 0xb: return "RaDACal/DACula";
+        case 0xc: return "bandit2/sixty6";
+        case 0xd: return "nvramhi"   ;
+        case 0xe: return "sixty6-sense";
+        case 0xf: return "nvramdata" ;
+        default : return "unknown"   ;
+    }
+}
+
 static const char *get_name_dma(unsigned dma_channel) {
     switch (dma_channel) {
         case MIO_GC_DMA_SCSI_CURIO    : return "DMA_SCSI_CURIO" ;
@@ -174,6 +203,20 @@ static const char *get_name_dma(unsigned dma_channel) {
     }
 }
 
+static const char *get_name_gc_reg(unsigned offset) {
+    switch (offset) {
+        case MIO_INT_EVENTS2  : return "INT_EVENTS2" ;
+        case MIO_INT_MASK2    : return "INT_MASK2"   ;
+        case MIO_INT_CLEAR2   : return "INT_CLEAR2"  ;
+        case MIO_INT_LEVELS2  : return "INT_LEVELS2" ;
+        case MIO_INT_EVENTS1  : return "INT_EVENTS1" ;
+        case MIO_INT_MASK1    : return "INT_MASK1"   ;
+        case MIO_INT_CLEAR1   : return "INT_CLEAR1"  ;
+        case MIO_INT_LEVELS1  : return "INT_LEVELS1" ;
+        default               : return "unknown"     ;
+    }
+}
+
 // The first 3 bytes of a MAC address is an OUI for "Apple, Inc."
 // A MAC address cannot begin with 0x10 because that will get bit-flipped to 0x08.
 // A MAC address that begins with 0x08 can be stored as bit-flipped or not bit-flipped.
@@ -184,6 +227,8 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
 {
     if (offset & 0x10000) { // Device register space
         unsigned subdev_num = (offset >> 12) & 0xF;
+
+        //LOG_F(INFO, "read  %s 0x%x", get_name_gc_subdev(subdev_num), offset);
 
         switch (subdev_num) {
         case 0: // Curio SCSI
@@ -250,34 +295,41 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
             break;
         }
     } else if (offset & 0x8000) { // DMA register space
+        uint32_t value;
         unsigned dma_channel = (offset >> 8) & 0xF;
 
         switch (dma_channel) {
         case MIO_GC_DMA_SCSI_CURIO:
-            return this->curio_dma->reg_read(offset & 0xFF, size);
+            value = this->curio_dma->reg_read(offset & 0xFF, size);
+            break;
         case MIO_GC_DMA_FLOPPY:
-            return this->floppy_dma->reg_read(offset & 0xFF, size);
+            value = this->floppy_dma->reg_read(offset & 0xFF, size);
+            break;
         case MIO_GC_DMA_ETH_XMIT:
-            return this->enet_tx_dma->reg_read(offset & 0xFF, size);
+            value = this->enet_tx_dma->reg_read(offset & 0xFF, size);
+            break;
         case MIO_GC_DMA_ETH_RCV:
-            return this->enet_rx_dma->reg_read(offset & 0xFF, size);
-
+            value = this->enet_rx_dma->reg_read(offset & 0xFF, size);
+            break;
         case MIO_GC_DMA_ESCC_A_XMIT:
+            value = 0;
+            //value = this->escc_a_tx_dma->reg_read(offset & 0xFF, size);
+            break;
         case MIO_GC_DMA_ESCC_A_RCV:
+            value = 0;
+            //value = this->escc_a_rx_dma->reg_read(offset & 0xFF, size);
+            break;
         case MIO_GC_DMA_ESCC_B_XMIT:
+            value = 0;
+            //value = this->escc_b_tx_dma->reg_read(offset & 0xFF, size);
+            break;
         case MIO_GC_DMA_ESCC_B_RCV:
-            return 0;
-            /*Stubbed out due to serial emulation being unfinished.
-        case MIO_GC_DMA_ESCC_A_XMIT:
-            return this->escc_a_tx_dma->reg_read(offset & 0xFF, size);
-        case MIO_GC_DMA_ESCC_A_RCV:
-            return this->escc_a_rx_dma->reg_read(offset & 0xFF, size);
-        case MIO_GC_DMA_ESCC_B_XMIT:
-            return this->escc_b_tx_dma->reg_read(offset & 0xFF, size);
-        case MIO_GC_DMA_ESCC_B_RCV:
-            return this->escc_b_rx_dma->reg_read(offset & 0xFF, size);*/
+            value = 0;
+            //value = this->escc_b_rx_dma->reg_read(offset & 0xFF, size);
+            break;
         case MIO_GC_DMA_AUDIO_OUT:
-            return this->snd_out_dma->reg_read(offset & 0xFF, size);
+            value = this->snd_out_dma->reg_read(offset & 0xFF, size);
+            break;
         case MIO_GC_DMA_AUDIO_IN:
             #if 0
                 LOG_F(WARNING, "%s: Unsupported DMA channel DMA_AUDIO_IN read  @%02x.%c",
@@ -286,7 +338,7 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
             return 0; // this->snd_in_dma->reg_read(offset & 0xFF, size);
         case MIO_GC_DMA_SCSI_MESH:
             if (this->mesh_dma) {
-                return this->mesh_dma->reg_read(offset & 0xFF, size);
+                value = this->mesh_dma->reg_read(offset & 0xFF, size);
                 break;
             }
             // fallthrough
@@ -295,9 +347,14 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
                 unsupported_dma_channel_read |= (1 << dma_channel);
                 LOG_F(WARNING, "%s: Unsupported DMA channel %d %s read  @%02x.%c", this->name.c_str(),
                       dma_channel, get_name_dma(dma_channel), offset & 0xFF, SIZE_ARG(size));
+                return 0;
             }
+            value = 0;
         }
+        LOG_F(DBDMA, "read  %s @%02x.%c = %0*x", get_name_dma(dma_channel), offset & 0xFF, SIZE_ARG(size), size * 2, value);
+        return value;
     } else { // Interrupt related registers
+        //LOG_F(INFO, "read  %s 0x%x", get_name_gc_reg(offset), offset);
         switch (offset) {
         case MIO_INT_EVENTS1:
             return BYTESWAP_32(this->int_events);
@@ -321,6 +378,8 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
 {
     if (offset & 0x10000) { // Device register space
         unsigned subdev_num = (offset >> 12) & 0xF;
+
+        //LOG_F(INFO, "write %s 0x%x", get_name_gc_subdev(subdev_num), offset);
 
         switch (subdev_num) {
         case 0: // Curio SCSI
@@ -392,6 +451,8 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
     } else if (offset & 0x8000) { // DMA register space
         unsigned dma_channel = (offset >> 8) & 0xF;
 
+        LOG_F(DBDMA, "write %s @%02x.%c = %0*x", get_name_dma(dma_channel), offset & 0xFF, SIZE_ARG(size), size * 2, value);
+
         switch (dma_channel) {
         case MIO_GC_DMA_SCSI_CURIO:
             this->curio_dma->reg_write(offset & 0xFF, value, size);
@@ -439,6 +500,7 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             }
         }
     } else { // Interrupt related registers
+        //LOG_F(INFO, "write %s 0x%x", get_name_gc_reg(offset), offset);
         switch (offset) {
         case MIO_INT_MASK1:
             this->int_mask = BYTESWAP_32(value);
