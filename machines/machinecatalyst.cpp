@@ -70,8 +70,11 @@ int initialize_catalyst(std::string& id)
         return -1;
     }
 
-    // plug 8MB RAM DIMM into slot #0
-    platinum_obj->insert_ram_dimm(0, DRAM_CAP_8MB);
+    // insert RAM DIMMs
+    platinum_obj->insert_ram_dimm(0, GET_INT_PROP("rambank1_size") * (1<<20));
+    platinum_obj->insert_ram_dimm(1, GET_INT_PROP("rambank2_size") * (1<<20));
+    platinum_obj->insert_ram_dimm(2, GET_INT_PROP("rambank3_size") * (1<<20));
+    platinum_obj->insert_ram_dimm(3, GET_INT_PROP("rambank4_size") * (1<<20));
 
     // allocate and map physical RAM
     platinum_obj->map_phys_ram();
@@ -98,7 +101,7 @@ int initialize_catalyst(std::string& id)
 
 static const PropMap pm7200_settings = {
     {"rambank1_size",
-        new IntProperty(16, vector<uint32_t>({4, 8, 16, 32, 64, 128}))},
+        new IntProperty( 8, vector<uint32_t>({   4, 8, 16, 32, 64, 128}))},
     {"rambank2_size",
         new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
     {"rambank3_size",

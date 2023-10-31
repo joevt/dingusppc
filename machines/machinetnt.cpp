@@ -93,8 +93,20 @@ int initialize_tnt(std::string& id)
         return -1;
     }
 
-    // plug 16MB RAM DIMM into slot #0
-    memctrl_obj->insert_ram_dimm(0, DRAM_CAP_16MB);
+    // insert RAM DIMMs
+    memctrl_obj->insert_ram_dimm( 0, GET_INT_PROP("rambank1_size" ) * (1<<20));
+    memctrl_obj->insert_ram_dimm( 1, GET_INT_PROP("rambank2_size" ) * (1<<20));
+    memctrl_obj->insert_ram_dimm( 2, GET_INT_PROP("rambank3_size" ) * (1<<20));
+    memctrl_obj->insert_ram_dimm( 3, GET_INT_PROP("rambank4_size" ) * (1<<20));
+    memctrl_obj->insert_ram_dimm( 4, GET_INT_PROP("rambank5_size" ) * (1<<20));
+    memctrl_obj->insert_ram_dimm( 5, GET_INT_PROP("rambank6_size" ) * (1<<20));
+    memctrl_obj->insert_ram_dimm( 6, GET_INT_PROP("rambank7_size" ) * (1<<20));
+    memctrl_obj->insert_ram_dimm( 7, GET_INT_PROP("rambank8_size" ) * (1<<20));
+    memctrl_obj->insert_ram_dimm( 8, GET_INT_PROP("rambank9_size" ) * (1<<20));
+    memctrl_obj->insert_ram_dimm( 9, GET_INT_PROP("rambank10_size") * (1<<20));
+    memctrl_obj->insert_ram_dimm(10, GET_INT_PROP("rambank11_size") * (1<<20));
+    memctrl_obj->insert_ram_dimm(11, GET_INT_PROP("rambank12_size") * (1<<20));
+    memctrl_obj->insert_ram_dimm(12, GET_INT_PROP("rambank13_size") * (1<<20));
 
     // allocate and map physical RAM
     memctrl_obj->map_phys_ram();
@@ -125,12 +137,30 @@ int initialize_tnt(std::string& id)
 template <uint32_t cpu>
 static const PropMap pm7500_settings = {
     {"rambank1_size",
-        new IntProperty(16, vector<uint32_t>({4, 8, 16, 32, 64, 128}))},
+        new IntProperty(16, vector<uint32_t>({   4, 8, 16, 32, 64, 128}))},
     {"rambank2_size",
         new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
     {"rambank3_size",
         new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
     {"rambank4_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank5_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank6_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank7_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank8_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank9_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank10_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank11_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank12_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank13_size",
         new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
     {"emmo",
         new BinProperty(0)},
