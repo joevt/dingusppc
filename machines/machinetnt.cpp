@@ -94,11 +94,10 @@ int initialize_tnt(std::string& id)
     }
 
     // populate RAM banks from configuration properties
-    for (int bank_num = 0; bank_num <= 3; bank_num++) {
-        std::string bn = {char('1' + bank_num)};
+    for (int bank_num = 0; bank_num <= 12; bank_num++) {
+        std::string bn = std::to_string(bank_num);
         int bank_size = GET_INT_PROP("rambank" + bn + "_size");
-        if (bank_size)
-            memctrl_obj->insert_ram_dimm(bank_num, bank_size * DRAM_CAP_1MB);
+        memctrl_obj->insert_ram_dimm(bank_num, bank_size * DRAM_CAP_1MB);
     }
 
     // allocate and map physical RAM
@@ -129,6 +128,8 @@ int initialize_tnt(std::string& id)
 
 template <uint32_t cpu>
 static const PropMap pm7500_settings = {
+    {"rambank0_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
     {"rambank1_size",
         new IntProperty(16, vector<uint32_t>({4, 8, 16, 32, 64, 128}))},
     {"rambank2_size",
@@ -136,6 +137,22 @@ static const PropMap pm7500_settings = {
     {"rambank3_size",
         new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
     {"rambank4_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank5_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank6_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank7_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank8_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank9_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank10_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank11_size",
+        new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank12_size",
         new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
     {"emmo",
         new BinProperty(0)},
