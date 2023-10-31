@@ -453,6 +453,8 @@ bool CharIoSocket::rcv_char_available_now()
 
 int CharIoSocket::xmit_char(uint8_t c)
 {
+    write(STDOUT_FILENO, &c, 1);
+
     if (acceptfd == -1)
         this->rcv_char_available_now();
 
