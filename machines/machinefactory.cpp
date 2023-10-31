@@ -144,11 +144,13 @@ void MachineFactory::list_machines()
 
 void MachineFactory::create_device(string& dev_name, DeviceDescription& dev)
 {
+    LOG_F(INFO, "%*s[ Creating device %s", gMachineObj->indent(), "", dev_name.c_str());
     for (auto& subdev_name : dev.subdev_list) {
         create_device(subdev_name, DeviceRegistry::get_descriptor(subdev_name));
     }
 
     gMachineObj->add_device(dev_name, dev.m_create_func());
+    LOG_F(INFO, "%*s]", gMachineObj->outdent(), "");
 }
 
 int MachineFactory::create(string& mach_id)
