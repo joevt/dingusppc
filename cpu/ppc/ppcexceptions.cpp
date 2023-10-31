@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /** @file Handling of low-level PPC exceptions. */
 
+#include <debugger/backtrace.h>
 #include <loguru.hpp>
 #include "ppcemu.h"
 #include "ppcmmu.h"
@@ -55,6 +56,7 @@ void ppc_exception_handler(Except_Type exception_type, uint32_t srr1_bits) {
         break;
 
     case Except_Type::EXC_DSI:
+        //dump_backtrace();
         ppc_state.spr[SPR::SRR0]     = ppc_state.pc & 0xFFFFFFFC;
         ppc_next_instruction_address = 0x0300;
         break;
