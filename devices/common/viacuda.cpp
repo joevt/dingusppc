@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 /** High-level VIA-CUDA combo device emulation.
  */
 
+#include <debugger/backtrace.h>
 #include <core/hostevents.h>
 #include <core/timermanager.h>
 #include <devices/common/adb/adbbus.h>
@@ -131,6 +132,17 @@ void ViaCuda::cuda_init() {
     this->in_count    = 0;
     this->out_count   = 0;
     this->poll_rate   = 11;
+}
+
+std::string hex_string(const uint8_t *p, int len)
+{
+    std::string str;
+    char b[3];
+    for (int i = 0; i < len; i++) {
+        snprintf(b, sizeof(b), "%02x ", *p++);
+        str += b;
+    }
+    return str;
 }
 
 uint8_t ViaCuda::read(int reg) {
@@ -830,7 +842,11 @@ void ViaCuda::i2c_simple_transaction(uint8_t dev_addr, const uint8_t* in_buf, in
     dev_addr >>= 1; /* strip RD/WR bit */
 
     if (!this->start_transaction(dev_addr)) {
-        LOG_F(WARNING, "Unsupported I2C device 0x%X", dev_addr);
+        if (op_type)
+            LOG_F(WARNING, "Unsupported I2C device 0x%X read  size:%d", dev_addr, in_bytes);
+        else
+            LOG_F(WARNING, "Unsupported I2C device 0x%X write buf:%s", dev_addr, hex_string(in_buf, in_bytes).c_str());
+        //dump_backtrace();
         error_response(CUDA_ERR_I2C);
         return;
     }
@@ -866,7 +882,12 @@ void ViaCuda::i2c_comb_transaction(
     dev_addr >>= 1; /* strip RD/WR bit */
 
     if (!this->start_transaction(dev_addr)) {
-        LOG_F(WARNING, "Unsupported I2C device 0x%X", dev_addr);
+        if (op_type)
+            LOG_F(WARNING, "Unsupported I2C device 0x%X read  sub_addr:0x%X size:%d", dev_addr, sub_addr, in_bytes);
+        else
+            LOG_F(WARNING, "Unsupported I2C device 0x%X write sub_addr:0x%X buf:%s",
+                dev_addr, sub_addr, hex_string(in_buf, in_bytes).c_str());
+        //dump_backtrace();
         error_response(CUDA_ERR_I2C);
         return;
     }
