@@ -35,6 +35,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cstring>
 #include <loguru.hpp>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_DBDMA = loguru::Verbosity_9
+    };
+}
+
+extern std::string hex_string(const uint8_t *p, int len);
+
 void DMAChannel::set_callbacks(DbdmaCallback start_cb, DbdmaCallback stop_cb) {
     this->start_cb = start_cb;
     this->stop_cb  = stop_cb;
@@ -94,6 +102,8 @@ uint8_t DMAChannel::interpret_cmd() {
             res = mmu_map_dma_mem(cmd_struct.address, cmd_struct.req_count, false);
             this->queue_data = res.host_va;
             this->res_count  = 0;
+            LOG_F(DBDMA, "%s: Will transfer %d bytes %s 0x%08x (host:0x%llx)", this->get_name().c_str(), this->queue_len,
+                this->cur_cmd > DBDMA_Cmd::OUTPUT_LAST ? "to" : "from", cmd_struct.address, (uint64_t)(this->queue_data));
             this->cmd_in_progress = true;
             switch (this->cur_cmd) {
             case DBDMA_Cmd::OUTPUT_MORE:
@@ -352,7 +362,8 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
     case DMAReg::CH_CTRL:
         mask     = value >> 16;
         new_stat = (value & mask & 0xF0FFU) | (old_stat & ~(mask & 0xC0FF));
-        LOG_F(9, "%s: New ChannelStatus value = 0x%X", this->get_name().c_str(), new_stat);
+        LOG_F(DBDMA, "%s: ChannelStatus mask = 0x%04X old = 0x%04X new = 0x%04X",
+            this->get_name().c_str(), mask, old_stat, new_stat);
 
         // update ch_stat.s0...s7 if requested (needed for interrupt generation)
         if ((new_stat & 0xFF) != (old_stat & 0xFF)) {
@@ -415,7 +426,7 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
     case DMAReg::CMD_PTR_LO:
         if (!(this->ch_stat & CH_STAT_RUN) && !(this->ch_stat & CH_STAT_ACTIVE)) {
             this->cmd_ptr = value;
-            LOG_F(9, "%s: CommandPtrLo set to 0x%X", this->get_name().c_str(),
+            LOG_F(DBDMA, "%s: CommandPtrLo set to 0x%X", this->get_name().c_str(),
                 this->cmd_ptr);
         }
         break;
@@ -505,21 +516,22 @@ DmaPullResult DMAChannel::pull_data(uint32_t req_len, uint32_t *avail_len, uint8
 
     // dequeue data if any
     if (this->queue_len) {
+        *p_data = this->queue_data;
         if (this->queue_len >= req_len) {
-            LOG_F(9, "%s: Return req_len = %d data", this->get_name().c_str(), req_len);
-            *p_data    = this->queue_data;
+            LOG_F(DBDMA, "%s: Return req_len = %d data", this->get_name().c_str(), req_len);
             *avail_len = req_len;
             this->queue_len -= req_len;
             this->res_count += req_len;
             this->queue_data += req_len;
         } else { // return less data than req_len
-            LOG_F(9, "%s: Return queue_len = %d data", this->get_name().c_str(),
+            LOG_F(DBDMA, "%s: Return queue_len = %d data", this->get_name().c_str(),
                 this->queue_len);
-            *p_data         = this->queue_data;
             *avail_len      = this->queue_len;
             this->res_count += this->queue_len;
             this->queue_len = 0;
         }
+        LOG_F(DBDMA, "%s: Will pull_data from 0x%llx : %s", this->get_name().c_str(),
+            (uint64_t)this->queue_data, hex_string(this->queue_data, *avail_len).c_str());
         return DmaPullResult::MoreData; // tell the caller there is more data
     }
 
@@ -541,6 +553,10 @@ int DMAChannel::push_data(const char* src_ptr, int len) {
     if (this->queue_len) {
         len = std::min((int)this->queue_len, len);
         std::memcpy(this->queue_data, src_ptr, len);
+        #if 0
+            LOG_F(DBDMA, "%s: Did push_data to 0x%llx : %s", this->get_name().c_str(),
+                (uint64_t)this->queue_data, hex_string(src_ptr, len).c_str());
+        #endif
         this->queue_data += len;
         this->res_count  += len;
         this->queue_len  -= len;
@@ -633,13 +649,12 @@ void DMAChannel::start() {
 }
 
 void DMAChannel::resume() {
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: Resuming DMA channel", this->get_name().c_str());
     if (this->ch_stat & CH_STAT_PAUSE) {
         LOG_F(WARNING, "%s: Cannot resume DMA channel, PAUSE bit is set",
             this->get_name().c_str());
         return;
     }
-
-    LOG_F(INFO, "%s: Resuming DMA channel", this->get_name().c_str());
 
     // some DBDMA programs contain commands that don't transfer data
     // between a device and memory (LOAD_QUAD, STORE_QUAD, NOP and STOP).
@@ -652,13 +667,13 @@ void DMAChannel::resume() {
 }
 
 void DMAChannel::abort() {
-    LOG_F(9, "%s: Aborting DMA channel", this->get_name().c_str());
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: Aborting DMA channel", this->get_name().c_str());
     if (this->stop_cb)
         this->stop_cb();
 }
 
 void DMAChannel::pause() {
-    LOG_F(INFO, "%s: Pausing DMA channel", this->get_name().c_str());
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: Pausing DMA channel", this->get_name().c_str());
     if (this->stop_cb)
         this->stop_cb();
 }
