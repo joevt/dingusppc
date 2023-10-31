@@ -312,8 +312,8 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
         }
     }
 
-    LOG_F(WARNING, "%s: reading from unmapped I/O memory 0x%X", this->name.c_str(),
-          this->base_addr + offset);
+    LOG_F(WARNING, "%s: reading from unmapped I/O memory 0x%X.%c", this->name.c_str(),
+          this->base_addr + offset, SIZE_ARG(size));
     return 0;
 }
 
@@ -386,8 +386,8 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             }
             break;
         default:
-            LOG_F(WARNING, "%s: writing to unmapped I/O memory 0x%X",
-                  this->name.c_str(), this->base_addr + offset);
+            LOG_F(WARNING, "%s: writing to unmapped I/O memory 0x%X.%c = %0*x",
+                  this->name.c_str(), this->base_addr + offset, SIZE_ARG(size), size * 2, value);
         }
     } else if (offset & 0x8000) { // DMA register space
         unsigned dma_channel = (offset >> 8) & 0xF;
@@ -454,8 +454,8 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         case MIO_INT_LEVELS1:
             break; // ignore writes to this read-only register
         default:
-            LOG_F(WARNING, "%s: writing to unmapped I/O memory 0x%X",
-                 this->name.c_str(), this->base_addr + offset);
+            LOG_F(WARNING, "%s: writing to unmapped I/O memory 0x%X.%c = %0*x",
+                  this->name.c_str(), this->base_addr + offset, SIZE_ARG(size), size * 2, value);
         }
     }
 }
