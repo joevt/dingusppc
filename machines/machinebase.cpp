@@ -106,18 +106,35 @@ int MachineBase::postinit_devices()
     while (initialized_devices.size() < this->device_map.size()) {
         for (auto it = this->device_map.begin(); it != this->device_map.end(); it++) {
             if (initialized_devices.find(it->first) == initialized_devices.end()) {
+                LOG_F(INFO, "%*s[ Post init %s", indent(), "", it->first.c_str());
                 int postinit_result = it->second->device_postinit();
                 if (postinit_result < 0) {
                     LOG_F(ERROR, "Could not initialize device %s", it->first.c_str());
                     return -1;
                 }
                 if (postinit_result > 0) {
+                    LOG_F(INFO, "%*s] Will retry post init %s later", outdent(), "", it->first.c_str());
                 } else {
                     initialized_devices.insert(it->first);
                 }
+                LOG_F(INFO, "%*s]", outdent(), "");
             }
         }
     }
 
     return 0;
+}
+
+int MachineBase::indent() {
+    indent_val += 2;
+    if (indent_val > 100)
+        indent_val = 100;
+    return indent_val - 2;
+}
+
+int MachineBase::outdent() {
+    indent_val -= 2;
+    if (indent_val < 0)
+        indent_val = 0;
+    return indent_val;
 }
