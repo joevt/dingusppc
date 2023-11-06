@@ -26,23 +26,31 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <cstring>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_SCSIDEVICE = loguru::Verbosity_9
+    };
+}
+
 void ScsiPhysDevice::notify(ScsiNotification notif_type, int param)
 {
     if (notif_type == ScsiNotification::BUS_PHASE_CHANGE) {
         switch (param) {
         case ScsiPhase::RESET:
-            LOG_F(9, "device %d: bus reset aknowledged", this->scsi_id);
+            LOG_F(SCSIDEVICE, "device %d: bus reset aknowledged", this->scsi_id);
             break;
         case ScsiPhase::SELECTION:
+            LOG_F(SCSIDEVICE, "device %d: checking selected", this->scsi_id);
             // check if something tries to select us
             if (this->bus_obj->get_data_lines() & (1 << scsi_id)) {
-                LOG_F(9, "device %d selected", this->scsi_id);
+                LOG_F(SCSIDEVICE, "device %d selected", this->scsi_id);
                 TimerManager::get_instance()->add_oneshot_timer(
                     BUS_SETTLE_DELAY,
                     [this]() {
                         // don't confirm selection if BSY or I/O are asserted
                         if (this->bus_obj->test_ctrl_lines(SCSI_CTRL_BSY | SCSI_CTRL_IO))
                             return;
+                        LOG_F(SCSIDEVICE, "%s: assert SCSI_CTRL_BSY", this->get_name().c_str());
                         this->bus_obj->assert_ctrl_line(this->scsi_id, SCSI_CTRL_BSY);
                         this->bus_obj->confirm_selection(this->scsi_id);
                         this->seq_steps = nullptr;
@@ -57,7 +65,12 @@ void ScsiPhysDevice::notify(ScsiNotification notif_type, int param)
                 });
             }
             break;
+        default:
+            LOG_F(SCSIDEVICE, "%s: ScsiMsg::BUS_PHASE_CHANGE unhandled phase %d", this->get_name().c_str(), param);
         }
+    }
+    else {
+        LOG_F(SCSIDEVICE, "%s: unhandled notification type %d", this->get_name().c_str(), notif_type);
     }
 }
 
@@ -99,6 +112,8 @@ void ScsiPhysDevice::next_step()
 
     switch (this->cur_phase) {
     case ScsiPhase::DATA_OUT:
+        LOG_F(SCSIDEVICE, "%s: DATA_OUT data_size:%d incoming_size:%d in %s",
+            this->get_name().c_str(), this->data_size, this->incoming_size, __func__);
         if (this->data_size >= this->incoming_size) {
             if (this->post_xfer_action != nullptr) {
                 this->post_xfer_action();
@@ -132,12 +147,13 @@ void ScsiPhysDevice::next_step()
         break;
     case ScsiPhase::MESSAGE_IN:
     case ScsiPhase::BUS_FREE:
+        LOG_F(SCSIDEVICE, "%s: release all", this->get_name().c_str());
         this->bus_obj->release_ctrl_lines(this->scsi_id);
         this->seq_steps = nullptr;
         this->switch_phase(ScsiPhase::BUS_FREE);
         break;
     default:
-        LOG_F(WARNING, "%s: nothing to do for phase %d", this->name.c_str(), this->cur_phase);
+        LOG_F(WARNING, "%s: nothing to do for phase %d", this->get_name().c_str(), this->cur_phase);
     }
 }
 
@@ -169,8 +185,8 @@ void ScsiPhysDevice::prepare_xfer(ScsiBus* bus_obj, int& bytes_in, int& bytes_ou
     case ScsiPhase::MESSAGE_IN:
         break;
     default:
-        ABORT_F("%s: unhandled phase %d in prepare_xfer()", this->name.c_str(),
-                this->cur_phase);
+        ABORT_F("%s: unhandled phase %d in prepare_xfer()", this-> get_name().c_str(),
+            this->cur_phase);
     }
 }
 
@@ -220,6 +236,7 @@ int ScsiPhysDevice::send_data(uint8_t* dst_ptr, const int count)
     int actual_count = std::min(this->data_size, count);
 
     std::memcpy(dst_ptr, this->data_ptr, actual_count);
+    LOG_F(SCSIDEVICE, "%s: send_data data_size:%d -> %d", this->name.c_str(), this->data_size, this->data_size - count);
     this->data_ptr  += actual_count;
     this->data_size -= actual_count;
 
@@ -242,6 +259,7 @@ int ScsiPhysDevice::rcv_data(const uint8_t* src_ptr, const int count)
 {
     // accumulating incoming data in the pre-configured buffer
     std::memcpy(this->data_ptr, src_ptr, count);
+    LOG_F(SCSIDEVICE, "%s: rcv_data data_size:%d -> %d", this->name.c_str(), this->data_size, this->data_size + count);
     this->data_ptr  += count;
     this->data_size += count;
 
