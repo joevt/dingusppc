@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cpu/ppc/ppcemu.h>
 #include <cpu/ppc/ppcmmu.h>
 #include <debugger/debugger.h>
+#include <devices/common/dbdma.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/common/ofnvram.h>
 #include <debugger/backtrace.h>
@@ -1075,6 +1076,22 @@ void DppcDebugger::enter_debugger() {
             cmd = "";
             InstructionNumber = 0;
 #endif
+        } else if (cmd == "dumpdmaprogram") {
+            cmd = "";
+            uint32_t cmd_ptr;
+            expr_str = "";
+            ss >> expr_str;
+            if (expr_str.length() > 0) {
+                try {
+                    cmd_ptr = str2num(expr_str);
+                } catch (invalid_argument& exc) {
+                    cout << exc.what() << endl;
+                    cmd_ptr = 0;
+                }
+            } else {
+                cmd_ptr = 0;
+            }
+            DMAChannel::dump_program(cmd_ptr, -1);
         } else if (cmd == "dump") {
             expr_str = "";
             ss >> expr_str;
