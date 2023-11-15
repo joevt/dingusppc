@@ -364,6 +364,9 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
             if (new_stat & CH_STAT_RUN) {
                 new_stat |= CH_STAT_ACTIVE;
                 this->ch_stat = new_stat;
+                if ((int)loguru::Verbosity_DBDMA != (int)loguru::Verbosity_9) {
+                    dump_program(this->cmd_ptr, -1);
+                }
                 this->start();
             } else {
                 this->abort();
@@ -582,4 +585,212 @@ void DMAChannel::pause() {
     LOG_F(DBDMA, "%s: Pausing DMA channel", this->get_name().c_str());
     if (this->stop_cb)
         this->stop_cb();
+}
+
+void DMAChannel::dump_program(uint32_t cmd_ptr, uint32_t cmd_count) {
+    DMACmd cmd_struct;
+    MapDmaResult res;
+
+    bool cmd_is_writable;
+
+    char str[200];
+
+    uint32_t dst_min = -1;
+    uint32_t dst_max = 0;
+
+    do {
+        fetch_cmd(cmd_ptr, &cmd_struct, &cmd_is_writable);
+
+        int pos = 0;
+
+        uint8_t cmd = cmd_struct.cmd_key >> 4;
+        uint8_t key = cmd_struct.cmd_key & 7;
+
+        uint8_t bits_reserved  = (cmd_struct.cmd_bits  >> 6) & 3;
+        uint8_t bits_interrupt = (cmd_struct.cmd_bits  >> 4) & 3;
+        uint8_t bits_branch    = (cmd_struct.cmd_bits  >> 2) & 3;
+        uint8_t bits_wait      = (cmd_struct.cmd_bits  >> 0) & 3;
+
+        if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "    %08x%s: %02x.%02x.%04x %08x %08x %04x.%04x : ",
+            cmd_ptr,
+            cmd_is_writable ? "" : "(ro)",
+            (int)cmd_struct.cmd_key,
+            (int)cmd_struct.cmd_bits,
+            (int)cmd_struct.req_count,
+            (int)cmd_struct.address,
+            (int)cmd_struct.cmd_arg,
+            (int)cmd_struct.xfer_stat,
+            (int)cmd_struct.res_count
+        );
+
+        switch (cmd) {
+            case DBDMA_Cmd::OUTPUT_MORE : if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "OUTPUT_MORE  "); break;
+            case DBDMA_Cmd::OUTPUT_LAST : if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "OUTPUT_LAST  "); break;
+            case DBDMA_Cmd::INPUT_MORE  : if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "INPUT_MORE   "); break;
+            case DBDMA_Cmd::INPUT_LAST  : if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "INPUT_LAST   "); break;
+            case DBDMA_Cmd::STORE_QUAD  : if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "STORE_QUAD   "); break;
+            case DBDMA_Cmd::LOAD_QUAD   : if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "LOAD_QUAD    "); break;
+            case DBDMA_Cmd::NOP         : if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "NOP          "); break;
+            case DBDMA_Cmd::STOP        : if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "STOP         "); break;
+            default                     : if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "cmd?%-4d     ", cmd) ; break;
+        }
+
+        switch (key) {
+            case 0: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP ? "" :
+                    cmd == DBDMA_Cmd::STORE_QUAD || cmd == DBDMA_Cmd::STORE_QUAD ? "?STREAM0" :
+                    "STREAM0"
+                ); break;
+            case 1: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP || cmd == DBDMA_Cmd::STORE_QUAD || cmd == DBDMA_Cmd::LOAD_QUAD ? "?STREAM1" :
+                    "STREAM1"
+                ); break;
+            case 2: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP || cmd == DBDMA_Cmd::STORE_QUAD || cmd == DBDMA_Cmd::LOAD_QUAD ? "?STREAM2" :
+                    "STREAM2"
+                ); break;
+            case 3: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP || cmd == DBDMA_Cmd::STORE_QUAD || cmd == DBDMA_Cmd::LOAD_QUAD ? "?STREAM3" :
+                    "STREAM3"
+                ); break;
+            case 4: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "%-8s ", "?key4"
+                ); break;
+            case 5: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP ? "?REGS" :
+                    "REGS"
+                ); break;
+            case 6: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP ? "?SYSTEM" :
+                    "SYSTEM"
+                ); break;
+            case 7: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP ? "?DEVICE" :
+                    "DEVICE"
+                ); break;
+        }
+
+        if (cmd == DBDMA_Cmd::OUTPUT_MORE || cmd == DBDMA_Cmd::OUTPUT_LAST ||
+            cmd == DBDMA_Cmd::INPUT_MORE  || cmd == DBDMA_Cmd::INPUT_LAST ||
+            cmd == DBDMA_Cmd::STORE_QUAD  || cmd == DBDMA_Cmd::LOAD_QUAD
+        ) {
+            if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "req:%-5d  ", cmd_struct.req_count);
+        }
+        else if (cmd_struct.req_count) {
+            if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "req:?%-5d ", cmd_struct.req_count);
+        }
+        else {
+            if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "    %5s  ", "");
+        }
+
+        if (cmd == DBDMA_Cmd::OUTPUT_MORE || cmd == DBDMA_Cmd::OUTPUT_LAST ||
+            cmd == DBDMA_Cmd::INPUT_MORE  || cmd == DBDMA_Cmd::INPUT_LAST ||
+            cmd == DBDMA_Cmd::STORE_QUAD  || cmd == DBDMA_Cmd::LOAD_QUAD
+        ) {
+            if (cmd_struct.address) {
+                if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "adr:%08x  ", cmd_struct.address);
+            }
+            else {
+                if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "adr:?%-8s ", "null");
+            }
+        }
+        else {
+            if (cmd_struct.address) {
+                if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "adr:?%08x ", cmd_struct.address);
+            }
+            else {
+                if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "    %8s  ", "");
+            }
+        }
+
+        if (cmd == DBDMA_Cmd::STORE_QUAD || cmd == DBDMA_Cmd::LOAD_QUAD) {
+            if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "arg:%08x  ", cmd_struct.cmd_arg);
+        }
+        else {
+            if (cmd_struct.cmd_arg) {
+                if (bits_branch && (
+                    cmd == DBDMA_Cmd::OUTPUT_MORE || cmd == DBDMA_Cmd::OUTPUT_LAST ||
+                    cmd == DBDMA_Cmd::INPUT_MORE  || cmd == DBDMA_Cmd::INPUT_LAST  ||
+                    cmd == DBDMA_Cmd::NOP
+                ) ) {
+                    if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "dst:%08x  ", cmd_struct.cmd_arg);
+                    if (cmd_struct.cmd_arg > dst_max)
+                        dst_max = cmd_struct.cmd_arg;
+                    if (cmd_struct.cmd_arg < dst_min)
+                        dst_min = cmd_struct.cmd_arg;
+                }
+                else {
+                    if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "dst:?%08x ", cmd_struct.cmd_arg);
+                }
+            }
+            else {
+                if (bits_branch || bits_wait) {
+                    if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "dst:?%-8s ", "null");
+                }
+                else {
+                    if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "    %9s  ", "");
+                }
+            }
+        }
+
+        if (cmd_struct.xfer_stat) {
+            if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "stat:%04x ", cmd_struct.xfer_stat);
+        }
+        else {
+            if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "     %4s ", "");
+        }
+
+        if (cmd_struct.res_count) {
+            if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "res:%-5d ", cmd_struct.res_count);
+        }
+        else {
+            if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "    %5s  ", "");
+        }
+
+        switch (bits_interrupt) {
+            case 0: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "         "); break;
+            case 1: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "i.set    "); break;
+            case 2: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "i.clear  "); break;
+            case 3: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "i.always "); break;
+        }
+
+        switch (bits_branch) {
+            case 0: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "         "); break;
+            case 1: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "b.set    "); break;
+            case 2: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "b.clear  "); break;
+            case 3: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "b.always "); break;
+        }
+
+        switch (bits_wait) {
+            case 0: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "         "); break;
+            case 1: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "w.set    "); break;
+            case 2: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "w.clear  "); break;
+            case 3: if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "w.always "); break;
+        }
+
+        if (bits_reserved) {
+            if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "r.%d ", bits_reserved);
+        }
+        else {
+            if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, "    ");
+        }
+
+        printf("%s\n", str);
+
+        if (pos >= sizeof(str)) {
+            LOG_F(ERROR, "dump_program: string buffer not long enough");
+        }
+
+        if (
+            (
+                (cmd == DBDMA_Cmd::STOP) ||
+                (bits_branch == 3 && cmd_struct.cmd_arg <= cmd_ptr)
+            ) &&
+            dst_max <= cmd_ptr
+        )
+            break;
+
+        cmd_ptr += 16;
+        cmd_count--;
+
+    } while (cmd_count);
 }
