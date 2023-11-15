@@ -390,6 +390,9 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
             if (new_stat & CH_STAT_RUN) {
                 new_stat |= CH_STAT_ACTIVE;
                 this->ch_stat = new_stat;
+                if (loguru::Verbosity_DBDMA <= loguru::current_verbosity_cutoff()) {
+                    dump_program(this->cmd_ptr, -1);
+                }
                 this->start();
             } else {
                 this->abort();
@@ -676,4 +679,227 @@ void DMAChannel::pause() {
     VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: Pausing DMA channel", this->get_name().c_str());
     if (this->stop_cb)
         this->stop_cb();
+}
+
+void DMAChannel::dump_program(uint32_t cmd_ptr, uint32_t cmd_count) {
+    DMACmd cmd_struct;
+
+    bool cmd_is_writable;
+
+    char str[200];
+
+    uint32_t dst_min = -1;
+    uint32_t dst_max = 0;
+
+    #define STRPRINTF(...) do { if (pos < sizeof(str)) pos += std::snprintf(str + pos, sizeof(str) - pos, __VA_ARGS__); } while(0)
+
+    do {
+        fetch_cmd(cmd_ptr, &cmd_struct, &cmd_is_writable);
+
+        int pos = 0;
+
+        uint8_t cmd = cmd_struct.cmd_key >> 4;
+        uint8_t key = cmd_struct.cmd_key & 7;
+
+        uint8_t bits_reserved  = (cmd_struct.cmd_bits  >> 6) & 3;
+        uint8_t bits_interrupt = (cmd_struct.cmd_bits  >> 4) & 3;
+        uint8_t bits_branch    = (cmd_struct.cmd_bits  >> 2) & 3;
+        uint8_t bits_wait      = (cmd_struct.cmd_bits  >> 0) & 3;
+
+        STRPRINTF("    %08x%s: %02x.%02x.%04x %08x %08x %04x.%04x : ",
+            cmd_ptr,
+            cmd_is_writable ? "" : "(ro)",
+            (int)cmd_struct.cmd_key,
+            (int)cmd_struct.cmd_bits,
+            (int)cmd_struct.req_count,
+            (int)cmd_struct.address,
+            (int)cmd_struct.cmd_arg,
+            (int)cmd_struct.xfer_stat,
+            (int)cmd_struct.res_count
+        );
+
+        switch (cmd) {
+            case DBDMA_Cmd::OUTPUT_MORE : STRPRINTF("OUTPUT_MORE  "); break;
+            case DBDMA_Cmd::OUTPUT_LAST : STRPRINTF("OUTPUT_LAST  "); break;
+            case DBDMA_Cmd::INPUT_MORE  : STRPRINTF("INPUT_MORE   "); break;
+            case DBDMA_Cmd::INPUT_LAST  : STRPRINTF("INPUT_LAST   "); break;
+            case DBDMA_Cmd::STORE_QUAD  : STRPRINTF("STORE_QUAD   "); break;
+            case DBDMA_Cmd::LOAD_QUAD   : STRPRINTF("LOAD_QUAD    "); break;
+            case DBDMA_Cmd::NOP         : STRPRINTF("NOP          "); break;
+            case DBDMA_Cmd::STOP        : STRPRINTF("STOP         "); break;
+            default                     : STRPRINTF("cmd?%-4d     ", cmd) ; break;
+        }
+
+        switch (key) {
+            case 0:
+                STRPRINTF("%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP ? "" :
+                    cmd == DBDMA_Cmd::STORE_QUAD || cmd == DBDMA_Cmd::STORE_QUAD
+                    ? "?STREAM0" : "STREAM0"
+                );
+                break;
+            case 1:
+                STRPRINTF("%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP || cmd == DBDMA_Cmd::STORE_QUAD || cmd == DBDMA_Cmd::LOAD_QUAD
+                    ? "?STREAM1" : "STREAM1"
+                );
+                break;
+            case 2:
+                STRPRINTF("%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP || cmd == DBDMA_Cmd::STORE_QUAD || cmd == DBDMA_Cmd::LOAD_QUAD
+                    ? "?STREAM2" : "STREAM2"
+                );
+                break;
+            case 3:
+                STRPRINTF("%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP || cmd == DBDMA_Cmd::STORE_QUAD || cmd == DBDMA_Cmd::LOAD_QUAD
+                    ? "?STREAM3" : "STREAM3"
+                );
+                break;
+            case 4:
+                STRPRINTF("%-8s ", "?key4");
+                break;
+            case 5: STRPRINTF("%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP
+                    ? "?REGS" : "REGS"
+                );
+                break;
+            case 6:
+                STRPRINTF("%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP
+                    ? "?SYSTEM" : "SYSTEM"
+                );
+                break;
+            case 7:
+                STRPRINTF("%-8s ",
+                    cmd == DBDMA_Cmd::STOP || cmd == DBDMA_Cmd::NOP
+                    ? "?DEVICE" : "DEVICE"
+                );
+                break;
+        }
+
+        if (cmd == DBDMA_Cmd::OUTPUT_MORE || cmd == DBDMA_Cmd::OUTPUT_LAST ||
+            cmd == DBDMA_Cmd::INPUT_MORE  || cmd == DBDMA_Cmd::INPUT_LAST ||
+            cmd == DBDMA_Cmd::STORE_QUAD  || cmd == DBDMA_Cmd::LOAD_QUAD
+        ) {
+            STRPRINTF("req:%-5d  ", cmd_struct.req_count);
+        }
+        else if (cmd_struct.req_count) {
+            STRPRINTF("req:?%-5d ", cmd_struct.req_count);
+        }
+        else {
+            STRPRINTF("    %5s  ", "");
+        }
+
+        if (cmd == DBDMA_Cmd::OUTPUT_MORE || cmd == DBDMA_Cmd::OUTPUT_LAST ||
+            cmd == DBDMA_Cmd::INPUT_MORE  || cmd == DBDMA_Cmd::INPUT_LAST ||
+            cmd == DBDMA_Cmd::STORE_QUAD  || cmd == DBDMA_Cmd::LOAD_QUAD
+        ) {
+            if (cmd_struct.address) {
+                STRPRINTF("adr:%08x  ", cmd_struct.address);
+            }
+            else {
+                STRPRINTF("adr:?%-8s ", "null");
+            }
+        }
+        else {
+            if (cmd_struct.address) {
+                STRPRINTF("adr:?%08x ", cmd_struct.address);
+            }
+            else {
+                STRPRINTF("    %8s  ", "");
+            }
+        }
+
+        if (cmd == DBDMA_Cmd::STORE_QUAD || cmd == DBDMA_Cmd::LOAD_QUAD) {
+            STRPRINTF("arg:%08x  ", cmd_struct.cmd_arg);
+        }
+        else {
+            if (cmd_struct.cmd_arg) {
+                if (bits_branch && (
+                    cmd == DBDMA_Cmd::OUTPUT_MORE || cmd == DBDMA_Cmd::OUTPUT_LAST ||
+                    cmd == DBDMA_Cmd::INPUT_MORE  || cmd == DBDMA_Cmd::INPUT_LAST  ||
+                    cmd == DBDMA_Cmd::NOP
+                ) ) {
+                    STRPRINTF("dst:%08x  ", cmd_struct.cmd_arg);
+                    if (cmd_struct.cmd_arg > dst_max)
+                        dst_max = cmd_struct.cmd_arg;
+                    if (cmd_struct.cmd_arg < dst_min)
+                        dst_min = cmd_struct.cmd_arg;
+                }
+                else {
+                    STRPRINTF("dst:?%08x ", cmd_struct.cmd_arg);
+                }
+            }
+            else {
+                if (bits_branch || bits_wait) {
+                    STRPRINTF("dst:?%-8s ", "null");
+                }
+                else {
+                    STRPRINTF("    %9s  ", "");
+                }
+            }
+        }
+
+        if (cmd_struct.xfer_stat) {
+            STRPRINTF("stat:%04x ", cmd_struct.xfer_stat);
+        }
+        else {
+            STRPRINTF("     %4s ", "");
+        }
+
+        if (cmd_struct.res_count) {
+            STRPRINTF("res:%-5d ", cmd_struct.res_count);
+        }
+        else {
+            STRPRINTF("    %5s  ", "");
+        }
+
+        switch (bits_interrupt) {
+            case 0: STRPRINTF("         "); break;
+            case 1: STRPRINTF("i.set    "); break;
+            case 2: STRPRINTF("i.clear  "); break;
+            case 3: STRPRINTF("i.always "); break;
+        }
+
+        switch (bits_branch) {
+            case 0: STRPRINTF("         "); break;
+            case 1: STRPRINTF("b.set    "); break;
+            case 2: STRPRINTF("b.clear  "); break;
+            case 3: STRPRINTF("b.always "); break;
+        }
+
+        switch (bits_wait) {
+            case 0: STRPRINTF("         "); break;
+            case 1: STRPRINTF("w.set    "); break;
+            case 2: STRPRINTF("w.clear  "); break;
+            case 3: STRPRINTF("w.always "); break;
+        }
+
+        if (bits_reserved) {
+            STRPRINTF("r.%d ", bits_reserved);
+        }
+        else {
+            STRPRINTF("    ");
+        }
+
+        printf("%s\n", str);
+
+        if (pos >= sizeof(str)) {
+            LOG_F(ERROR, "dump_program: string buffer not long enough");
+        }
+
+        if (
+            (
+                (cmd == DBDMA_Cmd::STOP) ||
+                (bits_branch == 3 && cmd_struct.cmd_arg <= cmd_ptr)
+            ) &&
+            dst_max <= cmd_ptr
+        )
+            break;
+
+        cmd_ptr += 16;
+        cmd_count--;
+
+    } while (cmd_count);
 }
