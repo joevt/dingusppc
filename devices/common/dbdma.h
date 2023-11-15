@@ -131,8 +131,10 @@ public:
         this->irq_id   = irq_id;
     }
 
+    static void dump_program(uint32_t cmd_ptr, uint32_t cmd_count, bool is_log);
+
 protected:
-    DMACmd* fetch_cmd(uint32_t cmd_addr, DMACmd* p_cmd, bool *is_writable);
+    static DMACmd* fetch_cmd(uint32_t cmd_addr, DMACmd* p_cmd, bool *is_writable);
     void interpret_cmd(void);
     void interpret_until_blocked();
     void update_cmd();
