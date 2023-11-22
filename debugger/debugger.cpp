@@ -115,8 +115,8 @@ static void show_help() {
     cout << "  da N,X         -- shortcut for disas" << endl;
 #ifdef ENABLE_68K_DEBUGGER
     cout << "  context X      -- switch to the debugging context X." << endl;
-    cout << "                    X can be either 'ppc' (default) or '68k'" << endl;
-    cout << "                    Use 68k for debugging emulated 68k code only." << endl;
+    cout << "                    X can be either 'ppc' (default), '68k'," << endl;
+    cout << "                    or 'auto'." << endl;
 #endif
     cout << "  printenv       -- print current NVRAM settings." << endl;
     cout << "  setenv V N     -- set NVRAM variable V to value N." << endl;
@@ -183,8 +183,59 @@ print_bin:
     return address;
 }
 
-/* emulator opcode table size --> 512 KB */
-constexpr auto EMU_68K_TABLE_SIZE = 0x80000;
+constexpr auto EMU_68K_START_PHYS       = 0xfff60000;
+constexpr auto EMU_68K_SIZE_PHYS        =    0xa0000;
+constexpr auto EMU_68K_START            = 0x68000000;
+constexpr auto EMU_68K_SIZE             =  0x2000000; // includes 0x69xxxxxx
+
+constexpr auto EMU_68K_TABLE_START_PHYS = 0xfff80000;
+constexpr auto EMU_68K_TABLE_START      = 0x68080000;
+constexpr auto EMU_68K_TABLE_SIZE       =    0x80000;
+
+static int get_context() {
+    if (ppc_state.pc >= EMU_68K_START && ppc_state.pc <= EMU_68K_START + EMU_68K_SIZE - 1) {
+/*
+        // Don't check physical address since 0x69xxxxxx points to RAM instead of ROM.
+        uint32_t pcp;
+        mmu_translate_imem(ppc_state.pc, &pcp);
+        if (pcp >= EMU_68K_START_PHYS && pcp <= EMU_68K_START_PHYS + EMU_68K_SIZE_PHYS - 1) {
+            return 2;
+        }
+*/
+        return 2;
+    }
+    return 1;
+}
+
+/** Execute ppc until the 68k opcode table is reached. */
+bool exec_upto_68k_opcode(bool check_ppc) {
+    while (power_on) {
+        uint32_t ppc_pc = ppc_state.pc;
+/*
+        uint32_t pcp;
+        mmu_translate_imem(ppc_pc, &pcp);
+*/
+        if (
+            (ppc_pc & 7) == 0 &&
+            ppc_pc >= EMU_68K_TABLE_START &&
+            ppc_pc <= EMU_68K_TABLE_START + EMU_68K_TABLE_SIZE - 1 &&
+/*
+            // Don't check physical address because maybe the emulator can move to RAM.
+            pcp    >= EMU_68K_TABLE_START_PHYS &&
+            pcp    <= EMU_68K_TABLE_START_PHYS + EMU_68K_TABLE_SIZE - 1 &&
+*/
+            ppc_pc == ppc_state.gpr[29]
+        ) {
+            return true;
+        }
+        if (check_ppc && get_context() == 1) {
+            // we've left the emulator
+            return false;
+        }
+        ppc_exec_single();
+    }
+    return false;
+}
 
 /** Execute one emulated 68k instruction. */
 void exec_single_68k()
@@ -198,9 +249,19 @@ void exec_single_68k()
     /* PPC r29 contains base address of the emulator opcode table */
     emu_table_virt = ppc_state.gpr[29] & 0xFFF80000;
 
-    /* calculate address of the current opcode table entry as follows:
-       get_word(68k_PC) * entry_size + table_base */
-    cur_instr_tab_entry = mmu_read_vmem<uint16_t>(NO_OPCODE, cur_68k_pc) * 8 + emu_table_virt;
+    /* calculate address of the current opcode table entry
+       using the PPC PC.
+    */
+
+    cur_instr_tab_entry = ppc_state.pc & ~7;
+    uint32_t expected_instr_tab_entry = mmu_read_vmem<uint16_t>(NO_OPCODE, cur_68k_pc) * 8 + emu_table_virt;
+    if (cur_instr_tab_entry != expected_instr_tab_entry) {
+        printf("opcode current:%04X != expected:%04X (r29:%04X)\n",
+            (cur_instr_tab_entry - emu_table_virt) >> 3,
+            (expected_instr_tab_entry - emu_table_virt) >> 3,
+            (ppc_state.gpr[29] - emu_table_virt) >> 3
+        );
+    }
 
     /* grab the PPC PC too */
     ppc_pc = ppc_state.pc;
@@ -216,7 +277,9 @@ void exec_single_68k()
     }
 
     /* Getting here means we're outside the emualtor opcode table.
-       Execute PPC code until we hit the opcode table again. */
+       Execute PPC code until we hit the opcode table again.
+       TODO: fix this so that it executes only until the instruction completes.
+    */
     ppc_exec_dbg(emu_table_virt, EMU_68K_TABLE_SIZE - 1);
 }
 
@@ -855,11 +918,12 @@ void DppcDebugger::enter_debugger() {
         }
         else if (cmd == "regs") {
             cmd = "";
-            if (context == 2) {
 #ifdef ENABLE_68K_DEBUGGER
+            if (context == 2 || (context == 3 && get_context() == 2)) {
                 print_68k_regs();
+            } else
 #endif
-            } else {
+            {
                 print_gprs();
             }
         } else if (cmd == "fregs") {
@@ -910,22 +974,22 @@ void DppcDebugger::enter_debugger() {
                 count = 1;
             }
 
-            if (context == 2) {
+            if (cmd_repeat) {
+                delete_prompt();
+            }
+            for (; count > 0; count--) {
 #ifdef ENABLE_68K_DEBUGGER
-                if (cmd_repeat) {
-                    delete_prompt();
-                }
-                for (; --count >= 0;) {
+                if ((context == 2 || (context == 3 && get_context() == 2)) && exec_upto_68k_opcode(context == 3)) {
+                    if (!power_on)
+                        break;
                     addr = static_cast<uint32_t>(ppc_state.gpr[24] - 2);
                     disasm_68k(1, addr);
                     exec_single_68k();
-                }
+                } else
 #endif
-            } else {
-                if (cmd_repeat) {
-                    delete_prompt();
-                }
-                for (; --count >= 0;) {
+                {
+                    if (!power_on)
+                        break;
                     addr = ppc_state.pc;
                     PPCDisasmContext ctx;
                     ctx.kinds = 0; // (1 << kind_darwin_kernel) | (1 << kind_darwin_kext);
@@ -948,11 +1012,12 @@ void DppcDebugger::enter_debugger() {
             }
             try {
                 addr = str2addr(addr_str);
-                if (context == 2) {
 #ifdef ENABLE_68K_DEBUGGER
+                if ((context == 2 || (context == 3 && get_context() == 2)) && exec_upto_68k_opcode(context == 3)) {
                     exec_until_68k(addr);
+                } else
 #endif
-                } else {
+                {
                     ppc_exec_until(addr);
                 }
             } catch (invalid_argument& exc) {
@@ -986,9 +1051,12 @@ void DppcDebugger::enter_debugger() {
                 } catch (invalid_argument& exc) {
                     try {
                         /* number conversion failed, trying reg name */
-                        if (context == 2 && (addr_str == "pc" || addr_str == "PC")) {
+#ifdef ENABLE_68K_DEBUGGER
+                        if ((context == 2 || (context == 3 && get_context() == 2)) && (addr_str == "pc" || addr_str == "PC")) {
                             addr = ppc_state.gpr[24] - 2;
-                        } else {
+                        } else
+#endif
+                        {
                             addr = static_cast<uint32_t>(get_reg(addr_str));
                         }
                     } catch (invalid_argument& exc) {
@@ -997,11 +1065,12 @@ void DppcDebugger::enter_debugger() {
                     }
                 }
                 try {
-                    if (context == 2) {
 #ifdef ENABLE_68K_DEBUGGER
+                    if (context == 2 || (context == 3 && get_context() == 2)) {
                         next_addr_68k = disasm_68k(inst_grab, addr);
+                    } else
 #endif
-                    } else {
+                    {
                         next_addr_ppc = disasm(inst_grab, addr);
                     }
                 } catch (invalid_argument& exc) {
@@ -1010,8 +1079,8 @@ void DppcDebugger::enter_debugger() {
             } else {
                 /* disas without arguments defaults to disas 1,pc */
                 try {
-                    if (context == 2) {
 #ifdef ENABLE_68K_DEBUGGER
+                    if (context == 2 || (context == 3 && get_context() == 2)) {
                         if (cmd_repeat) {
                             delete_prompt();
                             addr = next_addr_68k;
@@ -1020,8 +1089,9 @@ void DppcDebugger::enter_debugger() {
                             addr = static_cast<uint32_t>(ppc_state.gpr[24] - 2);
                         }
                         next_addr_68k = disasm_68k(1, addr);
+                    } else
 #endif
-                    } else {
+                    {
                         if (cmd_repeat) {
                             delete_prompt();
                             addr = next_addr_ppc;
@@ -1101,6 +1171,8 @@ void DppcDebugger::enter_debugger() {
                 context = 1;
             } else if (expr_str == "68k" || expr_str == "68K") {
                 context = 2;
+            } else if (expr_str == "auto" || expr_str == "AUTO") {
+                context = 3;
             } else {
                 cout << "Unknown debugging context: " << expr_str << endl;
             }
