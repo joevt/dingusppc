@@ -311,10 +311,10 @@ void DMAChannel::update_irq() {
     }
 }
 
-uint32_t DMAChannel::reg_read(uint32_t offset, int size) {
+uint32_t DMAChannel::reg_read_aligned(uint32_t offset) {
     uint32_t result = 0;
 
-    switch (offset & ~3) {
+    switch (offset) {
     case DMAReg::CH_CTRL:
         result = 0; // ChannelControl reads as 0 (DBDMA spec 5.5.1, table 74)
         break;
@@ -336,15 +336,24 @@ uint32_t DMAChannel::reg_read(uint32_t offset, int size) {
     default:
         if (!(this->unsupported_register_read & (1LL << offset))) {
             this->unsupported_register_read |= (1LL << offset);
-            LOG_F(WARNING, "%s: Unsupported DMA channel register read  @%02x.%c",
-                this->get_name().c_str(), offset, SIZE_ARG(size));
+            LOG_F(WARNING, "%s: Unsupported DMA channel register read  @%02x",
+                this->get_name().c_str(), offset);
         }
     }
+    return result;
+}
 
-    if ((offset & 3) || size != 4)
-        return BYTESWAP_SIZED(result >> ((offset & 3) * 8), size);
-    else
-        return BYTESWAP_32(result);
+uint32_t DMAChannel::reg_read(uint32_t offset, int size) {
+    uint32_t value2 = 0;
+    uint32_t value = reg_read_aligned(offset & ~3);
+    if ((offset & 3) + size > 4) {
+        value2 = reg_read_aligned((offset & ~3) + 4);
+    }
+    AccessDetails details;
+    details.size = size;
+    details.offset = offset & 3;
+    value = pci_conv_rd_data(value, value2, details);
+    return value;
 }
 
 void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
