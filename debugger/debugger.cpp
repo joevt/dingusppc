@@ -304,20 +304,22 @@ void print_68k_regs()
     int i;
 
     for (i = 0; i < 8; i++) {
-        cout << "D" << dec << i << " : " << uppercase << hex << ppc_state.gpr[i+8] << endl;
+        cout << "D" << dec << i << " : " << setfill('0') << setw(8) << uppercase << hex << ppc_state.gpr[i+8] << endl;
     }
 
     for (i = 0; i < 7; i++) {
-        cout << "A" << dec << i << " : " << uppercase << hex << ppc_state.gpr[i+16] << endl;
+        cout << "A" << dec << i << " : " << setfill('0') << setw(8) << uppercase << hex << ppc_state.gpr[i+16] << endl;
     }
 
-    cout << "A7 : " << uppercase << hex << ppc_state.gpr[1] << endl;
+    cout << "A7 : " << setfill('0') << setw(8) << uppercase << hex << ppc_state.gpr[1] << endl;
 
-    cout << "PC: " << uppercase << hex << ppc_state.gpr[24] - 2 << endl;
+    cout << "PC : " << setfill('0') << setw(8) << uppercase << hex << ppc_state.gpr[24] - 2 << endl;
 
-    cout << "SR: " << uppercase << hex << ((ppc_state.gpr[25] & 0xFF) << 8) << endl;
+    cout << "SR : " << setfill('0') << setw(8) << uppercase << hex << ((ppc_state.gpr[25] & 0xFF) << 8) << endl;
 
-    cout << "CCR: " << uppercase << hex << ppc_state.gpr[26] << endl;
+    cout << "CCR: " << setfill('0') << setw(8) << uppercase << hex << ppc_state.gpr[26] << endl;
+
+    cout << dec << setfill(' ');
 }
 
 #endif // ENABLE_68K_DEBUGGER
