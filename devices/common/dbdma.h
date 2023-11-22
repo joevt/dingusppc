@@ -137,6 +137,7 @@ protected:
     void xfer_quad(const DMACmd *cmd_desc, DMACmd *cmd_host);
     void update_irq();
     void xfer_from_device();
+    uint32_t reg_read_aligned(uint32_t offset);
 
     void start(void);
     void resume(void);
