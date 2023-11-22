@@ -193,17 +193,17 @@ void exec_single_68k()
 
     /* PPC r24 contains 68k PC advanced by two bytes
        as part of instruction prefetching */
-    cur_68k_pc = static_cast<uint32_t>(get_reg(string("R24")) - 2);
+    cur_68k_pc = static_cast<uint32_t>(ppc_state.gpr[24] - 2);
 
     /* PPC r29 contains base address of the emulator opcode table */
-    emu_table_virt = get_reg(string("R29")) & 0xFFF80000;
+    emu_table_virt = ppc_state.gpr[29] & 0xFFF80000;
 
     /* calculate address of the current opcode table entry as follows:
        get_word(68k_PC) * entry_size + table_base */
     cur_instr_tab_entry = mmu_read_vmem<uint16_t>(NO_OPCODE, cur_68k_pc) * 8 + emu_table_virt;
 
     /* grab the PPC PC too */
-    ppc_pc = static_cast<uint32_t>(get_reg(string("PC")));
+    ppc_pc = ppc_state.pc;
 
     //printf("cur_instr_tab_entry = %X\n", cur_instr_tab_entry);
 
@@ -212,7 +212,7 @@ void exec_single_68k()
        one by one until the execution goes outside the opcode table. */
     while (power_on && ppc_pc >= cur_instr_tab_entry && ppc_pc < cur_instr_tab_entry + 8) {
         ppc_exec_single();
-        ppc_pc = static_cast<uint32_t>(get_reg(string("PC")));
+        ppc_pc = ppc_state.pc;
     }
 
     /* Getting here means we're outside the emualtor opcode table.
@@ -225,10 +225,10 @@ void exec_until_68k(uint32_t target_addr)
 {
     uint32_t emu_table_virt, ppc_pc;
 
-    emu_table_virt = get_reg(string("R29")) & 0xFFF80000;
+    emu_table_virt = ppc_state.gpr[29] & 0xFFF80000;
 
-    while (power_on && target_addr != (get_reg(string("R24")) - 2)) {
-        ppc_pc = static_cast<uint32_t>(get_reg(string("PC")));
+    while (power_on && target_addr != (ppc_state.gpr[24] - 2)) {
+        ppc_pc = ppc_state.pc;
 
         if (ppc_pc >= emu_table_virt && ppc_pc < (emu_table_virt + EMU_68K_TABLE_SIZE - 1)) {
             ppc_exec_single();
@@ -241,25 +241,22 @@ void exec_until_68k(uint32_t target_addr)
 void print_68k_regs()
 {
     int i;
-    string reg;
 
     for (i = 0; i < 8; i++) {
-        reg = "R" + to_string(i + 8);
-        cout << "   D" << dec << i << " : " << COUT08X << get_reg(reg) << endl;
+        cout << "   D" << dec << i << " : " << COUT08X << ppc_state.gpr[i+8] << endl;
     }
 
     for (i = 0; i < 7; i++) {
-        reg = "R" + to_string(i + 16);
-        cout << "   A" << dec << i << " : " << COUT08X << get_reg(reg) << endl;
+        cout << "   A" << dec << i << " : " << COUT08X << ppc_state.gpr[i+16] << endl;
     }
 
-    cout << "   A7 : " << COUT08X << get_reg(string("R1")) << endl;
+    cout << "   A7 : " << COUT08X << ppc_state.gpr[1] << endl;
 
-    cout << "   PC : " << COUT08X << get_reg(string("R24")) - 2 << endl;
+    cout << "   PC : " << COUT08X << ppc_state.gpr[24] - 2 << endl;
 
-    cout << "   SR : " << COUT08X << ((get_reg("R25") & 0xFF) << 8) << endl;
+    cout << "   SR : " << COUT08X << ((ppc_state.gpr[25] & 0xFF) << 8) << endl;
 
-    cout << "  CCR : " << COUT08X << get_reg(string("R26")) << endl;
+    cout << "  CCR : " << COUT08X << ppc_state.gpr[26] << endl;
     cout << dec << setfill(' ');
 }
 
@@ -919,8 +916,7 @@ void DppcDebugger::enter_debugger() {
                     delete_prompt();
                 }
                 for (; --count >= 0;) {
-                    addr_str = "R24";
-                    addr     = static_cast<uint32_t>(get_reg(addr_str) - 2);
+                    addr = static_cast<uint32_t>(ppc_state.gpr[24] - 2);
                     disasm_68k(1, addr);
                     exec_single_68k();
                 }
@@ -940,8 +936,7 @@ void DppcDebugger::enter_debugger() {
                 }
             }
         } else if (cmd == "next" || cmd == "ni") {
-            addr_str = "PC";
-            addr     = static_cast<uint32_t>(get_reg(addr_str) + 4);
+            addr = ppc_state.pc + 4;
             ppc_exec_until(addr);
         } else if (cmd == "until") {
             if (cmd_repeat) {
@@ -992,10 +987,9 @@ void DppcDebugger::enter_debugger() {
                     try {
                         /* number conversion failed, trying reg name */
                         if (context == 2 && (addr_str == "pc" || addr_str == "PC")) {
-                            addr_str = "R24";
-                            addr = get_reg(addr_str) - 2;
+                            addr = ppc_state.gpr[24] - 2;
                         } else {
-                            addr = get_reg(addr_str);
+                            addr = static_cast<uint32_t>(get_reg(addr_str));
                         }
                     } catch (invalid_argument& exc) {
                         cout << exc.what() << endl;
@@ -1023,8 +1017,7 @@ void DppcDebugger::enter_debugger() {
                             addr = next_addr_68k;
                         }
                         else {
-                        addr_str = "R24";
-                            addr     = static_cast<uint32_t>(get_reg(addr_str) - 2);
+                            addr = static_cast<uint32_t>(ppc_state.gpr[24] - 2);
                         }
                         next_addr_68k = disasm_68k(1, addr);
 #endif
@@ -1034,8 +1027,7 @@ void DppcDebugger::enter_debugger() {
                             addr = next_addr_ppc;
                         }
                         else {
-                        addr_str = "PC";
-                            addr     = static_cast<uint32_t>(get_reg(addr_str));
+                            addr = static_cast<uint32_t>(ppc_state.pc);
                         }
                         next_addr_ppc = disasm(1, addr);
                     }
