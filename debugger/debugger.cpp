@@ -30,6 +30,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "memaccess.h"
 #include <utils/profiler.h>
 #include "symbols.h"
+#include "atraps.h"
 #if INCLUDE_KGMACROS
 #include "kgmacros.h"
 #endif
@@ -153,29 +154,51 @@ static uint32_t disasm_68k(uint32_t count, uint32_t address) {
             }
         }
 
+        uint32_t phys_addr;
+        int offset;
+        binary_kind_t kind;
+        int kinds = -1;
+        mmu_translate_imem(address, &phys_addr);
+        std::string name = get_name(address, phys_addr, &offset, &kind, kinds);
+
+        cout << COUT08X << address;
+        if (phys_addr != address) {
+            cout << "->" << COUT08X << phys_addr;
+        }
+        if (!name.empty()) {
+            cout << " " << setw(27) << left << setfill(' ') << name;
+        }
+
+        cout << ": ";
+
         const uint8_t *code_ptr  = code;
         code_size = sizeof(code);
         dis_addr  = address;
 
         // catch and handle F-Traps (Nanokernel calls) ourselves because
         // Capstone will likely return no meaningful assembly for them
-        if ((code[0] & 0xF0) == 0xF0) {
-            goto print_bin;
-        }
 
-        if (cs_disasm_iter(cs_handle, &code_ptr, &code_size, &dis_addr, insn)) {
-            cout << COUTX << insn->address << "    ";
-            cout << setfill(' ');
-            cout << setw(10) << left << insn->mnemonic << insn->op_str << right << endl;
+        trap_info ti;
+        if (get_atrap_info(READ_WORD_BE_U(&code[0]), ti)) {
+            address += 2;
+            code_size = 2;
+            snprintf(insn->mnemonic, sizeof(insn->mnemonic), "%s", ti.name);
+            snprintf(insn->op_str, sizeof(insn->op_str), "");
+        } else if ((code[0] & 0xF0) != 0xF0 && cs_disasm_iter(cs_handle, &code_ptr, &code_size, &dis_addr, insn)) {
+            code_size = sizeof(code) - code_size;
             address = static_cast<uint32_t>(dis_addr);
         } else {
-print_bin:
-            cout << COUTX << address << "    ";
-            cout << setfill(' ');
-            cout << setw(10) << left << "dc.w" << "$" << hex <<
-                ((code[0] << 8) | code[1]) << right << endl;
             address += 2;
+            code_size = 2;
+            snprintf(insn->mnemonic, sizeof(insn->mnemonic), "dc.w");
+            snprintf(insn->op_str, sizeof(insn->op_str), "$%04x", READ_WORD_BE_U(&code[0]));
         }
+
+        int i = 0;
+        for (; i < code_size; i += 2)
+            cout << COUT04X << READ_WORD_BE_U(&code[i]) << " ";
+        cout << setfill(' ') << setw((10 - (int)code_size) / 2 * 5) << "";
+        cout << setfill(' ') << setw(10) << left << insn->mnemonic << insn->op_str << right << dec << endl;
     }
 
     cs_free(insn, 1);
