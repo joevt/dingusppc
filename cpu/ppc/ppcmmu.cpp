@@ -650,7 +650,15 @@ static TLBEntry* itlb2_refill(uint32_t guest_va)
         }
 #endif
     } else {
-        ABORT_F("Instruction fetch from unmapped memory at 0x%08X!\n", phys_addr);
+        LOG_F(ERROR, "Instruction fetch from unmapped memory at 0x%08X -> 0x%08X! mmu_mode:%d mode:%d",
+            guest_va, phys_addr,
+            ((!!(ppc_state.msr & MSR::IR)) << 1) | !!(ppc_state.msr & MSR::PR),
+            (pCurITLB2 == &itlb2_mode1[0]) ? 1 : pCurITLB2 == &itlb2_mode2[0] ? 2 : pCurITLB2 == &itlb2_mode3[0] ? 3 : -1
+        );
+        //mmu_exception_handler(Except_Type::EXC_ISI, 0x08000000);
+        power_on = false;
+        power_off_reason = po_enter_debugger;
+        tlb_entry = &UnmappedMem;
     }
 
     return tlb_entry;
