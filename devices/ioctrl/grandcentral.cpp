@@ -296,7 +296,7 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
         }
     } else if (offset & 0x8000) { // DMA register space
         uint32_t value;
-        unsigned dma_channel = (offset >> 8) & 0xF;
+        unsigned dma_channel = (offset >> 8) & 0x7F;
 
         switch (dma_channel) {
         case MIO_GC_DMA_SCSI_CURIO:
@@ -449,7 +449,7 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
                   this->name.c_str(), this->base_addr + offset, SIZE_ARG(size), size * 2, value);
         }
     } else if (offset & 0x8000) { // DMA register space
-        unsigned dma_channel = (offset >> 8) & 0xF;
+        unsigned dma_channel = (offset >> 8) & 0x7F;
 
         LOG_F(DBDMA, "write %s @%02x.%c = %0*x", get_name_dma(dma_channel), offset & 0xFF, SIZE_ARG(size), size * 2, value);
 
