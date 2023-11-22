@@ -435,12 +435,15 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
         break;
     case DMAReg::INT_SELECT:
         this->int_select = value & 0xFF00FFUL;
+        LOG_F(DBDMA, "%s: INT_SELECT set to 0x%X", this->get_name().c_str(), this->int_select);
         break;
     case DMAReg::BRANCH_SELECT:
         this->branch_select = value & 0xFF00FFUL;
+        LOG_F(DBDMA, "%s: BRANCH_SELECT set to 0x%X", this->get_name().c_str(), this->branch_select);
         break;
     case DMAReg::WAIT_SELECT:
         this->wait_select = value & 0xFF00FFUL;
+        LOG_F(DBDMA, "%s: WAIT_SELECT set to 0x%X", this->get_name().c_str(), this->wait_select);
         break;
     default:
         if (!(this->unsupported_register_write & (1LL << offset))) {
