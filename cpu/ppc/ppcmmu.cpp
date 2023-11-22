@@ -787,7 +787,13 @@ static TLBEntry* itlb2_refill(uint32_t guest_va)
         tlb_entry->phys_tag = phys_addr & ~0xFFFUL;
         track_translated_entry<TLBType::ITLB>(tlb_entry);
     } else {
-        ABORT_F("Instruction fetch from unmapped memory at 0x%08X!\n", phys_addr);
+        LOG_F(ERROR, "Instruction fetch from unmapped memory at 0x%08X -> 0x%08X! mmu_mode:%d mode:%d",
+            guest_va, phys_addr,
+            ((!!(ppc_state.msr & MSR::IR)) << 1) | !!(ppc_state.msr & MSR::PR),
+            (pCurITLB2 == &itlb2_mode1[0]) ? 1 : pCurITLB2 == &itlb2_mode2[0] ? 2 : pCurITLB2 == &itlb2_mode3[0] ? 3 : -1
+        );
+        power_off(po_enter_debugger);
+        tlb_entry = &UnmappedMem;
     }
 
     return tlb_entry;
