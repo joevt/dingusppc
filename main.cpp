@@ -80,6 +80,10 @@ static string appDescription = string(
 
 static uint32_t keyboard_id = 0;
 
+#ifdef CHECK_THREAD
+pthread_t main_thread_id = 0;
+#endif
+
 static std::optional<std::chrono::year_month_day> parse_calendar_date(const std::string& value)
 {
     if (value.size() != 10 || value[4] != '-' || value[7] != '-')
@@ -146,6 +150,10 @@ void run_machine(
 );
 
 int main(int argc, char** argv) {
+
+#ifdef CHECK_THREAD
+    main_thread_id = pthread_self();
+#endif
 
     uint32_t execution_mode = interpreter;
 
