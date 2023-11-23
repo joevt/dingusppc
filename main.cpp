@@ -70,6 +70,10 @@ static string appDescription = string(
     "\n"
 );
 
+#ifdef CHECK_THREAD
+pthread_t main_thread_id = 0;
+#endif
+
 /// Check for an existing directory (returns error message if check fails)
 class WorkingDirectoryValidator : public CLI::detail::ExistingDirectoryValidator {
 public:
@@ -96,6 +100,10 @@ void run_machine(
 );
 
 int main(int argc, char** argv) {
+
+#ifdef CHECK_THREAD
+    main_thread_id = pthread_self();
+#endif
 
     uint32_t execution_mode = interpreter;
 
