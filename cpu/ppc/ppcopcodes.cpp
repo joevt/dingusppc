@@ -31,6 +31,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <debugger/backtrace.h>
 #include <loguru.hpp>
 
+//#define CHECK_INVALID_FORM // uncomment this to check for LMW invalid form.
+
 #ifdef POSTPONE_DECREMENTER
 bool in_lwarx = false;
 bool in_exception = false;
@@ -1859,6 +1861,11 @@ void dppc_interpreter::ppc_lmw() {
     num_int_loads++;
 #endif
     ppc_grab_regsda(ppc_cur_instruction);
+#ifdef CHECK_INVALID_FORM
+    if (reg_d == reg_a) {
+        LOG_F(ERROR, "reg_a in lmw registers");
+    }
+#endif
     uint32_t ea = int32_t(int16_t(ppc_cur_instruction));
     ea += (reg_a ? ppc_result_a : 0);
     // How many words to load in memory - using a do-while for this
