@@ -38,6 +38,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //#define VERIFY_DATA_READ // uncomment this to verify TLB entries for read
 //#define VERIFY_DATA_WRITE // uncomment this to verify TLB entries for write
 //#define VERIFY_INSTRUCTION_READ // uncomment this to verify TLB entries for instructions
+//#define CHECK_THREAD // uncomment this to verify the thread
 
 #ifdef WATCH_POINT
 extern uint32_t *watch_point_dma;
@@ -431,9 +432,17 @@ TLBEntry    UnmappedMem = {TLB_INVALID_TAG, TLBFlags::PAGE_NOPHYS, 0, 0};
 uint8_t     CurITLBMode = {0xFF}; // current ITLB mode
 uint8_t     CurDTLBMode = {0xFF}; // current DTLB mode
 
+extern pthread_t main_thread_id;
+
 void mmu_change_mode()
 {
     uint8_t mmu_mode;
+
+#ifdef CHECK_THREAD
+    if (!pthread_equal(pthread_self(), main_thread_id)) {
+        LOG_F(ERROR, "not main thread setting msr");
+    }
+#endif
 
     // switch ITLB tables first
     mmu_mode = ((!!(ppc_state.msr & MSR::IR)) << 1) | !!(ppc_state.msr & MSR::PR);

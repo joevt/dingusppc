@@ -63,9 +63,13 @@ static string appDescription = string(
     "\n"
 );
 
+pthread_t main_thread_id = 0;
+
 void run_machine(std::string machine_str, std::string bootrom_path, uint32_t execution_mode);
 
 int main(int argc, char** argv) {
+
+    main_thread_id = pthread_self();
 
     uint32_t execution_mode = interpreter;
 
