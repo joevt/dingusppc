@@ -817,6 +817,7 @@ void DppcDebugger::enter_debugger() {
 #endif
     bool cmd_repeat;
     int repeat_count = 0;
+    bool is_sq;
 
     unique_ptr<OfConfigUtils> ofnvram = unique_ptr<OfConfigUtils>(new OfConfigUtils);
 
@@ -981,7 +982,7 @@ void DppcDebugger::enter_debugger() {
             } catch (invalid_argument& exc) {
                 cout << exc.what() << endl;
             }
-        } else if (cmd == "step" || cmd == "si") {
+        } else if ((is_sq = (cmd == "sq")) || cmd == "step" || cmd == "si") {
             int count;
 
             expr_str = "";
@@ -1005,21 +1006,27 @@ void DppcDebugger::enter_debugger() {
                 if ((context == 2 || (context == 3 && get_context() == 2)) && exec_upto_68k_opcode(context == 3)) {
                     if (!power_on)
                         break;
-                    addr = static_cast<uint32_t>(ppc_state.gpr[24] - 2);
-                    disasm_68k(1, addr);
+                    if (!is_sq) {
+                        addr = static_cast<uint32_t>(ppc_state.gpr[24] - 2);
+                        disasm_68k(1, addr);
+                    }
                     exec_single_68k();
                 } else
 #endif
                 {
                     if (!power_on)
                         break;
-                    addr = ppc_state.pc;
                     PPCDisasmContext ctx;
-                    ctx.kinds = 0; // (1 << kind_darwin_kernel) | (1 << kind_darwin_kext);
-                    ctx.level = 0;
-                    disasm_in(ctx, addr);
+                    if (!is_sq) {
+                        addr = ppc_state.pc;
+                        ctx.kinds = 0; // (1 << kind_darwin_kernel) | (1 << kind_darwin_kext);
+                        ctx.level = 0;
+                        disasm_in(ctx, addr);
+                    }
                     ppc_exec_single();
-                    disasm_out(ctx);
+                    if (!is_sq) {
+                        disasm_out(ctx);
+                    }
                 }
             }
         } else if (cmd == "next" || cmd == "ni") {
