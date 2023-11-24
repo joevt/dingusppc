@@ -39,6 +39,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //#define VERIFY_DATA_WRITE // uncomment this to verify TLB entries for write
 //#define VERIFY_INSTRUCTION_READ // uncomment this to verify TLB entries for instructions
 //#define CHECK_THREAD // uncomment this to verify the thread
+//#define TRAP_READ_KEYMAP // uncomment this to log access to KeyMap
 
 #ifdef WATCH_POINT
 extern uint32_t *watch_point_dma;
@@ -1264,6 +1265,15 @@ inline T mmu_read_vmem(uint32_t opcode, uint32_t guest_va)
     TLBEntry *tlb1_entry, *tlb2_entry;
     uint8_t *host_va;
     uint32_t guest_pa;
+
+#ifdef TRAP_READ_KEYMAP
+    if (guest_va == 0x174) {
+        LOG_F(WARNING, "Reading from 0x174:KeyMap");
+        dump_backtrace();
+        power_on = false;
+        power_off_reason = po_enter_debugger;
+    }
+#endif
 
 #ifdef VERIFY_DATA_READ
     bool verify = true;
