@@ -33,6 +33,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 
 //#define CHECK_INVALID_FORM // uncomment this to check for LMW invalid form.
+//#define DISASSEMBLE_TOGGLE // uncomment this to enable disassemble toggle instructions.
 
 #ifdef POSTPONE_DECREMENTER
 bool in_lwarx = false;
@@ -533,10 +534,30 @@ void dppc_interpreter::ppc_mulli(uint32_t opcode) {
     ppc_store_iresult_reg(reg_d, ppc_result_d);
 }
 
+#ifdef DISASSEMBLE_TOGGLE
+auto start_time = std::chrono::steady_clock::now();
+#endif
+
 template <field_rc rec, field_ov ov>
 void dppc_interpreter::ppc_divw(uint32_t opcode) {
     uint32_t ppc_result_d;
     ppc_grab_regsdab(opcode);
+
+#ifdef DISASSEMBLE_TOGGLE
+    if (ppc_result_b == 32749) {
+        fprintf(stderr, "divw by 32749 (before)\n");
+        auto now = std::chrono::steady_clock::now();
+        auto diff = now - start_time;
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(diff);
+        fprintf(stderr, "time since start: %lld ms\n", ms.count());
+        power_on = false;
+        power_off_reason = po_disassemble_on;
+    } else if (ppc_result_b == 32719) {
+        fprintf(stderr, "divw by 32749 (after)\n");
+        power_on = false;
+        power_off_reason = po_disassemble_off;
+    }
+#endif
 
     if (!ppc_result_b) { // handle the "anything / 0" case
         if (is_601)
