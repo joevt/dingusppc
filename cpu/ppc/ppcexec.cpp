@@ -705,13 +705,29 @@ do { \
     } \
 } while (0)
 
+#ifdef DPPC_ALTIVEC
+#define OP4_ccccc10xxxx(subopcode, fn) \
+do { \
+    for (uint32_t ccccc = 0; ccccc < 32; ccccc++) { \
+        OPr(4, (ccccc << 6) | (subopcode), fn); \
+    } \
+} while (0)
+
+#define OP4_dxxxx000110(subopcode, fn) \
+do { \
+    OPr(4, subopcode, fn<RC0>); \
+    OPr(4, subopcode + (1 << 10), fn<RC1>); \
+} while (0)
+
+#define OP4_xxxxx00xxxx(subopcode, fn) OPr(4, subopcode, fn)
+#endif
+
 void initialize_ppc_opcode_table() {
     auto opcodeGrabberSize = sizeof(OpcodeGrabber) / sizeof(OpcodeGrabber[0]);
     std::fill_n(OpcodeGrabber, opcodeGrabberSize, ppc_illegalop);
     std::fill_n(OpcodeGrabberNoFPU, opcodeGrabberSize, ppc_illegalop);
 
     OP(3,  ppc_twi);
-    //OP(4,  ppc_opcode4); - Altivec instructions not emulated yet. Uncomment once they're implemented.
     OP(7,  ppc_mulli);
     OP(8,  ppc_subfic);
     if (is_601 || include_601) OP(9, power_dozi);
@@ -959,6 +975,171 @@ void initialize_ppc_opcode_table() {
         OP63d(i + 30, ppc_fnmsub);
         OP63d(i + 31, ppc_fnmadd);
     }
+
+#ifdef DPPC_ALTIVEC
+    OP31(6,      altivec_lvsl);
+    OP31(38,     altivec_lvsr);
+    OP31(342,    altivec_dst); // dstt
+    OP31(374,    altivec_dstst); // dststt
+    OP31(822,    altivec_dss);  // dssall
+    OP31(7,      altivec_lvebx);
+    OP31(39,     altivec_lvehx);
+    OP31(71,     altivec_lvewx);
+    OP31(103,    altivec_lvx);
+    OP31(359,    altivec_lvxl);
+    OP31(135,    altivec_stvebx);
+    OP31(167,    altivec_stvehx);
+    OP31(199,    altivec_stvewx);
+    OP31(231,    altivec_stvx);
+    OP31(487,    altivec_stvxl);
+
+    OP4_ccccc10xxxx( 0, altivec_vmhaddshs);
+    OP4_ccccc10xxxx( 1, altivec_vmhraddshs);
+    OP4_ccccc10xxxx( 2, altivec_vmladduhm);
+    OP4_ccccc10xxxx( 4, altivec_vmsumubm);
+    OP4_ccccc10xxxx( 5, altivec_vmsummbm);
+    OP4_ccccc10xxxx( 6, altivec_vmsumuhm);
+    OP4_ccccc10xxxx( 7, altivec_vmsumuhs);
+    OP4_ccccc10xxxx( 8, altivec_vmsumshm);
+    OP4_ccccc10xxxx( 9, altivec_vmsumshs);
+    OP4_ccccc10xxxx(10, altivec_vsel);
+    OP4_ccccc10xxxx(11, altivec_vperm);
+    OP4_ccccc10xxxx(12, altivec_vsldoi);
+    OP4_ccccc10xxxx(14, altivec_vmaddfp);
+    OP4_ccccc10xxxx(15, altivec_vnmsubfp);
+
+    OP4_dxxxx000110(  6, altivec_vcmpequbx);
+    OP4_dxxxx000110( 70, altivec_vcmpequhx);
+    OP4_dxxxx000110(134, altivec_vcmpequwx);
+    OP4_dxxxx000110(198, altivec_vcmpeqfpx);
+    OP4_dxxxx000110(454, altivec_vcmpgefpx);
+    OP4_dxxxx000110(518, altivec_vcmpgtubx);
+    OP4_dxxxx000110(582, altivec_vcmpgtuhx);
+    OP4_dxxxx000110(646, altivec_vcmpgtuwx);
+    OP4_dxxxx000110(710, altivec_vcmpgtfpx);
+    OP4_dxxxx000110(774, altivec_vcmpgtsbx);
+    OP4_dxxxx000110(838, altivec_vcmpgtshx);
+    OP4_dxxxx000110(902, altivec_vcmpgtswx);
+    OP4_dxxxx000110(966, altivec_vcmpbfpx);
+
+    OP4_xxxxx00xxxx(   0, altivec_vaddubm);
+    OP4_xxxxx00xxxx(   2, altivec_vmaxub);
+    OP4_xxxxx00xxxx(   4, altivec_vrlb);
+    OP4_xxxxx00xxxx(   8, altivec_vmuloub);
+    OP4_xxxxx00xxxx(  10, altivec_vaddfp);
+    OP4_xxxxx00xxxx(  12, altivec_vmrghb);
+    OP4_xxxxx00xxxx(  14, altivec_vpkuhum);
+    OP4_xxxxx00xxxx(  64, altivec_vadduhm);
+    OP4_xxxxx00xxxx(  66, altivec_vmaxuh);
+    OP4_xxxxx00xxxx(  68, altivec_vrlh);
+    OP4_xxxxx00xxxx(  72, altivec_vmulouh);
+    OP4_xxxxx00xxxx(  74, altivec_vsubfp);
+    OP4_xxxxx00xxxx(  76, altivec_vmrghh);
+    OP4_xxxxx00xxxx(  78, altivec_vpkuwum);
+    OP4_xxxxx00xxxx( 128, altivec_vadduwm);
+    OP4_xxxxx00xxxx( 130, altivec_vmaxuw);
+    OP4_xxxxx00xxxx( 132, altivec_vrlw);
+    OP4_xxxxx00xxxx( 140, altivec_vmrghw);
+    OP4_xxxxx00xxxx( 142, altivec_vpkuhus);
+    OP4_xxxxx00xxxx( 206, altivec_vpkuwus);
+    OP4_xxxxx00xxxx( 258, altivec_vmaxsb);
+    OP4_xxxxx00xxxx( 260, altivec_vslb);
+    OP4_xxxxx00xxxx( 264, altivec_vmulosb);
+    OP4_xxxxx00xxxx( 266, altivec_vrefp);
+    OP4_xxxxx00xxxx( 268, altivec_vmrglb);
+    OP4_xxxxx00xxxx( 270, altivec_vpkshus);
+    OP4_xxxxx00xxxx( 322, altivec_vmaxsh);
+    OP4_xxxxx00xxxx( 324, altivec_vslh);
+    OP4_xxxxx00xxxx( 328, altivec_vmulosh);
+    OP4_xxxxx00xxxx( 330, altivec_vrsqrtefp);
+    OP4_xxxxx00xxxx( 332, altivec_vmrglh);
+    OP4_xxxxx00xxxx( 334, altivec_vpkswus);
+    OP4_xxxxx00xxxx( 384, altivec_vaddcuw);
+    OP4_xxxxx00xxxx( 386, altivec_vmaxsw);
+    OP4_xxxxx00xxxx( 388, altivec_vslw);
+    OP4_xxxxx00xxxx( 394, altivec_vexptefp);
+    OP4_xxxxx00xxxx( 396, altivec_vmrglw);
+    OP4_xxxxx00xxxx( 398, altivec_vpkshss);
+    OP4_xxxxx00xxxx( 452, altivec_vsl);
+    OP4_xxxxx00xxxx( 458, altivec_vlogefp);
+    OP4_xxxxx00xxxx( 462, altivec_vpkswss);
+    OP4_xxxxx00xxxx( 512, altivec_vaddubs);
+    OP4_xxxxx00xxxx( 514, altivec_vminub);
+    OP4_xxxxx00xxxx( 516, altivec_vsrb);
+    OP4_xxxxx00xxxx( 520, altivec_vmuleub);
+    OP4_xxxxx00xxxx( 522, altivec_vrfin);
+    OP4_xxxxx00xxxx( 524, altivec_vspltb);
+    OP4_xxxxx00xxxx( 526, altivec_vupkhsb);
+    OP4_xxxxx00xxxx( 576, altivec_vadduhs);
+    OP4_xxxxx00xxxx( 578, altivec_vminuh);
+    OP4_xxxxx00xxxx( 580, altivec_vsrh);
+    OP4_xxxxx00xxxx( 584, altivec_vmuleuh);
+    OP4_xxxxx00xxxx( 586, altivec_vrfiz);
+    OP4_xxxxx00xxxx( 588, altivec_vsplth);
+    OP4_xxxxx00xxxx( 590, altivec_vupkhsh);
+    OP4_xxxxx00xxxx( 640, altivec_vadduws);
+    OP4_xxxxx00xxxx( 642, altivec_vminuw);
+    OP4_xxxxx00xxxx( 644, altivec_vsrw);
+    OP4_xxxxx00xxxx( 650, altivec_vrfip);
+    OP4_xxxxx00xxxx( 652, altivec_vspltw);
+    OP4_xxxxx00xxxx( 654, altivec_vupklsb);
+    OP4_xxxxx00xxxx( 708, altivec_vsr);
+    OP4_xxxxx00xxxx( 714, altivec_vrfim);
+    OP4_xxxxx00xxxx( 718, altivec_vupklsh);
+    OP4_xxxxx00xxxx( 768, altivec_vaddsbs);
+    OP4_xxxxx00xxxx( 770, altivec_vminsb);
+    OP4_xxxxx00xxxx( 772, altivec_vsrab);
+    OP4_xxxxx00xxxx( 776, altivec_vmulesb);
+    OP4_xxxxx00xxxx( 778, altivec_vcfux);
+    OP4_xxxxx00xxxx( 780, altivec_vspltisb);
+    OP4_xxxxx00xxxx( 782, altivec_vpkpx);
+    OP4_xxxxx00xxxx( 832, altivec_vaddshs);
+    OP4_xxxxx00xxxx( 834, altivec_vminsh);
+    OP4_xxxxx00xxxx( 836, altivec_vsrah);
+    OP4_xxxxx00xxxx( 840, altivec_vmulesh);
+    OP4_xxxxx00xxxx( 842, altivec_vcfsx);
+    OP4_xxxxx00xxxx( 844, altivec_vspltish);
+    OP4_xxxxx00xxxx( 846, altivec_vupkhpx);
+    OP4_xxxxx00xxxx( 896, altivec_vaddsws);
+    OP4_xxxxx00xxxx( 898, altivec_vminsw);
+    OP4_xxxxx00xxxx( 900, altivec_vsraw);
+    OP4_xxxxx00xxxx( 906, altivec_vctuxs);
+    OP4_xxxxx00xxxx( 908, altivec_vspltisw);
+    OP4_xxxxx00xxxx( 970, altivec_vctsxs);
+    OP4_xxxxx00xxxx( 974, altivec_vupklpx);
+    OP4_xxxxx00xxxx(1024, altivec_vsububm);
+    OP4_xxxxx00xxxx(1026, altivec_vavgub);
+    OP4_xxxxx00xxxx(1028, altivec_vand);
+    OP4_xxxxx00xxxx(1034, altivec_vmaxfp);
+    OP4_xxxxx00xxxx(1036, altivec_vslo);
+    OP4_xxxxx00xxxx(1088, altivec_vsubuhm);
+    OP4_xxxxx00xxxx(1090, altivec_vavguh);
+    OP4_xxxxx00xxxx(1092, altivec_vandc);
+    OP4_xxxxx00xxxx(1098, altivec_vminfp);
+    OP4_xxxxx00xxxx(1100, altivec_vsro);
+    OP4_xxxxx00xxxx(1152, altivec_vsubuwm);
+    OP4_xxxxx00xxxx(1154, altivec_vavguw);
+    OP4_xxxxx00xxxx(1156, altivec_vor);
+    OP4_xxxxx00xxxx(1220, altivec_vxor);
+    OP4_xxxxx00xxxx(1282, altivec_vavgsb);
+    OP4_xxxxx00xxxx(1284, altivec_vnor);
+    OP4_xxxxx00xxxx(1346, altivec_vavgsh);
+    OP4_xxxxx00xxxx(1408, altivec_vsubcuw);
+    OP4_xxxxx00xxxx(1410, altivec_vavgsw);
+    OP4_xxxxx00xxxx(1536, altivec_vsububs);
+    OP4_xxxxx00xxxx(1540, altivec_mfvscr);
+    OP4_xxxxx00xxxx(1544, altivec_vsum4ubs);
+    OP4_xxxxx00xxxx(1600, altivec_vsubuhs);
+    OP4_xxxxx00xxxx(1604, altivec_mtvscr);
+    OP4_xxxxx00xxxx(1608, altivec_vsum4shs);
+    OP4_xxxxx00xxxx(1664, altivec_vsubuws);
+    OP4_xxxxx00xxxx(1672, altivec_vsum2sws);
+    OP4_xxxxx00xxxx(1792, altivec_vsubsbs);
+    OP4_xxxxx00xxxx(1800, altivec_vsum4sbs);
+    OP4_xxxxx00xxxx(1856, altivec_vsubshs);
+    OP4_xxxxx00xxxx(1920, altivec_vsubsws);
+    OP4_xxxxx00xxxx(1928, altivec_vsumsws);
+#endif
 
     for (auto i = 0; i < opcodeGrabberSize; i++) {
         if (OpcodeGrabberNoFPU[i] != ppc_fpu_off) {
