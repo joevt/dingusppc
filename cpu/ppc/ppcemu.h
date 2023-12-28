@@ -424,7 +424,7 @@ void ppc_fpu_off();
 void ppc_assert_int();
 void ppc_release_int();
 
-//void ppc_opcode4();
+void ppc_opcode4();
 void ppc_opcode16();
 void ppc_opcode18();
 template <field_601 for601> void ppc_opcode19();
