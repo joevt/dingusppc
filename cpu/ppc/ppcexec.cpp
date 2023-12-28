@@ -230,6 +230,180 @@ void ppc_release_int() {
 
 /** Opcode decoding functions. */
 
+void ppc_opcode4() {
+#ifndef DPPC_ALTIVEC
+    ppc_illegalop();
+#else
+    if (ppc_cur_instruction & 32) {
+        // bit 5 is one means bits 6 to 10 are vC
+        // could be reduced from 5 bits to 4 bits since bit 4 is always zero
+        // but then you would have to test bit 4.
+        uint16_t subop_grab = ppc_cur_instruction & 31;
+        switch (subop_grab) {
+            case  0: altivec_vmhaddshs(); break;
+            case  1: altivec_vmhraddshs(); break;
+            case  2: altivec_vmladduhm(); break;
+            case  4: altivec_vmsumubm(); break;
+            case  5: altivec_vmsummbm(); break;
+            case  6: altivec_vmsumuhm(); break;
+            case  7: altivec_vmsumuhs(); break;
+            case  8: altivec_vmsumshm(); break;
+            case  9: altivec_vmsumshs(); break;
+            case 10: altivec_vsel(); break;
+            case 11: altivec_vperm(); break;
+            case 12: altivec_vsldoi(); break;
+            case 14: altivec_vmaddfp(); break;
+            case 15: altivec_vnmsubfp(); break;
+            default: ppc_illegalop();
+        }
+    } else if (ppc_cur_instruction & 15 == 6) {
+        // could be reduced from 10 bits to 4 bits since bits 0 to 3 are always 6 and bits 4 and 5 are always zero
+        // but then you would have to test bits 4 and 5.
+        uint16_t subop_grab = ppc_cur_instruction & 0x3ff; // bit 10 is Rc
+        switch (subop_grab) {
+            case    6: altivec_vcmpequbx(); break;
+            case   70: altivec_vcmpequhx(); break;
+            case  134: altivec_vcmpequwx(); break;
+            case  198: altivec_vcmpeqfpx(); break;
+            case  454: altivec_vcmpgefpx(); break;
+            case  518: altivec_vcmpgtubx(); break;
+            case  582: altivec_vcmpgtuhx(); break;
+            case  646: altivec_vcmpgtuwx(); break;
+            case  710: altivec_vcmpgtfpx(); break;
+            case  774: altivec_vcmpgtsbx(); break;
+            case  838: altivec_vcmpgtshx(); break;
+            case  902: altivec_vcmpgtswx(); break;
+            case  966: altivec_vcmpbfpx(); break;
+            default  : ppc_illegalop();
+        }
+    } else {
+        // could be reduced from 11 bits to 9 bits since bit 4 and 5 are always zero
+        // but then you would have to test bits 4 and 5.
+        uint16_t subop_grab = ppc_cur_instruction & 0x7ff;
+        switch subop_grab:
+            case    0: altivec_vaddubm(); break;
+            case    2: altivec_vmaxub(); break;
+            case    4: altivec_vrlb(); break;
+            case    8: altivec_vmuloub(); break;
+            case   10: altivec_vaddfp(); break;
+            case   12: altivec_vmrghb(); break;
+            case   14: altivec_vpkuhum(); break;
+            case   64: altivec_vadduhm(); break;
+            case   66: altivec_vmaxuh(); break;
+            case   68: altivec_vrlh(); break;
+            case   72: altivec_vmulouh(); break;
+            case   74: altivec_vsubfp(); break;
+            case   76: altivec_vmrghh(); break;
+            case   78: altivec_vpkuwum(); break;
+            case  128: altivec_vadduwm(); break;
+            case  130: altivec_vmaxuw(); break;
+            case  132: altivec_vrlw(); break;
+            case  140: altivec_vmrghw(); break;
+            case  142: altivec_vpkuhus(); break;
+            case  206: altivec_vpkuwus(); break;
+            case  258: altivec_vmaxsb(); break;
+            case  260: altivec_vslb(); break;
+            case  264: altivec_vmulosb(); break;
+            case  266: altivec_vrefp(); break;
+            case  268: altivec_vmrglb(); break;
+            case  270: altivec_vpkshus(); break;
+            case  322: altivec_vmaxsh(); break;
+            case  324: altivec_vslh(); break;
+            case  328: altivec_vmulosh(); break;
+            case  330: altivec_vrsqrtefp(); break;
+            case  332: altivec_vmrglh(); break;
+            case  334: altivec_vpkswus(); break;
+            case  384: altivec_vaddcuw(); break;
+            case  386: altivec_vmaxsw(); break;
+            case  388: altivec_vslw(); break;
+            case  394: altivec_vexptefp(); break;
+            case  396: altivec_vmrglw(); break;
+            case  398: altivec_vpkshss(); break;
+            case  452: altivec_vsl(); break;
+            case  458: altivec_vlogefp(); break;
+            case  462: altivec_vpkswss(); break;
+            case  512: altivec_vaddubs(); break;
+            case  514: altivec_vminub(); break;
+            case  516: altivec_vsrb(); break;
+            case  520: altivec_vmuleub(); break;
+            case  522: altivec_vrfin(); break;
+            case  524: altivec_vspltb(); break;
+            case  526: altivec_vupkhsb(); break;
+            case  576: altivec_vadduhs(); break;
+            case  578: altivec_vminuh(); break;
+            case  580: altivec_vsrh(); break;
+            case  584: altivec_vmuleuh(); break;
+            case  586: altivec_vrfiz(); break;
+            case  588: altivec_vsplth(); break;
+            case  590: altivec_vupkhsh(); break;
+            case  640: altivec_vadduws(); break;
+            case  642: altivec_vminuw(); break;
+            case  644: altivec_vsrw(); break;
+            case  650: altivec_vrfip(); break;
+            case  652: altivec_vspltw(); break;
+            case  654: altivec_vupklsb(); break;
+            case  708: altivec_vsr(); break;
+            case  714: altivec_vrfim(); break;
+            case  718: altivec_vupklsh(); break;
+            case  768: altivec_vaddsbs(); break;
+            case  770: altivec_vminsb(); break;
+            case  772: altivec_vsrab(); break;
+            case  776: altivec_vmulesb(); break;
+            case  778: altivec_vcfux(); break;
+            case  780: altivec_vspltisb(); break;
+            case  782: altivec_vpkpx(); break;
+            case  832: altivec_vaddshs(); break;
+            case  834: altivec_vminsh(); break;
+            case  836: altivec_vsrah(); break;
+            case  840: altivec_vmulesh(); break;
+            case  842: altivec_vcfsx(); break;
+            case  844: altivec_vspltish(); break;
+            case  846: altivec_vupkhpx(); break;
+            case  896: altivec_vaddsws(); break;
+            case  898: altivec_vminsw(); break;
+            case  900: altivec_vsraw(); break;
+            case  906: altivec_vctuxs(); break;
+            case  908: altivec_vspltisw(); break;
+            case  970: altivec_vctsxs(); break;
+            case  974: altivec_vupklpx(); break;
+            case 1024: altivec_vsububm(); break;
+            case 1026: altivec_vavgub(); break;
+            case 1028: altivec_vand(); break;
+            case 1034: altivec_vmaxfp(); break;
+            case 1036: altivec_vslo(); break;
+            case 1088: altivec_vsubuhm(); break;
+            case 1090: altivec_vavguh(); break;
+            case 1092: altivec_vandc(); break;
+            case 1098: altivec_vminfp(); break;
+            case 1100: altivec_vsro(); break;
+            case 1152: altivec_vsubuwm(); break;
+            case 1154: altivec_vavguw(); break;
+            case 1156: altivec_vor(); break;
+            case 1220: altivec_vxor(); break;
+            case 1282: altivec_vavgsb(); break;
+            case 1284: altivec_vnor(); break;
+            case 1346: altivec_vavgsh(); break;
+            case 1408: altivec_vsubcuw(); break;
+            case 1410: altivec_vavgsw(); break;
+            case 1536: altivec_vsububs(); break;
+            case 1540: altivec_mfvscr(); break;
+            case 1544: altivec_vsum4ubs(); break;
+            case 1600: altivec_vsubuhs(); break;
+            case 1604: altivec_mtvscr(); break;
+            case 1608: altivec_vsum4shs(); break;
+            case 1664: altivec_vsubuws(); break;
+            case 1672: altivec_vsum2sws(); break;
+            case 1792: altivec_vsubsbs(); break;
+            case 1800: altivec_vsum4sbs(); break;
+            case 1856: altivec_vsubshs(); break;
+            case 1920: altivec_vsubsws(); break;
+            case 1928: altivec_vsumsws(); break;
+            default  : illegalop();
+        }
+    }
+#endif
+}
+
 void ppc_opcode16() {
     SubOpcode16Grabber[ppc_cur_instruction & 3]();
 }
@@ -785,7 +959,7 @@ do { \
 void initialize_ppc_opcode_tables(bool include_601) {
     std::fill_n(OpcodeGrabber, 64, ppc_illegalop);
     OP(3,  ppc_twi);
-    //OP(4,  ppc_opcode4); - Altivec instructions not emulated yet. Uncomment once they're implemented.
+    OP(4,  ppc_opcode4);
     OP(7,  ppc_mulli);
     OP(8,  ppc_subfic);
     if (is_601 || include_601) OP(9, power_dozi);
@@ -973,6 +1147,24 @@ void initialize_ppc_opcode_tables(bool include_601) {
     OP31(982,    ppc_icbi);
     if (!is_601) OP31(978, ppc_tlbld);
     if (!is_601) OP31(1010, ppc_tlbli);
+
+#ifdef DPPC_ALTIVEC
+    OP31(6,      altivec_lvsl);
+    OP31(38,     altivec_lvsr);
+    OP31(342,    altivec_dst); // dstt
+    OP31(374,    altivec_dstst); // dststt
+    OP31(822,    altivec_dss);  // dssall
+    OP31(7,      altivec_lvebx);
+    OP31(39,     altivec_lvehx);
+    OP31(71,     altivec_lvewx);
+    OP31(103,    altivec_lvx);
+    OP31(359,    altivec_lvxl);
+    OP31(135,    altivec_stvebx);
+    OP31(167,    altivec_stvehx);
+    OP31(199,    altivec_stvewx);
+    OP31(231,    altivec_stvx);
+    OP31(487,    altivec_stvxl);
+#endif
 
     std::fill_n(SubOpcode59Grabber, 64, ppc_illegalop);
     OP59d(18,    ppc_fdivs);
