@@ -204,8 +204,8 @@ void ppc_illegalop() {
         // back-to-MacOS from cientry in OF 1.0.5
     }
     else {
-        LOG_F(ERROR, "Illegal Operation 0x%08x", ppc_cur_instruction);
-        dump_backtrace();
+        //LOG_F(ERROR, "Illegal Operation 0x%08x", ppc_cur_instruction);
+        //dump_backtrace();
     }
     ppc_exception_handler(Except_Type::EXC_PROGRAM, Exc_Cause::ILLEGAL_OP);
 }
