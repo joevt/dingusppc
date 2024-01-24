@@ -50,8 +50,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace loguru {
     enum : Verbosity {
-        Verbosity_RADACAL = loguru::Verbosity_INFO,
-        Verbosity_CONTROL = loguru::Verbosity_INFO
+        Verbosity_CONTROL = loguru::Verbosity_9,
     };
 }
 
@@ -306,18 +305,28 @@ uint32_t ControlVideo::read(uint32_t rgn_start, uint32_t offset, int size)
         case ControlRegs::HLFLN:
         case ControlRegs::HSERR:
             value = this->swatch_params[(offset >> 4) - ControlRegs::VFPEQ];
+            LOG_F(CONTROL, "%s: read  %s %03x.%c = %0*x", this->name.c_str(),
+                get_name_controlreg(offset), offset, SIZE_ARG(size), size * 2, value);
             break;
         case ControlRegs::CNTTST:
             value = 0;
+            LOG_F(ERROR, "%s: read  CNTTST %03x.%c = %0*x", this->name.c_str(),
+                offset, SIZE_ARG(size), size * 2, value);
             break;
         case ControlRegs::SWATCH_CTRL:
             value = this->swatch_ctrl;
+            LOG_F(CONTROL, "%s: read  SWATCH_CTRL %03x.%c = %0*x", this->name.c_str(),
+                offset, SIZE_ARG(size), size * 2, value);
             break;
         case ControlRegs::GBASE:
             value = this->fb_base;
+            LOG_F(CONTROL, "%s: read  GBASE %03x.%c = %0*x", this->name.c_str(),
+                offset, SIZE_ARG(size), size * 2, value);
             break;
         case ControlRegs::ROW_WORDS:
             value = this->row_words;
+            LOG_F(CONTROL, "%s: read  ROW_WORDS %03x.%c = %0*x", this->name.c_str(),
+                offset, SIZE_ARG(size), size * 2, value);
             break;
         case ControlRegs::MON_SENSE:
             value = (this->cur_mon_id << 6) | this->mon_sense;
@@ -326,18 +335,34 @@ uint32_t ControlVideo::read(uint32_t rgn_start, uint32_t offset, int size)
             break;
         case ControlRegs::MISC_ENABLES:
             value = this->enables;
+            LOG_F(CONTROL, "%s: read  MISC_ENABLES %03x.%c", this->name.c_str(),
+                offset, SIZE_ARG(size));
             break;
         case ControlRegs::GSC_DIVIDE:
             value = this->clock_divider;
+            LOG_F(CONTROL, "%s: read  GSC_DIVIDE %03x.%c = %0*x", this->name.c_str(),
+                offset, SIZE_ARG(size), size * 2, value);
             break;
         case ControlRegs::REFRESH_COUNT:
             value = 0;
+            LOG_F(ERROR, "%s: read  CNTTST %03x.%c = %0*x", this->name.c_str(),
+                offset, SIZE_ARG(size), size * 2, value);
             break;
         case ControlRegs::INT_STATUS:
             value = this->int_status;
+            if (value != this->last_int_status) {
+                LOG_F(CONTROL, "%s: read  (previous %d times) INT_STATUS %03x.%c = %0*x", this->name.c_str(),
+                    last_int_status_read_count, offset, SIZE_ARG(size), size * 2, value);
+                this->last_int_status = value;
+                this->last_int_status_read_count = 0;
+            }
+            else {
+                this->last_int_status_read_count++;
+            }
             break;
         case ControlRegs::INT_ENABLE:
             value = this->int_enable;
+            LOG_F(CONTROL, "%s: read  INT_ENABLE %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
             break;
         default:
             LOG_F(ERROR, "%s: read  %s %03x.%c", this->name.c_str(), get_name_controlreg(offset), offset, SIZE_ARG(size));
@@ -482,13 +507,24 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             if (value)
                 LOG_F(ERROR, "%s: write CNTTST %03x.%c = %0*x", this->name.c_str(),
                     offset, SIZE_ARG(size), size * 2, value);
+            else
+                LOG_F(CONTROL, "%s: write CNTTST %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
             break;
         case ControlRegs::SWATCH_CTRL:
+            if (value & ~0x7FF)
+                LOG_F(ERROR, "%s: write SWATCH_CTRL %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
+            else
+                LOG_F(CONTROL, "%s: write SWATCH_CTRL %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
             value &= 0x7FF;
             if ((this->swatch_ctrl ^ value) & DISABLE_TIMING) {
                 this->swatch_ctrl = value;
                 this->strobe_counter = 0;
+                LOG_F(CONTROL, "SWATCH_CTRL DISABLE_TIMING flipped, new value: 0x%08X", value);
             } else if ((this->swatch_ctrl ^ value) & RESET_TIMING) {
+                LOG_F(CONTROL, "SWATCH_CTRL RESET_TIMING flipped, new value: 0x%08X", value);
                 this->swatch_ctrl = value;
                 if (value & RESET_TIMING) { // count 0-to-1 transitions
                     this->strobe_counter++;
@@ -502,16 +538,29 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
                         }
                     }
                 }
-            } else
+            } else {
                 this->swatch_ctrl = value;
+            }
             break;
         case ControlRegs::GBASE:
+            if (value & ~0x3FFFE0)
+                LOG_F(ERROR, "%s: write GBASE %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
+            else
+                LOG_F(CONTROL, "%s: write GBASE %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
             this->fb_base = value & 0x3FFFE0;
             if (this->display_enabled) {
                 this->enable_display();
             }
             break;
         case ControlRegs::ROW_WORDS:
+            if (value & ~0x7FE0)
+                LOG_F(ERROR, "%s: write ROW_WORDS %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
+            else
+                LOG_F(CONTROL, "%s: write ROW_WORDS %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
             this->row_words = value & 0x7FE0;
             if (this->display_enabled) {
                 this->enable_display();
@@ -531,6 +580,12 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             }
             break;
         case ControlRegs::MISC_ENABLES:
+            if (value & ~0xFFF)
+                LOG_F(ERROR, "%s: write MISC_ENABLES %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
+            else
+                LOG_F(CONTROL, "%s: write MISC_ENABLES %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
             if ((this->enables ^ value) & BLANK_DISABLE) {
                 if (value & BLANK_DISABLE)
                     this->blank_on = false;
@@ -544,21 +599,41 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
                 LOG_F(ERROR, "%s: little-endian framebuffer is not implemented yet", this->name.c_str());
             break;
         case ControlRegs::GSC_DIVIDE:
+            if (value & ~3)
+                LOG_F(ERROR, "%s: write GSC_DIVIDE %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
+            else
+                LOG_F(CONTROL, "%s: write GSC_DIVIDE %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
             this->clock_divider = value & 3;
             if (this->display_enabled) {
                 this->enable_display();
             }
             break;
         case ControlRegs::REFRESH_COUNT:
-            LOG_F(9, "Control: VRAM refresh count set to %d", value);
+            if (value & ~0x3FF)
+                LOG_F(ERROR, "%s: write REFRESH_COUNT %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
+            else
+                LOG_F(CONTROL, "%s: write REFRESH_COUNT %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
             break;
         case ControlRegs::INT_ENABLE:
+            if (value & ~0xc)
+                LOG_F(ERROR, "%s: write INT_ENABLE %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
+            else {
+                #if 0
+                LOG_F(CONTROL, "%s: write INT_ENABLE %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
+                #endif
+            }
             if ((this->int_enable ^ value) & VBL_IRQ_CLR) {
                 // clear VBL IRQ on a 1-to-0 transition of INT_ENABLE[VBL_IRQ_CLR]
                 if (!(value & VBL_IRQ_CLR))
                     this->vbl_cb(0);
             }
-            this->int_enable = value & 0x0F;
+            this->int_enable = value & 0x0F; // alternates between 0x04 and 0x0c
             break;
         default:
             LOG_F(ERROR, "%s: write %s %03x.%c = %0*x", this->name.c_str(),
