@@ -287,7 +287,7 @@ uint32_t ControlVideo::read(uint32_t rgn_start, uint32_t offset, int size)
         switch (offset >> 4) {
         case ControlRegs::CUR_LINE:
             value = 0; // current active video line should relate this to refresh rate
-            LOG_F(ERROR, "Control: read  CUR_LINE %03x", offset);
+            LOG_F(ERROR, "%s: read  CUR_LINE %03x.%c", this->name.c_str(), offset, SIZE_ARG(size));
             break;
         case ControlRegs::VFPEQ:
         case ControlRegs::VFP:
@@ -340,7 +340,7 @@ uint32_t ControlVideo::read(uint32_t rgn_start, uint32_t offset, int size)
             value = this->int_enable;
             break;
         default:
-            LOG_F(ERROR, "Control: read  %03x", offset);
+            LOG_F(ERROR, "%s: read  %s %03x.%c", this->name.c_str(), get_name_controlreg(offset), offset, SIZE_ARG(size));
             value = 0;
         }
 
@@ -480,7 +480,8 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         case ControlRegs::CNTTST:
             this->cnt_tst = value & 0xFFF;
             if (value)
-                LOG_F(WARNING, "%s: CNTTST set to 0x%X", this->name.c_str(), value);
+                LOG_F(ERROR, "%s: write CNTTST %03x.%c = %0*x", this->name.c_str(),
+                    offset, SIZE_ARG(size), size * 2, value);
             break;
         case ControlRegs::SWATCH_CTRL:
             value &= 0x7FF;
@@ -560,7 +561,8 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             this->int_enable = value & 0x0F;
             break;
         default:
-            LOG_F(ERROR, "Control: write %03x = %0*x", offset, size * 2, value);
+            LOG_F(ERROR, "%s: write %s %03x.%c = %0*x", this->name.c_str(),
+                get_name_controlreg(offset), offset, SIZE_ARG(size), size * 2, value);
         }
     }
 }
@@ -674,11 +676,11 @@ void ControlVideo::enable_display()
 
         this->blank_on = false;
 
-        LOG_F(CONTROL, "Control: display enabled");
+        LOG_F(CONTROL, "%s: display enabled", this->name.c_str());
         this->crtc_on = true;
     }
     else {
-        LOG_F(CONTROL, "Control: display not enabled");
+        LOG_F(CONTROL, "%s: display not enabled", this->name.c_str());
         this->blank_on = true;
         this->crtc_on = false;
     }
@@ -687,7 +689,7 @@ void ControlVideo::enable_display()
 void ControlVideo::disable_display()
 {
     this->crtc_on = false;
-    LOG_F(INFO, "Control: display disabled");
+    LOG_F(INFO, "%s: display disabled", this->name.c_str());
 }
 
 // ========================== Device registry stuff ==========================
