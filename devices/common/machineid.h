@@ -76,6 +76,12 @@ private:
     uint8_t id[4];
 };
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_BOARDREGISTERREAD = loguru::Verbosity_9,
+    };
+}
+
 /**
     TNT-style machines and derivatives provide two board registers
     telling whether some particular piece of HW is installed or not.
@@ -92,11 +98,18 @@ public:
     ~BoardRegister() = default;
 
     uint16_t iodev_read(uint32_t address) {
+        if (address == 0) {
+            LOG_F(BOARDREGISTERREAD, "%s: read  0x%02x = %04x", this->name.c_str(), address, this->data);
+        } else {
+            LOG_F(ERROR, "%s: read  0x%02x = %04x", this->name.c_str(), address, this->data);
+        }
         return this->data;
     }
 
     // appears read-only to guest
-    void iodev_write(uint32_t address, uint16_t value) {}
+    void iodev_write(uint32_t address, uint16_t value) {
+        LOG_F(ERROR, "%s: write 0x%02x = %04x", this->name.c_str(), address, value);
+    }
 
     void update_bits(const uint16_t val, const uint16_t mask) {
         this->data = (this->data & ~mask) | (val & mask);
