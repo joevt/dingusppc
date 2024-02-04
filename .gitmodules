@@ -5,3 +5,6 @@
 	path = thirdparty/capstone
 	url = https://github.com/maximumspatium/capstone.git
 	branch = next
+[submodule "thirdparty/risu"]
+	path = thirdparty/risu
+	url = https://github.com/joevt/risu.git
