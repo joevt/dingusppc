@@ -314,7 +314,13 @@ static void read_test_float_data() {
     }
 }
 
-int main() {
+extern "C" int risu_main(int argc, char **argv);
+
+int main(int argc, char* argv[]) {
+    if (argc > 2 && !strcmp(argv[1], "--risu")) {
+        return risu_main(argc - 1, &argv[1]);
+    }
+
     initialize_ppc_opcode_tables(true); //kludge
 
     cout << "Running DingusPPC emulator tests..." << endl << endl;
