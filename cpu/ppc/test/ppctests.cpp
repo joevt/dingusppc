@@ -36,9 +36,16 @@ using namespace std;
 int ntested; // number of tested instructions
 int nfailed; // number of failed instructions
 
+bool doing_risu = false;
+
+void ppc_exception_handler_risu(Except_Type exception_type, uint32_t srr1_bits);
+
 #if defined(PPC_TESTS)
 void ppc_exception_handler(Except_Type exception_type, uint32_t srr1_bits) {
-    power_on = false;
+    if (doing_risu)
+        ppc_exception_handler_risu(exception_type, srr1_bits);
+    else
+        power_on = false;
 }
 #endif
 
@@ -316,7 +323,14 @@ static void read_test_float_data() {
     }
 }
 
-int main() {
+extern "C" int risu_main(int argc, char **argv);
+
+int main(int argc, char* argv[]) {
+    if (argc > 2 && !strcmp(argv[1], "--risu")) {
+        doing_risu = true;
+        return risu_main(argc - 1, &argv[1]);
+    }
+
     is_601 = true;
     initialize_ppc_opcode_table(); //kludge
     // MPC601 sets MSR[ME] bit during hard reset / Power-On.
