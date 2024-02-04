@@ -149,7 +149,25 @@ if (APPLE)
     list(APPEND SOURCES ${APPLE_SOURCES})
 endif()
 
-file(GLOB TEST_SOURCES "${PROJECT_SOURCE_DIR}/cpu/ppc/test/*.cpp")
+file(GLOB TEST_SOURCES "${PROJECT_SOURCE_DIR}/cpu/ppc/test/*.cpp"
+                       "${PROJECT_SOURCE_DIR}/cpu/ppc/*.cpp"
+                       "${PROJECT_SOURCE_DIR}/cpu/ppc/test/*.h"
+                       "${PROJECT_SOURCE_DIR}/cpu/ppc/*.h"
+                       "${PROJECT_SOURCE_DIR}/cpu/ppc/test/risu-dppc/config.h"
+
+                       "${PROJECT_SOURCE_DIR}/cpu/ppc/test/risu-dppc/risu_reginfo_dppc.h"
+                       "${PROJECT_SOURCE_DIR}/thirdparty/risu/risu_reginfo_ppc64.h"
+
+                       "${PROJECT_SOURCE_DIR}/cpu/ppc/test/risu-dppc/risu_reginfo_dppc.cpp"
+                       # "${PROJECT_SOURCE_DIR}/thirdparty/risu/risu_reginfo_ppc64.c"
+
+                       "${PROJECT_SOURCE_DIR}/cpu/ppc/test/risu-dppc/risu_dppc.cpp"
+                       # "${PROJECT_SOURCE_DIR}/thirdparty/risu/risu_ppc64.c"
+
+                       "${PROJECT_SOURCE_DIR}/thirdparty/risu/risu.h"
+                       "${PROJECT_SOURCE_DIR}/thirdparty/risu/risu.c"
+                       "${PROJECT_SOURCE_DIR}/thirdparty/risu/comms.c"
+                       )
 
 if (APPLE)
 add_executable(dingusppc MACOSX_BUNDLE ${SOURCES} 
@@ -243,8 +261,10 @@ if (DPPC_68K_DEBUGGER)
 endif()
 
 if (DPPC_BUILD_PPC_TESTS)
+    add_compile_options("-DPPC_TESTS")
+    include_directories("${PROJECT_SOURCE_DIR}/cpu/ppc/test/risu-dppc")
     add_executable(testppc ${TEST_SOURCES} $<TARGET_OBJECTS:core>
-                                           $<TARGET_OBJECTS:cpu_ppc>
+                                           # $<TARGET_OBJECTS:cpu_ppc>
                                            $<TARGET_OBJECTS:debugger>
                                            $<TARGET_OBJECTS:devices>
                                            $<TARGET_OBJECTS:machines>
