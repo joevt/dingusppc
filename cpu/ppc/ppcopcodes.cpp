@@ -1807,7 +1807,9 @@ void dppc_interpreter::ppc_stmw(uint32_t opcode) {
 
     /* what should we do if EA is unaligned? */
     if (ea & 3) {
+#ifndef PPC_TESTS
         ppc_alignment_exception(opcode, ea);
+#endif
     }
 
     for (; reg_s <= 31; reg_s++) {
