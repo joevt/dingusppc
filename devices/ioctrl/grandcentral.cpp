@@ -290,6 +290,12 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
         case MIO_GC_DMA_FLOPPY:
             value = this->floppy_dma->reg_read(offset & 0xFF, size);
             break;
+        case MIO_GC_DMA_ETH_XMIT:
+            LOG_F(WARNING, "%s: Unsupported DMA channel DMA_ETH_XMIT read  @%02x.%c", this->name.c_str(), offset & 0xFF, SIZE_ARG(size));
+            return 0;
+        case MIO_GC_DMA_ETH_RCV:
+            LOG_F(WARNING, "%s: Unsupported DMA channel DMA_ETH_RCV read  @%02x.%c", this->name.c_str(), offset & 0xFF, SIZE_ARG(size));
+            return 0;
         case MIO_GC_DMA_ESCC_A_XMIT:
             value = this->escc_a_tx_dma->reg_read(offset & 0xFF, size);
             break;
@@ -427,6 +433,12 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             break;
         case MIO_GC_DMA_FLOPPY:
             this->floppy_dma->reg_write(offset & 0xFF, value, size);
+            break;
+        case MIO_GC_DMA_ETH_XMIT:
+            LOG_F(WARNING, "%s: Unsupported DMA channel DMA_ETH_XMIT write @%02x.%c = %0*x", this->name.c_str(), offset & 0xFF, SIZE_ARG(size), size * 2, value);
+            break;
+        case MIO_GC_DMA_ETH_RCV:
+            LOG_F(WARNING, "%s: Unsupported DMA channel DMA_ETH_RCV write @%02x.%c = %0*x", this->name.c_str(), offset & 0xFF, SIZE_ARG(size), size * 2, value);
             break;
         case MIO_GC_DMA_ESCC_A_XMIT:
             this->escc_a_tx_dma->reg_write(offset & 0xFF, value, size);
