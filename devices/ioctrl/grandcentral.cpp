@@ -101,7 +101,6 @@ GrandCentral::GrandCentral() : PCIDevice("mac-io_grandcentral"), InterruptCtrl()
     // connect MESH (internal SCSI)
     this->mesh = dynamic_cast<MeshBase*>(gMachineObj->get_comp_by_name_optional("MeshTnt"));
     if (this->mesh == nullptr) {
-        LOG_F(WARNING, "%s: Mesh not found, using MeshStub instead", this->name.c_str());
         this->mesh_stub = std::unique_ptr<MeshStub>(new MeshStub());
         this->mesh = dynamic_cast<MeshBase*>(this->mesh_stub.get());
     } else {
