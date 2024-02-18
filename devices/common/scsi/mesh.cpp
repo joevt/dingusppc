@@ -32,6 +32,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 
+uint8_t MeshStub::read(uint8_t reg_offset) {
+    LOG_F(WARNING, "%s: read  @%02x.b", this->name.c_str(), reg_offset);
+    return 0;
+}
+
+void MeshStub::write(uint8_t reg_offset, uint8_t value) {
+    LOG_F(WARNING, "%s: write @%02x.b = %02x", this->name.c_str(), reg_offset, value);
+}
+
 using namespace MeshScsi;
 
 int MeshController::device_postinit() {
@@ -93,7 +102,7 @@ uint8_t MeshController::read(uint8_t reg_offset) {
     case MeshReg::MeshID:
         return this->chip_id; // tell them who we are
     default:
-        LOG_F(WARNING, "MESH: read from unimplemented register at offset 0x%x", reg_offset);
+        LOG_F(WARNING, "%s: read  @%02x.b", this->name.c_str(), reg_offset);
     }
 
     return 0;
@@ -141,8 +150,7 @@ void MeshController::write(uint8_t reg_offset, uint8_t value) {
         LOG_F(9, "MESH: selection timeout set to 0x%x", value);
         break;
     default:
-        LOG_F(WARNING, "MESH: write to unimplemented register at offset 0x%x",
-              reg_offset);
+        LOG_F(WARNING, "%s: write @%02x.b = %02x", this->name.c_str(), reg_offset, value);
     }
 }
 
