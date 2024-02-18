@@ -101,14 +101,14 @@ public:
     virtual void    write(uint8_t reg_offset, uint8_t value) = 0;
 };
 
-class MeshStub : public MeshBase {
+class MeshStub : public HWComponent, public MeshBase {
 public:
-    MeshStub()  = default;
+    MeshStub() { set_name("MeshStub"); }
     ~MeshStub() = default;
 
     // registers access
-    uint8_t read(uint8_t reg_offset) override { return 0; }
-    void   write(uint8_t reg_offset, uint8_t value) override {}
+    uint8_t read(uint8_t reg_offset);
+    void   write(uint8_t reg_offset, uint8_t value);
 };
 
 class MeshController : public ScsiBusController, public MeshBase {
