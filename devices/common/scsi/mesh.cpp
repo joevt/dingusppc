@@ -31,6 +31,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 
+uint8_t MeshStub::read(uint8_t reg_offset) {
+    LOG_F(WARNING, "%s: read  @%x", this->name.c_str(), reg_offset);
+    return 0;
+}
+
+void MeshStub::write(uint8_t reg_offset, uint8_t value) {
+    LOG_F(WARNING, "%s: write @%x = %02x", this->name.c_str(), reg_offset, value);
+}
+
 using namespace MeshScsi;
 
 int MeshController::device_postinit() {

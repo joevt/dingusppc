@@ -111,12 +111,12 @@ enum SeqState : uint32_t {
 
 class MeshStub : public HWComponent {
 public:
-    MeshStub()  = default;
+    MeshStub() { set_name("MeshStub"); };
     ~MeshStub() = default;
 
     // registers access
-    uint8_t read(uint8_t reg_offset) { return 0; };
-    void   write(uint8_t reg_offset, uint8_t value) {};
+    uint8_t read(uint8_t reg_offset);
+    void   write(uint8_t reg_offset, uint8_t value);
 };
 
 class MeshController : public HWComponent {
