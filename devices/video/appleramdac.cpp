@@ -60,8 +60,7 @@ uint16_t AppleRamdac::iodev_read(uint32_t address) {
             LOG_F(RAMDAC_EXTRA, "%s: read  VENDOR_ID = 0x%02x", this->name.c_str(), result);
             break;
         default:
-            LOG_F(WARNING, "%s: read from unsupported multi-register at 0x%X",
-                  this->name.c_str(), this->dac_addr);
+            LOG_F(WARNING, "%s: read  MULTI 0x%02x", this->name.c_str(), this->dac_addr);
             result = 0;
         }
         break;
@@ -78,8 +77,7 @@ uint16_t AppleRamdac::iodev_read(uint32_t address) {
         }
         break;
     default:
-        LOG_F(WARNING, "%s: read from unsupported register at 0x%X",
-              this->name.c_str(), address);
+        LOG_F(WARNING, "%s: read  0x%02x", this->name.c_str(), address);
         result = 0;
     }
     return result;
@@ -184,8 +182,7 @@ void AppleRamdac::iodev_write(uint32_t address, uint16_t value) {
             LOG_F(ERROR, "%s: write DAC_29 = 0x%02x", this->name.c_str(), value);
             break;
         default:
-            LOG_F(WARNING, "%s: write to unsupported multi-register at 0x%X",
-                  this->name.c_str(), this->dac_addr);
+            LOG_F(ERROR, "%s: write MULTI 0x%02x = 0x%02x", this->name.c_str(), this->dac_addr, value);
         }
         break;
     case RamdacRegs::CLUT_DATA:
@@ -201,8 +198,7 @@ void AppleRamdac::iodev_write(uint32_t address, uint16_t value) {
         }
         break;
     default:
-        LOG_F(WARNING, "%s: write to unsupported register at 0x%X",
-              this->name.c_str(), address);
+        LOG_F(ERROR, "%s: write 0x%02x = 0x%02x", this->name.c_str(), address, value);
     }
 }
 
