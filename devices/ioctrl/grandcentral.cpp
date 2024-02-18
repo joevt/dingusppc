@@ -504,6 +504,7 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         switch (offset) {
         case MIO_INT_MASK1:
             this->int_mask = BYTESWAP_32(value);
+            LOG_F(INTERRUPT, "%s: write int_mask.%c = 0x%08x", name.c_str(), SIZE_ARG(size), this->int_mask);
             this->signal_cpu_int(this->int_events & this->int_mask);
             break;
         case MIO_INT_CLEAR1:
