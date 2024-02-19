@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/timermanager.h>
 #include <devices/deviceregistry.h>
 #include <devices/ioctrl/macio.h>
+#include <devices/common/pci/pcibase.h>
 #include <devices/memctrl/platinum.h>
 #include <devices/video/displayid.h>
 #include <loguru.hpp>
@@ -224,9 +225,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
             this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     default:
-        LOG_F(WARNING, "%s: unknown register read at offset 0x%X", this->name.c_str(),
-              offset);
         value = 0;
+        LOG_F(WARNING, "%s: read  %03x.%c = zero",
+            this->name.c_str(), offset, SIZE_ARG(size));
     }
 
     if (size == 4 && !(offset & 3))
@@ -423,8 +424,7 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             LOG_F(INFO, "%s: power down mode enabled", this->name.c_str());
         break;
     default:
-        LOG_F(WARNING, "%s: unknown register write at offset 0x%X", this->name.c_str(),
-              offset);
+        LOG_F(ERROR, "%s: write %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
     }
 
     if ((offset & 3) || (size != 4)) {
