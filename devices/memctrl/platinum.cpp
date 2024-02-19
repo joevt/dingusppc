@@ -256,14 +256,17 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         LOG_F(PLATINUM, "%s: write FB_BASE_ADDR %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->fb_addr   = value;
         this->fb_offset = value & 0x3FFFFF;
+        this->change_display();
         break;
     case PlatinumReg::ROW_WORDS:
         LOG_F(PLATINUM, "%s: write ROW_WORDS %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->row_words = value & ~7;
+        this->change_display();
         break;
     case PlatinumReg::CLOCK_DIVISOR:
         LOG_F(PLATINUM, "%s: write CLOCK_DIVISOR %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->clock_divisor = value;
+        this->change_display();
         break;
     case PlatinumReg::FB_CONFIG_1:
         LOG_F(PLATINUM, "%s: write FB_CONFIG_1 %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
@@ -304,6 +307,17 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             this->reset_step = 0;
         this->fb_reset = value;
         this->half_access = !!(this->half_bank && value == 6);
+
+        if (this->fb_reset == 7) {
+            this->disable_display();
+        }
+        else if (this->fb_reset == 0) {
+            this->change_display();
+        }
+        else {
+            LOG_F(ERROR, "%s: display reset written with 0x%X", this->name.c_str(), value);
+        }
+
         break;
     case PlatinumReg::VRAM_REFRESH:
         LOG_F(PLATINUM, "%s: write VRAM_REFRESH %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
@@ -350,6 +364,7 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
     case PlatinumReg::SWATCH_VFPEQ:
         LOG_F(PLATINUM, "%s: write SWATCH_%d %03x.%c = %0*x", this->name.c_str(), REG_TO_INDEX(offset >> 4), offset, SIZE_ARG(size), size * 2, value);
         this->swatch_params[REG_TO_INDEX(offset >> 4)] = value;
+        this->change_display();
         break;
     case PlatinumReg::TIMING_ADJUST:
         this->timing_adjust = value;
@@ -418,6 +433,10 @@ void PlatinumCtrl::map_phys_ram() {
 
 // ====================== Framebuffer controller stuff =======================
 void PlatinumCtrl::enable_display() {
+    bool did_size_change = false;
+    bool did_refresh_rate_change = false;
+    bool did_depth_change = false;
+    
     int clock_divisor = this->dacula->get_clock_div();
 
     this->pixel_clock = this->dacula->get_dot_freq();
@@ -444,6 +463,8 @@ void PlatinumCtrl::enable_display() {
         this->vert_blank >>= 1;
     }
 
+    if (new_width != this->active_width || new_height != this->active_height)
+        did_size_change = true;
     this->active_width  = new_width;
     this->active_height = new_height;
 
@@ -454,7 +475,10 @@ void PlatinumCtrl::enable_display() {
     this->fb_ptr   = &this->vram_ptr[this->fb_offset] + 16;
     this->fb_pitch = this->row_words;
 
-    this->pixel_depth = this->dacula->get_pix_width();
+    int new_pixel_depth = this->dacula->get_pix_width();
+    if (new_pixel_depth != this->pixel_depth)
+        did_depth_change = true;
+    this->pixel_depth = new_pixel_depth;
 
     // attach framebuffer conversion routine
     switch (this->pixel_depth) {
@@ -489,21 +513,36 @@ void PlatinumCtrl::enable_display() {
         return;
     }
 
-    this->refresh_rate = (double)(this->pixel_clock) / (this->hori_total * this->vert_total);
+    float new_refresh_rate = (double)(this->pixel_clock) / (this->hori_total * this->vert_total);
+    if (new_refresh_rate != this->refresh_rate)
+        did_refresh_rate_change = true;
+    this->refresh_rate = new_refresh_rate;
+    
     this->start_refresh_task();
 
-    LOG_F(INFO, "%s: video width=%d, height=%d", this->name.c_str(), new_width, new_height);
-    LOG_F(INFO, "%s: refresh rate set to %f Hz", this->name.c_str(), this->refresh_rate);
+    if (did_size_change)
+        LOG_F(INFO, "%s: video width=%d, height=%d", this->name.c_str(), new_width, new_height);
+    if (did_depth_change)
+        LOG_F(INFO, "%s: video depth=%d", this->name.c_str(), new_pixel_depth);
+    if (did_refresh_rate_change)
+        LOG_F(INFO, "%s: refresh rate set to %f Hz", this->name.c_str(), this->refresh_rate);
+    if (this->blank_on == true || this->crtc_on == false)
+        LOG_F(PLATINUM, "%s: display enabled", this->name.c_str());
 
     this->blank_on = false;
     this->crtc_on = true;
-    LOG_F(PLATINUM, "%s: display enabled", this->name.c_str());
 }
 
 void PlatinumCtrl::disable_display() {
     this->crtc_on = false;
     this->blank_display();
     LOG_F(PLATINUM, "%s: display disabled", this->name.c_str());
+}
+
+void PlatinumCtrl::change_display() {
+    if (this->fb_reset == 0) {
+        this->enable_display();
+    }
 }
 
 void PlatinumCtrl::enable_cursor_int() {
