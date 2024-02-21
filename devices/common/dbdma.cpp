@@ -61,6 +61,7 @@ DMACmd* DMAChannel::fetch_cmd(uint32_t cmd_addr, DMACmd* p_cmd, bool *is_writabl
     DMACmd* cmd_host = (DMACmd*)res.host_va;
     p_cmd->req_count = READ_WORD_LE_A(&cmd_host->req_count);
     p_cmd->cmd_bits  = cmd_host->cmd_bits;
+    // FIXME: read here by audio thread DMAChannel::pull_data; written by CPU thread stw instruction.
     p_cmd->cmd_key   = cmd_host->cmd_key;
     p_cmd->address   = READ_DWORD_LE_A(&cmd_host->address);
     p_cmd->cmd_arg   = READ_DWORD_LE_A(&cmd_host->cmd_arg);
@@ -102,8 +103,8 @@ uint8_t DMAChannel::interpret_cmd() {
             res = mmu_map_dma_mem(cmd_struct.address, cmd_struct.req_count, false);
             this->queue_data = res.host_va;
             this->res_count  = 0;
-            LOG_F(DBDMA, "%s: Will transfer %d bytes %s 0x%08x (host:0x%llx)", this->get_name().c_str(), this->queue_len,
-                this->cur_cmd > DBDMA_Cmd::OUTPUT_LAST ? "to" : "from", cmd_struct.address, (uint64_t)(this->queue_data));
+            LOG_F(DBDMA, "%s: Will transfer %d bytes %s 0x%08x (host:0x%llx)", this->get_name().c_str(), this->queue_len + 0,
+                this->cur_cmd > DBDMA_Cmd::OUTPUT_LAST ? "to" : "from", cmd_struct.address, (uint64_t)(this->queue_data + 0));
             this->cmd_in_progress = true;
             switch (this->cur_cmd) {
             case DBDMA_Cmd::OUTPUT_MORE:
@@ -147,7 +148,7 @@ uint8_t DMAChannel::interpret_cmd() {
         break;
     default:
         LOG_F(ERROR, "%s: Unsupported DMA command 0x%X", this->get_name().c_str(),
-            this->cur_cmd);
+            this->cur_cmd + 0);
         this->ch_stat |= CH_STAT_DEAD;
         this->ch_stat &= ~CH_STAT_ACTIVE;
     }
@@ -163,6 +164,7 @@ void DMAChannel::finish_cmd() {
     uint8_t *cmd_desc = res.host_va;
 
     // get command code
+    // FIXME: read here by audio thread DMA_Channel::pull_data .. interpret_cmd; written by CPU thread stw instruction
     this->cur_cmd = cmd_desc[3] >> 4;
 
     // all commands except STOP update cmd.xferStatus and
@@ -252,7 +254,7 @@ void DMAChannel::xfer_quad(const DMACmd *cmd_desc, DMACmd *cmd_host) {
         if (res.type & RT_MMIO) {
             res.dev_obj->write(res.dev_base, addr - res.dev_base, cmd_desc->cmd_arg, xfer_size);
         } else if (res.is_writable) {
-            switch (xfer_size) {
+            switch (xfer_size) { // FIXME: audio thread writing to host_va here and reading by CPU lwz in main thread
                 case 1: *res.host_va = cmd_desc->cmd_arg; break;
                 case 2: WRITE_WORD_LE_A(res.host_va, cmd_desc->cmd_arg); break;
                 case 4: WRITE_DWORD_LE_A(res.host_va, cmd_desc->cmd_arg); break;
@@ -540,13 +542,13 @@ DmaPullResult DMAChannel::pull_data(uint32_t req_len, uint32_t *avail_len, uint8
             this->queue_data += req_len;
         } else { // return less data than req_len
             LOG_F(DBDMA, "%s: Return queue_len = %d data", this->get_name().c_str(),
-                this->queue_len);
+                this->queue_len + 0);
             *avail_len      = this->queue_len;
             this->res_count += this->queue_len;
             this->queue_len = 0;
         }
         LOG_F(DBDMA, "%s: Will pull_data from 0x%llx : %s", this->get_name().c_str(),
-            (uint64_t)this->queue_data, hex_string(this->queue_data, *avail_len).c_str());
+            (uint64_t)(this->queue_data + 0), hex_string(this->queue_data + 0, *avail_len).c_str());
         return DmaPullResult::MoreData; // tell the caller there is more data
     }
 
