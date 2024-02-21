@@ -33,6 +33,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 #include <functional>
+#include <atomic>
 
 class InterruptCtrl;
 
@@ -155,17 +156,17 @@ private:
     std::function<void(void)> out_cb   = nullptr; // DMA channel out callback
     std::function<void(void)> flush_cb = nullptr; // DMA channel flush callback
 
-    uint16_t ch_stat        = 0;
+    std::atomic<uint16_t> ch_stat = 0;
     uint32_t cmd_ptr        = 0;
-    uint32_t queue_len      = 0;
-    uint8_t* queue_data     = 0;
-    uint32_t res_count      = 0;
+    std::atomic<uint32_t> queue_len      = 0;
+    std::atomic<uint8_t*> queue_data     = 0;
+    std::atomic<uint32_t> res_count      = 0;
     uint32_t int_select     = 0;
     uint32_t branch_select  = 0;
     uint32_t wait_select    = 0;
 
-    bool     cmd_in_progress = false;
-    uint8_t  cur_cmd;
+    std::atomic<bool>     cmd_in_progress = false;
+    std::atomic<uint8_t>  cur_cmd;
 
     // Interrupt related stuff
     InterruptCtrl* int_ctrl = nullptr;
