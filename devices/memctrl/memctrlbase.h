@@ -79,6 +79,7 @@ public:
     virtual AddressMapEntry* remove_region(AddressMapEntry* entry);
 
     virtual AddressMapEntry* set_data(uint32_t reg_addr, const uint8_t* data, uint32_t size);
+    virtual void delete_address_map_entry(AddressMapEntry* entry);
 
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
     virtual bool needs_swap_endian(bool is_mmio);
