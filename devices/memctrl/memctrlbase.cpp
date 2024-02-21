@@ -177,8 +177,8 @@ bool MemCtrlBase::is_range_free(uint32_t addr, uint32_t size) {
 
 
 AddressMapEntry* MemCtrlBase::add_mem_region(uint32_t start_addr, uint32_t size,
-                                 uint32_t dest_addr, uint32_t type,
-                                 uint8_t init_val = 0)
+                                             uint32_t dest_addr, uint32_t type,
+                                             uint8_t* reg_content = nullptr)
 {
     AddressMapEntry *entry;
 
@@ -186,9 +186,10 @@ AddressMapEntry* MemCtrlBase::add_mem_region(uint32_t start_addr, uint32_t size,
     if (!is_range_free(start_addr, size))
         return nullptr;
 
-    uint8_t* reg_content = new uint8_t[size](); // allocate and clear to zero
-
-    this->mem_regions.push_back(reg_content);
+    if (!reg_content) {
+        reg_content = new uint8_t[size](); // allocate and clear to zero
+        this->mem_regions.push_back(reg_content);
+    }
 
     entry = new AddressMapEntry;
 
@@ -226,6 +227,11 @@ AddressMapEntry* MemCtrlBase::add_rom_region(uint32_t start_addr, uint32_t size)
 
 AddressMapEntry* MemCtrlBase::add_ram_region(uint32_t start_addr, uint32_t size) {
     return add_mem_region(start_addr, size, 0, RT_RAM);
+}
+
+
+AddressMapEntry* MemCtrlBase::add_ram_region(uint32_t start_addr, uint32_t size, uint8_t* reg_content) {
+    return add_mem_region(start_addr, size, 0, RT_RAM, reg_content);
 }
 
 
