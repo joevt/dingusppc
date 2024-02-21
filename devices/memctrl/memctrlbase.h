@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -79,6 +79,7 @@ public:
     virtual AddressMapEntry* remove_region(AddressMapEntry* entry);
 
     virtual AddressMapEntry* set_data(uint32_t reg_addr, const uint8_t* data, uint32_t size);
+    virtual void delete_address_map_entry(AddressMapEntry* entry);
 
     AddressMapEntry* find_range(uint32_t addr);
     AddressMapEntry* find_range_exact(uint32_t addr, uint32_t size,
