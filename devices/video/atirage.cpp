@@ -521,6 +521,29 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         }
         break;
     }
+    case ATI_BUS_CNTL:
+    {
+        uint32_t bits_read_only =
+#if 1
+#else
+            (1 << ATI_LAT16X) |
+            (1 << ATI_MINOR_REV_ID) |
+#endif
+            0;
+            ;
+
+        uint32_t bits_write_only =
+#if 1
+#else
+            (1 << ATI_BUS_MSTR_RESET) |
+            (1 << ATI_BUS_FLUSH_BUF) |
+#endif
+            0;
+
+        new_value = value & ~bits_write_only; // clear the write only bits
+        new_value = (old_value & bits_read_only) | (new_value & ~bits_read_only);
+        break;
+    }
     case ATI_DAC_REGS:
         new_value = old_value; // no change
         switch (reg_offset) {
