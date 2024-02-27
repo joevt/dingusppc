@@ -31,6 +31,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <map>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_ATIRAGE = loguru::Verbosity_9,
+    };
+}
+
 /* Mach64 post dividers. */
 static const int mach64_post_div[8] = {
     1, 2, 4, 8, // standard post dividers
@@ -300,6 +306,9 @@ uint32_t ATIRage::read_reg(uint32_t reg_offset, uint32_t size) {
         result = extract_bits<uint64_t>(result, offset * 8, size * 8);
     }
 
+    if (reg_num != ATI_CRTC_INT_CNTL)
+        LOG_F(ATIRAGE, "%s: read  %s %04x.%c = %0*x", this->name.c_str(),
+            get_reg_name(reg_num), reg_offset, SIZE_ARG(size), size * 2, (uint32_t)result);
     return static_cast<uint32_t>(result);
 }
 
@@ -340,7 +349,7 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         break;
     case ATI_CRTC_OFF_PITCH:
         new_value = value;
-        WRITE_VALUE_AND_LOG(9);
+        WRITE_VALUE_AND_LOG(ATIRAGE);
         this->crtc_update();
         return;
     case ATI_CRTC_INT_CNTL: {
@@ -619,7 +628,7 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         break;
     }
 
-    WRITE_VALUE_AND_LOG(9);
+    WRITE_VALUE_AND_LOG(ATIRAGE);
 }
 
 bool ATIRage::io_access_allowed(uint32_t offset) {
