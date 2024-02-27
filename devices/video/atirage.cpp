@@ -34,6 +34,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 namespace loguru {
     enum : Verbosity {
         Verbosity_ATIRAGE = loguru::Verbosity_9,
+        Verbosity_ATIINTERRUPT = loguru::Verbosity_9,
     };
 }
 
@@ -1022,6 +1023,9 @@ int ATIRage::device_postinit()
             bit_set(this->regs[ATI_CRTC_GEN_CNTL], ATI_CRTC_VSYNC_INT_EN) ||
 #endif
             0;
+
+        LOG_F(ATIINTERRUPT, "%s: irq_line_state:%d do_interrupt:%d CRTC_INT_CNTL:%08x",
+            this->name.c_str(), irq_line_state, do_interrupt, this->regs[ATI_CRTC_INT_CNTL]);
 
         if (do_interrupt) {
             this->pci_interrupt(irq_line_state);
