@@ -32,6 +32,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <fstream>
 #include <string>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_READWRITE = loguru::Verbosity_9
+    };
+}
+
 using namespace ata_interface;
 
 AtaHardDisk::AtaHardDisk(std::string name) : AtaBaseDevice(name, DEVICE_TYPE_ATA) {
@@ -94,6 +100,7 @@ int AtaHardDisk::perform_command() {
             uint16_t sec_count = this->r_sect_count ? this->r_sect_count : 256;
             int      xfer_size = sec_count * ATA_HD_SEC_SIZE;
             uint64_t offset    = this->get_lba() * ATA_HD_SEC_SIZE;
+            LOG_F(READWRITE, "%s %lld %d", this->r_command == READ_SECTOR ? "READ_SECTOR" : "READ_SECTOR_NR", (long long)offset, xfer_size);
             hdd_img.read(buffer, offset, xfer_size);
             this->data_ptr = (uint16_t *)this->buffer;
             // those commands should generate IRQ for each sector
@@ -109,6 +116,7 @@ int AtaHardDisk::perform_command() {
             this->cur_data_ptr = this->data_ptr;
             this->prepare_xfer(sec_count * ATA_HD_SEC_SIZE, ATA_HD_SEC_SIZE);
             this->post_xfer_action = [this]() {
+                LOG_F(READWRITE, "%s %lld %d", this->r_command == WRITE_SECTOR ? "WRITE_SECTOR" : "WRITE_SECTOR_NR", (long long)this->cur_fpos, this->chunk_size);
                 this->hdd_img.write(this->data_ptr, this->cur_fpos, this->chunk_size);
                 this->cur_fpos += this->chunk_size;
             };
