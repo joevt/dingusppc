@@ -154,9 +154,11 @@ uint32_t HeathrowIC::dma_read(uint32_t offset, int size) {
     case MIO_OHARE_DMA_FLOPPY:
         return this->floppy_dma->reg_read(offset & 0xFF, size);
     case MIO_OHARE_DMA_ETH_XMIT:
-        return this->enet_xmit_dma->reg_read(offset & 0xFF, size);
+        //return this->enet_xmit_dma->reg_read(offset & 0xFF, size);
+        return 0;
     case MIO_OHARE_DMA_ETH_RCV:
-        return this->enet_rcv_dma->reg_read(offset & 0xFF, size);
+        //return this->enet_rcv_dma->reg_read(offset & 0xFF, size);
+        return 0;
     case MIO_OHARE_DMA_AUDIO_OUT:
         return this->snd_out_dma->reg_read(offset & 0xFF, size);
     default:
@@ -180,10 +182,10 @@ void HeathrowIC::dma_write(uint32_t offset, uint32_t value, int size) {
         this->floppy_dma->reg_write(offset & 0xFF, value, size);
         break;
     case MIO_OHARE_DMA_ETH_XMIT:
-        this->enet_xmit_dma->reg_write(offset & 0xFF, value, size);
+        //this->enet_xmit_dma->reg_write(offset & 0xFF, value, size);
         break;
     case MIO_OHARE_DMA_ETH_RCV:
-        this->enet_rcv_dma->reg_write(offset & 0xFF, value, size);
+        //this->enet_rcv_dma->reg_write(offset & 0xFF, value, size);
         break;
     case MIO_OHARE_DMA_AUDIO_OUT:
         this->snd_out_dma->reg_write(offset & 0xFF, value, size);
