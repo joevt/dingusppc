@@ -221,9 +221,11 @@ uint32_t MacIoTwo::dma_read(uint32_t offset, int size) {
     case MIO_OHARE_DMA_FLOPPY:
         return this->floppy_dma->reg_read(offset & 0xFF, size);
     case MIO_OHARE_DMA_ETH_XMIT:
-        return this->enet_xmit_dma ? this->enet_xmit_dma->reg_read(offset & 0xFF, size) : 0;
+        //return this->enet_xmit_dma ? this->enet_xmit_dma->reg_read(offset & 0xFF, size) : 0;
+        return 0;
     case MIO_OHARE_DMA_ETH_RCV:
-        return this->enet_rcv_dma ? this->enet_rcv_dma->reg_read(offset & 0xFF, size) : 0;
+        //return this->enet_rcv_dma ? this->enet_rcv_dma->reg_read(offset & 0xFF, size) : 0;
+        return 0;
     case MIO_OHARE_DMA_ESCC_B_RCV:
         return 0;
         //return this->escc_b_rx_dma->reg_read(offset & 0xFF, size);
@@ -255,12 +257,12 @@ void MacIoTwo::dma_write(uint32_t offset, uint32_t value, int size) {
         this->floppy_dma->reg_write(offset & 0xFF, value, size);
         break;
     case MIO_OHARE_DMA_ETH_XMIT:
-        if (this->enet_xmit_dma)
-            this->enet_xmit_dma->reg_write(offset & 0xFF, value, size);
+        //if (this->enet_xmit_dma)
+        //    this->enet_xmit_dma->reg_write(offset & 0xFF, value, size);
         break;
     case MIO_OHARE_DMA_ETH_RCV:
-        if (this->enet_rcv_dma)
-            this->enet_rcv_dma->reg_write(offset & 0xFF, value, size);
+        //if (this->enet_rcv_dma)
+        //    this->enet_rcv_dma->reg_write(offset & 0xFF, value, size);
         break;
     case MIO_OHARE_DMA_ESCC_B_RCV:
         this->escc_b_rx_dma->reg_write(offset & 0xFF, value, size);
