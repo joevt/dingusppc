@@ -24,7 +24,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/timermanager.h>
 #include <devices/deviceregistry.h>
 #include <devices/ioctrl/macio.h>
-#include <devices/common/pci/pcibase.h>
 #include <devices/memctrl/platinum.h>
 #include <devices/video/displayid.h>
 #include <loguru.hpp>
