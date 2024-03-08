@@ -221,7 +221,7 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
     case SCC_DMA_Xmt_B_Ctrl:
         return this->escc_xmit_b_dma->read_stat();
     default:
-        LOG_F(WARNING, "Unknown AMIC register read, offset=%x", offset);
+        LOG_F(WARNING, "Unknown AMIC register read  @%x.%c", offset, SIZE_ARG(size));
     }
     return 0;
 }
@@ -289,7 +289,8 @@ void AMIC::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
             this->snd_out_ctrl = value;
             return;
         case AMICReg::Snd_In_Ctrl:
-            LOG_F(INFO, "AMIC Sound In Ctrl updated, val=%x", value);
+            LOG_F(INFO, "AMIC Sound In Ctrl write @%x.%c = %0*x",
+                offset, SIZE_ARG(size), size * 2, value);
             return;
         case AMICReg::Snd_Out_DMA:
             this->snd_out_dma->write_dma_out_ctrl(value);
@@ -383,7 +384,8 @@ void AMIC::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
         LOG_F(9, "AMIC: DMA base address set to 0x%X", this->dma_base);
         break;
     case AMICReg::Enet_DMA_Xmt_Ctrl:
-        LOG_F(INFO, "AMIC Ethernet Transmit DMA Ctrl updated, val=%x", value);
+        LOG_F(INFO, "AMIC Ethernet Transmit DMA Ctrl write @%x.%c = %0*x",
+                offset, SIZE_ARG(size), size * 2, value);
         break;
     case AMICReg::SCSI_DMA_Base_0:
     case AMICReg::SCSI_DMA_Base_1:
@@ -408,7 +410,8 @@ void AMIC::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
         this->curio_dma->write_ctrl(value);
         break;
     case AMICReg::Enet_DMA_Rcv_Ctrl:
-        LOG_F(INFO, "AMIC Ethernet Receive DMA Ctrl updated, val=%x", value);
+        LOG_F(INFO, "AMIC Ethernet Receive DMA Ctrl write @%x.%c = %0*x",
+                offset, SIZE_ARG(size), size * 2, value);
         break;
     case AMICReg::Floppy_Addr_Ptr_2:
     case AMICReg::Floppy_Addr_Ptr_3:
@@ -429,22 +432,26 @@ void AMIC::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
         this->floppy_dma->write_ctrl(value);
         break;
     case AMICReg::SCC_DMA_Xmt_A_Ctrl:
-        LOG_F(INFO, "AMIC SCC Transmit Ch A DMA Ctrl updated, val=%x", value);
+        LOG_F(INFO, "AMIC SCC Transmit Ch A DMA Ctrl write @%x.%c = %0*x",
+                offset, SIZE_ARG(size), size * 2, value);
         this->escc_xmit_a_dma->write_ctrl(value);
         break;
     case AMICReg::SCC_DMA_Rcv_A_Ctrl:
-        LOG_F(INFO, "AMIC SCC Receive Ch A DMA Ctrl updated, val=%x", value);
+        LOG_F(INFO, "AMIC SCC Receive Ch A DMA Ctrl write @%x.%c = %0*x",
+                offset, SIZE_ARG(size), size * 2, value);
         break;
     case AMICReg::SCC_DMA_Xmt_B_Ctrl:
-        LOG_F(INFO, "AMIC SCC Transmit Ch B DMA Ctrl updated, val=%x", value);
+        LOG_F(INFO, "AMIC SCC Transmit Ch B DMA Ctrl write @%x.%c = %0*x",
+                offset, SIZE_ARG(size), size * 2, value);
         this->escc_xmit_b_dma->write_ctrl(value);
         break;
     case AMICReg::SCC_DMA_Rcv_B_Ctrl:
-        LOG_F(INFO, "AMIC SCC Receive Ch B DMA Ctrl updated, val=%x", value);
+        LOG_F(INFO, "AMIC SCC Receive Ch B DMA Ctrl write @%x.%c = %0*x",
+                offset, SIZE_ARG(size), size * 2, value);
         break;
     default:
-        LOG_F(WARNING, "Unknown AMIC register write, offset=%x, val=%x",
-                offset, value);
+        LOG_F(WARNING, "Unknown AMIC register write @%x.%c = %0*x",
+                offset, SIZE_ARG(size), size * 2, value);
     }
 }
 
