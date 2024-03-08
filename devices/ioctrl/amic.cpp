@@ -133,6 +133,10 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
         return this->viacuda->read(offset >> 9);
     case 4: // SCC registers
         return this->escc->read(compat_to_macrisc[(offset >> 1) & 0xF]);
+    case 0x8:
+    case 0x9:
+        LOG_F(WARNING, "AMIC Ethernet ID Rom read  @%x.%c", offset, SIZE_ARG(size));
+        return 0;
     case 0xA: // MACE registers
         return this->mace->read((offset >> 4) & 0x1F);
     case 0x10: // SCSI registers
@@ -143,6 +147,15 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
         }
     case 0x14: // Sound registers
         switch (offset) {
+        case Snd_Ctrl_0:
+            LOG_F(WARNING, "AMIC Sound Control 0 read  @%x.%c", offset, SIZE_ARG(size));
+            return 0;
+        case Snd_Ctrl_1:
+            LOG_F(WARNING, "AMIC Sound Control 1 read  @%x.%c", offset, SIZE_ARG(size));
+            return 0;
+        case Snd_Ctrl_2:
+            LOG_F(WARNING, "AMIC Sound Control 2 read  @%x.%c", offset, SIZE_ARG(size));
+            return 0;
         case AMICReg::Snd_Stat_0:
         case AMICReg::Snd_Stat_1:
         case AMICReg::Snd_Stat_2:
@@ -159,6 +172,12 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
             return (phase_val >> ((2 - (offset & 3)) * 8)) & 0xFF;
         case AMICReg::Snd_Out_Ctrl:
             return this->snd_out_ctrl;
+        case AMICReg::Snd_In_Ctrl:
+            LOG_F(INFO, "AMIC Sound In Ctrl read  @%x.%c", offset, SIZE_ARG(size));
+            return 0;
+        case AMICReg::Snd_In_DMA:
+            LOG_F(INFO, "AMIC Sound In DMA read  @%x.%c", offset, SIZE_ARG(size));
+            return 0;
         case AMICReg::Snd_Out_DMA:
             return this->snd_out_dma->read_stat();
         }
@@ -198,6 +217,12 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
     case AMICReg::DMA_Base_Addr_2:
     case AMICReg::DMA_Base_Addr_3:
         return (this->dma_base >> (3 - (offset & 3)) * 8) & 0xFF;
+    case AMICReg::Enet_DMA_Xmt_Ctrl:
+        LOG_F(WARNING, "AMIC Ethernet Transmit DMA Ctrl read  @%x.%c", offset, SIZE_ARG(size));
+        return 0;
+    case AMICReg::Enet_DMA_Rcv_Ctrl:
+        LOG_F(WARNING, "AMIC Ethernet Receive DMA Ctrl read  @%x.%c", offset, SIZE_ARG(size));
+        return 0;
     case AMICReg::SCSI_DMA_Ctrl:
         return this->curio_dma->read_stat();
     case AMICReg::Floppy_Addr_Ptr_0:
@@ -207,8 +232,26 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
         return (this->floppy_addr_ptr >> (3 - (offset & 3)) * 8) & 0xFF;
     case AMICReg::Floppy_DMA_Ctrl:
         return this->floppy_dma->read_stat();
+    case SCC_RXA_Byte_Cnt_Hi:
+        LOG_F(WARNING, "AMIC SCC Receive Ch A Byte Count High read  @%x.%c", offset, SIZE_ARG(size));
+        return 0;
+    case SCC_RXA_Byte_Cnt_Lo:
+        LOG_F(WARNING, "AMIC SCC Receive Ch A Byte Count Low read  @%x.%c", offset, SIZE_ARG(size));
+        return 0;
+    case SCC_DMA_Rcv_A_Ctrl:
+        LOG_F(WARNING, "AMIC SCC Receive Ch A DMA Ctrl read  @%x.%c", offset, SIZE_ARG(size));
+        return 0;
     case SCC_DMA_Xmt_B_Ctrl:
         return this->escc_xmit_b_dma->read_stat();
+    case SCC_RXB_Byte_Cnt_Hi:
+        LOG_F(WARNING, "AMIC SCC Receive Ch B Byte Count High read  @%x.%c", offset, SIZE_ARG(size));
+        return 0;
+    case SCC_RXB_Byte_Cnt_Lo:
+        LOG_F(WARNING, "AMIC SCC Receive Ch B Byte Count Low read  @%x.%c", offset, SIZE_ARG(size));
+        return 0;
+    case SCC_DMA_Rcv_B_Ctrl:
+        LOG_F(WARNING, "AMIC SCC Receive Ch B DMA Ctrl read  @%x.%c", offset, SIZE_ARG(size));
+        return 0;
     default:
         LOG_F(WARNING, "Unknown AMIC register read  @%x.%c", offset, SIZE_ARG(size));
     }
@@ -275,6 +318,10 @@ void AMIC::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
             return;
         case AMICReg::Snd_In_Ctrl:
             LOG_F(INFO, "AMIC Sound In Ctrl write @%x.%c = %0*x",
+                offset, SIZE_ARG(size), size * 2, value);
+            return;
+        case AMICReg::Snd_In_DMA:
+            LOG_F(INFO, "AMIC Sound In DMA write @%x.%c = %0*x",
                 offset, SIZE_ARG(size), size * 2, value);
             return;
         case AMICReg::Snd_Out_DMA:
