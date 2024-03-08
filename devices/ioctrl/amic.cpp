@@ -232,6 +232,8 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
         return (this->floppy_addr_ptr >> (3 - (offset & 3)) * 8) & 0xFF;
     case AMICReg::Floppy_DMA_Ctrl:
         return this->floppy_dma->read_stat();
+    case SCC_DMA_Xmt_A_Ctrl:
+        return this->escc_xmit_a_dma->read_stat();
     case SCC_RXA_Byte_Cnt_Hi:
         LOG_F(WARNING, "AMIC SCC Receive Ch A Byte Count High read  @%x.%c", offset, SIZE_ARG(size));
         return 0;
