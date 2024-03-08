@@ -107,7 +107,10 @@ static void show_help() {
 #endif
     cout << "  printenv     -- print current NVRAM settings." << endl;
     cout << "  setenv V N   -- set NVRAM variable V to value N." << endl;
-    cout << "  quit         -- quit the debugger" << endl << endl;
+    cout << endl;
+    cout << "  restart      -- restart the machine" << endl;
+    cout << "  quit         -- quit the debugger" << endl;
+    cout << endl;
     cout << "Pressing ENTER will repeat last command." << endl;
 }
 
@@ -807,6 +810,10 @@ void enter_debugger() {
         } else if (cmd == "quit") {
             cmd = "";
             break;
+        } else if (cmd == "restart") {
+            cmd = "";
+            power_on = false;
+            power_off_reason = po_restart;
         } else if (cmd == "profile") {
             cmd = "";
             ss >> sub_cmd;
