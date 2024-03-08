@@ -363,6 +363,7 @@ protected:
     void ack_via2_int(uint8_t via2_int, uint8_t irq_line_state);
     void ack_cpu_int(uint8_t cpu_int, uint8_t irq_line_state);
     void update_via2_irq();
+    bool log_rw(uint8_t dir, uint32_t offset, int size, uint32_t value);
 
 private:
     uint8_t imm_snd_regs[4]; // temporary storage for sound control registers
@@ -422,6 +423,13 @@ private:
     std::unique_ptr<DisplayID>          disp_id;
     std::unique_ptr<PdmOnboardVideo>    def_vid;
     uint8_t                             mon_id;
+    
+    // logging
+    uint8_t  last_rw_dir = 0xff;
+    uint8_t  last_rw_siz = 0xff;
+    uint32_t last_rw_adr = 0;
+    uint32_t last_rw_val = 0;
+    int      last_rw_cnt = 0;
 };
 
 #endif // AMIC_H
