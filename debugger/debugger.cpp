@@ -795,6 +795,8 @@ DppcDebugger::DppcDebugger() {
 
 }
 
+static bool in_getline = false;
+
 void DppcDebugger::enter_debugger() {
     string inp, cmd, addr_str, expr_str, reg_expr, last_cmd, reg_value_str,
            inst_string, inst_num_str, profile_name, sub_cmd;
@@ -871,6 +873,7 @@ void DppcDebugger::enter_debugger() {
 
                 cmd = "";
                 std::cin.clear();
+                in_getline = true;
                 getline(cin, inp, '\n');
                 ss.str(inp);
                 ss >> cmd;
@@ -885,15 +888,20 @@ void DppcDebugger::enter_debugger() {
                     }
                 }
     #endif
+                in_getline = false;
                 break;
             }
         }
 
         if (power_off_reason == po_signal_interrupt) {
-            power_off_reason = po_enter_debugger;
-            // ignore command if interrupt happens because the input line is probably incomplete.
-            last_cmd = "";
-            continue;
+            if (in_getline) {
+                power_off_reason = po_enter_debugger;
+                // ignore command if interrupt happens because the input line is probably incomplete.
+                last_cmd = "";
+                continue;
+            }
+            power_on = true;
+            power_off_reason = po_entered_debugger;
         }
 
         if (feof(stdin)) {
