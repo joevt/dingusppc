@@ -125,8 +125,137 @@ int AMIC::device_postinit()
     return 0;
 }
 
+static const char* get_reg_name(uint32_t offset)
+{
+    #define onereg(x) case x: return #x;
+    switch(offset) {
+        onereg(Snd_Ctrl_0)
+        onereg(Snd_Ctrl_1)
+        onereg(Snd_Ctrl_2)
+        onereg(Snd_Stat_0)
+        onereg(Snd_Stat_1)
+        onereg(Snd_Stat_2)
+        onereg(Snd_Buf_Size_Hi)
+        onereg(Snd_Buf_Size_Lo)
+        onereg(Snd_Phase0)
+        onereg(Snd_Phase1)
+        onereg(Snd_Phase2)
+        onereg(Snd_Out_Ctrl)
+        onereg(Snd_In_Ctrl)
+        onereg(Snd_In_DMA)
+        onereg(Snd_Out_DMA)
+        onereg(Ariel_Clut_Index)
+        onereg(Ariel_Clut_Color)
+        onereg(Ariel_Config)
+        onereg(VIA2_Slot_IFR)
+        onereg(VIA2_IFR)
+        onereg(VIA2_Slot_IER)
+        onereg(VIA2_IER)
+        onereg(VIA2_IFR_RBV)
+        onereg(VIA2_IER_RBV)
+        onereg(Video_Mode)
+        onereg(Pixel_Depth)
+        onereg(Monitor_Id)
+        onereg(Int_Ctrl)
+        onereg(DMA_IFR_0)
+        onereg(Bus_Err_Int_0)
+        onereg(DMA_IFR_1)
+        onereg(Bus_Err_Int_1)
+        onereg(Diag_Reg)
+        onereg(DMA_Base_Addr_0)
+        onereg(DMA_Base_Addr_1)
+        onereg(DMA_Base_Addr_2)
+        onereg(DMA_Base_Addr_3)
+        onereg(Enet_DMA_Xmt_Ctrl)
+        onereg(Enet_DMA_Rcv_Ctrl)
+        onereg(SCSI_DMA_Base_0)
+        onereg(SCSI_DMA_Base_1)
+        onereg(SCSI_DMA_Base_2)
+        onereg(SCSI_DMA_Base_3)
+        onereg(SCSI_DMA_Ctrl)
+        onereg(Floppy_Addr_Ptr_0)
+        onereg(Floppy_Addr_Ptr_1)
+        onereg(Floppy_Addr_Ptr_2)
+        onereg(Floppy_Addr_Ptr_3)
+        onereg(Floppy_Byte_Cnt_Hi)
+        onereg(Floppy_Byte_Cnt_Lo)
+        onereg(Floppy_DMA_Ctrl)
+        onereg(SCC_DMA_Xmt_A_Adr_3)
+        onereg(SCC_DMA_Xmt_A_Adr_2)
+        onereg(SCC_DMA_Xmt_A_Adr_1)
+        onereg(SCC_RXA_Xmt_A_Adr_0)
+        onereg(SCC_TXA_Byte_Cnt_Hi)
+        onereg(SCC_TXA_Byte_Cnt_Lo)
+        onereg(SCC_DMA_Xmt_A_Ctrl)
+        onereg(SCC_DMA_Rcv_A_Adr_3)
+        onereg(SCC_DMA_Rcv_A_Adr_2)
+        onereg(SCC_DMA_Rcv_A_Adr_1)
+        onereg(SCC_RXA_Rcv_A_Adr_0)
+        onereg(SCC_RXA_Byte_Cnt_Hi)
+        onereg(SCC_RXA_Byte_Cnt_Lo)
+        onereg(SCC_DMA_Rcv_A_Ctrl)
+        onereg(SCC_DMA_Xmt_B_Adr_3)
+        onereg(SCC_DMA_Xmt_B_Adr_2)
+        onereg(SCC_DMA_Xmt_B_Adr_1)
+        onereg(SCC_RXA_Xmt_B_Adr_0)
+        onereg(SCC_TXB_Byte_Cnt_Hi)
+        onereg(SCC_TXB_Byte_Cnt_Lo)
+        onereg(SCC_DMA_Xmt_B_Ctrl)
+        onereg(SCC_DMA_Rcv_B_Adr_3)
+        onereg(SCC_DMA_Rcv_B_Adr_2)
+        onereg(SCC_DMA_Rcv_B_Adr_1)
+        onereg(SCC_RXA_Rcv_B_Adr_0)
+        onereg(SCC_RXB_Byte_Cnt_Hi)
+        onereg(SCC_RXB_Byte_Cnt_Lo)
+        onereg(SCC_DMA_Rcv_B_Ctrl)
+        default: return "Unknown";
+    }
+    #undef onereg
+}
+
+bool AMIC::log_rw(uint8_t dir, uint32_t offset, int size, uint32_t value)
+{
+    const int dup_threshold = 3;
+    bool new_message =
+        this->last_rw_dir != dir || this->last_rw_adr != offset ||
+        this->last_rw_siz != size || this->last_rw_val != value;
+    if (new_message) {
+        if (this->last_rw_cnt > dup_threshold) {
+            LOG_F(WARNING, "AMIC %s %s @%x.%c = %0*x x %d", get_reg_name(this->last_rw_adr),
+                this->last_rw_dir ? "write" : "read ",
+                this->last_rw_adr, SIZE_ARG(this->last_rw_siz),
+                this->last_rw_siz * 2, this->last_rw_val,
+                this->last_rw_cnt - dup_threshold
+            );
+        }
+        this->last_rw_dir = dir;
+        this->last_rw_siz = size;
+        this->last_rw_adr = offset;
+        this->last_rw_val = value;
+        this->last_rw_cnt = 1;
+    } else {
+        this->last_rw_cnt++;
+        new_message = this->last_rw_cnt <= dup_threshold;
+    }
+    return new_message;
+}
+
+#define LOG_SCC(dir) \
+    new_message = this->log_rw(dir, offset, size, value); \
+    if (new_message) \
+        LOG_F(WARNING, "AMIC %s %s @%x.%c = %0*x", get_reg_name(offset), dir ? "write" : "read ", \
+            offset, SIZE_ARG(size), size * 2, value);
+
+#define LOG_SCC_READ LOG_SCC(0)
+#define LOG_SCC_WRITE LOG_SCC(1)
+
 uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
 {
+    uint32_t value;
+    bool new_message;
+
+    VLOG_SCOPE_F(loguru::Verbosity_9, "AMIC read  %x.%c", offset, SIZE_ARG(size));
+
     // subdevices registers
     switch(offset >> 12) {
     case 0: // VIA1 registers
@@ -152,6 +281,15 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
         }
     case 0x14: // Sound registers
         switch (offset) {
+        case Snd_Ctrl_0:
+            LOG_F(WARNING, "AMIC Sound Control 0 read  @%x.%c", offset, SIZE_ARG(size));
+            return 0;
+        case Snd_Ctrl_1:
+            LOG_F(WARNING, "AMIC Sound Control 1 read  @%x.%c", offset, SIZE_ARG(size));
+            return 0;
+        case Snd_Ctrl_2:
+            LOG_F(WARNING, "AMIC Sound Control 2 read  @%x.%c", offset, SIZE_ARG(size));
+            return 0;
         case AMICReg::Snd_Stat_0:
         case AMICReg::Snd_Stat_1:
         case AMICReg::Snd_Stat_2:
@@ -169,6 +307,12 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
         }
         case AMICReg::Snd_Out_Ctrl:
             return this->snd_out_ctrl;
+        case AMICReg::Snd_In_Ctrl:
+            LOG_F(INFO, "AMIC Sound In Ctrl read  @%x.%c", offset, SIZE_ARG(size));
+            return 0;
+        case AMICReg::Snd_In_DMA:
+            LOG_F(INFO, "AMIC Sound In DMA read  @%x.%c", offset, SIZE_ARG(size));
+            return 0;
         case AMICReg::Snd_Out_DMA:
             return this->snd_out_dma->read_stat();
         }
@@ -208,6 +352,12 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
     case AMICReg::DMA_Base_Addr_2:
     case AMICReg::DMA_Base_Addr_3:
         return (this->dma_base >> (3 - (offset & 3)) * 8) & 0xFF;
+    case AMICReg::Enet_DMA_Xmt_Ctrl:
+        LOG_F(WARNING, "AMIC Ethernet Transmit DMA Ctrl read  @%x.%c", offset, SIZE_ARG(size));
+        return 0;
+    case AMICReg::Enet_DMA_Rcv_Ctrl:
+        LOG_F(WARNING, "AMIC Ethernet Receive DMA Ctrl read  @%x.%c", offset, SIZE_ARG(size));
+        return 0;
     case AMICReg::SCSI_DMA_Ctrl:
         return this->curio_dma->read_stat();
     case AMICReg::Floppy_Addr_Ptr_0:
@@ -218,21 +368,60 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
     case AMICReg::Floppy_DMA_Ctrl:
         return this->floppy_dma->read_stat();
     case SCC_DMA_Xmt_A_Ctrl:
-        return this->escc_xmit_a_dma->read_stat();
+        value = this->escc_xmit_a_dma->read_stat();
+        LOG_SCC_READ
+        return value;
     case SCC_RXA_Byte_Cnt_Hi:
-        return this->escc_rcv_a_dma->get_byte_count_hi();
+        value = this->escc_rcv_a_dma->get_byte_count_hi();
+        LOG_SCC_READ
+        return value;
     case SCC_RXA_Byte_Cnt_Lo:
-        return this->escc_rcv_a_dma->get_byte_count_lo();
+        value = this->escc_rcv_a_dma->get_byte_count_lo();
+        LOG_SCC_READ
+        return value;
     case SCC_DMA_Rcv_A_Ctrl:
-        return this->escc_rcv_a_dma->read_stat();
+        value = this->escc_rcv_a_dma->read_stat();
+        LOG_SCC_READ
+        return value;
     case SCC_DMA_Xmt_B_Ctrl:
-        return this->escc_xmit_b_dma->read_stat();
+        value = this->escc_xmit_b_dma->read_stat();
+        LOG_SCC_READ
+        return value;
     case SCC_RXB_Byte_Cnt_Hi:
-        return this->escc_rcv_b_dma->get_byte_count_hi();
+        value = this->escc_rcv_b_dma->get_byte_count_hi();
+        LOG_SCC_READ
+        return value;
     case SCC_RXB_Byte_Cnt_Lo:
-        return this->escc_rcv_b_dma->get_byte_count_lo();
+        value = this->escc_rcv_b_dma->get_byte_count_lo();
+        LOG_SCC_READ
+        return value;
     case SCC_DMA_Rcv_B_Ctrl:
-        return this->escc_rcv_b_dma->read_stat();
+        value = this->escc_rcv_b_dma->read_stat();
+        LOG_SCC_READ
+        return value;
+    case SCC_DMA_Xmt_A_Adr_3 :
+    case SCC_DMA_Xmt_A_Adr_2 :
+    case SCC_DMA_Xmt_A_Adr_1 :
+    case SCC_RXA_Xmt_A_Adr_0 :
+    case SCC_TXA_Byte_Cnt_Hi :
+    case SCC_TXA_Byte_Cnt_Lo :
+    case SCC_DMA_Rcv_A_Adr_3 :
+    case SCC_DMA_Rcv_A_Adr_2 :
+    case SCC_DMA_Rcv_A_Adr_1 :
+    case SCC_RXA_Rcv_A_Adr_0 :
+    case SCC_DMA_Xmt_B_Adr_3 :
+    case SCC_DMA_Xmt_B_Adr_2 :
+    case SCC_DMA_Xmt_B_Adr_1 :
+    case SCC_RXA_Xmt_B_Adr_0 :
+    case SCC_TXB_Byte_Cnt_Hi :
+    case SCC_TXB_Byte_Cnt_Lo :
+    case SCC_DMA_Rcv_B_Adr_3 :
+    case SCC_DMA_Rcv_B_Adr_2 :
+    case SCC_DMA_Rcv_B_Adr_1 :
+    case SCC_RXA_Rcv_B_Adr_0 :
+        value = 0;
+        LOG_SCC_READ
+        return value;
     default:
         LOG_F(WARNING, "Unknown AMIC register read  @%x.%c", offset, SIZE_ARG(size));
     }
@@ -241,6 +430,9 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
 
 void AMIC::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
 {
+    bool new_message;
+    VLOG_SCOPE_F(loguru::Verbosity_9, "AMIC write %x.%c = %0*x", offset, SIZE_ARG(size), size * 2, value);
+
     uint32_t mask;
 
     // subdevices registers
@@ -303,6 +495,10 @@ void AMIC::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
             return;
         case AMICReg::Snd_In_Ctrl:
             LOG_F(INFO, "AMIC Sound In Ctrl write @%x.%c = %0*x",
+                offset, SIZE_ARG(size), size * 2, value);
+            return;
+        case AMICReg::Snd_In_DMA:
+            LOG_F(INFO, "AMIC Sound In DMA write @%x.%c = %0*x",
                 offset, SIZE_ARG(size), size * 2, value);
             return;
         case AMICReg::Snd_Out_DMA:
@@ -444,40 +640,62 @@ void AMIC::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
         this->floppy_dma->write_ctrl(value);
         break;
     case AMICReg::SCC_DMA_Xmt_A_Ctrl:
-        LOG_F(INFO, "AMIC SCC Transmit Ch A DMA Ctrl write @%x.%c = %0*x",
-            offset, SIZE_ARG(size), size * 2, value);
+        LOG_SCC_WRITE
         this->escc_xmit_a_dma->write_ctrl(value);
         break;
     case AMICReg::SCC_DMA_Rcv_A_Ctrl:
-        LOG_F(INFO, "AMIC SCC Receive Ch A DMA Ctrl write @%x.%c = %0*x",
-            offset, SIZE_ARG(size), size * 2, value);
+        LOG_SCC_WRITE
         this->escc_rcv_a_dma->write_ctrl(value);
         break;
     case AMICReg::SCC_RXA_Byte_Cnt_Hi:
+        LOG_SCC_WRITE
         this->escc_rcv_a_dma->set_byte_count(
             (this->escc_rcv_a_dma->get_byte_count_lo()) | ((value & 0x1F) << 8));
         break;
     case AMICReg::SCC_RXA_Byte_Cnt_Lo:
+        LOG_SCC_WRITE
         this->escc_rcv_a_dma->set_byte_count(
             (this->escc_rcv_a_dma->get_byte_count_hi() << 8) | (value & 0xFF));
         break;
     case AMICReg::SCC_DMA_Xmt_B_Ctrl:
-        LOG_F(INFO, "AMIC SCC Transmit Ch B DMA Ctrl write @%x.%c = %0*x",
-            offset, SIZE_ARG(size), size * 2, value);
+        LOG_SCC_WRITE
         this->escc_xmit_b_dma->write_ctrl(value);
         break;
     case AMICReg::SCC_DMA_Rcv_B_Ctrl:
-        LOG_F(INFO, "AMIC SCC Receive Ch B DMA Ctrl write @%x.%c = %0*x",
-            offset, SIZE_ARG(size), size * 2, value);
+        LOG_SCC_WRITE
         this->escc_rcv_b_dma->write_ctrl(value);
         break;
     case AMICReg::SCC_RXB_Byte_Cnt_Hi:
+        LOG_SCC_WRITE
         this->escc_rcv_b_dma->set_byte_count(
             (this->escc_rcv_b_dma->get_byte_count_lo()) | ((value & 0x1F) << 8));
         break;
     case AMICReg::SCC_RXB_Byte_Cnt_Lo:
+        LOG_SCC_WRITE
         this->escc_rcv_b_dma->set_byte_count(
             (this->escc_rcv_b_dma->get_byte_count_hi() << 8) | (value & 0xFF));
+        break;
+    case SCC_DMA_Xmt_A_Adr_3 :
+    case SCC_DMA_Xmt_A_Adr_2 :
+    case SCC_DMA_Xmt_A_Adr_1 :
+    case SCC_RXA_Xmt_A_Adr_0 :
+    case SCC_TXA_Byte_Cnt_Hi :
+    case SCC_TXA_Byte_Cnt_Lo :
+    case SCC_DMA_Rcv_A_Adr_3 :
+    case SCC_DMA_Rcv_A_Adr_2 :
+    case SCC_DMA_Rcv_A_Adr_1 :
+    case SCC_RXA_Rcv_A_Adr_0 :
+    case SCC_DMA_Xmt_B_Adr_3 :
+    case SCC_DMA_Xmt_B_Adr_2 :
+    case SCC_DMA_Xmt_B_Adr_1 :
+    case SCC_RXA_Xmt_B_Adr_0 :
+    case SCC_TXB_Byte_Cnt_Hi :
+    case SCC_TXB_Byte_Cnt_Lo :
+    case SCC_DMA_Rcv_B_Adr_3 :
+    case SCC_DMA_Rcv_B_Adr_2 :
+    case SCC_DMA_Rcv_B_Adr_1 :
+    case SCC_RXA_Rcv_B_Adr_0 :
+        LOG_SCC_WRITE
         break;
     default:
         LOG_F(WARNING, "Unknown AMIC register write @%x.%c = %0*x",
@@ -751,6 +969,7 @@ DmaPullResult AmicFloppyDma::pull_data(uint32_t req_len, uint32_t *avail_len,
 // ============================ SCSI DMA stuff ================================
 void AmicScsiDma::reset(const uint32_t addr_ptr)
 {
+    LOG_F(9, "AmicScsiDma::reset addr:0x%x", addr_ptr);
     this->stat &= 0x48; // clear interrupt flag, RUN and RST bits
     this->addr_ptr   = addr_ptr;
     this->byte_count = 0;
@@ -758,12 +977,14 @@ void AmicScsiDma::reset(const uint32_t addr_ptr)
 
 void AmicScsiDma::reinit(const uint32_t addr_ptr)
 {
+    LOG_F(9, "AmicScsiDma::reinit addr:0x%x", addr_ptr);
     this->addr_ptr   = addr_ptr;
     this->byte_count = 0;
 }
 
 void AmicScsiDma::write_ctrl(uint8_t value)
 {
+    LOG_F(9, "AmicScsiDma::write_ctrl %02x", value);
     // copy over DIR, IE and RUN bits
     this->stat = (this->stat & 0x81) | (value & 0x4A);
 
