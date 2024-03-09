@@ -91,6 +91,7 @@ static void show_help() {
     cout << "  dump NT,X      -- dump N memory cells of size T at address X" << endl;
     cout << "                    T can be b(byte), w(word), d(double)," << endl;
     cout << "                    q(quad) or c(character)." << endl;
+    cout << "  regions        -- dump memory regions" << endl;
     cout << "  profile C N    -- run subcommand C on profile N" << endl;
     cout << "                    supported subcommands:" << endl;
     cout << "                    'show' - show profile report" << endl;
@@ -1121,6 +1122,10 @@ void DppcDebugger::enter_debugger() {
                 cout << "Unknown debugging context: " << expr_str << endl;
             }
 #endif
+        } else if (cmd == "regions") {
+            cmd = "";
+            if (mem_ctrl_instance)
+                mem_ctrl_instance->dump_regions();
         } else if (cmd == "printenv") {
             cmd = "";
             if (ofnvram->init())
