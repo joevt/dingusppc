@@ -91,6 +91,8 @@ public:
 
     uint8_t *get_region_hostmem_ptr(const uint32_t addr);
 
+    void dump_regions();
+
 protected:
     AddressMapEntry* add_mem_region(
         uint32_t start_addr, uint32_t size, uint32_t dest_addr, uint32_t type,
