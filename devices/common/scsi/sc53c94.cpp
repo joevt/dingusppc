@@ -177,42 +177,55 @@ static const char *get_name_command(uint8_t cmd) {
 uint8_t Sc53C94::read(uint8_t reg_offset)
 {
     uint8_t status, int_status;
+    uint8_t value;
 
     switch (reg_offset) {
     case Read::Reg53C94::Xfer_Cnt_LSB:
-        return this->xfer_count & 0xFFU;
+        value = this->xfer_count & 0xFFU;
+        break;
     case Read::Reg53C94::Xfer_Cnt_MSB:
-        return (this->xfer_count >> 8) & 0xFFU;
+        value = (this->xfer_count >> 8) & 0xFFU;
+        break;
     case Read::Reg53C94::FIFO:
-        return this->fifo_pop();
+        value = this->fifo_pop();
+        break;
     case Read::Reg53C94::Command:
-        return this->cmd_fifo[0];
+        value = this->cmd_fifo[0];
+        break;
     case Read::Reg53C94::Status:
         status = bus_obj->test_ctrl_lines(SCSI_CTRL_MSG | SCSI_CTRL_CD | SCSI_CTRL_IO);
-        return (this->status & 0xF8) | status;
+        value = (this->status & 0xF8) | status;
+        break;
     case Read::Reg53C94::Int_Status:
         int_status = this->int_status;
         this->seq_step = 0;
         this->int_status = 0;
         this->update_irq();
-        return int_status;
+        value = int_status;
+        break;
     case Read::Reg53C94::Seq_Step:
-        return this->seq_step;
+        value = this->seq_step;
+        break;
     case Read::Reg53C94::FIFO_Flags:
-        return (this->seq_step << 5) | (this->data_fifo_pos & 0x1F);
+        value = (this->seq_step << 5) | (this->data_fifo_pos & 0x1F);
+        break;
     case Read::Reg53C94::Config_1:
-        return this->config1;
+        value = this->config1;
+        break;
     case Read::Reg53C94::Config_3:
-        return this->config3;
+        value = this->config3;
+        break;
     case Read::Reg53C94::Xfer_Cnt_Hi:
         if (this->config2 & CFG2_ENF) {
-            return (this->xfer_count >> 16) & 0xFFU;
+            value = (this->xfer_count >> 16) & 0xFFU;
+        } else {
+            value = 0;
         }
         break;
     default:
         LOG_F(INFO, "%s: reading from register %d", this->name.c_str(), reg_offset);
     }
-    return 0;
+    return value;
 }
 
 void Sc53C94::write(uint8_t reg_offset, uint8_t value)
