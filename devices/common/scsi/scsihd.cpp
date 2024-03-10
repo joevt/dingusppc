@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -278,6 +278,7 @@ void ScsiHardDisk::mode_select_6(uint8_t param_len) {
         return;
     }
 
+    LOG_F(ERROR, "%s: Mode Select calling for param length of: %d", this->name.c_str(), param_len);
     this->incoming_size = param_len;
 
     std::memset(&this->data_buf[0], 0xDD, this->sector_size);
