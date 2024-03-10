@@ -137,6 +137,7 @@ bool ScsiCdrom::prepare_data()
         this->data_size = 0;
         break;
     case ScsiPhase::STATUS:
+        LOG_F(ERROR, "%s: ScsiPhase::STATUS do we need to return a status byte?", this->name.c_str());
         break;
     default:
         LOG_F(WARNING, "%s: unexpected phase %d in prepare_data", this->name.c_str(), this->cur_phase);
