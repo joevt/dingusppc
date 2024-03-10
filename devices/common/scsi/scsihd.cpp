@@ -114,6 +114,7 @@ void ScsiHardDisk::mode_select_6(uint8_t param_len) {
         return;
     }
 
+    LOG_F(ERROR, "%s: Mode Select calling for param length of: %d", this->name.c_str(), param_len);
     phy_impl->set_xfer_len(param_len);
 
     std::memset(&this->data_buf[0], 0xDD, this->block_size);
