@@ -57,6 +57,7 @@ protected:
     void seek(uint32_t lba);
     void rewind();
     void read_buffer();
+    void read_long_10(uint64_t lba, uint16_t transfer_len);
 
 private:
     ImgFile         disk_img;
