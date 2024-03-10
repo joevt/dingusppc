@@ -82,6 +82,103 @@ void Sc53C94::reset_device()
     this->int_status = 0;
 }
 
+static const char * get_name_read(uint8_t reg_offset) {
+    switch (reg_offset) {
+        case Read::Reg53C94::Xfer_Cnt_LSB   : return "Xfer_Cnt_LSB";
+        case Read::Reg53C94::Xfer_Cnt_MSB   : return "Xfer_Cnt_MSB";
+        case Read::Reg53C94::FIFO           : return "FIFO";
+        case Read::Reg53C94::Command        : return "Command";
+        case Read::Reg53C94::Status         : return "Status";
+        case Read::Reg53C94::Int_Status     : return "Int_Status";
+        case Read::Reg53C94::Seq_Step       : return "Seq_Step";
+        case Read::Reg53C94::FIFO_Flags     : return "FIFO_Flags";
+        case Read::Reg53C94::Config_1       : return "Config_1";
+        case Read::Reg53C94::Config_2       : return "Config_2";
+        case Read::Reg53C94::Config_3       : return "Config_3";
+        case Read::Reg53C94::Config_4       : return "Config_4";
+        case Read::Reg53C94::Xfer_Cnt_Hi    : return "Xfer_Cnt_Hi";
+        default                             : return "unknown";
+    }
+}
+
+static const char * get_name_write(uint8_t reg_offset) {
+    switch (reg_offset) {
+        case Write::Reg53C94::Xfer_Cnt_LSB  : return "Xfer_Cnt_LSB";
+        case Write::Reg53C94::Xfer_Cnt_MSB  : return "Xfer_Cnt_MSB";
+        case Write::Reg53C94::FIFO          : return "FIFO";
+        case Write::Reg53C94::Command       : return "Command";
+        case Write::Reg53C94::Dest_Bus_ID   : return "Dest_Bus_ID";
+        case Write::Reg53C94::Sel_Timeout   : return "Sel_Timeout";
+        case Write::Reg53C94::Sync_Period   : return "Sync_Period";
+        case Write::Reg53C94::Sync_Offset   : return "Sync_Offset";
+        case Write::Reg53C94::Config_1      : return "Config_1";
+        case Write::Reg53C94::Clock_Factor  : return "Clock_Factor";
+        case Write::Reg53C94::Test_Mode     : return "Test_Mode";
+        case Write::Reg53C94::Config_2      : return "Config_2";
+        case Write::Reg53C94::Config_3      : return "Config_3";
+        case Write::Reg53C94::Config_4      : return "Config_4";
+        case Write::Reg53C94::Xfer_Cnt_Hi   : return "Xfer_Cnt_Hi";
+        case Write::Reg53C94::Data_Align    : return "Data_Align";
+        default                             : return "unknown";
+    }
+}
+
+static const char *get_name_sequence(uint32_t state) {
+    switch (state) {
+        case SeqState::IDLE          : return "IDLE";
+        case SeqState::BUS_FREE      : return "BUS_FREE";
+        case SeqState::ARB_BEGIN     : return "ARB_BEGIN";
+        case SeqState::ARB_END       : return "ARB_END";
+        case SeqState::SEL_BEGIN     : return "SEL_BEGIN";
+        case SeqState::SEL_END       : return "SEL_END";
+        case SeqState::SEND_MSG      : return "SEND_MSG";
+        case SeqState::SEND_CMD      : return "SEND_CMD";
+        case SeqState::CMD_COMPLETE  : return "CMD_COMPLETE";
+        case SeqState::XFER_BEGIN    : return "XFER_BEGIN";
+        case SeqState::XFER_END      : return "XFER_END";
+        case SeqState::SEND_DATA     : return "SEND_DATA";
+        case SeqState::RCV_DATA      : return "RCV_DATA";
+        case SeqState::RCV_STATUS    : return "RCV_STATUS";
+        case SeqState::RCV_MESSAGE   : return "RCV_MESSAGE";
+        default                      : return "unknown";
+    }
+}
+
+static const char *get_name_phase(uint32_t phase) {
+    switch (phase) {
+        case ScsiPhase::BUS_FREE     : return "BUS_FREE";
+        case ScsiPhase::ARBITRATION  : return "ARBITRATION";
+        case ScsiPhase::SELECTION    : return "SELECTION";
+        case ScsiPhase::RESELECTION  : return "RESELECTION";
+        case ScsiPhase::COMMAND      : return "COMMAND";
+        case ScsiPhase::DATA_IN      : return "DATA_IN";
+        case ScsiPhase::DATA_OUT     : return "DATA_OUT";
+        case ScsiPhase::STATUS       : return "STATUS";
+        case ScsiPhase::MESSAGE_IN   : return "MESSAGE_IN";
+        case ScsiPhase::MESSAGE_OUT  : return "MESSAGE_OUT";
+        case ScsiPhase::RESET        : return "RESET";
+        default                      : return "unknown";
+    }
+}
+
+static const char *get_name_command(uint8_t cmd) {
+    switch (cmd) {
+        case CMD_NOP                : return "NOP";
+        case CMD_CLEAR_FIFO         : return "CLEAR_FIFO";
+        case CMD_RESET_DEVICE       : return "RESET_DEVICE";
+        case CMD_RESET_BUS          : return "RESET_BUS";
+        case CMD_DMA_STOP           : return "DMA_STOP";
+        case CMD_XFER               : return "XFER";
+        case CMD_COMPLETE_STEPS     : return "COMPLETE_STEPS";
+        case CMD_MSG_ACCEPTED       : return "MSG_ACCEPTED";
+        case CMD_SET_ATN            : return "SET_ATN";
+        case CMD_SELECT_NO_ATN      : return "SELECT_NO_ATN";
+        case CMD_SELECT_WITH_ATN    : return "SELECT_WITH_ATN";
+        case CMD_ENA_SEL_RESEL      : return "ENA_SEL_RESEL";
+        default                     : return "unknown";
+    }
+}
+
 uint8_t Sc53C94::read(uint8_t reg_offset)
 {
     uint8_t bus_phase, int_flags;
