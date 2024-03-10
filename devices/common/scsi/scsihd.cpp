@@ -131,6 +131,12 @@ void ScsiHardDisk::process_command() {
         lba = READ_DWORD_BE_U(&cmd[2]);
         this->write(lba, READ_WORD_BE_U(&cmd[7]), 10);
         break;
+#if 0
+    case ScsiCommand::READ_LONG_10:
+        lba = READ_DWORD_BE_U(&cmd[2]);
+        this->read_long_10(lba, READ_WORD_BE_U(&cmd[7]));
+        break;
+#endif
     case ScsiCommand::READ_BUFFER:
         read_buffer();
         break;
@@ -392,6 +398,38 @@ void ScsiHardDisk::write(uint32_t lba, uint16_t transfer_len, uint8_t cmd_len) {
     };
 
     this->switch_phase(ScsiPhase::DATA_OUT);
+}
+
+void ScsiHardDisk::read_long_10(uint64_t lba, uint16_t transfer_len) {
+    //bool CORRCT = !!(this->cmd_buf[1] & 2);
+    bool PBLOCK = !!(this->cmd_buf[1] & 4);
+    if (PBLOCK) {
+        LOG_F(ERROR, "%s: PBLOCK set in READ_LONG_10", this->name.c_str());
+        this->set_field_pointer(1);
+        this->invalid_cdb();
+        this->switch_phase(ScsiPhase::STATUS);
+        return;
+    }
+
+    uint32_t transfer_size = transfer_len;
+
+    if (transfer_len > this->sector_size) {
+        LOG_F(ERROR, "%s: requested too many bytes in READ_LONG_10", this->name.c_str());
+        this->set_field_pointer(7);
+        this->invalid_cdb();
+        // FIXME: there should be a way to set the VALID and ILI bits in the returned SENSE data.
+        this->switch_phase(ScsiPhase::STATUS);
+        return;
+    }
+
+    uint64_t device_offset = (uint64_t)lba * this->sector_size;
+
+    LOG_F(INFO, "%s: read-long %lld %d", this->name.c_str(), (long long)device_offset, transfer_size);
+    this->disk_img.read(this->data_buf, device_offset, transfer_size);
+
+    this->bytes_out = transfer_size;
+
+    this->switch_phase(ScsiPhase::DATA_IN);
 }
 
 void ScsiHardDisk::read_buffer() {
