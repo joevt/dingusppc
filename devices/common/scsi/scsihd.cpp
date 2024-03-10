@@ -31,6 +31,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <fstream>
 #include <cstring>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_SCSIHD = loguru::Verbosity_9
+    };
+}
+
 using namespace std;
 
 static char my_vendor_id[]   = "QUANTUM ";
@@ -74,6 +80,8 @@ void ScsiHardDisk::insert_image(std::string filename) {
 
 void ScsiHardDisk::process_command() {
     uint32_t lba;
+
+    VLOG_SCOPE_F(loguru::Verbosity_SCSIHD, "%s: process_command 0x%X", this->name.c_str(), cmd_buf[0]);
 
     if (this->verify_cdb() < 0) {
         this->switch_phase(ScsiPhase::STATUS);
@@ -164,12 +172,14 @@ bool ScsiHardDisk::prepare_data() {
         this->bytes_out = 1;
         this->data_ptr = (uint8_t*)this->data_buf;
         this->data_size = this->bytes_out;
+        LOG_F(SCSIHD, "%s: STATUS %02x", this->name.c_str(), this->data_buf[0]);
         break;
     case ScsiPhase::MESSAGE_IN:
         this->data_buf[0] = this->msg_code;
         this->bytes_out = 1;
         this->data_ptr = (uint8_t*)this->data_buf;
         this->data_size = this->bytes_out;
+        LOG_F(SCSIHD, "%s: MESSAGE_IN %02x", this->name.c_str(), this->msg_code);
         break;
     default:
         LOG_F(WARNING, "%s: unexpected phase %d in prepare_data", this->name.c_str(), this->cur_phase);
@@ -203,6 +213,9 @@ void ScsiHardDisk::mode_sense_6() {
     uint8_t page_ctrl = this->cmd_buf[2] >> 6;
     uint8_t sub_page_code = this->cmd_buf[3];
     uint8_t alloc_len = this->cmd_buf[4];
+
+    LOG_F(SCSIHD, "%s: Mode_sense_6 page_ctrl:%d page_code:0x%02x sub_page_code:0x%02x alloc_len:%d",
+        name.c_str(), page_ctrl, page_code, sub_page_code, alloc_len);
 
     if (page_ctrl == 1) {
         LOG_F(INFO, "%s: page_ctrl 1 CHANGEABLE VALUES is not implemented", this->name.c_str());
@@ -368,6 +381,7 @@ void ScsiHardDisk::read(uint32_t lba, uint16_t transfer_len, uint8_t cmd_len) {
 
     uint64_t device_offset = (uint64_t)lba * this->sector_size;
 
+    LOG_F(INFO, "%s: read %lld %d", name.c_str(), (long long)device_offset, transfer_size);
     this->disk_img.read(this->data_buf, device_offset, transfer_size);
 
     this->bytes_out = transfer_size;
@@ -393,7 +407,9 @@ void ScsiHardDisk::write(uint32_t lba, uint16_t transfer_len, uint8_t cmd_len) {
 
     this->incoming_size = transfer_size;
 
+    LOG_F(INFO, "%s: write %lld %d", this->name.c_str(), (long long)device_offset, transfer_size);
     this->post_xfer_action = [this, device_offset]() {
+        LOG_F(SCSIHD, "%s: finishing write %lld %d", this->name.c_str(), (long long)device_offset, this->incoming_size);
         this->disk_img.write(this->data_buf, device_offset, this->incoming_size);
     };
 
