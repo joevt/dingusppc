@@ -172,7 +172,7 @@ bool ScsiHardDisk::prepare_data() {
         this->data_size = this->bytes_out;
         break;
     default:
-        LOG_F(WARNING, "%s: unexpected phase in prepare_data", this->name.c_str());
+        LOG_F(WARNING, "%s: unexpected phase %d in prepare_data", this->name.c_str(), this->cur_phase);
         return false;
     }
     return true;
