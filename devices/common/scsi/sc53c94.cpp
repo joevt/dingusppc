@@ -503,6 +503,23 @@ void Sc53C94::exec_command()
         this->update_irq();
         exec_next_command();
         break;
+        /*
+    case CMD_SET_ATN:
+        static SeqDesc * set_atn_desc = new SeqDesc[4]{
+            {(CMD_SET_ATN << 8) + 1, SeqState::SEL_BEGIN,    0, INTSTAT_DIS            },
+            {(CMD_SET_ATN << 8) + 2, SeqState::SEND_MSG,     2, INTSTAT_SR | INTSTAT_SO},
+            {(CMD_SET_ATN << 8) + 3, SeqState::SEND_CMD,     3, INTSTAT_SR | INTSTAT_SO},
+            {(CMD_SET_ATN << 8) + 4, SeqState::CMD_COMPLETE, 4, INTSTAT_SR | INTSTAT_SO},
+        };
+        this->seq_step  = 0;
+        this->bytes_out = 1; // set message length
+        this->cmd_steps = set_atn_desc;
+        this->cur_state = SeqState::BUS_FREE;
+        SCSI_LOG_F(CURIO, "%s: state changed to %s in %s CMD_SET_ATN", this->name.c_str(), get_name_sequence(this->cur_state), __func__);
+        this->sequencer();
+        SCSI_LOG_F(CURIO, "%s: SELECT WITH ATN command started", this->name.c_str());
+        break;
+        */
     case CMD_SELECT_NO_ATN:
         static SeqDesc * sel_no_atn_desc = new SeqDesc[3]{
             {(CMD_SELECT_NO_ATN << 8) + 1, SeqState::SEL_BEGIN,    0, INTSTAT_DIS            },
