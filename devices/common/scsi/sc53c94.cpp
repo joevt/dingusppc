@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -32,6 +32,25 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 #include <cstring>
+
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_CURIO = loguru::Verbosity_9
+    };
+}
+
+namespace LastLog {
+    enum {
+        Misc = 1,
+        Read,
+    };
+};
+
+#define SCSI_LOG_F(verbosity_name, ...) \
+    do { VLOG_F(loguru::Verbosity_ ## verbosity_name, __VA_ARGS__); last_log_message = LastLog::Misc; } while (0)
+
+#define SCSI_LOG_SCOPE_F(verbosity_name, ...) \
+    VLOG_SCOPE_F(loguru::Verbosity_ ## verbosity_name, __VA_ARGS__); last_log_message = LastLog::Misc;
 
 Sc53C94::Sc53C94(uint8_t chip_id, uint8_t my_id) : ScsiDevice("SC53C94", my_id), DmaDevice()
 {
@@ -235,13 +254,27 @@ uint8_t Sc53C94::read(uint8_t reg_offset)
         }
         break;
     default:
-        LOG_F(INFO, "%s: reading from register %d", this->name.c_str(), reg_offset);
+        SCSI_LOG_F(ERROR, "%s: read  %d:%s", this->name.c_str(), reg_offset, get_name_read(reg_offset));
+        return 0;
     }
+
+    if (last_log_message != LastLog::Read || last_log_offset != reg_offset || last_log_value != value) {
+        LOG_F(CURIO, "%s: read  %d:%s = %02x", this->name.c_str(), reg_offset, get_name_read(reg_offset), value);
+        last_log_message = LastLog::Read;
+        last_log_value = value;
+        last_log_offset = reg_offset;
+    }
+    else {
+        last_log_count++;
+    }
+
     return value;
 }
 
 void Sc53C94::write(uint8_t reg_offset, uint8_t value)
 {
+    SCSI_LOG_F(CURIO, "%s: write %d:%s = %02x", this->name.c_str(), reg_offset, get_name_write(reg_offset), value);
+
     switch (reg_offset) {
     case Write::Reg53C94::Xfer_Cnt_LSB:
         this->set_xfer_count = (this->set_xfer_count & ~0xFFU) | value;
@@ -283,8 +316,8 @@ void Sc53C94::write(uint8_t reg_offset, uint8_t value)
         this->config3 = value;
         break;
     default:
-        LOG_F(INFO, "%s: writing 0x%X to %d register", this->name.c_str(), value,
-              reg_offset);
+        SCSI_LOG_F(ERROR, "%s: write %d:%s", this->name.c_str(),
+                   reg_offset, get_name_write(reg_offset));
     }
 }
 
@@ -306,12 +339,14 @@ uint16_t Sc53C94::pseudo_dma_read()
                 is_done = true;
                 this->status |= STAT_TC; // signal zero transfer count
                 this->cur_state = SeqState::XFER_END;
+                SCSI_LOG_F(CURIO, "%s: state changed to %s in %s",
+                    this->name.c_str(), get_name_sequence(this->cur_state), __func__);
                 this->sequencer();
             }
         }
     }
     else {
-        LOG_F(ERROR, "SC53C94: FIFO underrun %d", data_fifo_pos);
+        SCSI_LOG_F(ERROR, "%s: FIFO underrun %d", this->name.c_str(), data_fifo_pos);
         data_word = 0;
     }
 
@@ -333,6 +368,8 @@ void Sc53C94::pseudo_dma_write(uint16_t data) {
         if (!this->xfer_count) {
             this->status |= STAT_TC; // signal zero transfer count
             //this->cur_state = SeqState::XFER_END;
+            //SCSI_LOG_F(CURIO, "%s: state changed to %s in %s",
+            //    this->name.c_str(), get_name_sequence(this->cur_state), __func__);
             this->sequencer();
         }
     }
@@ -340,8 +377,16 @@ void Sc53C94::pseudo_dma_write(uint16_t data) {
 
 void Sc53C94::update_command_reg(uint8_t cmd)
 {
+    if (cmd == (CMD_NOP | CMD_ISDMA)) {
+        SCSI_LOG_F(CURIO, "%s: CMD_NOP | CMD_ISDMA", this->name.c_str());
+    }
+
+    if (cmd == CMD_RESET_BUS) {
+        SCSI_LOG_F(CURIO, "%s: CMD_RESET_BUS", this->name.c_str());
+    }
+
     if (this->on_reset && (cmd & CMD_OPCODE) != CMD_NOP) {
-        LOG_F(WARNING, "%s: command register blocked after RESET!", this->name.c_str());
+        SCSI_LOG_F(WARNING, "%s: command register blocked after RESET!", this->name.c_str());
         return;
     }
 
@@ -361,7 +406,7 @@ void Sc53C94::update_command_reg(uint8_t cmd)
             exec_command();
         }
     } else {
-        LOG_F(ERROR, "%s: the top of the command FIFO overwritten!", this->name.c_str());
+        SCSI_LOG_F(ERROR, "%s: the top of the command FIFO overwritten!", this->name.c_str());
         this->status |= STAT_GE; // signal IOE/Gross Error
     }
 }
@@ -372,6 +417,8 @@ void Sc53C94::exec_command()
 
     this->is_dma_cmd = !!(this->cmd_fifo[0] & 0x80);
 
+    SCSI_LOG_F(CURIO, "%s: command %02x %s", this->name.c_str(), cmd, get_name_command(cmd));
+
     if (this->is_dma_cmd) {
         if (this->config2 & CFG2_ENF) { // extended mode: 24-bit
             this->xfer_count = this->set_xfer_count & 0xFFFFFFUL;
@@ -381,6 +428,7 @@ void Sc53C94::exec_command()
                 this->xfer_count = 65536;
             }
         }
+        SCSI_LOG_F(CURIO, "%s: DMA xfer_count %d", this->name.c_str(), this->xfer_count);
     }
 
     this->cmd_steps = nullptr; // assume a single-step command for now
@@ -403,7 +451,7 @@ void Sc53C94::exec_command()
         this->on_reset = true; // block the command register
         return;
     case CMD_RESET_BUS:
-        LOG_F(INFO, "%s: resetting SCSI bus...", this->name.c_str());
+        SCSI_LOG_F(CURIO, "%s: resetting SCSI bus...", this->name.c_str());
         // assert RST line
         this->bus_obj->assert_ctrl_line(this->my_bus_id, SCSI_CTRL_RST);
         // release RST line after 25 us
@@ -414,11 +462,12 @@ void Sc53C94::exec_command()
         my_timer_id = TimerManager::get_instance()->add_oneshot_timer(
             USECS_TO_NSECS(25),
             [this]() {
+                SCSI_LOG_F(CURIO, "%s: release SCSI_CTRL_RST", this->name.c_str());
                 my_timer_id = 0;
                 this->bus_obj->release_ctrl_line(this->my_bus_id, SCSI_CTRL_RST);
         });
         if (!(config1 & 0x40)) {
-            LOG_F(INFO, "%s: reset interrupt issued", this->name.c_str());
+            SCSI_LOG_F(CURIO, "%s: reset interrupt issued", this->name.c_str());
             this->int_status = INTSTAT_SRST;
         }
         exec_next_command();
@@ -431,6 +480,8 @@ void Sc53C94::exec_command()
             this->update_irq();
         } else {
             this->cur_state = SeqState::XFER_BEGIN;
+            SCSI_LOG_F(CURIO, "%s: state changed to %s in %s CMD_XFER",
+                this->name.c_str(), get_name_sequence(this->cur_state), __func__);
             this->sequencer();
         }
         break;
@@ -439,6 +490,8 @@ void Sc53C94::exec_command()
             ABORT_F("%s: complete steps only works in the STATUS phase", this->name.c_str());
         }
         this->cur_state = SeqState::RCV_STATUS;
+        SCSI_LOG_F(CURIO, "%s: state changed to %s in %s CMD_COMPLETE_STEPS",
+            this->name.c_str(), get_name_sequence(this->cur_state), __func__);
         this->sequencer();
         break;
     case CMD_MSG_ACCEPTED:
@@ -458,8 +511,10 @@ void Sc53C94::exec_command()
         this->seq_step = this->cur_step = 0;
         this->cmd_steps = sel_no_atn_desc;
         this->cur_state = SeqState::BUS_FREE;
+        SCSI_LOG_F(CURIO, "%s: state changed to %s in %s CMD_SELECT_NO_ATN",
+            this->name.c_str(), get_name_sequence(this->cur_state), __func__);
         this->sequencer();
-        LOG_F(9, "%s: SELECT W/O ATN command started", this->name.c_str());
+        SCSI_LOG_F(CURIO, "%s: SELECT W/O ATN command started", this->name.c_str());
         break;
     case CMD_SELECT_WITH_ATN:
         static SeqDesc * sel_with_atn_desc = new SeqDesc[3]{
@@ -471,14 +526,16 @@ void Sc53C94::exec_command()
         this->bytes_out = 1; // set message length
         this->cmd_steps = sel_with_atn_desc;
         this->cur_state = SeqState::BUS_FREE;
+        SCSI_LOG_F(CURIO, "%s: state changed to %s in %s CMD_SELECT_WITH_ATN",
+            this->name.c_str(), get_name_sequence(this->cur_state), __func__);
         this->sequencer();
-        LOG_F(9, "%s: SELECT WITH ATN command started", this->name.c_str());
+        SCSI_LOG_F(CURIO, "%s: SELECT WITH ATN command started", this->name.c_str());
         break;
     case CMD_ENA_SEL_RESEL:
         exec_next_command();
         break;
     default:
-        LOG_F(ERROR, "%s: invalid/unimplemented command 0x%X", this->name.c_str(), cmd);
+        SCSI_LOG_F(ERROR, "%s: invalid/unimplemented command 0x%X", this->name.c_str(), cmd);
         this->cmd_fifo_pos--; // remove invalid command from FIFO
         this->int_status = INTSTAT_ICMD;
         this->update_irq();
@@ -503,7 +560,7 @@ void Sc53C94::fifo_push(const uint8_t data)
     if (this->data_fifo_pos < DATA_FIFO_MAX) {
         this->data_fifo[this->data_fifo_pos++] = data;
     } else {
-        LOG_F(ERROR, "%s: data FIFO overflow!", this->name.c_str());
+        SCSI_LOG_F(ERROR, "%s: data FIFO overflow!", this->name.c_str());
         this->status |= STAT_GE; // signal IOE/Gross Error
     }
 }
@@ -513,7 +570,7 @@ uint8_t Sc53C94::fifo_pop()
     uint8_t data = 0;
 
     if (this->data_fifo_pos < 1) {
-        LOG_F(ERROR, "%s: data FIFO underflow!", this->name.c_str());
+        SCSI_LOG_F(ERROR, "%s: data FIFO underflow!", this->name.c_str());
         this->status |= STAT_GE; // signal IOE/Gross Error
     } else {
         data = this->data_fifo[0];
@@ -538,6 +595,8 @@ void Sc53C94::seq_defer_state(uint64_t delay_ns)
                 // re-enter the sequencer with the state specified in next_state
                 this->seq_timer_id = 0;
                 this->cur_state = this->next_state;
+                SCSI_LOG_F(CURIO, "%s: state changed to %s in %s seq_defer_state timer",
+                    this->name.c_str(), get_name_sequence(this->cur_state), __func__);
                 this->sequencer();
         });
     } else {
@@ -546,6 +605,8 @@ void Sc53C94::seq_defer_state(uint64_t delay_ns)
                 // re-enter the sequencer with the state specified in next_state
                 this->seq_timer_id = 0;
                 this->cur_state = this->next_state;
+                SCSI_LOG_F(CURIO, "%s: state changed to %s in %s seq_defer_state timer",
+                    this->name.c_str(), get_name_sequence(this->cur_state), __func__);
                 this->sequencer();
         });
     }
@@ -553,6 +614,10 @@ void Sc53C94::seq_defer_state(uint64_t delay_ns)
 
 void Sc53C94::sequencer()
 {
+    if (this->cur_state != SeqState::RCV_DATA || this->cur_state != this->last_sequence) {
+        SCSI_LOG_F(CURIO, "%s: sequence: %s", this->name.c_str(), get_name_sequence(this->cur_state));
+    }
+    last_sequence = this->cur_state;
     switch (this->cur_state) {
     case SeqState::IDLE:
         break;
@@ -567,7 +632,7 @@ void Sc53C94::sequencer()
         break;
     case SeqState::ARB_BEGIN:
         if (!this->bus_obj->begin_arbitration(this->my_bus_id)) {
-            LOG_F(ERROR, "%s: arbitration error, bus not free!", this->name.c_str());
+            SCSI_LOG_F(ERROR, "%s: arbitration error, bus not free!", this->name.c_str());
             this->bus_obj->release_ctrl_lines(this->my_bus_id);
             this->next_state = SeqState::BUS_FREE;
             this->seq_defer_state(BUS_CLEAR_DELAY);
@@ -581,7 +646,7 @@ void Sc53C94::sequencer()
             this->next_state = SeqState::SEL_BEGIN;
             this->seq_defer_state(BUS_CLEAR_DELAY + BUS_SETTLE_DELAY);
         } else { // arbitration lost
-            LOG_F(INFO, "%s: arbitration lost!", this->name.c_str());
+            SCSI_LOG_F(CURIO, "%s: arbitration lost!", this->name.c_str());
             this->bus_obj->release_ctrl_lines(this->my_bus_id);
             this->next_state = SeqState::BUS_FREE;
             this->seq_defer_state(BUS_CLEAR_DELAY);
@@ -597,12 +662,14 @@ void Sc53C94::sequencer()
     case SeqState::SEL_END:
         if (this->bus_obj->end_selection(this->my_bus_id, this->target_id)) {
             this->bus_obj->release_ctrl_line(this->my_bus_id, SCSI_CTRL_SEL);
-            LOG_F(9, "%s: selection completed", this->name.c_str());
+            SCSI_LOG_F(CURIO, "%s: selection completed", this->name.c_str());
         } else { // selection timeout
             this->seq_step = 0;
             this->int_status = INTSTAT_DIS;
             this->bus_obj->disconnect(this->my_bus_id);
             this->cur_state = SeqState::IDLE;
+            SCSI_LOG_F(CURIO, "%s: state changed to %s in %s SEL_END",
+                this->name.c_str(), get_name_sequence(this->cur_state), __func__);
             this->update_irq();
             exec_next_command();
         }
@@ -626,6 +693,8 @@ void Sc53C94::sequencer()
     case SeqState::CMD_COMPLETE:
         this->int_status = INTSTAT_SR | INTSTAT_SO;
         this->cur_state = SeqState::IDLE;
+        SCSI_LOG_F(CURIO, "%s: state changed to %s in %s CMD_COMPLETE",
+            this->name.c_str(), get_name_sequence(this->cur_state), __func__);
         this->update_irq();
         exec_next_command();
         break;
@@ -633,6 +702,7 @@ void Sc53C94::sequencer()
         this->cur_bus_phase = this->bus_obj->current_phase();
         switch (this->cur_bus_phase) {
         case ScsiPhase::DATA_OUT:
+            SCSI_LOG_F(CURIO, "%s: DATA_OUT", this->name.c_str());
             if (this->is_dma_cmd && this->channel_obj->is_ready()) {
                 this->channel_obj->xfer_retry();
                 break;
@@ -640,18 +710,25 @@ void Sc53C94::sequencer()
             this->bus_obj->push_data(this->target_id, this->data_fifo, this->data_fifo_pos);
             this->data_fifo_pos = 0;
             this->cur_state = SeqState::XFER_END;
+            SCSI_LOG_F(CURIO, "%s: state changed to %s in %s XFER_BEGIN",
+                this->name.c_str(), get_name_sequence(this->cur_state), __func__);
             this->sequencer();
             break;
         case ScsiPhase::DATA_IN:
+            SCSI_LOG_F(CURIO, "%s: DATA_IN", this->name.c_str());
             if (this->is_dma_cmd && this->channel_obj->is_ready()) {
                 this->channel_obj->xfer_retry();
                 break;
             }
             this->bus_obj->negotiate_xfer(this->data_fifo_pos, this->bytes_out);
             this->cur_state = SeqState::RCV_DATA;
+            SCSI_LOG_F(CURIO, "%s: state changed to %s in %s DATA_IN.1",
+                this->name.c_str(), get_name_sequence(this->cur_state), __func__);
             this->rcv_data();
             if (!(this->is_dma_cmd)) {
                 this->cur_state = SeqState::XFER_END;
+                SCSI_LOG_F(CURIO, "%s: state changed to %s in %s DATA_IN.2",
+                    this->name.c_str(), get_name_sequence(this->cur_state), __func__);
                 this->sequencer();
             }
             break;
@@ -666,6 +743,8 @@ void Sc53C94::sequencer()
         }
         this->int_status = INTSTAT_SR;
         this->cur_state = SeqState::IDLE;
+        SCSI_LOG_F(CURIO, "%s: state changed to %s in %s XFER_END",
+            this->name.c_str(), get_name_sequence(this->cur_state), __func__);
         this->update_irq();
         exec_next_command();
         break;
@@ -686,17 +765,22 @@ void Sc53C94::sequencer()
         this->bus_obj->negotiate_xfer(this->data_fifo_pos, this->bytes_out);
         this->rcv_data();
         if (this->is_initiator) {
+            uint32_t old_state = this->cur_state;
             if (this->cur_state == SeqState::RCV_STATUS) {
                 this->bus_obj->target_next_step();
                 if (this->cur_bus_phase == ScsiPhase::MESSAGE_IN) {
                     this->bus_obj->assert_ctrl_line(this->my_bus_id, SCSI_CTRL_REQ);
                     this->cur_state = SeqState::RCV_MESSAGE;
+                    SCSI_LOG_F(CURIO, "%s: state changed to %s in %s %s",
+                        this->name.c_str(), get_name_sequence(this->cur_state), __func__, get_name_sequence(old_state));
                     this->sequencer();
                 }
             } else if (this->cur_state == SeqState::RCV_MESSAGE) {
                 this->bus_obj->assert_ctrl_line(this->my_bus_id, SCSI_CTRL_ACK);
                 if (this->cur_cmd == CMD_COMPLETE_STEPS) {
                     this->cur_state = SeqState::CMD_COMPLETE;
+                    SCSI_LOG_F(CURIO, "%s: state changed to %s in %s %s",
+                        this->name.c_str(), get_name_sequence(this->cur_state), __func__, get_name_sequence(old_state));
                     this->sequencer();
                 }
             }
@@ -721,11 +805,14 @@ void Sc53C94::notify(ScsiNotification notif_type, int param)
 {
     switch (notif_type) {
     case ScsiNotification::CONFIRM_SEL:
+        SCSI_LOG_F(CURIO, "%s: CONFIRM_SEL", this->name.c_str());
         if (this->target_id == param) {
             // cancel selection timeout timer
             TimerManager::get_instance()->cancel_timer(this->seq_timer_id);
             this->seq_timer_id = 0;
             this->cur_state = SeqState::SEL_END;
+            SCSI_LOG_F(CURIO, "%s: state changed to %s in %s CONFIRM_SEL",
+                this->name.c_str(), get_name_sequence(this->cur_state), __func__);
             this->sequencer();
         } else {
             LOG_F(WARNING, "%s: invalid selection confirmation message ignored",
@@ -733,11 +820,14 @@ void Sc53C94::notify(ScsiNotification notif_type, int param)
         }
         break;
     case ScsiNotification::BUS_PHASE_CHANGE:
+        SCSI_LOG_F(CURIO, "%s: BUS_PHASE_CHANGE", this->name.c_str());
         this->cur_bus_phase = param;
         if (param == ScsiPhase::BUS_FREE) { // target want to disconnect
             this->int_status = INTSTAT_DIS;
             this->update_irq();
             this->cur_state  = SeqState::IDLE;
+            SCSI_LOG_F(CURIO, "%s: state changed to %s in %s BUS_PHASE_CHANGE",
+                this->name.c_str(), get_name_sequence(this->cur_state), __func__);
         }
         if (this->cmd_steps != nullptr) {
             if (this->cur_bus_phase == this->cmd_steps->expected_phase) {
@@ -755,7 +845,7 @@ void Sc53C94::notify(ScsiNotification notif_type, int param)
         }
         break;
     default:
-        LOG_F(9, "%s: ignore notification message, type: %d", this->name.c_str(),
+        SCSI_LOG_F(WARNING, "%s: ignore notification message, type: %d", this->name.c_str(),
               notif_type);
     }
 }
@@ -803,11 +893,23 @@ bool Sc53C94::rcv_data()
     return true;
 }
 
+static int xfer_out_iteration = 0;
+
 void Sc53C94::real_dma_xfer_out()
 {
     // transfer data from host's memory to target
 
+    xfer_out_iteration++;
+
     if (this->xfer_count) {
+        if (this->data_fifo_pos) {
+            SCSI_LOG_F(ERROR, "xfer_out_iteration:%d xfer_count:%d fifo_pos:%d",
+                xfer_out_iteration, this->xfer_count, this->data_fifo_pos);
+        }
+        else {
+            SCSI_LOG_F(CURIO, "xfer_out_iteration:%d xfer_count:%d fifo_pos:%d",
+                xfer_out_iteration, this->xfer_count, this->data_fifo_pos);
+        }
         uint32_t got_bytes;
         uint8_t* src_ptr;
         this->dma_ch->pull_data(std::min((int)this->xfer_count, DATA_FIFO_MAX),
@@ -821,11 +923,16 @@ void Sc53C94::real_dma_xfer_out()
         if (!this->xfer_count) {
             this->status |= STAT_TC; // signal zero transfer count
             this->cur_state = SeqState::XFER_END;
+            SCSI_LOG_F(CURIO, "%s: state changed to %s in %s",
+                this->name.c_str(), get_name_sequence(this->cur_state), __func__);
             this->sequencer();
         }
     }
 
     if (this->xfer_count) {
+        if (this->dma_timer_id) {
+            SCSI_LOG_F(ERROR, "%s: replacing seq_timer_id", this->name.c_str());
+        }
         this->dma_timer_id = TimerManager::get_instance()->add_oneshot_timer(
             10000,
             [this]() {
@@ -836,11 +943,20 @@ void Sc53C94::real_dma_xfer_out()
     }
 }
 
+static int xfer_in_iteration = 0;
+
 void Sc53C94::real_dma_xfer_in()
 {
     bool is_done = false;
 
     // transfer data from target to host's memory
+
+    xfer_in_iteration++;
+
+    if (xfer_in_iteration == 1 || this->xfer_count < 100) {
+        SCSI_LOG_F(CURIO, "xfer_in_iteration:%d xfer_count:%d fifo_pos:%d",
+            xfer_in_iteration, this->xfer_count, this->data_fifo_pos);
+    }
 
     if (this->xfer_count && this->data_fifo_pos) {
         this->dma_ch->push_data((char*)this->data_fifo, this->data_fifo_pos);
@@ -851,6 +967,8 @@ void Sc53C94::real_dma_xfer_in()
             is_done = true;
             this->status |= STAT_TC; // signal zero transfer count
             this->cur_state = SeqState::XFER_END;
+            SCSI_LOG_F(CURIO, "%s: state changed to %s in %s",
+                this->name.c_str(), get_name_sequence(this->cur_state), __func__);
             this->sequencer();
         }
     }
@@ -858,6 +976,9 @@ void Sc53C94::real_dma_xfer_in()
     // see if we need to refill FIFO
     if (!this->data_fifo_pos && !is_done) {
         this->sequencer();
+        if (this->dma_timer_id) {
+            SCSI_LOG_F(ERROR, "%s: replacing seq_timer_id", this->name.c_str());
+        }
         this->dma_timer_id = TimerManager::get_instance()->add_oneshot_timer(
             10000,
             [this]() {
@@ -870,12 +991,20 @@ void Sc53C94::real_dma_xfer_in()
 
 void Sc53C94::dma_wait() {
     if (this->cur_bus_phase == ScsiPhase::DATA_IN && this->cur_state == SeqState::RCV_DATA) {
+        xfer_in_iteration = 0;
         real_dma_xfer_in();
     }
     else if (this->cur_bus_phase == ScsiPhase::DATA_OUT && this->cur_state == SeqState::SEND_DATA) {
+        xfer_out_iteration = 0;
         real_dma_xfer_out();
     }
     else {
+        SCSI_LOG_F(CURIO, "%s: dma_wait sequence:%s phase:%s",
+            this->name.c_str(), get_name_sequence(this->cur_state), get_name_phase(this->cur_bus_phase));
+
+        if (this->dma_timer_id) {
+            SCSI_LOG_F(ERROR, "%s: replacing seq_timer_id", this->name.c_str());
+        }
         this->dma_timer_id = TimerManager::get_instance()->add_oneshot_timer(
             10000,
             [this]() {
@@ -887,6 +1016,7 @@ void Sc53C94::dma_wait() {
 
 void Sc53C94::dma_start()
 {
+    SCSI_LOG_SCOPE_F(CURIO, "%s: dma_start phase:%s", this->name.c_str(), get_name_phase(this->cur_bus_phase));
     dma_wait();
 }
 
@@ -896,6 +1026,7 @@ void Sc53C94::dma_stop()
         TimerManager::get_instance()->cancel_timer(this->dma_timer_id);
         this->dma_timer_id = 0;
     }
+    SCSI_LOG_F(CURIO, "%s: dma_stop", this->name.c_str());
 }
 
 int Sc53C94::xfer_from(uint8_t *buf, int len) {
@@ -919,6 +1050,8 @@ int Sc53C94::xfer_from(uint8_t *buf, int len) {
         if (!this->xfer_count) {
             this->status |= STAT_TC; // signal zero transfer count
             this->cur_state = SeqState::XFER_END;
+            SCSI_LOG_F(CURIO, "%s: state changed to %s in %s.1",
+                this->name.c_str(), get_name_sequence(this->cur_state), __func__);
             this->sequencer();
             return bytes_moved;
         }
@@ -929,6 +1062,8 @@ int Sc53C94::xfer_from(uint8_t *buf, int len) {
         this->xfer_count = 0;
         this->status |= STAT_TC; // signal zero transfer count
         this->cur_state = SeqState::XFER_END;
+        SCSI_LOG_F(CURIO, "%s: state changed to %s in %s.2",
+            this->name.c_str(), get_name_sequence(this->cur_state), __func__);
         this->sequencer();
     }
 
@@ -956,6 +1091,8 @@ int Sc53C94::xfer_to(uint8_t *buf, int len) {
             if (!this->xfer_count) {
                 this->status |= STAT_TC; // signal zero transfer count
                 this->cur_state = SeqState::XFER_END;
+                SCSI_LOG_F(CURIO, "%s: state changed to %s in %s",
+                    this->name.c_str(), get_name_sequence(this->cur_state), __func__);
                 this->sequencer();
             }
             len = 0;
