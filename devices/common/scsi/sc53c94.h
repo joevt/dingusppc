@@ -296,6 +296,13 @@ private:
 
     // DMA related stuff
     DrqCb               drq_cb = nullptr;
+
+    // logging
+    uint8_t  last_log_message = 0;
+    uint8_t  last_log_value = 0;
+    uint8_t  last_log_offset = 0;
+    int      last_log_count = 0;
+    uint32_t last_sequence = -1;
 };
 
 #endif // SC_53C94_H
