@@ -46,6 +46,12 @@ namespace LastLog {
     };
 };
 
+static bool debug_scsi_log = true;
+
+#define SCSI_LOG_IF_F(verbosity_name, ...) \
+    do { if (debug_scsi_log) { VLOG_F(loguru::Verbosity_ ## verbosity_name, __VA_ARGS__); \
+        last_log_message = LastLog::Misc; } } while (0)
+
 #define SCSI_LOG_F(verbosity_name, ...) \
     do { VLOG_F(loguru::Verbosity_ ## verbosity_name, __VA_ARGS__); last_log_message = LastLog::Misc; } while (0)
 
@@ -88,12 +94,14 @@ void Sc53C94::reset_device()
     this->cmd_fifo_pos = 0;
 
     // clear data FIFO
+    SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (cleared)", this->data_fifo_pos, 0, __func__);
     this->data_fifo_pos = 0;
     this->data_fifo[0]  = 0;
 
     this->seq_step = 0;
 
     this->status = 0;
+    SCSI_LOG_IF_F(CURIO, "status:%02x in %s", this->status, __func__);
 }
 
 static const char * get_name_read(uint8_t reg_offset) {
@@ -219,6 +227,7 @@ uint8_t Sc53C94::read(uint8_t reg_offset)
         int_status = this->int_status;
         this->seq_step = 0;
         this->int_status = 0;
+        SCSI_LOG_IF_F(CURIO, "int_status cleared to 0 after reading %02x", int_status);
         this->update_irq();
         value = int_status;
         break;
@@ -314,6 +323,8 @@ uint16_t Sc53C94::pseudo_dma_read()
     if (this->data_fifo_pos >= 2) {
         // remove one word from FIFO
         data_word = (this->data_fifo[0] << 8) | this->data_fifo[1];
+        SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (popped data:%04x)",
+            this->data_fifo_pos, this->data_fifo_pos - 2, __func__, data_word);
         this->data_fifo_pos -= 2;
         std::memmove(this->data_fifo, &this->data_fifo[2], this->data_fifo_pos);
 
@@ -323,6 +334,7 @@ uint16_t Sc53C94::pseudo_dma_read()
             if (!this->xfer_count) {
                 is_done = true;
                 this->status |= STAT_TC; // signal zero transfer count
+                SCSI_LOG_IF_F(CURIO, "status |= STAT_TC = %02x in %s", this->status, __func__);
                 this->cur_state = SeqState::XFER_END;
                 SCSI_LOG_F(CURIO, "%s: state changed to %s in %s",
                     this->name.c_str(), get_name_sequence(this->cur_state), __func__);
@@ -391,6 +403,7 @@ void Sc53C94::update_command_reg(uint8_t cmd)
     } else {
         SCSI_LOG_F(ERROR, "%s: the top of the command FIFO overwritten!", this->name.c_str());
         this->status |= STAT_GE; // signal IOE/Gross Error
+        SCSI_LOG_IF_F(CURIO, "status |= STAT_GE = %02x in %s", this->status, __func__);
     }
 }
 
@@ -423,6 +436,7 @@ void Sc53C94::exec_command()
         exec_next_command();
         break;
     case CMD_CLEAR_FIFO:
+        SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (cleared)", this->data_fifo_pos, 0, __func__);
         this->data_fifo_pos = 0; // set the bottom of the data FIFO to zero
         this->data_fifo[0] = 0;
         exec_next_command();
@@ -450,6 +464,7 @@ void Sc53C94::exec_command()
         if (!(config1 & 0x40)) {
             SCSI_LOG_F(CURIO, "%s: reset interrupt issued", this->name.c_str());
             this->int_status = INTSTAT_SRST;
+            SCSI_LOG_IF_F(CURIO, "int_status = INTSTAT_SRST = %02x in %s CMD_RESET_BUS", this->int_status, __func__);
         }
         exec_next_command();
         break;
@@ -458,6 +473,7 @@ void Sc53C94::exec_command()
             // clear command FIFO
             this->cmd_fifo_pos = 0;
             this->int_status = INTSTAT_ICMD;
+            SCSI_LOG_IF_F(CURIO, "int_status = INTSTAT_ICMD = %02x in %s CMD_XFER", this->int_status, __func__);
             this->update_irq();
         } else {
             this->seq_step = 0;
@@ -490,6 +506,7 @@ void Sc53C94::exec_command()
         }
         this->bus_obj->release_ctrl_line(this->my_bus_id, SCSI_CTRL_ACK);
         this->int_status = INTSTAT_DIS; // TODO: handle target disconnection properly
+        SCSI_LOG_IF_F(CURIO, "int_status = INTSTAT_DIS = %02x in %s CMD_MSG_ACCEPTED", this->int_status, __func__);
         this->update_irq();
         exec_next_command();
         break;
@@ -530,6 +547,7 @@ void Sc53C94::exec_command()
         SCSI_LOG_F(ERROR, "%s: invalid/unimplemented command 0x%X", this->name.c_str(), cmd);
         this->cmd_fifo_pos--; // remove invalid command from FIFO
         this->int_status = INTSTAT_ICMD;
+        SCSI_LOG_IF_F(CURIO, "int_status = INTSTAT_ICMD = %02x in %s default", this->int_status, __func__);
         this->update_irq();
     }
 }
@@ -551,9 +569,16 @@ void Sc53C94::fifo_push(const uint8_t data)
 {
     if (this->data_fifo_pos < DATA_FIFO_MAX) {
         this->data_fifo[this->data_fifo_pos++] = data;
+        if ((data & 0xf8) == 0xc0 && this->data_fifo_pos == 1) {
+            SCSI_LOG_F(CURIO, "FIFO 0x%02x at %d", data, this->data_fifo_pos);
+            debug_scsi_log = true;
+        }
+        SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (pushed data:%02x)",
+            this->data_fifo_pos - 1, this->data_fifo_pos, __func__, data);
     } else {
         SCSI_LOG_F(ERROR, "%s: data FIFO overflow!", this->name.c_str());
         this->status |= STAT_GE; // signal IOE/Gross Error
+        SCSI_LOG_IF_F(CURIO, "status |= STAT_GE = %02x in %s", this->status, __func__);
     }
 }
 
@@ -564,8 +589,11 @@ uint8_t Sc53C94::fifo_pop()
     if (this->data_fifo_pos < 1) {
         SCSI_LOG_F(ERROR, "%s: data FIFO underflow!", this->name.c_str());
         this->status |= STAT_GE; // signal IOE/Gross Error
+        SCSI_LOG_IF_F(CURIO, "status |= STAT_GE = %02x in %s", this->status, __func__);
     } else {
         data = this->data_fifo[0];
+        SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (popped data:%02x)",
+            this->data_fifo_pos, this->data_fifo_pos - 1, __func__, data);
         this->data_fifo_pos--;
         std::memmove(this->data_fifo, &this->data_fifo[1], this->data_fifo_pos);
     }
@@ -591,6 +619,8 @@ void Sc53C94::seq_defer_state(uint64_t delay_ns)
             this->sequencer();
     });
 }
+
+extern std::string hex_string(const uint8_t *p, int len);
 
 void Sc53C94::sequencer()
 {
@@ -646,6 +676,8 @@ void Sc53C94::sequencer()
         } else { // selection timeout
             this->seq_step = this->cmd_steps->step_num;
             this->int_status = this->cmd_steps->status;
+            SCSI_LOG_IF_F(CURIO, "int_status = %02x (from %x) = %02x in %s SEL_END",
+                this->cmd_steps->status, this->cmd_steps->seq_id, this->int_status, __func__);
             this->bus_obj->disconnect(this->my_bus_id);
             this->cur_state = SeqState::IDLE;
             SCSI_LOG_F(CURIO, "%s: state changed to %s in %s SEL_END",
@@ -678,6 +710,8 @@ void Sc53C94::sequencer()
     case SeqState::CMD_COMPLETE:
         this->seq_step   = this->cmd_steps->step_num;
         this->int_status = this->cmd_steps->status;
+        SCSI_LOG_IF_F(CURIO, "int_status = %02x = %02x (from %x) in %s CMD_COMPLETE",
+            this->cmd_steps->status, this->cmd_steps->seq_id, this->int_status, __func__);
         this->cur_state = SeqState::IDLE;
         SCSI_LOG_F(CURIO, "%s: state changed to %s in %s CMD_COMPLETE",
             this->name.c_str(), get_name_sequence(this->cur_state), __func__);
@@ -696,6 +730,8 @@ void Sc53C94::sequencer()
                 break;
             }
             this->bus_obj->push_data(this->target_id, this->data_fifo, this->data_fifo_pos);
+            SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s XFER_BEGIN.1 (popped data:%s)",
+                this->data_fifo_pos, 0, __func__, hex_string(this->data_fifo, this->data_fifo_pos).c_str());
             this->data_fifo_pos = 0;
             this->cur_state = SeqState::XFER_END;
             SCSI_LOG_F(CURIO, "%s: state changed to %s in %s XFER_BEGIN.2",
@@ -722,6 +758,7 @@ void Sc53C94::sequencer()
             this->bus_obj->target_next_step();
         }
         this->int_status = INTSTAT_SR;
+        SCSI_LOG_IF_F(CURIO, "int_status = INTSTAT_SR = %02x in %s XFER_END", this->int_status, __func__);
         this->cur_state = SeqState::IDLE;
         SCSI_LOG_F(CURIO, "%s: state changed to %s in %s XFER_END",
             this->name.c_str(), get_name_sequence(this->cur_state), __func__);
@@ -735,6 +772,7 @@ void Sc53C94::sequencer()
         if (this->bus_obj->current_phase() != this->cur_bus_phase) {
             this->cmd_fifo_pos = 0; // clear command FIFO
             this->int_status = INTSTAT_SR;
+            SCSI_LOG_IF_F(CURIO, "int_status = INTSTAT_SR = %02x in %s RCV_DATA", this->int_status, __func__);
             this->update_irq();
         } else {
             this->rcv_data();
@@ -768,6 +806,7 @@ void Sc53C94::update_irq()
     if (new_irq != this->irq) {
         this->irq = new_irq;
         this->status = (this->status & ~STAT_INT) | (new_irq << 7);
+        SCSI_LOG_IF_F(CURIO, "status |= STAT_INT(%d) = %02x in %s", new_irq, this->status, __func__);
         this->int_ctrl->ack_int(this->irq_id, new_irq);
     }
 }
@@ -819,6 +858,8 @@ int Sc53C94::send_data(uint8_t* dst_ptr, int count)
     std::memcpy(dst_ptr, this->data_fifo, actual_count);
 
     // remove the just readed data from the data FIFO
+    SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (popped data:%s)", this->data_fifo_pos,
+        this->data_fifo_pos - actual_count, __func__, hex_string(this->data_fifo, actual_count).c_str());
     this->data_fifo_pos -= actual_count;
     if (this->data_fifo_pos > 0) {
         std::memmove(this->data_fifo, &this->data_fifo[actual_count], this->data_fifo_pos);
@@ -849,6 +890,10 @@ bool Sc53C94::rcv_data()
     }
 
     this->bus_obj->pull_data(this->target_id, &this->data_fifo[this->data_fifo_pos], req_count);
+    SCSI_LOG_IF_F(CURIO, "target_id:%d req_count:%d fifo_pos:%d->%d in %s (pushed data: %s)",
+        this->target_id, req_count, this->data_fifo_pos, this->data_fifo_pos + req_count,
+        __func__, hex_string(&this->data_fifo[data_fifo_pos], req_count).c_str()
+    );
     this->data_fifo_pos += req_count;
     return true;
 }
@@ -875,13 +920,18 @@ void Sc53C94::real_dma_xfer_out()
         this->dma_ch->pull_data(std::min((int)this->xfer_count, DATA_FIFO_MAX),
                                 &got_bytes, &src_ptr);
         std::memcpy(this->data_fifo, src_ptr, got_bytes);
+        SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (pushed data:%s)",
+            this->data_fifo_pos, got_bytes, __func__, hex_string(src_ptr, got_bytes).c_str());
         this->data_fifo_pos = got_bytes;
         this->bus_obj->push_data(this->target_id, this->data_fifo, this->data_fifo_pos);
 
         this->xfer_count -= this->data_fifo_pos;
+        SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (popped data:%s)",
+            this->data_fifo_pos, 0, __func__, hex_string(this->data_fifo, this->data_fifo_pos).c_str());
         this->data_fifo_pos = 0;
         if (!this->xfer_count) {
             this->status |= STAT_TC; // signal zero transfer count
+            SCSI_LOG_IF_F(CURIO, "status |= STAT_TC = %02x in %s", this->status, __func__);
             this->cur_state = SeqState::XFER_END;
             SCSI_LOG_F(CURIO, "%s: state changed to %s in %s", this->name.c_str(), get_name_sequence(this->cur_state), __func__);
             this->sequencer();
@@ -921,10 +971,13 @@ void Sc53C94::real_dma_xfer_in()
         this->dma_ch->push_data((char*)this->data_fifo, this->data_fifo_pos);
 
         this->xfer_count -= this->data_fifo_pos;
+        SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (popped data:%s)", this->data_fifo_pos,
+            0, __func__, hex_string(this->data_fifo, this->data_fifo_pos).c_str());
         this->data_fifo_pos = 0;
         if (!this->xfer_count) {
             is_done = true;
             this->status |= STAT_TC; // signal zero transfer count
+            SCSI_LOG_IF_F(CURIO, "status |= STAT_TC = %02x in %s", this->status, __func__);
             this->cur_state = SeqState::XFER_END;
             SCSI_LOG_F(CURIO, "%s: state changed to %s in %s", this->name.c_str(), get_name_sequence(this->cur_state), __func__);
             this->sequencer();
