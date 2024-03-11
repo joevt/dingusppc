@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -297,6 +297,13 @@ private:
     DmaBidirChannel*    dma_ch = nullptr;
     DrqCb               drq_cb = nullptr;
     uint32_t            dma_timer_id = 0;
+
+    // logging
+    uint8_t  last_log_message = 0;
+    uint8_t  last_log_value = 0;
+    uint8_t  last_log_offset = 0;
+    int      last_log_count = 0;
+    uint32_t last_sequence = -1;
 };
 
 #endif // SC_53C94_H
