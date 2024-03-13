@@ -32,6 +32,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_PLATINUM = loguru::Verbosity_9
+    };
+}
+
 using namespace Platinum;
 
 PlatinumCtrl::PlatinumCtrl() : MemCtrlBase(), VideoCtrlBase() {
@@ -141,15 +147,19 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
         break;
     case PlatinumReg::FB_BASE_ADDR:
         value = this->fb_addr;
+        LOG_F(PLATINUM, "%s: read  FB_BASE_ADDR %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case PlatinumReg::MON_ID_SENSE:
         value = (this->mon_sense ^ 7);
+        LOG_F(PLATINUM, "%s: read  MON_ID_SENSE %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case PlatinumReg::SWATCH_CONFIG:
         value = this->swatch_config;
+        LOG_F(PLATINUM, "%s: read  SWATCH_CONFIG %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case PlatinumReg::SWATCH_INT_STAT:
         value = this->swatch_int_stat;
+        //LOG_F(PLATINUM, "%s: read  SWATCH_INT_STAT %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case PlatinumReg::CLR_CURSOR_INT:
         this->update_irq(0, SWATCH_INT_CURSOR);
@@ -179,15 +189,19 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::SWATCH_VFP:
     case PlatinumReg::SWATCH_VFPEQ:
         value = this->swatch_params[REG_TO_INDEX(offset >> 4)];
+        LOG_F(PLATINUM, "%s: read  SWATCH_%d %03x.%c = %0*x", this->name.c_str(), REG_TO_INDEX(offset >> 4), offset, SIZE_ARG(size), size * 2, value);
         break;
     case PlatinumReg::TIMING_ADJUST:
         value = this->timing_adjust;
+        LOG_F(PLATINUM, "%s: read  TIMING_ADJUST %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case PlatinumReg::IRIDIUM_CONFIG:
         value = this->iridium_cfg;
+        LOG_F(PLATINUM, "%s: read  IRIDIUM_CONFIG %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case PlatinumReg::POWER_DOWN_CTRL:
         value = this->power_down_ctrl;
+        LOG_F(PLATINUM, "%s: read  POWER_DOWN_CTRL %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     default:
         LOG_F(WARNING, "%s: unknown register read at offset 0x%X", this->name.c_str(),
@@ -197,8 +211,11 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
 
     if (size == 4 && !(offset & 3))
         return value;
-    else
-        return extract_with_wrap_around(value, offset, size);
+    else {
+        uint32_t result = extract_with_wrap_around(value, offset, size);
+        LOG_F(WARNING, "%s: read  %03x.%c = %08x -> %0*x", this->name.c_str(), offset, SIZE_ARG(size), value, size * 2, result);
+        return result;
+    }
 }
 
 void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
@@ -232,34 +249,43 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
     case PlatinumReg::BANK_5_BASE:
     case PlatinumReg::BANK_6_BASE:
     case PlatinumReg::BANK_7_BASE:
+        LOG_F(PLATINUM, "%s: write BANK_%d_BASE %03x.%c = %0*x", this->name.c_str(), (offset >> 4) - PlatinumReg::BANK_0_BASE, offset, SIZE_ARG(size), size * 2, value);
         this->bank_base[(offset >> 4) - PlatinumReg::BANK_0_BASE] = value;
         break;
     case PlatinumReg::FB_BASE_ADDR:
+        LOG_F(PLATINUM, "%s: write FB_BASE_ADDR %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->fb_addr   = value;
         this->fb_offset = value & 0x3FFFFF;
         break;
     case PlatinumReg::ROW_WORDS:
+        LOG_F(PLATINUM, "%s: write ROW_WORDS %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->row_words = value & ~7;
         break;
     case PlatinumReg::CLOCK_DIVISOR:
+        LOG_F(PLATINUM, "%s: write CLOCK_DIVISOR %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->clock_divisor = value;
         break;
     case PlatinumReg::FB_CONFIG_1:
+        LOG_F(PLATINUM, "%s: write FB_CONFIG_1 %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->fb_config_1 = value;
         this->half_bank = !!(this->vram_megs == 1 && (value & CFG1_FULL_BANKS));
         break;
     case PlatinumReg::FB_CONFIG_2:
+        LOG_F(PLATINUM, "%s: write FB_CONFIG_2 %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->fb_config_2 = value;
         break;
     case PlatinumReg::VMEM_PAGE_MODE:
+        LOG_F(PLATINUM, "%s: write VMEM_PAGE_MODE %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->vmem_fp_mode = value;
         break;
     case PlatinumReg::MON_ID_SENSE:
+        LOG_F(PLATINUM, "%s: write MON_ID_SENSE %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         value &= 7;
         this->mon_sense = this->display_id->read_monitor_sense(value, value ^ 7)
             << (value ^ 7);
         break;
     case PlatinumReg::FB_RESET:
+        LOG_F(PLATINUM, "%s: write FB_RESET %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
 
         if (value == 7 && this->crtc_on) {
             LOG_F(INFO, "%s: video disabled", this->name.c_str());
@@ -280,12 +306,15 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         this->half_access = !!(this->half_bank && value == 6);
         break;
     case PlatinumReg::VRAM_REFRESH:
+        LOG_F(PLATINUM, "%s: write VRAM_REFRESH %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->vram_refresh = value;
         break;
     case PlatinumReg::SWATCH_CONFIG:
+        LOG_F(PLATINUM, "%s: write SWATCH_CONFIG %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->swatch_config = value;
         break;
     case PlatinumReg::SWATCH_INT_MASK:
+        LOG_F(PLATINUM, "%s: write SWATCH_INT_MASK %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->swatch_int_mask = value;
         if (this->swatch_int_mask & SWATCH_INT_VBL)
             LOG_F(INFO, "%s: VBL interrupt enabled", this->name.c_str());
@@ -319,17 +348,20 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
     case PlatinumReg::SWATCH_VAL:
     case PlatinumReg::SWATCH_VFP:
     case PlatinumReg::SWATCH_VFPEQ:
+        LOG_F(PLATINUM, "%s: write SWATCH_%d %03x.%c = %0*x", this->name.c_str(), REG_TO_INDEX(offset >> 4), offset, SIZE_ARG(size), size * 2, value);
         this->swatch_params[REG_TO_INDEX(offset >> 4)] = value;
         break;
     case PlatinumReg::TIMING_ADJUST:
         this->timing_adjust = value;
         break;
     case PlatinumReg::IRIDIUM_CONFIG:
+        LOG_F(PLATINUM, "%s: write IRIDIUM_CONFIG %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         if (!(value & 1))
             LOG_F(ERROR, "%s: little-endian system bus is not implemented", this->name.c_str());
         this->iridium_cfg = (this->iridium_cfg & ~7) | (value & 7);
         break;
     case PlatinumReg::POWER_DOWN_CTRL:
+        LOG_F(PLATINUM, "%s: write POWER_DOWN_CTRL %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->power_down_ctrl = value;
         if (value & 1)
             LOG_F(INFO, "%s: power down mode enabled", this->name.c_str());
@@ -337,6 +369,10 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
     default:
         LOG_F(WARNING, "%s: unknown register write at offset 0x%X", this->name.c_str(),
               offset);
+    }
+
+    if ((offset & 3) || (size != 4)) {
+        LOG_F(ERROR, "%s: write %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
     }
 }
 
@@ -450,6 +486,7 @@ void PlatinumCtrl::enable_display() {
         this->blank_on = true;
         this->crtc_on = false;
         this->blank_display();
+        LOG_F(PLATINUM, "%s: display not enabled", this->name.c_str());
         return;
     }
 
@@ -461,6 +498,7 @@ void PlatinumCtrl::enable_display() {
 
     this->blank_on = false;
     this->crtc_on = true;
+    LOG_F(PLATINUM, "%s: display enabled", this->name.c_str());
 }
 
 void PlatinumCtrl::disable_display() {
