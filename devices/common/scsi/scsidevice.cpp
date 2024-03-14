@@ -176,8 +176,10 @@ int ScsiDevice::xfer_data() {
                 ABORT_F("%s: unsupported message received, code = 0x%X",
                         this->name.c_str(), this->msg_buf[0]);
             }
-            if (this->last_selection_has_atention)
+            if (this->last_selection_has_atention) {
                 this->last_selection_message = this->msg_buf[0];
+                LOG_F(SCSIDEVICE, "%s: received message:0x%02x", this->get_name().c_str(), this->msg_buf[0]);
+            }
         }
         break;
     case ScsiPhase::COMMAND:
