@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -24,7 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 
-//#define DEBUG_CPU_INT // uncomment this to enable hacks for debugging HW interrupts
+#define DEBUG_CPU_INT // uncomment this to enable hacks for debugging HW interrupts
 
 /** Enumerator for various interrupt sources. */
 enum IntSrc : uint32_t {
