@@ -24,7 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 
-//#define DEBUG_CPU_INT // uncomment this to enable hacks for debugging HW interrupts
+#define DEBUG_CPU_INT // uncomment this to enable hacks for debugging HW interrupts
 
 /** Enumerator for various interrupt sources. */
 enum IntSrc : uint32_t {
