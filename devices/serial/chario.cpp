@@ -279,7 +279,8 @@ CharIoSocket::CharIoSocket()
             LOG_F(INFO, "socket unlinked %s", path);
         }
         else if (errno != ENOENT) {
-            LOG_F(INFO, "socket unlink err: %s", strerror(errno));
+            int err = errno;
+            LOG_F(INFO, "socket unlink result:%d err:%d = %s", rc, err, strerror(err));
             break;
         }
 
