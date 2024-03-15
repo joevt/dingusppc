@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -279,7 +279,8 @@ CharIoSocket::CharIoSocket()
             LOG_F(INFO, "socket unlinked %s", path);
         }
         else if (errno != ENOENT) {
-            LOG_F(INFO, "socket unlink err: %s", strerror(errno));
+            int err = errno;
+            LOG_F(INFO, "socket unlink result:%d err:%d = %s", rc, err, strerror(err));
             break;
         }
 
