@@ -330,11 +330,13 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
             value = this->snd_out_dma->reg_read(offset & 0xFF, size);
             break;
         case MIO_GC_DMA_AUDIO_IN:
-            #if 0
+            #if 1
                 LOG_F(WARNING, "%s: Unsupported DMA channel DMA_AUDIO_IN read  @%02x.%c",
                     this->name.c_str(), offset & 0xFF, SIZE_ARG(size));
             #endif
-            return 0; // this->snd_in_dma->reg_read(offset & 0xFF, size);
+            value = 0;
+            //value = this->snd_in_dma->reg_read(offset & 0xFF, size);
+            break;
         case MIO_GC_DMA_SCSI_MESH:
             if (this->mesh_dma) {
                 value = this->mesh_dma->reg_read(offset & 0xFF, size);
