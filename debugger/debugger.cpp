@@ -1317,6 +1317,15 @@ void DppcDebugger::enter_debugger() {
             ofnvram->setenv("nvramrc", inp);
 #endif
 #ifdef DEBUG_CPU_INT
+        } else if (cmd == "nmi") {
+            cmd = "";
+            if (!gMachineObj) {
+                cout << "Machine doesn't exist." << endl;
+                continue;
+            }
+            InterruptCtrl* int_ctrl = dynamic_cast<InterruptCtrl*>(
+                gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
+            int_ctrl->ack_int(int_ctrl->register_dev_int(IntSrc::NMI), 1);
         } else if (cmd == "amicint") {
             cmd = "";
             string value;
