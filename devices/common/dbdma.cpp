@@ -75,6 +75,8 @@ void DMAChannel::interpret_cmd() {
     MapDmaResult res;
 
     if (this->cmd_in_progress) {
+        VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: interpret_cmd in_progress (ChannelStatus 0x%04x) (%d bytes remaining)",
+            this->get_name().c_str(), this->ch_stat + 0, this->queue_len + 0);
         // if there is data remaining to transfer then the command is not finished
         if (this->queue_len)
             return;
@@ -90,6 +92,12 @@ void DMAChannel::interpret_cmd() {
     this->ch_stat &= ~CH_STAT_WAKE; // clear wake bit (DMA spec, 5.5.3.4)
 
     this->cur_cmd = cmd_struct.cmd_key >> 4;
+
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: interpret_cmd (ChannelStatus 0x%04x):",
+        this->get_name().c_str(), this->ch_stat + 0);
+    if (loguru::Verbosity_DBDMA <= loguru::current_verbosity_cutoff()) {
+        dump_program(this->cmd_ptr, 1);
+    }
 
     switch (this->cur_cmd) {
     case DBDMA_Cmd::OUTPUT_MORE:
@@ -642,6 +650,7 @@ bool DMAChannel::is_in_active() {
 }
 
 void DMAChannel::start() {
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: start", this->get_name().c_str());
     if (this->ch_stat & CH_STAT_PAUSE) {
         LOG_F(WARNING, "%s: Cannot start DMA channel, PAUSE bit is set",
             this->get_name().c_str());
