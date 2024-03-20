@@ -86,6 +86,11 @@ uint8_t DMAChannel::interpret_cmd() {
 
     this->cur_cmd = cmd_struct.cmd_key >> 4;
 
+    LOG_F(DBDMA, "%s: interpret_cmd (ChannelStatus 0x%04x):", this->get_name().c_str(), this->ch_stat + 0);
+    if ((int)loguru::Verbosity_DBDMA != (int)loguru::Verbosity_9) {
+        dump_program(this->cmd_ptr, 1);
+    }
+
     switch (this->cur_cmd) {
     case DBDMA_Cmd::OUTPUT_MORE:
     case DBDMA_Cmd::OUTPUT_LAST:
