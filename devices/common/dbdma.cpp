@@ -426,12 +426,18 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
             if ((data & CH_STAT_FLUSH) &&
                 this->cur_cmd <= DBDMA_Cmd::INPUT_LAST &&
                 (this->ch_stat & CH_STAT_ACTIVE) &&
-                !(this->ch_stat & CH_STAT_DEAD)) {
-                    if (this->dev_obj != nullptr)
-                        this->dev_obj->notify(this, DMA_MSG_FLUSH);
-                    if (this->flush_cb)
-                        this->flush_cb();
+                !(this->ch_stat & CH_STAT_DEAD)
+            ) {
+                VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: CH_STAT_FLUSH", this->get_name().c_str());
+                if (this->dev_obj != nullptr) {
+                    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: notify flush", this->get_name().c_str());
+                    this->dev_obj->notify(this, DMA_MSG_FLUSH);
                 }
+                if (this->flush_cb) {
+                    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: flush_cb", this->get_name().c_str());
+                    this->flush_cb();
+                }
+            }
             this->ch_stat &= ~CH_STAT_FLUSH;
         }
 
@@ -586,6 +592,11 @@ bool DMAChannel::is_ready() {
 
 DmaPullResult DMAChannel::pull_data(uint32_t req_len, uint32_t *avail_len, uint8_t **p_data)
 {
+    if (req_len == 0) {
+        LOG_F(ERROR, "%s: pull_data req_len is zero",
+            this->get_name().c_str());
+    }
+
     *avail_len = 0;
 
     if (this->ch_stat & CH_STAT_DEAD || !(this->ch_stat & CH_STAT_ACTIVE)) {
@@ -615,8 +626,10 @@ DmaPullResult DMAChannel::pull_data(uint32_t req_len, uint32_t *avail_len, uint8
             this->res_count += this->queue_len;
             this->queue_len = 0;
         }
-        LOG_F(DBDMA, "%s: Will pull_data from 0x%llx : %s", this->get_name().c_str(),
-            (uint64_t)(this->queue_data + 0), hex_string(this->queue_data + 0, *avail_len).c_str());
+        LOG_F(DBDMA, "%s: Will pull %d bytes from 0x%llx (next:0x%llx, count:%d, queue:%d) : %s",
+            this->get_name().c_str(), *avail_len, (uint64_t)(*p_data), (uint64_t)(this->queue_data + 0),
+            this->res_count + 0, this->queue_len + 0, hex_string(*p_data, *avail_len).c_str()
+        );
         return DmaPullResult::MoreData; // tell the caller there is more data
     }
 
@@ -624,8 +637,13 @@ DmaPullResult DMAChannel::pull_data(uint32_t req_len, uint32_t *avail_len, uint8
 }
 
 int DMAChannel::push_data(const char* src_ptr, int len) {
+    if (len == 0) {
+        LOG_F(ERROR, "%s: push_data len is zero",
+            this->get_name().c_str());
+    }
+
     if (this->ch_stat & CH_STAT_DEAD || !(this->ch_stat & CH_STAT_ACTIVE)) {
-        LOG_F(WARNING, "%s: attempt to push data to dead/idle channel",
+        LOG_F(WARNING, "%s: Attempt to push data to dead/idle channel",
             this->get_name().c_str());
         return -1;
     }
@@ -638,13 +656,15 @@ int DMAChannel::push_data(const char* src_ptr, int len) {
     if (this->queue_len) {
         len = std::min((int)this->queue_len, len);
         std::memcpy(this->queue_data, src_ptr, len);
-        #if 0
-            LOG_F(DBDMA, "%s: Did push_data to 0x%llx : %s", this->get_name().c_str(),
-                (uint64_t)this->queue_data, hex_string(src_ptr, len).c_str());
-        #endif
         this->queue_data += len;
         this->res_count  += len;
         this->queue_len  -= len;
+        if ((uint64_t)(this->queue_data - len) < 5 || (uint64_t)(this->queue_data + 0) < 5) {
+            LOG_F(DBDMA, "%s: Did push %d bytes to 0x%llx (next:0x%llx, count:%d, queue:%d) : %s",
+                this->get_name().c_str(), len, (uint64_t)(this->queue_data - len), (uint64_t)(this->queue_data + 0),
+                this->res_count + 0, this->queue_len + 0, hex_string((uint8_t *)src_ptr, len).c_str()
+            );
+        }
     }
 
     // proceed with the DBDMA program if the buffer became exhausted
