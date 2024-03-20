@@ -454,7 +454,7 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
         }
         break;
     case DMAReg::CMD_PTR_LO:
-        if (!(this->ch_stat & CH_STAT_RUN) && !(this->ch_stat & CH_STAT_ACTIVE)) {
+        if (!(this->ch_stat & CH_STAT_RUN) && !(this->ch_stat & CH_STAT_ACTIVE)) { // DBDMA spec 5.5.4 (disagrees with 2.9.1.3)
             this->cmd_ptr = value;
             LOG_F(DBDMA, "%s: CommandPtrLo set to 0x%X", this->get_name().c_str(),
                 this->cmd_ptr);
