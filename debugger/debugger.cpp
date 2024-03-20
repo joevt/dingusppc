@@ -766,6 +766,7 @@ void enter_debugger() {
 
                 cmd = "";
                 std::cin.clear();
+                tcflush(STDIN_FILENO, TCIFLUSH);
                 in_getline = true;
                 getline(cin, inp, '\n');
                 ss.str(inp);
