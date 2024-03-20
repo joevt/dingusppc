@@ -439,6 +439,10 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
             LOG_F(DBDMA, "%s: CommandPtrLo set to 0x%X", this->get_name().c_str(),
                 this->cmd_ptr);
         }
+        else {
+            LOG_F(ERROR, "%s: CommandPtrLo cannot be set to 0x%X while running or active", this->get_name().c_str(),
+                this->cmd_ptr);
+        }
         break;
     case DMAReg::INT_SELECT:
         this->int_select = value & 0xFF00FFUL;
