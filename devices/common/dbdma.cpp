@@ -391,6 +391,14 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
         new_stat = (value & mask & 0xF0FFU) | (old_stat & ~(mask & 0xC0FF));
         LOG_F(DBDMA, "%s: ChannelStatus mask = 0x%04X value = 0x%04X old = 0x%04X new = 0x%04X",
             this->get_name().c_str(), mask, value & 0xffff, old_stat, new_stat);
+        if ((CH_STAT_WAKE | CH_STAT_FLUSH) & mask & ~value & old_stat) {
+            LOG_F(ERROR, "%s: Attempt to clear command bits 0x%04x",
+                this->get_name().c_str(), mask & (CH_STAT_WAKE | CH_STAT_FLUSH) & ~value);
+        }
+        if ((CH_STAT_BT | CH_STAT_ACTIVE | CH_STAT_DEAD) & mask & (~value ^ ~old_stat)) {
+            LOG_F(ERROR, "%s: Attempt to change status bits 0x%04x",
+                this->get_name().c_str(), (CH_STAT_BT | CH_STAT_ACTIVE | CH_STAT_DEAD) & mask & (~value ^ ~old_stat));
+        }
 
         // update ch_stat.s0...s7 if requested (needed for interrupt generation)
         if ((new_stat & 0xFF) != (old_stat & 0xFF)) {
