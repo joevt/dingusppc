@@ -34,6 +34,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 namespace loguru {
     enum : Verbosity {
         Verbosity_ATIRAGE = loguru::Verbosity_9,
+        Verbosity_ATICURSOR = loguru::Verbosity_9,
     };
 }
 
@@ -509,14 +510,14 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         new_value = value;
         this->cursor_dirty = true;
         draw_fb = true;
-        WRITE_VALUE_AND_LOG(9);
+        WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
     case ATI_CUR_OFFSET:
         new_value = value;
         if (old_value != new_value)
             this->cursor_dirty = true;
         draw_fb = true;
-        WRITE_VALUE_AND_LOG(9);
+        WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
     case ATI_CUR_HORZ_VERT_OFF:
         new_value = value;
@@ -526,12 +527,13 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         )
             this->cursor_dirty = true;
         draw_fb = true;
-        WRITE_VALUE_AND_LOG(9);
+        WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
     case ATI_CUR_HORZ_VERT_POSN:
         new_value = value;
         draw_fb = true;
-        break;
+        WRITE_VALUE_AND_LOG(ATICURSOR);
+        return;
     case ATI_GP_IO:
         new_value = value;
         if (offset <= 1 && offset + size > 1) {
@@ -622,6 +624,8 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
             else
                 this->cursor_on = false;
             draw_fb = true;
+            WRITE_VALUE_AND_LOG(ATICURSOR);
+            return;
         }
         if (bit_changed(old_value, new_value, ATI_GEN_GUI_RESETB)) {
             if (!bit_set(new_value, ATI_GEN_GUI_RESETB))
