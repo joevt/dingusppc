@@ -503,10 +503,18 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
     case DMAReg::CMD_PTR_LO:
         if (!(this->ch_stat & CH_STAT_ACTIVE)) { // DBDMA spec 5.5.4 (disagrees with 2.9.1.3)
             this->cmd_ptr = value;
-            LOG_F(DBDMA, "%s: CommandPtrLo set to 0x%X%s", this->get_name().c_str(),
-                this->cmd_ptr, (this->ch_stat & CH_STAT_RUN) ? " while running!" : "");
-        } else
-            LOG_F(WARNING, "%s: CommandPtrLo update skipped", this->get_name().c_str());
+            if (this->ch_stat & CH_STAT_RUN)
+                LOG_F(WARNING, "%s: CommandPtrLo set to 0x%X while paused", this->get_name().c_str(),
+                    value);
+            else
+                LOG_F(DBDMA, "%s: CommandPtrLo set to 0x%X", this->get_name().c_str(),
+                    value);
+        }
+        else {
+            this->cmd_ptr = value;
+            LOG_F(WARNING, "%s: CommandPtrLo should not be set to 0x%X while active (ChannelStatus 0x%04x)",
+                this->get_name().c_str(), value, this->ch_stat + 0);
+        }
         break;
     case DMAReg::INT_SELECT:
         this->int_select = value & 0xFF00FFUL;
