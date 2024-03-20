@@ -881,6 +881,9 @@ void DppcDebugger::enter_debugger() {
 
                 cmd = "";
                 std::cin.clear();
+                #ifndef _WIN32 // todo: fixme FlushConsoleInputBuffer
+                tcflush(STDIN_FILENO, TCIFLUSH);
+                #endif
                 in_getline = true;
                 getline(cin, inp, '\n');
                 ss.str(inp);
