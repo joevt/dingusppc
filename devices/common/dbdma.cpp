@@ -158,6 +158,11 @@ uint8_t DMAChannel::interpret_cmd() {
 void DMAChannel::finish_cmd() {
     bool   branch_taken = false;
 
+    uint32_t cmd_ptr;
+    if ((int)loguru::Verbosity_DBDMA != (int)loguru::Verbosity_9) {
+        cmd_ptr = this->cmd_ptr;
+    }
+
     // obtain real pointer to the descriptor of the command to be finished
     MapDmaResult res  = mmu_map_dma_mem(this->cmd_ptr, 16, false);
     uint8_t *cmd_desc = res.host_va;
@@ -216,6 +221,11 @@ void DMAChannel::finish_cmd() {
 
     if (this->cur_cmd < DBDMA_Cmd::STOP && !branch_taken)
         this->cmd_ptr += 16;
+
+    LOG_F(DBDMA, "%s: finish_cmd (ChannelStatus 0x%04x):", this->get_name().c_str(), this->ch_stat + 0);
+    if ((int)loguru::Verbosity_DBDMA != (int)loguru::Verbosity_9) {
+        dump_program(cmd_ptr, 1);
+    }
 
     if (this->cur_cmd < DBDMA_Cmd::STOP) {
         this->update_irq();
