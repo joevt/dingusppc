@@ -620,9 +620,11 @@ void DMAChannel::end_pull_data() {
     }
 
     if (this->queue_len) {
+        LOG_F(DBDMA, "%s: Pulled %d data. Flushing %d data.", this->get_name().c_str(), this->res_count + 0, this->queue_len + 0);
         this->queue_len = 0;
     } else {
         this->ch_stat &= ~CH_STAT_FLUSH;
+        LOG_F(DBDMA, "%s: Finished pulling %d data.", this->get_name().c_str(), this->res_count + 0);
     }
 
     // proceed with the DBDMA program
@@ -637,9 +639,11 @@ void DMAChannel::end_push_data() {
     }
 
     if (this->queue_len) {
+        LOG_F(DBDMA, "%s: Pushed %d data. Flushing %d data.", this->get_name().c_str(), this->res_count + 0, this->queue_len + 0);
         this->queue_len = 0;
     } else {
         this->ch_stat &= ~CH_STAT_FLUSH;
+        LOG_F(DBDMA, "%s: Finished pushing %d data.", this->get_name().c_str(), this->res_count + 0);
     }
 
     // proceed with the DBDMA program
