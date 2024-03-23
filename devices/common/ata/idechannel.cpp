@@ -35,6 +35,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/ata/atadefs.h>
 #include <devices/common/ata/idechannel.h>
 #include <devices/common/hwcomponent.h>
+#include <devices/common/mmiodevice.h>
 #include <devices/deviceregistry.h>
 #include <machines/machinebase.h>
 #include <loguru.hpp>
@@ -44,6 +45,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 
 using namespace ata_interface;
+
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_IDE_CHANNEL = loguru::Verbosity_9
+    };
+}
 
 IdeChannel::IdeChannel(const std::string name)
 {
@@ -66,7 +73,9 @@ void IdeChannel::register_device(int id, AtaInterface* dev_obj) {
 }
 
 uint32_t IdeChannel::read(const uint8_t reg_addr, const int size) {
-    return this->devices[this->cur_dev]->read(reg_addr);
+    uint32_t value = this->devices[this->cur_dev]->read(reg_addr);
+    LOG_F(IDE_CHANNEL, "%s: read  @%02x.%c = %0*x", this->name.c_str(), reg_addr, SIZE_ARG(size), size * 2, value);
+    return value;
 }
 
 void IdeChannel::write(const uint8_t reg_addr, const uint32_t val, const int size)
@@ -74,10 +83,14 @@ void IdeChannel::write(const uint8_t reg_addr, const uint32_t val, const int siz
     // keep track of the currently selected device
     if (reg_addr == DEVICE_HEAD) {
         this->cur_dev = (val >> 4) & 1;
+        AtaBaseDevice* base = dynamic_cast<AtaBaseDevice*>(this->devices[this->cur_dev]);
+        LOG_F(IDE_CHANNEL, "%s: cur_dev = %d (%s)",
+            this->name.c_str(), this->cur_dev, base ? base->get_name().c_str() : "AtaNullDevice");
     }
 
     // redirect register writes to both devices
     for (auto& dev : this->devices) {
+        LOG_F(IDE_CHANNEL, "%s: write @%02x.%c = %0*x", this->name.c_str(), reg_addr, SIZE_ARG(size), size * 2, val);
         dev->write(reg_addr, val);
     }
 }
