@@ -407,6 +407,8 @@ void MacIoTwo::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
         // writing to this read-only register. Especially, SCSI Manager 4.3
         // writes to it in clearSCSIxIRQ(). Don't ask me why.
         // Doing that has no effect - IRQ flags are cleared in the Nanokernel.
+        LOG_F(INTERRUPT, "%s: write INT_LEVELS1 @%x.%c = %0*x",
+            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value); // writing 0x100000 happens often
         break;
     case MIO_OHARE_ID:
         if (mask & 0xFF)
