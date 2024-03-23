@@ -375,6 +375,9 @@ void HeathrowIC::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
         }
         clear_cpu_int();
         break;
+    case MIO_INT_LEVELS1:
+        LOG_F(INTERRUPT, "write %x to MIO_INT_LEVELS1", value); // writing 0x100000 happens often
+        break;
     case MIO_OHARE_ID:
         LOG_F(WARNING, "Attempted to write %x to MIO:ID at %x; Address : %x", value, offset, ppc_state.pc);
         break;
