@@ -360,6 +360,10 @@ void MacIoTwo::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
         }
         clear_cpu_int();
         break;
+    case MIO_INT_LEVELS1:
+        LOG_F(INTERRUPT, "%s: write INT_LEVELS1 @%x.%c = %0*x",
+            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value); // writing 0x100000 happens often
+        break;
     case MIO_OHARE_ID:
         LOG_F(ERROR, "%s: write OHARE_ID @%x.%c = %0*x",
             this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
