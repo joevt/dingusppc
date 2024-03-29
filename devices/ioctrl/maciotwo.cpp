@@ -28,7 +28,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace loguru {
     enum : Verbosity {
-        Verbosity_INTERRUPT = loguru::Verbosity_9
+        Verbosity_INTERRUPT = loguru::Verbosity_9,
+        Verbosity_DBDMA = loguru::Verbosity_9
     };
 }
 
@@ -214,41 +215,57 @@ static const char *get_name_dma(unsigned dma_channel) {
 }
 
 uint32_t MacIoTwo::dma_read(uint32_t offset, int size) {
+    uint32_t value;
     int dma_channel = offset >> 8;
     switch (dma_channel) {
     case MIO_OHARE_DMA_MESH:
-        return this->mesh_dma->reg_read(offset & 0xFF, size);
+        value = this->mesh_dma->reg_read(offset & 0xFF, size);
+        break;
     case MIO_OHARE_DMA_FLOPPY:
-        return this->floppy_dma->reg_read(offset & 0xFF, size);
+        value = this->floppy_dma->reg_read(offset & 0xFF, size);
+        break;
     case MIO_OHARE_DMA_ETH_XMIT:
-        //return this->enet_xmit_dma ? this->enet_xmit_dma->reg_read(offset & 0xFF, size) : 0;
-        return 0;
+        //value = this->enet_xmit_dma ? this->enet_xmit_dma->reg_read(offset & 0xFF, size) : 0;
+        value = 0;
+        break;
     case MIO_OHARE_DMA_ETH_RCV:
-        //return this->enet_rcv_dma ? this->enet_rcv_dma->reg_read(offset & 0xFF, size) : 0;
-        return 0;
+        //value = this->enet_rcv_dma ? this->enet_rcv_dma->reg_read(offset & 0xFF, size) : 0;
+        value = 0;
+        break;
     case MIO_OHARE_DMA_ESCC_B_RCV:
-        return 0;
-        //return this->escc_b_rx_dma->reg_read(offset & 0xFF, size);
+        //value = this->escc_b_rx_dma->reg_read(offset & 0xFF, size);
+        value = 0;
+        break;
     case MIO_OHARE_DMA_AUDIO_OUT:
-        return this->snd_out_dma->reg_read(offset & 0xFF, size);
+        value = this->snd_out_dma->reg_read(offset & 0xFF, size);
+        break;
     case MIO_OHARE_DMA_IDE0:
-        return this->ide0_dma->reg_read(offset & 0xFF, size);
+        value = this->ide0_dma->reg_read(offset & 0xFF, size);
+        break;
     case MIO_OHARE_DMA_IDE1:
-        return this->ide1_dma->reg_read(offset & 0xFF, size);
+        value = this->ide1_dma->reg_read(offset & 0xFF, size);
+        break;
     default:
         if (!(unsupported_dma_channel_read & (1 << dma_channel))) {
             unsupported_dma_channel_read |= (1 << dma_channel);
             LOG_F(WARNING, "%s: Unsupported DMA channel %d %s read  @%02x.%c",
                 this->name.c_str(), dma_channel, get_name_dma(dma_channel),
                 offset & 0xFF, SIZE_ARG(size));
+            return 0;
         }
+        value = 0;
     }
-
-    return 0;
+    LOG_F(DBDMA, "read  %s @%02x.%c = %0*x", get_name_dma(dma_channel),
+        offset & 0xFF, SIZE_ARG(size), size * 2, value);
+    return value;
 }
 
 void MacIoTwo::dma_write(uint32_t offset, uint32_t value, int size) {
     int dma_channel = offset >> 8;
+
+    LOG_F(DBDMA, "write %s @%02x.%c = %0*x", get_name_dma(dma_channel),
+        offset & 0xFF, SIZE_ARG(size), size * 2, value);
+
     switch (dma_channel) {
     case MIO_OHARE_DMA_MESH:
         this->mesh_dma->reg_write(offset & 0xFF, value, size);
