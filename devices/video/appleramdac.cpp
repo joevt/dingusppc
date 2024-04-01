@@ -26,6 +26,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 #include <memaccess.h>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_RAMDAC = loguru::Verbosity_9,
+        Verbosity_RAMDAC_EXTRA = loguru::Verbosity_9,
+    };
+}
+
 AppleRamdac::AppleRamdac(DacFlavour flavour) {
     this->flavour =  flavour;
 
@@ -41,14 +48,21 @@ uint16_t AppleRamdac::iodev_read(uint32_t address) {
     case RamdacRegs::MULTI:
         switch(this->dac_addr) {
         case RamdacRegs::MISC_CTRL:
-            return this->dac_cr;
+            result = this->dac_cr;
+            LOG_F(RAMDAC_EXTRA, "%s: read  MISC_CTRL = 0x%02x", this->name.c_str(), result);
+            break;
         case RamdacRegs::PLL_CTRL:
-            return this->pll_cr;
+            result = this->pll_cr;
+            LOG_F(RAMDAC_EXTRA, "%s: read  PLL_CTRL = 0x%02x", this->name.c_str(), result);
+            break;
         case RamdacRegs::VENDOR_ID:
-            return this->dac_vendor;
+            result = this->dac_vendor;
+            LOG_F(RAMDAC_EXTRA, "%s: read  VENDOR_ID = 0x%02x", this->name.c_str(), result);
+            break;
         default:
             LOG_F(WARNING, "%s: read from unsupported multi-register at 0x%X",
                   this->name.c_str(), this->dac_addr);
+            result = 0;
         }
         break;
     case RamdacRegs::CLUT_DATA:
@@ -56,26 +70,31 @@ uint16_t AppleRamdac::iodev_read(uint32_t address) {
             this->get_clut_entry_cb(this->dac_addr, this->clut_color);
         }
         result = this->clut_color[this->comp_index];
+        LOG_F(RAMDAC, "%s: read  CLUT_DATA 0x%02x.%c = %02x", this->name.c_str(), this->dac_addr, "rgb"[comp_index], result);
         this->comp_index++;
         if (this->comp_index >= 3) {
             this->dac_addr++; // auto-increment CLUT address
             this->comp_index = 0;
         }
-        return result;
+        break;
     default:
         LOG_F(WARNING, "%s: read from unsupported register at 0x%X",
               this->name.c_str(), address);
+        result = 0;
     }
-    return 0;
+    return result;
 }
 
 void AppleRamdac::iodev_write(uint32_t address, uint16_t value) {
     switch(address) {
     case RamdacRegs::ADDRESS:
+        LOG_F(RAMDAC_EXTRA, "%s: write ADDRESS = 0x%02x", this->name.c_str(), value);
         this->dac_addr = value;
         this->comp_index = 0;
         break;
     case RamdacRegs::CURSOR_CLUT:
+        LOG_F(RAMDAC_EXTRA, "%s: write CURSOR_CLUT 0x%02x.%c = 0x%02x",
+            this->name.c_str(), this->dac_addr, "rgb"[comp_index], value);
         this->clut_color[this->comp_index++] = value;
         if (this->comp_index >= 3) {
             this->cursor_clut[this->dac_addr & 7] = (this->clut_color[0] << 16) |
@@ -87,6 +106,7 @@ void AppleRamdac::iodev_write(uint32_t address, uint16_t value) {
     case RamdacRegs::MULTI:
         switch (this->dac_addr) {
         case RamdacRegs::CURSOR_POS_HI:
+            LOG_F(RAMDAC_EXTRA, "%s: write CURSOR_POS_HI = 0x%02x", this->name.c_str(), value);
 #ifdef CURSOR_LO_DELAY // HACK: prevents artifacts in some cases, disabled by default
             if (this->cursor_timer_id) {
                 TimerManager::get_instance()->cancel_timer(this->cursor_timer_id);
@@ -98,6 +118,7 @@ void AppleRamdac::iodev_write(uint32_t address, uint16_t value) {
 #endif
             break;
         case RamdacRegs::CURSOR_POS_LO:
+            LOG_F(RAMDAC_EXTRA, "%s: write CURSOR_POS_LO = 0x%02x", this->name.c_str(), value);
 #ifdef CURSOR_LO_DELAY // HACK: prevents artifacts in some cases, disabled by default
             if (this->cursor_timer_id) {
                 TimerManager::get_instance()->cancel_timer(this->cursor_timer_id);
@@ -114,36 +135,53 @@ void AppleRamdac::iodev_write(uint32_t address, uint16_t value) {
 #endif
             break;
         case RamdacRegs::MISC_CTRL:
+            LOG_F(RAMDAC, "%s: write MISC_CTRL = 0x%02x", this->name.c_str(), value);
             if (bit_changed(this->dac_cr, value, 1)) {
-                if (value & 2)
+                if (value & 2) {
+                    LOG_F(RAMDAC, "%s: HW cursor enabled!", this->name.c_str());
                     this->cursor_ctrl_cb(true);
-                else
+                } else {
+                    LOG_F(RAMDAC, "%s: HW cursor disabled!", this->name.c_str());
                     this->cursor_ctrl_cb(false);
+                }
             }
             this->dac_cr = value;
             break;
         case RamdacRegs::DBL_BUF_CTRL:
+            LOG_F(RAMDAC, "%s: write DBL_BUF_CTRL = 0x%02x", this->name.c_str(), value);
             this->dbl_buf_cr = value;
             break;
         case RamdacRegs::TEST_CTRL:
+            LOG_F(RAMDAC, "%s: write TEST_CTRL = 0x%02x", this->name.c_str(), value);
             this->tst_cr = value;
             if (value & 1)
                 LOG_F(WARNING, "%s: DAC test enabled!", this->name.c_str());
             break;
         case RamdacRegs::PLL_CTRL:
+            LOG_F(RAMDAC, "%s: write PLL_CTRL = 0x%02x", this->name.c_str(), value);
             this->pll_cr = value;
             break;
         case RamdacRegs::VIDCLK_M_SET_A:
+            LOG_F(RAMDAC, "%s: write VIDCLK_M_SET_A = 0x%02x", this->name.c_str(), value);
             this->clk_m[0] = value;
             break;
         case RamdacRegs::VIDCLK_PN_SET_A:
+            LOG_F(RAMDAC, "%s: write VIDCLK_PN_SET_A = 0x%02x", this->name.c_str(), value);
             this->clk_pn[0] = value;
             break;
         case RamdacRegs::VIDCLK_M_SET_B:
+            LOG_F(RAMDAC, "%s: write VIDCLK_M_SET_B = 0x%02x", this->name.c_str(), value);
             this->clk_m[1] = value;
             break;
         case RamdacRegs::VIDCLK_PN_SET_B:
+            LOG_F(RAMDAC, "%s: write VIDCLK_PN_SET_B = 0x%02x", this->name.c_str(), value);
             this->clk_pn[1] = value;
+            break;
+        case RamdacRegs::VENDOR_ID:
+            LOG_F(ERROR, "%s: write VENDOR_ID = 0x%02x", this->name.c_str(), value);
+            break;
+        case RamdacRegs::DAC_29:
+            LOG_F(ERROR, "%s: write DAC_29 = 0x%02x", this->name.c_str(), value);
             break;
         default:
             LOG_F(WARNING, "%s: write to unsupported multi-register at 0x%X",
@@ -151,6 +189,7 @@ void AppleRamdac::iodev_write(uint32_t address, uint16_t value) {
         }
         break;
     case RamdacRegs::CLUT_DATA:
+        LOG_F(RAMDAC, "%s: write CLUT_DATA 0x%02x.%c = 0x%02x", this->name.c_str(), this->dac_addr, "rgb"[comp_index], value);
         if (this->comp_index == 0) {
             this->get_clut_entry_cb(this->dac_addr, this->clut_color);
         }
