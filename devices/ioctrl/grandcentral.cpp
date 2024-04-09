@@ -595,6 +595,12 @@ void GrandCentral::ack_int_common(uint64_t irq_id, uint8_t irq_line_state) {
     // native mode:   set IRQ bits in int_events on a 0-to-1 transition
     // emulated mode: set IRQ bits in int_events on all transitions
 
+    if (loguru::Verbosity_INTERRUPT <= loguru::current_verbosity_cutoff())
+        if (irq_id & ~(INT_TO_IRQ_ID(0x12) | INT_TO_IRQ_ID(0x1A)))
+            LOG_F(INTERRUPT, "%s: native interrupt mask:%08x events:%08x levels:%08x change:%08llx state:%d",
+                this->name.c_str(), this->int_mask, this->int_events + 0, this->int_levels + 0, irq_id, irq_line_state
+            );
+
     if ((this->int_mask & MACIO_INT_MODE) ||
         (irq_line_state && !(this->int_levels & irq_id))) {
         this->int_events |= (uint32_t)irq_id;
