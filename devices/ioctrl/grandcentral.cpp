@@ -310,16 +310,20 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
             LOG_F(WARNING, "%s: Unsupported DMA channel DMA_ETH_RCV read  @%02x.%c", this->name.c_str(), offset & 0xFF, SIZE_ARG(size));
             return 0;
         case MIO_GC_DMA_ESCC_A_XMIT:
-            value = this->escc_a_tx_dma->reg_read(offset & 0xFF, size);
+            value = 0;
+            //value = this->escc_a_tx_dma->reg_read(offset & 0xFF, size);
             break;
         case MIO_GC_DMA_ESCC_A_RCV:
-            value = this->escc_a_rx_dma->reg_read(offset & 0xFF, size);
+            value = 0;
+            //value = this->escc_a_rx_dma->reg_read(offset & 0xFF, size);
             break;
         case MIO_GC_DMA_ESCC_B_XMIT:
-            value = this->escc_b_tx_dma->reg_read(offset & 0xFF, size);
+            value = 0;
+            //value = this->escc_b_tx_dma->reg_read(offset & 0xFF, size);
             break;
         case MIO_GC_DMA_ESCC_B_RCV:
-            value = this->escc_b_rx_dma->reg_read(offset & 0xFF, size);
+            value = 0;
+            //value = this->escc_b_rx_dma->reg_read(offset & 0xFF, size);
             break;
         case MIO_GC_DMA_AUDIO_OUT:
             value = this->snd_out_dma->reg_read(offset & 0xFF, size);
@@ -454,16 +458,16 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             LOG_F(WARNING, "%s: Unsupported DMA channel DMA_ETH_RCV write @%02x.%c = %0*x", this->name.c_str(), offset & 0xFF, SIZE_ARG(size), size * 2, value);
             break;
         case MIO_GC_DMA_ESCC_A_XMIT:
-            this->escc_a_tx_dma->reg_write(offset & 0xFF, value, size);
+            //this->escc_a_tx_dma->reg_write(offset & 0xFF, value, size);
             break;
         case MIO_GC_DMA_ESCC_A_RCV:
-            this->escc_a_rx_dma->reg_write(offset & 0xFF, value, size);
+            //this->escc_a_rx_dma->reg_write(offset & 0xFF, value, size);
             break;
         case MIO_GC_DMA_ESCC_B_XMIT:
-            this->escc_b_tx_dma->reg_write(offset & 0xFF, value, size);
+            //this->escc_b_tx_dma->reg_write(offset & 0xFF, value, size);
             break;
         case MIO_GC_DMA_ESCC_B_RCV:
-            this->escc_b_rx_dma->reg_write(offset & 0xFF, value, size);
+            //this->escc_b_rx_dma->reg_write(offset & 0xFF, value, size);
             break;
         case MIO_GC_DMA_AUDIO_OUT:
             this->snd_out_dma->reg_write(offset & 0xFF, value, size);
