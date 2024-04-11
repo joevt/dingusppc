@@ -130,14 +130,32 @@ static void show_help() {
 
 #ifdef ENABLE_68K_DEBUGGER
 
-static uint32_t disasm_68k(uint32_t count, uint32_t address) {
+typedef struct {
+    csh cs_handle;
+    cs_insn* insn;
+    bool diddisasm;
+} DisasmContext68K;
+
+static uint32_t disasm_68k(uint32_t count, uint32_t address, DisasmContext68K *ctx = nullptr) {
     csh cs_handle;
     uint8_t code[12]{};
     size_t code_size;
     uint64_t dis_addr;
 
+    if (ctx) {
+        ctx->insn = nullptr;
+        ctx->cs_handle = 0;
+        ctx->diddisasm = false;
+    }
+
     if (cs_open(CS_ARCH_M68K, CS_MODE_M68K_040, &cs_handle) != CS_ERR_OK) {
         cout << "Capstone initialization error" << endl;
+        return address;
+    }
+
+    if (cs_option(cs_handle, CS_OPT_DETAIL, 1) != CS_ERR_OK) {
+        cout << "Capstone option error" << endl;
+        cs_close(&cs_handle);
         return address;
     }
 
@@ -184,6 +202,8 @@ static uint32_t disasm_68k(uint32_t count, uint32_t address) {
             code_size = 2;
             snprintf(insn->mnemonic, sizeof(insn->mnemonic), "%s", ti.name);
             snprintf(insn->op_str, sizeof(insn->op_str), "");
+            insn->detail->regs_read_count = 0;
+            insn->detail->regs_write_count = 0;
         } else if ((code[0] & 0xF0) != 0xF0 && cs_disasm_iter(cs_handle, &code_ptr, &code_size, &dis_addr, insn)) {
             code_size = sizeof(code) - code_size;
             address = static_cast<uint32_t>(dis_addr);
@@ -192,18 +212,73 @@ static uint32_t disasm_68k(uint32_t count, uint32_t address) {
             code_size = 2;
             snprintf(insn->mnemonic, sizeof(insn->mnemonic), "dc.w");
             snprintf(insn->op_str, sizeof(insn->op_str), "$%04x", READ_WORD_BE_U(&code[0]));
+            insn->detail->regs_read_count = 0;
+            insn->detail->regs_write_count = 0;
         }
 
         int i = 0;
         for (; i < code_size; i += 2)
             cout << COUT04X << READ_WORD_BE_U(&code[i]) << " ";
         cout << setfill(' ') << setw((10 - (int)code_size) / 2 * 5) << "";
-        cout << setfill(' ') << setw(10) << left << insn->mnemonic << insn->op_str << right << dec << endl;
+        cout << setfill(' ') << setw(10) << left << insn->mnemonic << insn->op_str << right << dec;
+        if (ctx) {
+            ctx->diddisasm = true;
+        } else {
+            cout << endl;
+        }
     }
 
-    cs_free(insn, 1);
-    cs_close(&cs_handle);
+    if (ctx) {
+        ctx->insn = insn;
+        ctx->cs_handle = cs_handle;
+    } else {
+        cs_free(insn, 1);
+        cs_close(&cs_handle);
+    }
     return address;
+}
+
+uint32_t get_reg_68k(const char *reg_name) {
+    if (reg_name[0] == 'd' && reg_name[1] < '8') return ppc_state.gpr[reg_name[1] - '0' + 8];
+    if (reg_name[0] == 'a') return reg_name[1] < '7' ? ppc_state.gpr[reg_name[1] - '0' + 16] : ppc_state.gpr[1];
+    if (!strcmp(reg_name, "pc"     )) return ppc_state.gpr[24] - 2;
+    if (!strcmp(reg_name, "sr"     )) return (ppc_state.gpr[25] & 0xFF) << 8;
+    if (!strcmp(reg_name, "ccr"    )) return ppc_state.gpr[26];
+    return 0;
+}
+
+static void disasm_68k_in(DisasmContext68K &ctx, uint32_t address) {
+    disasm_68k(1, address, &ctx);
+
+    if (ctx.diddisasm && (ctx.insn->detail->regs_read_count > 0 || ctx.insn->detail->regs_write_count > 0)) {
+        size_t instr_str_length = /*strlen(ctx.insn->mnemonic) +*/ strlen(ctx.insn->op_str);
+
+        if (instr_str_length < 18)
+            cout << setw(18 - (int)instr_str_length) << " ";
+        cout << " ;";
+        if (ctx.insn->detail->regs_read_count > 0) {
+            cout << " in{" << COUTX;
+            for (int i = 0; i < ctx.insn->detail->regs_read_count; i++) {
+                const char *reg_name = cs_reg_name(ctx.cs_handle, ctx.insn->detail->regs_read[i]);
+                cout << " " << reg_name << ":" << get_reg_68k(reg_name);
+            }
+            cout << " }" << dec;
+        }
+    }
+}
+
+static void disasm_68k_out(DisasmContext68K &ctx) {
+    if (ctx.diddisasm) {
+        if (ctx.insn->detail->regs_write_count > 0) {
+            cout << " out{" << COUTX;
+            for (int i = 0; i < ctx.insn->detail->regs_write_count; i++) {
+                const char *reg_name = cs_reg_name(ctx.cs_handle, ctx.insn->detail->regs_write[i]);
+                cout << " " << reg_name << ":" << get_reg_68k(reg_name);
+            }
+            cout << " }" << dec;
+        }
+        cout << endl;
+    }
 }
 
 constexpr auto EMU_68K_START_PHYS       = 0xfff60000;
@@ -1017,11 +1092,15 @@ void DppcDebugger::enter_debugger() {
                 if ((context == 2 || (context == 3 && get_context() == 2)) && exec_upto_68k_opcode(context == 3)) {
                     if (!power_on)
                         break;
+                    DisasmContext68K ctx;
                     if (!is_sq) {
                         addr = static_cast<uint32_t>(ppc_state.gpr[24] - 2);
-                        disasm_68k(1, addr);
+                        disasm_68k_in(ctx, addr);
                     }
                     exec_single_68k();
+                    if (!is_sq) {
+                        disasm_68k_out(ctx);
+                    }
                 } else
 #endif
                 {
