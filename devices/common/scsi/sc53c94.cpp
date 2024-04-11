@@ -1018,7 +1018,7 @@ void Sc53C94::real_dma_xfer_out()
 
     xfer_out_iteration++;
 
-    if (this->xfer_count) {
+    while (this->xfer_count) {
         if (this->data_fifo_pos) {
             SCSI_LOG_F(ERROR, "xfer_out_iteration:%d xfer_count:%d fifo_pos:%d",
                 xfer_out_iteration, this->xfer_count, this->data_fifo_pos);
@@ -1049,9 +1049,11 @@ void Sc53C94::real_dma_xfer_out()
                 this->name.c_str(), get_name_sequence(this->cur_state), __func__);
             this->sequencer();
         }
+        if (this->is_dbdma)
+            break;
     }
 
-    if (this->xfer_count) {
+    if (this->is_dbdma && this->xfer_count) {
         if (this->dma_timer_id) {
             SCSI_LOG_F(ERROR, "%s: replacing seq_timer_id", this->name.c_str());
         }
@@ -1080,27 +1082,34 @@ void Sc53C94::real_dma_xfer_in()
             xfer_in_iteration, this->xfer_count, this->data_fifo_pos);
     }
 
-    if (this->xfer_count && this->data_fifo_pos) {
-        this->dma_ch->push_data((char*)this->data_fifo, this->data_fifo_pos);
+    while (this->xfer_count) {
+        if (this->data_fifo_pos) {
+            this->dma_ch->push_data((char*)this->data_fifo, this->data_fifo_pos);
 
-        this->xfer_count -= this->data_fifo_pos;
-        SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (popped data:%s)", this->data_fifo_pos,
-            0, __func__, hex_string(this->data_fifo, this->data_fifo_pos).c_str());
-        this->data_fifo_pos = 0;
-        if (!this->xfer_count) {
-            is_done = true;
-            this->status |= STAT_TC; // signal zero transfer count
-            SCSI_LOG_IF_F(CURIO, "status |= STAT_TC = %02x in %s", this->status, __func__);
-            this->cur_state = SeqState::XFER_END;
-            SCSI_LOG_F(CURIO, "%s: state changed to %s in %s",
-                this->name.c_str(), get_name_sequence(this->cur_state), __func__);
+            this->xfer_count -= this->data_fifo_pos;
+            SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (popped data:%s)", this->data_fifo_pos,
+                0, __func__, hex_string(this->data_fifo, this->data_fifo_pos).c_str());
+            this->data_fifo_pos = 0;
+            if (!this->xfer_count) {
+                is_done = true;
+                this->status |= STAT_TC; // signal zero transfer count
+                SCSI_LOG_IF_F(CURIO, "status |= STAT_TC = %02x in %s", this->status, __func__);
+                this->cur_state = SeqState::XFER_END;
+                SCSI_LOG_F(CURIO, "%s: state changed to %s in %s",
+                    this->name.c_str(), get_name_sequence(this->cur_state), __func__);
+                this->sequencer();
+            }
+        }
+
+        // see if we need to refill FIFO
+        if (!this->data_fifo_pos && !is_done) {
             this->sequencer();
         }
+        if (this->is_dbdma)
+            break;
     }
 
-    // see if we need to refill FIFO
-    if (!this->data_fifo_pos && !is_done) {
-        this->sequencer();
+    if (this->is_dbdma && this->xfer_count) {
         if (this->dma_timer_id) {
             SCSI_LOG_F(ERROR, "%s: replacing seq_timer_id", this->name.c_str());
         }
