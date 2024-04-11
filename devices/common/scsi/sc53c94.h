@@ -223,6 +223,7 @@ public:
         this->dma_ch = dma_ch;
         auto dbdma_ch = dynamic_cast<DMAChannel*>(dma_ch);
         if (dbdma_ch) {
+            this->is_dbdma = true;
             dbdma_ch->set_callbacks(
                 std::bind(&Sc53C94::dma_start, this),
                 std::bind(&Sc53C94::dma_stop, this)
@@ -316,6 +317,7 @@ private:
     uint8_t  last_log_offset = 0;
     int      last_log_count = 0;
     uint32_t last_sequence = -1;
+    bool     is_dbdma = false;
 };
 
 #endif // SC_53C94_H
