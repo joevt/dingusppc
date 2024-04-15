@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 /** Bandit/Chaos ARBus-to-PCI Bridge emulation. */
 
 #include <debugger/backtrace.h>
+#include <devices/common/hwinterrupt.h>
 #include <devices/common/pci/bandit.h>
 #include <devices/deviceregistry.h>
 #include <devices/memctrl/memctrlbase.h>
@@ -144,6 +145,31 @@ void BanditPciDevice::verbose_address_space()
     }
 }
 
+void BanditHost::pci_interrupt(uint8_t irq_line_state, PCIBase *dev) {
+    auto it = std::find_if(dev_map.begin(), dev_map.end(),
+        [&dev](const std::pair<int, PCIBase*> &p) {
+            return p.second == dev;
+        }
+    );
+ 
+    if (it == dev_map.end()) {
+        LOG_F(ERROR, "Interrupt from unknown device %s", dev->get_name().c_str());
+    }
+    else {
+        uint32_t irq_id;
+        switch (it->first) {
+            case DEV_FUN(0x0D,0): irq_id = this->irq_id_PCI_A    ; break;
+            case DEV_FUN(0x0E,0): irq_id = this->irq_id_PCI_B    ; break;
+            case DEV_FUN(0x0F,0): irq_id = this->irq_id_PCI_C    ; break;
+            default:
+                LOG_F(ERROR, "Interrupt from device %s at unexpected device/function %02x.%x", dev->get_name().c_str(), it->first >> 3, it->first & 7);
+                return;
+        }
+        if (this->int_ctrl)
+            this->int_ctrl->ack_int(irq_id, irq_line_state);
+    }
+}
+
 uint32_t BanditHost::read(uint32_t rgn_start, uint32_t offset, int size)
 {
     switch (offset >> 22) {
@@ -240,29 +266,36 @@ inline void BanditHost::cfg_setup(uint32_t offset, int size, int &bus_num,
 int BanditHost::device_postinit() {
     std::string pci_dev_name;
 
-    static const std::map<std::string, int> pci_slots1 = {
-        {"pci_A1", DEV_FUN(0xD,0)}, {"pci_B1", DEV_FUN(0xE,0)}, {"pci_C1", DEV_FUN(0xF,0)}
+    typedef struct {
+        const char *property;
+        uint8_t     device;
+        IntSrc      interrupt;
+    } pci_slot;
+
+    static const pci_slot pci_slots[][4] = {
+        {{nullptr, DEV_FUN(0xB,0), IntSrc::CONTROL}, {"vci_D",  DEV_FUN(0xD,0), IntSrc::PLANB}, {"vci_E",  DEV_FUN(0xE,0), IntSrc::VCI  }, {nullptr,  DEV_FUN(0xF,0), IntSrc::INT_UNKNOWN}},
+        {{nullptr, DEV_FUN(0xB,0), IntSrc::BANDIT1}, {"pci_A1", DEV_FUN(0xD,0), IntSrc::PCI_A}, {"pci_B1", DEV_FUN(0xE,0), IntSrc::PCI_B}, {"pci_C1", DEV_FUN(0xF,0), IntSrc::PCI_C      }},
+        {{nullptr, DEV_FUN(0xB,0), IntSrc::BANDIT2}, {"pci_D2", DEV_FUN(0xD,0), IntSrc::PCI_D}, {"pci_E2", DEV_FUN(0xE,0), IntSrc::PCI_E}, {"pci_F2", DEV_FUN(0xF,0), IntSrc::PCI_F      }},
     };
 
-    static const std::map<std::string, int> pci_slots2 = {
-        {"pci_D2", DEV_FUN(0xD,0)}, {"pci_E2", DEV_FUN(0xE,0)}, {"pci_F2", DEV_FUN(0xF,0)}
-    };
-
-    static const std::map<std::string, int> vci_slots = {
-        {"vci_D", DEV_FUN(0xD,0)}, {"vci_E", DEV_FUN(0xE,0)}, {"vci_F", DEV_FUN(0xF,0)}
-    };
-
-    for (auto& slot :
-        this->bridge_num == 0 ? vci_slots  :
-        this->bridge_num == 1 ? pci_slots1 :
-        this->bridge_num == 2 ? pci_slots2 :
-        pci_slots1
-    ) {
-        pci_dev_name = GET_STR_PROP(slot.first);
-        if (!pci_dev_name.empty()) {
-            this->attach_pci_device(pci_dev_name, slot.second, std::string("@") + slot.first);
+    const pci_slot *slots = &pci_slots[this->bridge_num][0];
+    for (int i = 1; i < 4; i++) {
+        const pci_slot *slot = &slots[i];
+        if (slot->property) {
+            pci_dev_name = GET_STR_PROP(slot->property);
+            if (!pci_dev_name.empty()) {
+                this->attach_pci_device(pci_dev_name, slot->device, std::string("@") + slot->property);
+            }
         }
     }
+
+    this->int_ctrl = dynamic_cast<InterruptCtrl*>(
+        gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
+    if (slots[0].interrupt) this->irq_id       = this->int_ctrl->register_dev_int(slots[0].interrupt);
+    if (slots[1].interrupt) this->irq_id_PCI_A = this->int_ctrl->register_dev_int(slots[1].interrupt);
+    if (slots[2].interrupt) this->irq_id_PCI_B = this->int_ctrl->register_dev_int(slots[2].interrupt);
+    if (slots[3].interrupt) this->irq_id_PCI_C = this->int_ctrl->register_dev_int(slots[3].interrupt);
+
     return 0;
 }
 
@@ -348,8 +381,6 @@ static const PropMap Chaos_Properties = {
     {"vci_D",
         new StrProperty("")},
     {"vci_E",
-        new StrProperty("")},
-    {"vci_F",
         new StrProperty("")},
 };
 

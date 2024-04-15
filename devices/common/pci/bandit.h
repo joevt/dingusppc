@@ -66,6 +66,8 @@ enum {
 /** checks if one bit is set at time, return 0 if not */
 #define SINGLE_BIT_SET(val) ((val) && !((val) & ((val)-1)))
 
+class InterruptCtrl;
+
 /*
     Common functionality for Bandit/Chaos PCI host bridge.
  */
@@ -74,7 +76,7 @@ public:
     BanditHost(int bridge_num) { this->bridge_num = bridge_num; };
 
     // PCIHost methods
-    virtual void pci_interrupt(uint8_t irq_line_state, PCIBase *dev) {}
+    virtual void pci_interrupt(uint8_t irq_line_state, PCIBase *dev);
 
     // MMIODevice methods
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size);
@@ -91,6 +93,13 @@ private:
     void cfg_setup(uint32_t offset, int size, int &bus_num, int &dev_num,
                    int &fun_num, uint8_t &reg_offs, AccessDetails &details,
                    PCIBase *&device);
+
+    // interrupt related stuff
+    InterruptCtrl* int_ctrl = nullptr;
+    uint32_t irq_id           = 0;
+    uint32_t irq_id_PCI_A     = 0;
+    uint32_t irq_id_PCI_B     = 0;
+    uint32_t irq_id_PCI_C     = 0;
 };
 
 /*

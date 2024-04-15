@@ -103,7 +103,6 @@ static const map<string, string> PropHelp = {
     {"pci_F2",          "insert a PCI device into F2 slot"},
     {"vci_D",           "insert a VCI device 0x0D"},
     {"vci_E",           "insert a VCI device 0x0E"},
-    {"vci_F",           "insert a VCI device 0x0F"},
     {"serial_backend",  "specifies the backend for the serial port"},
     {"emmo",            "enables/disables factory HW tests during startup"},
     {"cpu",             "specifies CPU"},
