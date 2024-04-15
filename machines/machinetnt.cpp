@@ -51,7 +51,7 @@ int initialize_tnt(std::string& id)
         DEV_FUN(0x10,0), gc_obj);
 
     // get video PCI controller object
-    PCIHost *vci_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name("Chaos"));
+    PCIHost *vci_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name_optional("Chaos"));
     if (vci_host) {
         // connect built-in video device to the VCI bus
         vci_host->pci_register_device(
