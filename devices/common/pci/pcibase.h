@@ -126,7 +126,16 @@ public:
     }
 
     virtual void pci_interrupt(uint8_t irq_line_state) {
-        this->host_instance->pci_interrupt(irq_line_state, this);
+        if (!(this->command & 0x0400)) {
+            this->host_instance->pci_interrupt(irq_line_state, this);
+            /* A pci device should set the interrupt status bit when an interrupt occurs
+             * and it should clear the interrupt status bit when its interrupt bits are cleared.
+             * The interrupt status bit is new to PCI Local Bus Specification Revision 2.3
+             * and Power Macs use PCI Local Bus Specification Revision 2.0. Some PCI cards
+             * might not implement this bit.
+            */
+            //this->status |= 0x0008;
+        }
     }
 
     // MMIODevice methods
