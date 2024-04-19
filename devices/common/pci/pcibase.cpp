@@ -50,7 +50,22 @@ PCIBase::PCIBase(std::string name, PCIHeaderType hdr_type, int num_bars)
             FIXME: should register or unregister BAR mmio regions if (cmd & 2) changes.
             Or the mmio regions should be enabled/disabled.
         */
-        this->command = cmd & this->command_cfg;
+        uint16_t old_cmd = this->command;
+        uint16_t new_cmd = cmd & this->command_cfg;
+        uint16_t changed = old_cmd ^ new_cmd;
+        if (changed & 0x0001) LOG_F(INFO   , "%s: I/O Space %s"                  , this->get_name().c_str(), (new_cmd & 0x0001) ? "enabled" : "disabled");
+        if (changed & 0x0002) LOG_F(INFO   , "%s: Memory Space %s"               , this->get_name().c_str(), (new_cmd & 0x0002) ? "enabled" : "disabled");
+        if (changed & 0x0004) LOG_F(INFO   , "%s: Bus Master %s"                 , this->get_name().c_str(), (new_cmd & 0x0004) ? "enabled" : "disabled");
+        if (changed & 0x0008) LOG_F(INFO   , "%s: Special Cycle %s"              , this->get_name().c_str(), (new_cmd & 0x0008) ? "enabled" : "disabled");
+        if (changed & 0x0010) LOG_F(INFO   , "%s: Memory Write and Invalidate %s", this->get_name().c_str(), (new_cmd & 0x0010) ? "enabled" : "disabled");
+        if (changed & 0x0020) LOG_F(WARNING, "%s: VGA Palette Snoop %s"          , this->get_name().c_str(), (new_cmd & 0x0020) ? "enabled" : "disabled");
+        if (changed & 0x0040) LOG_F(INFO   , "%s: Parity Error Response %s"      , this->get_name().c_str(), (new_cmd & 0x0040) ? "enabled" : "disabled");
+        if (changed & 0x0080) LOG_F(INFO   , "%s: Wait Cycle Control %s"         , this->get_name().c_str(), (new_cmd & 0x0080) ? "enabled" : "disabled");
+        if (changed & 0x0100) LOG_F(INFO   , "%s: SERR# %s"                      , this->get_name().c_str(), (new_cmd & 0x0100) ? "enabled" : "disabled");
+        if (changed & 0x0200) LOG_F(INFO   , "%s: Fast Back-to-Back %s"          , this->get_name().c_str(), (new_cmd & 0x0200) ? "enabled" : "disabled");
+        if (changed & 0x0400) LOG_F(ERROR  , "%s: Interrupt Disable %s"          , this->get_name().c_str(), (new_cmd & 0x0400) ? "enabled" : "disabled");
+        if (changed & 0xF800) LOG_F(ERROR  , "%s: Reserved 0x%04x"               , this->get_name().c_str(), (new_cmd & 0xF800));
+        this->command = new_cmd;
     };
     this->pci_wr_bist       = [](uint8_t  val) {};
     this->pci_wr_lat_timer  = [this](uint8_t val) { this->lat_timer = val; };
