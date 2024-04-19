@@ -50,7 +50,24 @@ PCIBase::PCIBase(std::string name, PCIHeaderType hdr_type, int num_bars)
             FIXME: should register or unregister BAR mmio regions if (cmd & 2) changes.
             Or the mmio regions should be enabled/disabled.
         */
-        this->command = cmd & this->command_cfg;
+        uint16_t old_cmd = this->command;
+        uint16_t new_cmd = cmd & this->command_cfg;
+        uint16_t changed = old_cmd ^ new_cmd;
+        #define CHANGED(flag, level, name, value) if (changed & flag) \
+            LOG_F(level, "%s: " name, this->get_name().c_str(), (new_cmd & flag) value)
+        CHANGED(0x0001, INFO   , "I/O Space %s"                  , ? "enabled" : "disabled");
+        CHANGED(0x0002, INFO   , "Memory Space %s"               , ? "enabled" : "disabled");
+        CHANGED(0x0004, INFO   , "Bus Master %s"                 , ? "enabled" : "disabled");
+        CHANGED(0x0008, INFO   , "Special Cycle %s"              , ? "enabled" : "disabled");
+        CHANGED(0x0010, INFO   , "Memory Write and Invalidate %s", ? "enabled" : "disabled");
+        CHANGED(0x0020, WARNING, "VGA Palette Snoop %s"          , ? "enabled" : "disabled");
+        CHANGED(0x0040, INFO   , "Parity Error Response %s"      , ? "enabled" : "disabled");
+        CHANGED(0x0080, INFO   , "Wait Cycle Control %s"         , ? "enabled" : "disabled");
+        CHANGED(0x0100, INFO   , "SERR# %s"                      , ? "enabled" : "disabled");
+        CHANGED(0x0200, INFO   , "Fast Back-to-Back %s"          , ? "enabled" : "disabled");
+        CHANGED(0x0400, ERROR  , "Interrupt Disable %s"          , ? "enabled" : "disabled");
+        CHANGED(0xF800, ERROR  , "Reserved 0x%04x"               , );
+        this->command = new_cmd;
     };
     this->pci_wr_bist       = [](uint8_t  val) {};
     this->pci_wr_lat_timer  = [this](uint8_t val) { this->lat_timer = val; };
