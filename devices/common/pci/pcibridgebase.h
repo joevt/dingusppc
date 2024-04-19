@@ -45,6 +45,7 @@ public:
     // PCIHost methods
     virtual bool pci_register_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj);
     virtual bool pci_unregister_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj);
+    virtual void pci_interrupt(uint8_t irq_line_state, PCIBase *dev);
 
     // PCIBase methods
     virtual uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details);

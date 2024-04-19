@@ -53,6 +53,16 @@ bool PCIBridgeBase::pci_unregister_mmio_region(uint32_t start_addr, uint32_t siz
     return this->host_instance->pci_unregister_mmio_region(start_addr, size, obj);
 }
 
+void PCIBridgeBase::pci_interrupt(uint8_t irq_line_state, PCIBase *dev) {
+    // Set this to 0 to boot with atimach64gx behind a PCI bridge.
+    // Set it to 1 after boot has finished to allow using the mouse cursor
+    // on all the displays.
+    static bool do_bridge_interrupt = 1;
+
+    if (do_bridge_interrupt)
+        this->host_instance->pci_interrupt(irq_line_state, this);
+}
+
 uint32_t PCIBridgeBase::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
 {
     switch (reg_offs) {
