@@ -55,7 +55,6 @@ public:
 
     static DeviceDescription& get_descriptor(const std::string& name);
 
-private:
     static map<string, DeviceDescription> & get_registry() {
         static map<string, DeviceDescription> device_registry;
         return device_registry;

@@ -26,8 +26,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/timermanager.h>
 #include <cpu/ppc/ppcemu.h>
 #include <debugger/debugger.h>
-#include <machines/machinebase.h>
 #include <debugger/symbols.h>
+#include <devices/deviceregistry.h>
+#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <utils/profiler.h>
 #include <main.h>
@@ -156,20 +157,32 @@ int main(int argc, char** argv) {
     }
 
     /* handle overriding of machine settings from command line */
-    map<string, string> settings;
-    if (MachineFactory::get_machine_settings(machine_str, settings) < 0) {
+    if (MachineFactory::get_machine_settings(machine_str) < 0) {
         return 1;
     }
 
     CLI::App sa;
     sa.allow_extras();
 
-    for (auto& s : settings) {
+    for (auto& s : gMachineFactorySettings) {
         sa.add_option("--" + s.first, s.second);
     }
+
+    /* handle overriding of machine settings from command line for
+       devices that may be added during create_machine_for_id below */
+    for (auto& r : DeviceRegistry::get_registry()) {
+        for (auto& p : r.second.properties) {
+            if (!gMachineFactorySettings.count(p.first)) {
+                gMachineFactorySettings[p.first] = p.second->get_string();
+                gMachineSettings[p.first] = unique_ptr<BasicProperty>(p.second->clone());
+                sa.add_option("--" + p.first, gMachineFactorySettings[p.first]);
+            }
+        }
+    }
+
     sa.parse(app.remaining_for_passthrough()); /* TODO: handle exceptions! */
 
-    MachineFactory::set_machine_settings(settings);
+    MachineFactory::set_machine_settings();
 
     cout << "BootROM path: " << bootrom_path << endl;
     cout << "Execution mode: " << execution_mode << endl;
