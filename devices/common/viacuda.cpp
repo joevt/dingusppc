@@ -44,6 +44,10 @@ namespace loguru {
     enum : Verbosity {
         Verbosity_CUDA6 = loguru::Verbosity_6,
         Verbosity_CUDA9 = loguru::Verbosity_9,
+        Verbosity_CUDA = loguru::Verbosity_9,
+        Verbosity_CUDATICK = loguru::Verbosity_9,
+        Verbosity_CUDAREAD = loguru::Verbosity_9,
+        Verbosity_CUDAWRITE = loguru::Verbosity_9,
     };
 }
 
@@ -202,6 +206,29 @@ std::string get_command_name(int cmd) {
     }
 }
 
+std::string get_reg_name(int reg) {
+    char buf[100];
+    switch (reg & 0xF) {
+        case VIA_B     : return "VIA_B";
+        case VIA_A     : return "VIA_A";
+        case VIA_DIRB  : return "VIA_DIRB";
+        case VIA_DIRA  : return "VIA_DIRA";
+        case VIA_T1CL  : return "VIA_T1CL";
+        case VIA_T1CH  : return "VIA_T1CH";
+        case VIA_T1LL  : return "VIA_T1LL";
+        case VIA_T1LH  : return "VIA_T1LH";
+        case VIA_T2CL  : return "VIA_T2CL";
+        case VIA_T2CH  : return "VIA_T2CH";
+        case VIA_SR    : return "VIA_SR";
+        case VIA_ACR   : return "VIA_ACR";
+        case VIA_PCR   : return "VIA_PCR";
+        case VIA_IFR   : return "VIA_IFR";
+        case VIA_IER   : return "VIA_IER";
+        case VIA_ANH   : return "VIA_ANH";
+        default        : snprintf(buf, sizeof(buf), "unknown:0x%x", (reg & 0xF)); return buf;
+    }
+}
+
 uint8_t ViaCuda::read(int reg) {
     uint8_t value;
     /* reading from some VIA registers triggers special actions */
@@ -245,10 +272,13 @@ uint8_t ViaCuda::read(int reg) {
         value = this->via_regs[reg & 0xF];
     }
 
+    LOG_F(CUDAREAD, "Cuda: read  %s = 0x%02x", get_reg_name(reg).c_str(), value);
     return value;
 }
 
 void ViaCuda::write(int reg, uint8_t value) {
+    LOG_F(CUDAWRITE, "Cuda: write %s = 0x%02x", get_reg_name(reg).c_str(), value);
+
     this->via_regs[reg & 0xF] = value;
 
     switch (reg & 0xF) {
@@ -489,19 +519,26 @@ void ViaCuda::write(uint8_t new_state) {
 
 /* sends zeros to host ad infinitum */
 void ViaCuda::null_out_handler() {
+    LOG_F(CUDA, "null_out_handler 0x00");
     this->via_regs[VIA_SR] = 0;
 }
 
 /* sends PRAM content to host ad infinitum */
 void ViaCuda::pram_out_handler()
 {
-    this->via_regs[VIA_SR] = this->pram_obj->read_byte(this->cur_pram_addr++);
+    uint8_t value = this->pram_obj->read_byte(this->cur_pram_addr);
+    LOG_F(CUDA, "pram_out_handler @%02x = 0x%02x", this->cur_pram_addr, value);
+    this->via_regs[VIA_SR] = value;
+    this->cur_pram_addr++;
 }
 
 /* sends data from out_buf until exhausted, then switches to next_out_handler */
 void ViaCuda::out_buf_handler() {
     if (this->out_pos < this->out_count) {
-        this->via_regs[VIA_SR] = this->out_buf[this->out_pos++];
+        uint8_t value = this->out_buf[this->out_pos];
+        LOG_F(CUDA, "out_buf_handler @%02x/%02x = 0x%02x", this->out_pos, this->out_count, value);
+        this->out_pos++;
+        this->via_regs[VIA_SR] = value;
         if (!this->is_open_ended && this->out_pos >= this->out_count) {
             // tell the host this will be the last byte
             this->via_regs[VIA_B] |= CUDA_TREQ; // negate TREQ
@@ -512,6 +549,7 @@ void ViaCuda::out_buf_handler() {
         this->next_out_handler = &ViaCuda::null_out_handler;
         (this->*out_handler)();
     } else {
+        LOG_F(CUDA, "out_buf_handler done");
         this->out_count = 0;
         this->via_regs[VIA_B] |= CUDA_TREQ; // negate TREQ
         this->treq = 1;
@@ -609,6 +647,7 @@ void ViaCuda::autopoll_handler() {
             */
             bool send_time = !(this->last_time & 3);
             if (send_time || this->one_sec_mode < 3) {
+                LOG_F(CUDATICK, "tick: CUDA_GET_REAL_TIME");
                 response_header(CUDA_PKT_PSEUDO, 0);
                 this->out_buf[2] = CUDA_GET_REAL_TIME;
                 if (send_time || this->one_sec_mode == 1) {
@@ -617,6 +656,7 @@ void ViaCuda::autopoll_handler() {
                     this->out_count = 7;
                 }
             } else if (this->one_sec_mode == 3) {
+                LOG_F(CUDATICK, "tick");
                 response_header(CUDA_PKT_TICK, 0);
                 this->out_count = 1;
             }
