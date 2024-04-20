@@ -34,6 +34,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 namespace loguru {
     enum : Verbosity {
         Verbosity_ATIRAGE = loguru::Verbosity_9,
+        Verbosity_ATIINTERRUPT = loguru::Verbosity_9,
         Verbosity_ATICURSOR = loguru::Verbosity_9,
     };
 }
@@ -345,12 +346,10 @@ uint32_t ATIRage::read_reg(uint32_t reg_offset, uint32_t size) {
 #define WRITE_VALUE_AND_LOG(level) \
     do { \
         this->regs[reg_num] = new_value; \
-        if (reg_num != ATI_CRTC_INT_CNTL) { \
-            LOG_F(level, "%s: write %s %04x.%c = %0*x = %08x", this->name.c_str(), \
-                get_reg_name(reg_num), reg_offset, SIZE_ARG(size), size * 2, \
-                (uint32_t)extract_bits<uint64_t>(value, offset * 8, size * 8), new_value \
-            ); \
-        } \
+        LOG_F(level, "%s: write %s %04x.%c = %0*x = %08x", this->name.c_str(), \
+            get_reg_name(reg_num), reg_offset, SIZE_ARG(size), size * 2, \
+            (uint32_t)extract_bits<uint64_t>(value, offset * 8, size * 8), new_value \
+        ); \
     } while (0)
 
 void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
@@ -453,7 +452,7 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         bits_read_only |= bits_not_AKed; // the not AKed bits will remain unchanged
 
         new_value = (old_value & bits_read_only) | (new_value & ~bits_read_only);
-        WRITE_VALUE_AND_LOG(9);
+        WRITE_VALUE_AND_LOG(ATIINTERRUPT);
         this->update_interrupt();
         return;
     }
