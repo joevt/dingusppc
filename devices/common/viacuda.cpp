@@ -647,6 +647,8 @@ void ViaCuda::pseudo_command() {
             WRITE_WORD_BE_A(&this->out_buf[6], CUDA_FW_VERSION_MAJOR);
             WRITE_WORD_BE_A(&this->out_buf[8], CUDA_FW_VERSION_MINOR);
             this->out_count += 7;
+        } else if (addr < CUDA_PRAM_START) {
+            LOG_F(WARNING, "Cuda: READ_MCU_MEM unknown address 0x%02x", addr);
         }
         this->is_open_ended = true;
         break;
@@ -667,6 +669,9 @@ void ViaCuda::pseudo_command() {
                 this->pram_obj->write_byte((addr - CUDA_PRAM_START + i) & 0xFF,
                                             this->in_buf[4+i]);
             }
+        } else if (addr < CUDA_PRAM_START) {
+            LOG_F(WARNING, "Cuda: WRITE_MCU_MEM unknown address 0x%02x = %s",
+                addr, hex_string(&this->in_buf[4], this->in_count - 4).c_str());
         }
         response_header(CUDA_PKT_PSEUDO, 0);
         break;
