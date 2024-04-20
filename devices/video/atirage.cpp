@@ -455,6 +455,7 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
             }
         }
 
+        WRITE_VALUE_AND_LOG(ATIRAGE);
 
         if (bit_changed(old_value, new_value, ATI_CRTC_ENABLE)
             || extract_bits(old_value, ATI_CRTC_PIX_WIDTH, ATI_CRTC_PIX_WIDTH_size) !=
@@ -466,7 +467,7 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
                 this->crtc_update();
             }
         }
-        break;
+        return;
     }
     case ATI_CUR_CLR0:
     case ATI_CUR_CLR1:
