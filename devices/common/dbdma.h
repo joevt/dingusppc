@@ -136,7 +136,7 @@ public:
 
 protected:
     static DMACmd* fetch_cmd(uint32_t cmd_addr, DMACmd* p_cmd, bool *is_writable);
-    void interpret_cmd(void);
+    void interpret_cmd(const char *from);
     void finish_cmd();
     void xfer_quad(const DMACmd *cmd_desc, DMACmd *cmd_host);
     void update_irq();
