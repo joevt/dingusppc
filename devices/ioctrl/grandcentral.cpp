@@ -356,6 +356,9 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
         return value;
     } else { // Interrupt related registers
         //LOG_F(INFO, "read  %s 0x%x", get_name_gc_reg(offset), offset);
+        if (size != 4)
+            LOG_F(ERROR, "%s: reading 0x%X.%c",
+                  this->name.c_str(), this->base_addr + offset, SIZE_ARG(size));
         switch (offset) {
         case MIO_INT_EVENTS1:
             return BYTESWAP_32(this->int_events);
@@ -502,6 +505,9 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         }
     } else { // Interrupt related registers
         //LOG_F(INFO, "write %s 0x%x", get_name_gc_reg(offset), offset);
+        if (size != 4)
+            LOG_F(ERROR, "%s: writing 0x%X.%c = %0*x",
+                  this->name.c_str(), this->base_addr + offset, SIZE_ARG(size), size * 2, value);
         switch (offset) {
         case MIO_INT_MASK1:
             this->int_mask = BYTESWAP_32(value);
