@@ -73,13 +73,13 @@ void DMAChannel::schedule_cmd() {
         interpret_timer_id = TimerManager::get_instance()->add_oneshot_timer(1000000, [this] {
             interpret_timer_id = 0;
             if (this->ch_stat & CH_STAT_ACTIVE) {
-                this->interpret_cmd();
+                this->interpret_cmd("schedule_cmd");
             }
         });
     }
 }
 
-void DMAChannel::interpret_cmd() {
+void DMAChannel::interpret_cmd(const char *from) {
     DMACmd cmd_struct;
     MapDmaResult res;
 
@@ -102,7 +102,7 @@ void DMAChannel::interpret_cmd() {
 
     this->cur_cmd = cmd_struct.cmd_key >> 4;
 
-    LOG_F(DBDMA, "%s: interpret_cmd (ChannelStatus 0x%04x):", this->get_name().c_str(), this->ch_stat + 0);
+    LOG_F(DBDMA, "%s: interpret_cmd(%s) (ChannelStatus 0x%04x):", this->get_name().c_str(), from, this->ch_stat + 0);
     if ((int)loguru::Verbosity_DBDMA != (int)loguru::Verbosity_9) {
         dump_program(this->cmd_ptr, 1);
     }
@@ -505,7 +505,7 @@ DmaPullResult DMAChannel::pull_data(uint32_t req_len, uint32_t *avail_len, uint8
 
     // interpret DBDMA program until we get data or become idle
     while ((this->ch_stat & CH_STAT_ACTIVE) && !this->queue_len) {
-        this->interpret_cmd();
+        this->interpret_cmd("pull_data");
     }
 
     // dequeue data if any
@@ -550,7 +550,7 @@ int DMAChannel::push_data(const char* src_ptr, int len) {
 
     // interpret DBDMA program until we get buffer to fill in or become idle
     while ((this->ch_stat & CH_STAT_ACTIVE) && !this->queue_len) {
-        this->interpret_cmd();
+        this->interpret_cmd("push_data1");
     }
 
     if (this->queue_len) {
@@ -570,7 +570,7 @@ int DMAChannel::push_data(const char* src_ptr, int len) {
 
     // proceed with the DBDMA program if the buffer became exhausted
     if (!this->queue_len) {
-        this->interpret_cmd();
+        this->interpret_cmd("push_data0");
     }
 
     return 0;
@@ -592,7 +592,7 @@ void DMAChannel::end_pull_data() {
     }
 
     // proceed with the DBDMA program
-    this->interpret_cmd();
+    this->interpret_cmd("end_pull_data");
 }
 
 void DMAChannel::end_push_data() {
@@ -611,7 +611,7 @@ void DMAChannel::end_push_data() {
     }
 
     // proceed with the DBDMA program
-    this->interpret_cmd();
+    this->interpret_cmd("end_push_data");
 }
 
 bool DMAChannel::is_out_active() {
@@ -653,7 +653,7 @@ void DMAChannel::start() {
     // a device and memory is queued or the channel becomes idle/dead.
     while (!this->cmd_in_progress && !(this->ch_stat & CH_STAT_DEAD) &&
            (this->ch_stat & CH_STAT_ACTIVE)) {
-               this->interpret_cmd();
+               this->interpret_cmd("start");
     }
 }
 
@@ -672,7 +672,7 @@ void DMAChannel::resume() {
     // a device and memory is queued or the channel becomes idle/dead.
     while (!this->cmd_in_progress && !(this->ch_stat & CH_STAT_DEAD) &&
            (this->ch_stat & CH_STAT_ACTIVE)) {
-               this->interpret_cmd();
+               this->interpret_cmd("resume");
     }
 }
 
