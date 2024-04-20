@@ -47,6 +47,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace std;
 
 map<string, unique_ptr<BasicProperty>> gMachineSettings;
+map<string, string> gMachineFactorySettings;
 
 /**
     Power Macintosh ROM identification map.
@@ -273,6 +274,7 @@ int MachineFactory::get_machine_settings(const string& id, map<string, string> &
         auto props = it->second.settings;
 
         gMachineSettings.clear();
+        settings.clear();
 
         for (auto& p : props) {
             settings[p.first] = p.second->get_string();

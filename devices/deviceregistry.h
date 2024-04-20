@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-22 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -55,7 +55,6 @@ public:
 
     static DeviceDescription& get_descriptor(const std::string& name);
 
-private:
     static map<string, DeviceDescription> & get_registry() {
         static map<string, DeviceDescription> device_registry;
         return device_registry;
