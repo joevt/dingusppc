@@ -42,6 +42,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace std;
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_CUDA6 = loguru::Verbosity_6,
+        Verbosity_CUDA9 = loguru::Verbosity_9,
+    };
+}
+
 ViaCuda::ViaCuda() : I2CBus() {
     this->name = "ViaCuda";
 
@@ -147,6 +154,53 @@ std::string hex_string(const uint8_t *p, int len)
     return str;
 }
 
+std::string get_command_name(int cmd) {
+    char buf[100];
+    #define one_name(x) case CUDA_ ## x : return(#x);
+    switch (cmd) {
+        one_name(WARM_START)
+        one_name(START_STOP_AUTOPOLL)
+        one_name(READ_MCU_MEM)
+        one_name(GET_REAL_TIME)
+        one_name(GET_ROM_SIZE)
+        one_name(GET_ROM_BASE)
+        one_name(GET_ROM_HEADER)
+        one_name(READ_PRAM)
+        one_name(WRITE_MCU_MEM)
+        one_name(SET_REAL_TIME)
+        one_name(POWER_DOWN)
+        one_name(SET_POWER_UPTIME)
+        one_name(WRITE_PRAM)
+        one_name(MONO_STABLE_RESET)
+        one_name(SEND_DFAC)
+        one_name(EGRET_DIAGS)
+        one_name(BATTERY_SWAP_SENSE)
+        one_name(RESTART_SYSTEM)
+        one_name(SET_IPL_LEVEL)
+        one_name(FILE_SERVER_FLAG)
+        one_name(SET_AUTOPOLL_RATE)
+        one_name(GET_PRAM_SIZE)
+        one_name(GET_AUTOPOLL_RATE)
+        one_name(SET_BUS_DELAY)
+        one_name(GET_BUS_DELAY)
+        one_name(SET_DEVICE_BITMAP)
+        one_name(GET_DEVICE_BITMAP)
+        one_name(ONE_SECOND_MODE)
+        one_name(SET_KBRD_NMI)
+        one_name(SET_POST_PARSE)
+        one_name(SET_HANG_THRESHOLD)
+        one_name(GET_HANG_THRESHOLD)
+        one_name(SET_DEFAULT_DFAC)
+        one_name(SET_POWER_MESSAGES)
+        one_name(READ_WRITE_I2C)
+        one_name(TOGGLE_WAKEUP)
+        one_name(TIMER_TICKLE)
+        one_name(COMB_FMT_I2C)
+        one_name(OUT_PB0)
+        default: snprintf(buf, sizeof(buf), "unknown:0x%x", cmd); return buf;
+    }
+}
+
 uint8_t ViaCuda::read(int reg) {
     uint8_t value;
 
@@ -211,11 +265,11 @@ void ViaCuda::write(int reg, uint8_t value) {
         break;
     case VIA_DIRB:
         this->via_ddrb = value;
-        LOG_F(9, "VIA_DIRB = 0x%X", value);
+        LOG_F(CUDA9, "VIA_DIRB = 0x%X", value);
         break;
     case VIA_DIRA:
         this->via_ddra = value;
-        LOG_F(9, "VIA_DIRA = 0x%X", value);
+        LOG_F(CUDA9, "VIA_DIRA = 0x%X", value);
         break;
     case VIA_T1CL:
         this->via_t1ll = value; // writes to T1CL are redirected to T1LL
@@ -277,11 +331,11 @@ void ViaCuda::write(int reg, uint8_t value) {
         break;
     case VIA_ACR:
         this->via_acr = value & VIA_ACR_IMPL_BITS;
-        LOG_F(9, "VIA_ACR = 0x%X", value);
+        LOG_F(CUDA9, "VIA_ACR = 0x%X", value);
         break;
     case VIA_PCR:
         this->via_pcr = value;
-        LOG_F(9, "VIA_PCR = 0x%X", value);
+        LOG_F(CUDA9, "VIA_PCR = 0x%X", value);
         break;
     case VIA_IFR:
         // for each "1" in value clear the corresponding flags
@@ -344,7 +398,7 @@ void ViaCuda::update_irq() {
     // let CPU know when irq_state is "1" or it changes from "1" to "0"
     if (irq_state || (irq_state != (this->_via_ifr >> 7))) {
         this->_via_ifr = (irq_state << 7) | (this->_via_ifr & 0x7F);
-        LOG_F(6, "%s: signal IRQ line change to 0x%X, IFR=0x%02X",
+        LOG_F(CUDA6, "%s: signal IRQ line change to 0x%X, IFR=0x%02X",
               this->name.c_str(), irq_state, this->_via_ifr);
         this->int_ctrl->ack_int(this->irq_id, irq_state);
     }
@@ -443,7 +497,7 @@ void ViaCuda::write(uint8_t new_state) {
 
             this->in_count = 0;
         } else {
-            LOG_F(9, "Cuda: enter sync state");
+            LOG_F(CUDA9, "Cuda: enter sync state");
             this->via_portb &= ~CUDA_TREQ; // assert TREQ
             this->treq      = 0;
             this->in_count  = 0;
@@ -542,16 +596,12 @@ void ViaCuda::process_packet() {
 
     switch (this->in_buf[0]) {
     case CUDA_PKT_ADB:
-        LOG_F(9, "Cuda: ADB packet received");
+        LOG_F(CUDA9, "Cuda: ADB packet received data:%s", hex_string(this->in_buf, this->in_count).c_str());
         this->process_adb_command();
         break;
     case CUDA_PKT_PSEUDO:
-        LOG_F(9, "Cuda: pseudo command packet received");
-        LOG_F(9, "Command: 0x%X", this->in_buf[1]);
-        LOG_F(9, "Data count: %d", this->in_count);
-        for (int i = 0; i < this->in_count; i++) {
-            LOG_F(9, "0x%X ,", this->in_buf[i]);
-        }
+        LOG_F(CUDA9, "Cuda: Pseudo Command received %s data:%s",
+            get_command_name(this->in_buf[1]).c_str(), hex_string(this->in_buf, this->in_count).c_str());
         pseudo_command();
         break;
     default:
@@ -809,7 +859,7 @@ void ViaCuda::pseudo_command() {
     case CUDA_WARM_START:
     case CUDA_MONO_STABLE_RESET:
         /* really kludge temp code */
-        LOG_F(INFO, "Cuda: Restart/Shutdown signal sent with command 0x%x!", cmd);
+        LOG_F(INFO, "Cuda: Restart/Shutdown %s signal sent with command 0x%x!", get_command_name(cmd).c_str(), cmd);
         //exit(0);
         break;
     default:
