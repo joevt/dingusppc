@@ -59,7 +59,7 @@ public:
     static int create(string& mach_id);
     static int create_machine_for_id(string& id, string& rom_filepath);
 
-    static void get_device_settings(DeviceDescription& dev, map<string, string> &settings = gMachineFactorySettings);
+    static void get_device_settings(const string &dev_name, DeviceDescription& dev, map<string, string> &settings = gMachineFactorySettings);
     static int get_machine_settings(const string& id, map<string, string> &settings = gMachineFactorySettings);
     static void set_machine_settings(map<string, string> &settings = gMachineFactorySettings);
 
