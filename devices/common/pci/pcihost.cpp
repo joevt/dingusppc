@@ -120,7 +120,7 @@ PCIBase *PCIHost::attach_pci_device(const std::string& dev_name, int slot_id, co
 
     // attempt to create device object
     auto desc = DeviceRegistry::get_descriptor(dev_name);
-    MachineFactory::get_device_settings(desc);
+    MachineFactory::get_device_settings(dev_name, desc);
     auto dev_obj = desc.m_create_func();
 
     if (!dev_obj->supports_type(HWCompType::PCI_DEV)) {

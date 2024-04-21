@@ -247,18 +247,19 @@ void MachineFactory::print_settings(PropMap& prop_map)
     }
 }
 
-void MachineFactory::get_device_settings(DeviceDescription& dev, map<string, string> &settings)
+void MachineFactory::get_device_settings(const string& dev_name, DeviceDescription& dev, map<string, string> &settings)
 {
     for (auto& d : dev.subdev_list) {
-        get_device_settings(DeviceRegistry::get_descriptor(d), settings);
+        get_device_settings(d, DeviceRegistry::get_descriptor(d), settings);
     }
 
     for (auto& p : dev.properties) {
         if (settings.count(p.first)) {
             // This is a hack. Need to implement hierarchical paths and per device properties.
-            LOG_F(ERROR, "Duplicate setting \"%s\".", p.first.c_str());
+            LOG_F(ERROR, "Duplicate setting \"%s\" from %s.", p.first.c_str(), dev_name.c_str());
         }
         else {
+            LOG_F(INFO, "Adding setting \"%s\" = \"%s\" from %s.", p.first.c_str(), p.second->get_string().c_str(), dev_name.c_str());
             settings[p.first] = p.second->get_string();
 
             // populate dynamic machine settings from presets
@@ -278,13 +279,14 @@ int MachineFactory::get_machine_settings(const string& id, map<string, string> &
 
         for (auto& p : props) {
             settings[p.first] = p.second->get_string();
+            LOG_F(INFO, "Adding setting \"%s\" = \"%s\" from %s.", p.first.c_str(), p.second->get_string().c_str(), id.c_str());
 
             // populate dynamic machine settings from presets
             gMachineSettings[p.first] = unique_ptr<BasicProperty>(p.second->clone());
         }
 
         for (auto& dev : it->second.devices) {
-            get_device_settings(DeviceRegistry::get_descriptor(dev), settings);
+            get_device_settings(dev, DeviceRegistry::get_descriptor(dev), settings);
         }
     } else {
         LOG_F(ERROR, "Unknown machine id %s", id.c_str());

@@ -178,6 +178,7 @@ int main(int argc, char** argv) {
     }
 
     /* handle overriding of machine settings from command line */
+    LOG_F(INFO, "Getting machine settings:");
     if (MachineFactory::get_machine_settings(machine_str) < 0) {
         return 1;
     }
@@ -191,9 +192,11 @@ int main(int argc, char** argv) {
 
     /* handle overriding of machine settings from command line for
        devices that may be added during create_machine_for_id below */
+    LOG_F(INFO, "Getting other settings:");
     for (auto& r : DeviceRegistry::get_registry()) {
         for (auto& p : r.second.properties) {
             if (!gMachineFactorySettings.count(p.first)) {
+                LOG_F(INFO, "Adding setting \"%s\" = \"%s\" from %s.", p.first.c_str(), p.second->get_string().c_str(), r.first.c_str());
                 gMachineFactorySettings[p.first] = p.second->get_string();
                 gMachineSettings[p.first] = unique_ptr<BasicProperty>(p.second->clone());
                 sa.add_option("--" + p.first, gMachineFactorySettings[p.first]);
