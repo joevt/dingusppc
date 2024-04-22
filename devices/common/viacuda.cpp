@@ -640,7 +640,7 @@ void ViaCuda::one_byte_header(uint32_t pkt_type) {
 
 void ViaCuda::process_packet() {
     if (this->in_count < 2) {
-        LOG_F(ERROR, "Cuda: invalid packet (too few data)!");
+        LOG_F(ERROR, "Cuda: invalid packet (too few data)! data:%s", hex_string(this->in_buf, this->in_count).c_str());
         error_response(CUDA_ERR_BAD_SIZE);
         return;
     }
@@ -656,7 +656,8 @@ void ViaCuda::process_packet() {
         pseudo_command();
         break;
     default:
-        LOG_F(ERROR, "Cuda: unsupported packet type = %d", this->in_buf[0]);
+        LOG_F(ERROR, "Cuda: unsupported packet type = %d data:%s",
+            this->in_buf[0], hex_string(this->in_buf, this->in_count).c_str());
         error_response(CUDA_ERR_BAD_PKT);
     }
 }
