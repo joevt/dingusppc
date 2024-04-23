@@ -720,6 +720,9 @@ void ViaCuda::autopoll_handler() {
     } else if (this->one_sec_mode != 0) {
         uint32_t this_time = calc_real_time();
         if (this_time != this->last_time) {
+            if (!this->old_tip || !this->treq) {
+                LOG_F(WARNING, "one second timer: Cuda transaction probably in progress");
+            }
             /*
                 We'll send a time packet every 4
                 seconds just in case we get out of
