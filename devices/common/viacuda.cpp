@@ -836,6 +836,11 @@ void ViaCuda::pseudo_command() {
         this->time_offset = new_time - real_time;
         break;
     }
+    case CUDA_SET_POWER_UPTIME:
+        LOG_F(WARNING, "Cuda: unsupported pseudo command 0x%X SET_POWER_UPTIME", cmd);
+        error_response(CUDA_ERR_BAD_CMD);
+        //response_header(CUDA_PKT_PSEUDO, 0);
+        break;
     case CUDA_WRITE_PRAM:
         addr = READ_WORD_BE_A(&this->in_buf[2]);
         if (addr <= 0xFF) {
