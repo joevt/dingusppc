@@ -157,6 +157,7 @@ void EsccController::write_internal(EsccChannel *ch, uint8_t value)
             this->reg_ptr |= WR8; // or RR8
             break;
         }
+        ch->write_reg(WR0, value);
         return;
     case WR2:
         this->int_vec = value;
@@ -256,6 +257,39 @@ void EsccChannel::reset(bool hw_reset)
 void EsccChannel::write_reg(int reg_num, uint8_t value)
 {
     switch (reg_num) {
+    case WR0:
+        switch(value & WR0_CRC_RESET_CODES) {
+            case WR0_RESET_RX_CRC_CHECKER:
+                LOG_F(ERROR, "%s: Reset Rx CRC Checker.", this->name.c_str());
+                break;
+            case WR0_RESET_TX_CRC_GENERATOR:
+                LOG_F(ERROR, "%s: Reset Tx CRC Generator.", this->name.c_str());
+                break;
+            case WR0_RESET_TX_UNDERRUN_EOM_LATCH:
+                LOG_F(ERROR, "%s: Reset Tx Underrun/EOM Latch.", this->name.c_str());
+                break;
+        }
+        switch(value & WR0_COMMAND_CODES) {
+            case WR0_COMMAND_RESET_EXT_STATUS_INTERRUPTS:
+                LOG_F(ERROR, "%s: Reset EXT/Status Interrupts.", this->name.c_str());
+                break;
+            case WR0_COMMAND_SEND_ABORT_SDLC:
+                LOG_F(ERROR, "%s: Send Abort (SDLC).", this->name.c_str());
+                break;
+            case WR0_COMMAND_ENABLE_INT_ON_NEXT_RX_CHARACTER:
+                LOG_F(ERROR, "%s: Enable INT On Next Rx Character.", this->name.c_str());
+                break;
+            case WR0_COMMAND_RESET_TXINT_PENDING:
+                LOG_F(ERROR, "%s: Reset TxINT Pending.", this->name.c_str());
+                break;
+            case WR0_COMMAND_ERROR_RESET:
+                LOG_F(ERROR, "%s: Error Reset.", this->name.c_str());
+                break;
+            case WR0_COMMAND_RESET_HIGHEST_IUS:
+                LOG_F(ERROR, "%s: Reset Highest IUS.", this->name.c_str());
+                break;
+        }
+        break;
     case WR3:
         if ((this->write_regs[WR3] ^ value) & WR3_ENTER_HUNT_MODE) {
             this->write_regs[WR3] |= WR3_ENTER_HUNT_MODE;
