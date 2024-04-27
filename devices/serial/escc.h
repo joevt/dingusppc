@@ -186,6 +186,7 @@ private:
     uint32_t        trxc_clock = 1000000; // MIDI HSKi pin
     uint32_t        gpi_clock = 2000000;
     uint32_t        clock_mode;
+    uint32_t        init_regs = 0;
 
     std::unique_ptr<CharIoBackEnd>  chario;
 };
