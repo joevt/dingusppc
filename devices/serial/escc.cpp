@@ -98,8 +98,8 @@ uint8_t EsccController::read(uint8_t reg_offset)
         value = this->ch_a->get_enh_reg();
         break;
     default:
-        LOG_F(WARNING, "ESCC: reading from unimplemented register 0x%x", reg_offset);
         value = 0;
+        LOG_F(WARNING, "ESCC: read unimplemented register 0x%x", reg_offset);
     }
 
     return value;
@@ -127,7 +127,7 @@ void EsccController::write(uint8_t reg_offset, uint8_t value)
         this->ch_a->set_enh_reg(value);
         break;
     default:
-        LOG_F(9, "ESCC: writing 0x%X to unimplemented register 0x%x", value, reg_offset);
+        LOG_F(WARNING, "ESCC: write unimplemented register 0x%x = 0x%02x", reg_offset, value);
     }
 }
 
