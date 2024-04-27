@@ -356,7 +356,7 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
             this->brg_active = value & WR14_BR_GENERATOR_ENABLE;
             LOG_F(9, "%s: BRG %s", this->name.c_str(), this->brg_active ? "enabled" : "disabled");
         }
-        return;
+        break;
     }
 
     this->write_regs[reg_num] = value;
