@@ -157,12 +157,14 @@ private:
     uint32_t        trxc_clock = 1000000; // MIDI HSKi pin
     uint32_t        gpi_clock = 2000000;
     uint32_t        clock_mode;
+    uint32_t        init_regs = 0;
 
     std::unique_ptr<CharIoBackEnd>  chario;
 };
 
 /** ESCC Controller class. */
 class EsccController : virtual public HWComponent {
+friend class EsccChannel;
 public:
     EsccController(const std::string &dev_name);
     ~EsccController() = default;
@@ -224,6 +226,9 @@ private:
     |========================================================================================
 */
     uint32_t pclk = 24576000;
+
+    // Logging
+    bool log_all_registers = true;
 };
 
 #endif // ESCC_H
