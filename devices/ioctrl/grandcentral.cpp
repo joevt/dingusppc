@@ -252,6 +252,8 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
         case 4: // AWACS
             return this->awacs->snd_ctrl_read(offset & 0xFF, size);
         case 5: // SWIM3
+            if (size != 1)
+                LOG_F(ERROR, "%s: Read SWIM3 size=%d", this->name.c_str(), size);
             return this->swim3->read((offset >> 4) & 0xF);
         case 6:
         case 7: // VIA-CUDA
@@ -414,6 +416,8 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             this->awacs->snd_ctrl_write(offset & 0xFF, value, size);
             break;
         case 5:
+            if (size != 1)
+                LOG_F(ERROR, "%s: Write SWIM3 size=%d", this->name.c_str(), size);
             this->swim3->write((offset >> 4) & 0xF, value);
             break;
         case 6:
