@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/dbdma.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/common/ofnvram.h>
+#include <devices/floppy/swim3.h>
 #include <debugger/backtrace.h>
 #include "memaccess.h"
 #include <utils/profiler.h>
@@ -74,44 +75,47 @@ static uint32_t str2num(string& num_str) {
 
 static void show_help() {
     cout << "Debugger commands:" << endl;
-    cout << "  step [N]     -- execute single instruction" << endl;
-    cout << "                  N is an optional step count" << endl;
-    cout << "  si [N]       -- shortcut for step" << endl;
-    cout << "  next         -- same as step but treats subroutine calls" << endl;
-    cout << "                  as single instructions." << endl;
-    cout << "  ni           -- shortcut for next" << endl;
-    cout << "  until X      -- execute until address X is reached" << endl;
-    cout << "  go           -- exit debugger and continue emulator execution" << endl;
-    cout << "  regs         -- dump content of the GRPs" << endl;
-    cout << "  mregs        -- dump content of the MMU registers" << endl;
-    cout << "  set R=X      -- assign value X to register R" << endl;
-    cout << "                  if R=loglevel, set the internal" << endl;
-    cout << "                  log level to X whose range is -2...9" << endl;
-    cout << "  dump NT,X    -- dump N memory cells of size T at address X" << endl;
-    cout << "                  T can be b(byte), w(word), d(double)," << endl;
-    cout << "                  q(quad) or c(character)." << endl;
-    cout << "  regions      -- dump memory regions" << endl;
-    cout << "  profile C N  -- run subcommand C on profile N" << endl;
-    cout << "                  supported subcommands:" << endl;
-    cout << "                  'show' - show profile report" << endl;
-    cout << "                  'reset' - reset profile variables" << endl;
+    cout << "  step [N]      -- execute single instruction" << endl;
+    cout << "                   N is an optional step count" << endl;
+    cout << "  si [N]        -- shortcut for step" << endl;
+    cout << "  next          -- same as step but treats subroutine calls" << endl;
+    cout << "                   as single instructions." << endl;
+    cout << "  ni            -- shortcut for next" << endl;
+    cout << "  until X       -- execute until address X is reached" << endl;
+    cout << "  go            -- exit debugger and continue emulator execution" << endl;
+    cout << "  regs          -- dump content of the GRPs" << endl;
+    cout << "  mregs         -- dump content of the MMU registers" << endl;
+    cout << "  set R=X       -- assign value X to register R" << endl;
+    cout << "                   if R=loglevel, set the internal" << endl;
+    cout << "                   log level to X whose range is -2...9" << endl;
+    cout << "  dump NT,X     -- dump N memory cells of size T at address X" << endl;
+    cout << "                   T can be b(byte), w(word), d(double)," << endl;
+    cout << "                   q(quad) or c(character)." << endl;
+    cout << "  regions       -- dump memory regions" << endl;
+    cout << "  fdd [D,][W,]P -- insert floppy into drive D (1 = default, 2), with" << endl;
+    cout << "                   writable flag W (r = readonly (default), w = writable)," << endl;
+    cout << "                   and path P" << endl;
+    cout << "  profile C N   -- run subcommand C on profile N" << endl;
+    cout << "                   supported subcommands:" << endl;
+    cout << "                   'show' - show profile report" << endl;
+    cout << "                   'reset' - reset profile variables" << endl;
 #ifdef PROFILER
-    cout << "  profiler     -- show stats related to the processor" << endl;
+    cout << "  profiler      -- show stats related to the processor" << endl;
 #endif
-    cout << "  disas N,X    -- disassemble N instructions starting at address X" << endl;
-    cout << "                  X can be any number or a known register name" << endl;
-    cout << "                  disas with no arguments defaults to disas 1,pc" << endl;
-    cout << "  da N,X       -- shortcut for disas" << endl;
+    cout << "  disas N,X     -- disassemble N instructions starting at address X" << endl;
+    cout << "                   X can be any number or a known register name" << endl;
+    cout << "                   disas with no arguments defaults to disas 1,pc" << endl;
+    cout << "  da N,X        -- shortcut for disas" << endl;
 #ifdef ENABLE_68K_DEBUGGER
-    cout << "  context X    -- switch to the debugging context X." << endl;
-    cout << "                  X can be either 'ppc' (default), '68k'," << endl;
-    cout << "                  or 'auto'." << endl;
+    cout << "  context X     -- switch to the debugging context X." << endl;
+    cout << "                   X can be either 'ppc' (default), '68k'," << endl;
+    cout << "                   or 'auto'." << endl;
 #endif
-    cout << "  printenv     -- print current NVRAM settings." << endl;
-    cout << "  setenv V N   -- set NVRAM variable V to value N." << endl;
+    cout << "  printenv      -- print current NVRAM settings." << endl;
+    cout << "  setenv V N    -- set NVRAM variable V to value N." << endl;
     cout << endl;
-    cout << "  restart      -- restart the machine" << endl;
-    cout << "  quit         -- quit the debugger" << endl;
+    cout << "  restart       -- restart the machine" << endl;
+    cout << "  quit          -- quit the debugger" << endl;
     cout << endl;
     cout << "Pressing ENTER will repeat last command." << endl;
 }
@@ -502,6 +506,51 @@ static void dump_mem(string& params) {
     }
 
     cout << endl << endl;
+}
+
+static void fdd(string params) {
+    string path_str;
+    string param;
+    size_t separator_pos;
+    bool fd_write_prot = true;
+    int drive = 1;
+
+    while (1) {
+        separator_pos = params.find_first_of(",");
+        if (separator_pos == std::string::npos) {
+            path_str = params;
+            break;
+        }
+        else {
+            param = params.substr(0, separator_pos);
+            params = params.substr(separator_pos + 1);
+
+            if (param == "w") {
+                fd_write_prot = false;
+            }
+            else if (param == "r") {
+                fd_write_prot = true;
+            }
+            else if (param == "1") {
+                drive = 1;
+            }
+            else if (param == "2") {
+                drive = 2;
+            }
+            else {
+                cout << "Invalid parameter " << param << endl;
+                return;
+            }
+        }
+    }
+
+    Swim3::Swim3Ctrl *swim3 = dynamic_cast<Swim3::Swim3Ctrl*>(gMachineObj->get_comp_by_name_optional("Swim3"));
+    if (swim3) {
+        swim3->insert_disk(drive, path_str, fd_write_prot);
+    }
+    else {
+        cout << "Floppy controller doesn't exist." << endl;
+    }
 }
 
 // 0 = all
@@ -1192,6 +1241,11 @@ void enter_debugger() {
             cmd = "";
             if (mem_ctrl_instance)
                 mem_ctrl_instance->dump_regions();
+        } else if (cmd == "fdd") {
+            cmd = "";
+            std::istream::sentry se(ss); // skip white space
+            getline(ss, expr_str); // get everything up to eol
+            fdd(expr_str);
         } else if (cmd == "printenv") {
             cmd = "";
             if (ofnvram->init())
