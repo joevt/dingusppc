@@ -39,6 +39,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <iostream>
 #include <CLI11.hpp>
 #include <loguru.hpp>
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <unistd.h>
+#endif
 
 using namespace std;
 
@@ -68,6 +73,26 @@ static string appDescription = string(
 pthread_t main_thread_id = 0;
 #endif
 
+/// Check for an existing directory (returns error message if check fails)
+class WorkingDirectoryValidator : public CLI::Validator {
+  public:
+    WorkingDirectoryValidator() : Validator("DIR") {
+        func_ = [](std::string &filename) {
+            auto path_result = CLI::detail::check_path(filename.c_str());
+            if(path_result == CLI::detail::path_type::nonexistent) {
+                return "Directory does not exist: " + filename;
+            }
+            if(path_result == CLI::detail::path_type::file) {
+                return "Directory is actually a file: " + filename;
+            }
+            chdir(filename.c_str());
+            return std::string();
+        };
+    }
+};
+
+const WorkingDirectoryValidator WorkingDirectory;
+
 void run_machine(std::string machine_str, std::string bootrom_path, uint32_t execution_mode, uint32_t profiling_interval_ms);
 
 int main(int argc, char** argv) {
@@ -86,11 +111,14 @@ int main(int argc, char** argv) {
     bool   debugger_enabled = false;
     string bootrom_path("bootrom.bin");
     string symbols_path;
+    string working_directory_path(".");
 
     app.add_flag("-r,--realtime", realtime_enabled,
         "Run the emulator in real-time");
     app.add_flag("-d,--debugger", debugger_enabled,
         "Enter the built-in debugger");
+    app.add_option("-w,--workingdir", working_directory_path, "Specifies working directory")
+        ->check(WorkingDirectory);
     app.add_option("-b,--bootrom", bootrom_path, "Specifies BootROM path")
         ->check(CLI::ExistingFile);
 
