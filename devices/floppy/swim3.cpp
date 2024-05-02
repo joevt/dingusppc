@@ -476,6 +476,8 @@ uint8_t Swim3Ctrl::calc_timer_val()
     }
 }
 
+#define motor_off
+
 void Swim3Ctrl::mode_change(uint8_t new_mode)
 {
     uint8_t changed_bits = this->mode_reg ^ new_mode;
@@ -487,17 +489,35 @@ void Swim3Ctrl::mode_change(uint8_t new_mode)
 
         switch (new_mode & (SWIM3_DRIVE_1 | SWIM3_DRIVE_2)) {
         case 0:
+#ifdef motor_off
+            if (this->drive_1)
+                this->drive_1->set_motor_stat(0);
+            if (this->drive_2)
+                this->drive_2->set_motor_stat(0);
+#endif
             break;
         case SWIM3_DRIVE_1:
+#ifdef motor_off
+            if (this->drive_2)
+                this->drive_2->set_motor_stat(0);
+#endif
             if (this->drive_1)
                 this->selected_drive = this->drive_1.get();
             break;
         case SWIM3_DRIVE_2:
+#ifdef motor_off
+            if (this->drive_1)
+                this->drive_1->set_motor_stat(0);
+#endif
             if (this->drive_2)
                 this->selected_drive = this->drive_2.get();
             break;
         case SWIM3_DRIVE_1 | SWIM3_DRIVE_2:
             LOG_F(ERROR, "SWIM3: both drives selected, selecting drive 1");
+#ifdef motor_off
+            if (this->drive_2)
+                this->drive_2->set_motor_stat(0);
+#endif
             if (this->drive_1)
                 this->selected_drive = this->drive_1.get();
             break;
