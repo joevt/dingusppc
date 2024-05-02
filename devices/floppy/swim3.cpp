@@ -37,6 +37,30 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace Swim3;
 
+static std::string get_reg_name(uint8_t reg_offset)
+{
+    switch (reg_offset) {
+    #define one_reg_name(x) case x: return #x;
+    one_reg_name(Data)
+    one_reg_name(Timer)
+    one_reg_name(Error)
+    one_reg_name(Param_Data)
+    one_reg_name(Phase)
+    one_reg_name(Setup)
+    one_reg_name(Status_Mode0)
+    one_reg_name(Handshake_Mode1)
+    one_reg_name(Interrupt_Flags)
+    one_reg_name(Step)
+    one_reg_name(Current_Track)
+    one_reg_name(Current_Sector)
+    one_reg_name(Gap_Format)
+    one_reg_name(First_Sector)
+    one_reg_name(Sectors_To_Xfer)
+    one_reg_name(Interrupt_Mask)
+    default: return "unknown";
+    }
+}
+
 Swim3Ctrl::Swim3Ctrl()
 {
     this->name = "SWIM3";
@@ -198,7 +222,7 @@ uint8_t Swim3Ctrl::read(uint8_t reg_offset)
         value = this->int_mask;
         break;
     default:
-        LOG_F(INFO, "SWIM3: reading from 0x%X register", reg_offset);
+        LOG_F(ERROR, "SWIM3: read  %-15s %x.b = %02x", get_reg_name(reg_offset).c_str(), reg_offset, value);
         value = 0;
     }
     return value;
@@ -206,6 +230,23 @@ uint8_t Swim3Ctrl::read(uint8_t reg_offset)
 
 void Swim3Ctrl::write(uint8_t reg_offset, uint8_t value)
 {
+    switch(reg_offset) {
+    case Swim3Reg::Timer:
+    case Swim3Reg::Param_Data:
+    case Swim3Reg::Phase:
+    case Swim3Reg::Setup:
+    case Swim3Reg::Status_Mode0:
+    case Swim3Reg::Handshake_Mode1:
+    case Swim3Reg::Step:
+    case Swim3Reg::Gap_Format:
+    case Swim3Reg::First_Sector:
+    case Swim3Reg::Sectors_To_Xfer:
+    case Swim3Reg::Interrupt_Mask:
+        break;
+    default:
+        LOG_F(ERROR, "SWIM3: write %-15s %x.b = %02x", get_reg_name(reg_offset).c_str(), reg_offset, value);
+    }
+
     switch(reg_offset) {
     case Swim3Reg::Timer:
         this->init_timer(value);
@@ -257,8 +298,6 @@ void Swim3Ctrl::write(uint8_t reg_offset, uint8_t value)
     case Swim3Reg::Interrupt_Mask:
         this->int_mask = value;
         break;
-    default:
-        LOG_F(INFO, "SWIM3: writing 0x%X to register 0x%X", value, reg_offset);
     }
 }
 
