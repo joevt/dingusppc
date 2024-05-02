@@ -138,61 +138,71 @@ void Swim3Ctrl::insert_disk(int drive, std::string& img_path, int write_flag = 0
 
 uint8_t Swim3Ctrl::read(uint8_t reg_offset)
 {
-    uint8_t status_addr, rddata_val, old_int_flags, old_error;
+    uint8_t value;
 
     switch(reg_offset) {
     case Swim3Reg::Timer:
-        return this->calc_timer_val();
+        value = this->calc_timer_val();
+        break;
     case Swim3Reg::Error:
-        old_error = this->error;
+        value = this->error;
         this->error = 0;
-        return old_error;
+        break;
     case Swim3Reg::Phase:
-        return this->phase_lines;
+        value = this->phase_lines;
+        break;
     case Swim3Reg::Setup:
-        return this->setup_reg;
+        value = this->setup_reg;
+        break;
     case Swim3Reg::Handshake_Mode1:
         if (this->selected_drive) {
-            status_addr = ((this->mode_reg & SWIM3_HEAD_SELECT) >> 2) | (this->phase_lines & 7);
-            rddata_val  = this->selected_drive->status(status_addr) & 1;
+            uint8_t status_addr = ((this->mode_reg & SWIM3_HEAD_SELECT) >> 2) | (this->phase_lines & 7);
+            uint8_t rddata_val  = this->selected_drive->status(status_addr) & 1;
 
             // transfer rddata_val to both bit 2 (RDDATA) and bit 3 (SENSE)
             // because those signals seem to be historically wired together
-            return (rddata_val << 2) | (rddata_val << 3);
+            value = (rddata_val << 2) | (rddata_val << 3);
         }
         else {
             LOG_F(ERROR, "SWIM3: read Handshake_Mode1; no drive selected yet");
+            value = 0xC; // report both RdData & Sense high
         }
-        return 0xC; // report both RdData & Sense high
+        break;
     case Swim3Reg::Interrupt_Flags:
-        old_int_flags = this->int_flags;
+        value = this->int_flags;
         this->int_flags = 0; // read from this register clears all flags
         update_irq();
-        return old_int_flags;
+        break;
     case Swim3Reg::Step:
-        return this->step_count;
+        value = this->step_count;
+        break;
     case Swim3Reg::Current_Track:
-        return this->cur_track;
+        value = this->cur_track;
+        break;
     case Swim3Reg::Current_Sector:
-        return this->cur_sector;
+        value = this->cur_sector;
+        break;
     case Swim3Reg::Gap_Format:
-        return this->format;
+        value = this->format;
+        break;
     case Swim3Reg::First_Sector:
-        return this->first_sec;
+        value = this->first_sec;
+        break;
     case Swim3Reg::Sectors_To_Xfer:
-        return this->xfer_cnt;
+        value = this->xfer_cnt;
+        break;
     case Swim3Reg::Interrupt_Mask:
-        return this->int_mask;
+        value = this->int_mask;
+        break;
     default:
         LOG_F(INFO, "SWIM3: reading from 0x%X register", reg_offset);
+        value = 0;
     }
-    return 0;
+    return value;
 }
 
 void Swim3Ctrl::write(uint8_t reg_offset, uint8_t value)
 {
-    uint8_t status_addr = 0;
-
     switch(reg_offset) {
     case Swim3Reg::Timer:
         this->init_timer(value);
@@ -212,7 +222,7 @@ void Swim3Ctrl::write(uint8_t reg_offset, uint8_t value)
                     MacSuperdrive::get_command_name(command_addr).c_str(), command_addr, val);
         } else if (this->phase_lines == 4) {
             // Select_Head_0 or Select_Head_1
-            status_addr = ((this->mode_reg & SWIM3_HEAD_SELECT) >> 2) | (this->phase_lines & 7);
+            uint8_t status_addr = ((this->mode_reg & SWIM3_HEAD_SELECT) >> 2) | (this->phase_lines & 7);
             if (this->selected_drive)
                 this->rd_line = this->selected_drive->status(status_addr) & 1;
             else
