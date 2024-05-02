@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -114,9 +114,11 @@ protected:
     void    stop_disk_access();
     void    init_timer(const uint8_t start_val);
     uint8_t calc_timer_val();
+    void    mode_change(uint8_t new_mode);
 
 private:
-    std::unique_ptr<MacSuperdrive::MacSuperDrive> int_drive;
+    std::unique_ptr<MacSuperdrive::MacSuperDrive> drive_1;
+    MacSuperdrive::MacSuperDrive *selected_drive;
 
     DmaBidirChannel*    dma_ch;
 
