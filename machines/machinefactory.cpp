@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -65,8 +65,10 @@ static const map<string, string> PropHelp = {
     {"rambank0_size",   "specifies onboard RAM bank size in MB"},
     {"gfxmem_size",     "specifies video memory size in MB"},
     {"fdd_img",         "specifies path to floppy disk image"},
+    {"fdd_img2",        "specifies path to 2nd floppy disk image"},
     {"fdd_fmt",         "specifies floppy disk format"},
     {"fdd_wr_prot",     "toggles floppy disk's write protection"},
+    {"fdd_wr_prot2",    "toggles 2nd floppy disk's write protection"},
     {"hdd_img",         "specifies path(s) to hard disk image(s)"},
     {"hdd_img2",        "specifies path(s) to secondary hard disk image(s)"},
     {"cdr_config",      "CD-ROM device path in [bus]:[device#] format"},
