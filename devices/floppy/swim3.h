@@ -119,6 +119,7 @@ protected:
 
 private:
     std::unique_ptr<MacSuperdrive::MacSuperDrive> drive_1;
+    std::unique_ptr<MacSuperdrive::MacSuperDrive> drive_2;
     MacSuperdrive::MacSuperDrive *selected_drive;
 
     DmaBidirChannel*    dma_ch;
