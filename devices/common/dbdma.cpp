@@ -108,11 +108,11 @@ void DMAChannel::interpret_cmd(const char *from) {
             LOG_F(ERROR, "%s: Key > 0 not implemented", this->get_name().c_str());
             break;
         }
-        this->queue_len = cmd_struct.req_count;
-        if (this->queue_len) {
+        if (cmd_struct.req_count) {
             res = mmu_map_dma_mem(cmd_struct.address, cmd_struct.req_count, false);
             this->queue_data = res.host_va;
             this->res_count  = 0;
+            this->queue_len  = cmd_struct.req_count; // don't set queue_len until all the other fields are set
             LOG_F(DBDMA, "%s: Will transfer %d bytes %s 0x%08x (host:0x%llx)", this->get_name().c_str(), this->queue_len + 0,
                 this->cur_cmd > DBDMA_Cmd::OUTPUT_LAST ? "to" : "from", cmd_struct.address, (uint64_t)(this->queue_data + 0));
             this->cmd_in_progress = true;
@@ -130,8 +130,10 @@ void DMAChannel::interpret_cmd(const char *from) {
                     this->in_cb();
                 break;
             }
-        } else
+        } else {
+            this->queue_len = 0;
             this->finish_cmd();
+        }
         break;
     case DBDMA_Cmd::STORE_QUAD:
         if ((cmd_struct.cmd_key & 7) != 6)
