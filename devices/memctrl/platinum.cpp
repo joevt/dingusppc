@@ -155,9 +155,11 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
         break;
     case PlatinumReg::FB_TEST:
         value = this->fb_test;
+        LOG_F(PLATINUM, "%s: read  FB_TEST %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case PlatinumReg::VRAM_REFRESH:
         value = this->vram_refresh;
+        LOG_F(PLATINUM, "%s: read  VRAM_REFRESH %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case PlatinumReg::SWATCH_CONFIG:
         value = this->swatch_config;
@@ -332,6 +334,12 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
 
         break;
     case PlatinumReg::FB_TEST:
+        if (value & SENSE_LINE_OUTPUT_DATA) {
+            LOG_F(PLATINUM, "%s: write FB_TEST %03x.%c = %0*x; attempt to set Sense Line Output Data to non-zero value",
+                this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
+        } else {
+            LOG_F(PLATINUM, "%s: write FB_TEST %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
+        }
         this->fb_test =
             (this->fb_test & ~(SENSE_LINE_OUTPUT_DATA | SYNCS_OUTPUT_ENABLE | FORCED_SYNC_LEVELS)) |
             (value         &  (SENSE_LINE_OUTPUT_DATA | SYNCS_OUTPUT_ENABLE | FORCED_SYNC_LEVELS));
