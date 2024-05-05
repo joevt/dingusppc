@@ -153,6 +153,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
         value = (this->mon_sense ^ 7);
         LOG_F(PLATINUM, "%s: read  MON_ID_SENSE %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
+    case PlatinumReg::FB_TEST:
+        value = this->fb_test;
+        break;
     case PlatinumReg::SWATCH_CONFIG:
         value = this->swatch_config;
         LOG_F(PLATINUM, "%s: read  SWATCH_CONFIG %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
@@ -320,6 +323,11 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             LOG_F(ERROR, "%s: display reset written with 0x%X", this->name.c_str(), value);
         }
 
+        break;
+    case PlatinumReg::FB_TEST:
+        this->fb_test =
+            (this->fb_test & ~(SENSE_LINE_OUTPUT_DATA | SYNCS_OUTPUT_ENABLE | FORCED_SYNC_LEVELS)) |
+            (value         &  (SENSE_LINE_OUTPUT_DATA | SYNCS_OUTPUT_ENABLE | FORCED_SYNC_LEVELS));
         break;
     case PlatinumReg::VRAM_REFRESH:
         LOG_F(PLATINUM, "%s: write VRAM_REFRESH %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
