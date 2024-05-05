@@ -150,7 +150,7 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
         LOG_F(PLATINUM, "%s: read  FB_BASE_ADDR %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case PlatinumReg::MON_ID_SENSE:
-        value = (this->mon_sense ^ 7);
+        value = this->mon_sense;
         LOG_F(PLATINUM, "%s: read  MON_ID_SENSE %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case PlatinumReg::FB_TEST:
@@ -290,11 +290,15 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         this->vmem_fp_mode = value;
         break;
     case PlatinumReg::MON_ID_SENSE:
+    {
         LOG_F(PLATINUM, "%s: write MON_ID_SENSE %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         value &= 7;
-        this->mon_sense = this->display_id->read_monitor_sense(value, value ^ 7)
-            << (value ^ 7);
+        uint8_t dirs   = value ^ 7;
+        uint8_t levels = (this->fb_test >> SENSE_LINE_OUTPUT_DATA_pos) & 7;
+        levels = (levels & dirs) | (dirs ^ 7);
+        this->mon_sense = (dirs << 3) | (this->display_id->read_monitor_sense(levels, dirs) ^ 7);
         break;
+    }
     case PlatinumReg::FB_RESET:
         LOG_F(PLATINUM, "%s: write FB_RESET %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
 
