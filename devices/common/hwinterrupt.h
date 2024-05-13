@@ -71,6 +71,13 @@ enum IntSrc : uint32_t {
     DMA_DAVBUS_Rx,
     DMA_ETHERNET_Tx,
     DMA_ETHERNET_Rx,
+    FIREWIRE,
+    PCI_J12,
+    PCI_J11,
+    PCI_J10,
+    PCI_J9,
+    ATA,
+    USB,
 };
 
 /** Base class for interrupt controllers. */

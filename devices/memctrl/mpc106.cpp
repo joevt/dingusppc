@@ -77,6 +77,7 @@ int MPC106::device_postinit()
     this->irq_id_PCI_C     = this->int_ctrl->register_dev_int(IntSrc::PCI_C    );
     this->irq_id_PCI_GPU   = this->int_ctrl->register_dev_int(IntSrc::PCI_GPU  );
     this->irq_id_PCI_PERCH = this->int_ctrl->register_dev_int(IntSrc::PCI_PERCH);
+    this->irq_id_PCI_J12   = this->int_ctrl->register_dev_int(IntSrc::PCI_J12  );
 
     return 0;
 }
