@@ -97,6 +97,7 @@ static const map<string, string> PropHelp = {
     {"cdr_img",         "specifies path(s) to CD-ROM image(s)"},
     {"cdr_img2",        "specifies path(s) to secondary CD-ROM image(s)"},
     {"mon_id",          "specifies which monitor to emulate"},
+    {"pci_J12",         "insert a PCI device into 32-bit 66MHz J12 slot"},
     {"pci_PERCH",       "insert a PCI device into PERCH slot"},
     {"pci_A1",          "insert a PCI device into A1 slot"},
     {"pci_B1",          "insert a PCI device into B1 slot"},

@@ -214,6 +214,7 @@ private:
     uint32_t irq_id_PCI_C     = 0;
     uint32_t irq_id_PCI_GPU   = 0;
     uint32_t irq_id_PCI_PERCH = 0;
+    uint32_t irq_id_PCI_J12   = 0;
 };
 
 #endif // MPC106_H

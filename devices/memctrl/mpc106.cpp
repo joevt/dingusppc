@@ -60,7 +60,12 @@ int MPC106::device_postinit()
     std::string pci_dev_name;
 
     static const std::map<std::string, int> pci_slots = {
-        {"pci_PERCH", DEV_FUN(0xC,0)}, {"pci_A1", DEV_FUN(0xD,0)}, {"pci_B1", DEV_FUN(0xE,0)}, {"pci_C1", DEV_FUN(0xF,0)}, {"pci_GPU", DEV_FUN(0x12,0)}
+        {"pci_PERCH", DEV_FUN(0x0C,0)}, // Beige G3
+        {"pci_A1"   , DEV_FUN(0x0D,0)}, // Beige G3
+        {"pci_B1"   , DEV_FUN(0x0E,0)}, // Beige G3
+        {"pci_C1"   , DEV_FUN(0x0F,0)}, // Beige G3
+        {"pci_J12"  , DEV_FUN(0x10,0)}, // Yosemite 66MHz slot for GPU
+        {"pci_GPU"  , DEV_FUN(0x12,0)}, // Beige G3
     };
 
     for (auto& slot : pci_slots) {
@@ -99,6 +104,7 @@ void MPC106::pci_interrupt(uint8_t irq_line_state, PCIBase *dev) {
             case DEV_FUN(0x0D,0): irq_id = this->irq_id_PCI_A    ; break;
             case DEV_FUN(0x0E,0): irq_id = this->irq_id_PCI_B    ; break;
             case DEV_FUN(0x0F,0): irq_id = this->irq_id_PCI_C    ; break;
+            case DEV_FUN(0x10,0): irq_id = this->irq_id_PCI_J12  ; break;
             case DEV_FUN(0x12,0): irq_id = this->irq_id_PCI_GPU  ; break;
             default:
                 LOG_F(ERROR, "Interrupt from device %s at unexpected device/function %02x.%x", dev->get_name().c_str(), it->first >> 3, it->first & 7);
@@ -353,6 +359,8 @@ static const PropMap Grackle_Properties = {
     {"pci_C1",
         new StrProperty("")},
     {"pci_GPU",
+        new StrProperty("")},
+    {"pci_J12",
         new StrProperty("")},
 };
 
