@@ -119,6 +119,8 @@ static const PropMap yosemite_settings = {
         new BinProperty(0)},
     {"cdr_config",
         new StrProperty("Ide0:0")},
+    {"hdd_config",
+        new StrProperty("Ide0:1")},
 };
 
 static vector<string> yosemite_devices = {
@@ -126,6 +128,7 @@ static vector<string> yosemite_devices = {
     "Dec21154Yosemite",
     "BurgundySnd",
     "Heathrow",
+    "AtaHardDisk",
     "AtapiCdrom",
 #if 0
     "OptiOhci",
