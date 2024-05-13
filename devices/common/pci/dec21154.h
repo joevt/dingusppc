@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define DEC_P2P_H
 
 #include <devices/common/pci/pcibridge.h>
+#include <devices/common/hwinterrupt.h>
 
 #include <cinttypes>
 #include <string>
@@ -37,16 +38,26 @@ enum {
 
 class DecPciBridge : public PCIBridge {
 public:
-    DecPciBridge(std::string name);
+    DecPciBridge(std::string name, bool for_yosemite);
     ~DecPciBridge() = default;
 
     static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<DecPciBridge>(new DecPciBridge("DEC21154"));
+        return std::unique_ptr<DecPciBridge>(new DecPciBridge("DEC21154", false));
     }
+
+    static std::unique_ptr<HWComponent> create_yosemite() {
+        return std::unique_ptr<DecPciBridge>(new DecPciBridge("DEC21154Yosemite", true));
+    }
+
+    // HWComponent methods
+    int device_postinit();
 
     // PCIDevice methods
     uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details);
     void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details);
+
+    // PCIBridgeBase methods
+    virtual void pci_interrupt(uint8_t irq_line_state, PCIBase *dev);
 
 private:
     uint8_t     chip_ctrl           = 0;
@@ -57,6 +68,15 @@ private:
     uint8_t     gpio_out_en         = 0;
     uint8_t     gpio_in_data        = 0;
     uint16_t    sec_clock_ctrl      = 0;
+
+    bool            for_yosemite    = false;
+    InterruptCtrl*  int_ctrl        = nullptr;
+    uint32_t        irq_id_FireWire = 0;
+    uint32_t        irq_id_ATA      = 0;
+    uint32_t        irq_id_J11      = 0;
+    uint32_t        irq_id_J10      = 0;
+    uint32_t        irq_id_J9       = 0;
+    uint32_t        irq_id_USB      = 0;
 };
 
 #endif // DEC_P2P_H

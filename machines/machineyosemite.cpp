@@ -50,13 +50,12 @@ int initialize_yosemite(std::string& id)
     MPC106* grackle_obj = dynamic_cast<MPC106*>(gMachineObj->get_comp_by_name("Grackle"));
 
     // get pointer to the bridge of the secondary PCI bus
-    DecPciBridge *sec_bridge = dynamic_cast<DecPciBridge*>(gMachineObj->get_comp_by_name("Dec21154"));
+    DecPciBridge *sec_bridge = dynamic_cast<DecPciBridge*>(gMachineObj->get_comp_by_name("Dec21154Yosemite"));
 
     // connect PCI devices
 
     // 00:0D.0 PCI Bridge
-    grackle_obj->pci_register_device(DEV_FUN(0x0D,0),
-        dynamic_cast<PCIBase*>(gMachineObj->get_comp_by_name("Dec21154")));
+    grackle_obj->pci_register_device(DEV_FUN(0x0D,0), dynamic_cast<PCIBase*>(sec_bridge));
 
     // 00:10.0 slot J12 GPU
 
@@ -124,7 +123,7 @@ static const PropMap yosemite_settings = {
 
 static vector<string> yosemite_devices = {
     "Grackle",
-    "Dec21154",
+    "Dec21154Yosemite",
     "BurgundySnd",
     "Heathrow",
     "AtapiCdrom",
