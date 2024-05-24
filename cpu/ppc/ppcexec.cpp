@@ -556,7 +556,7 @@ uint64_t process_events()
         // if there are no pending timers
         return g_icycles + 10000;
     }
-    return g_icycles + ((slice_ns + (1ULL << icnt_factor)) >> icnt_factor);
+    return g_icycles + (slice_ns >> icnt_factor) + 1;
 }
 
 void force_cycle_counter_reload()
