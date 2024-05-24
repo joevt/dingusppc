@@ -561,6 +561,7 @@ void AtiMach64Gx::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size)
         WRITE_VALUE_AND_LOG(ATIMACH64);
 
         if (bit_changed(old_value, new_value, ATI_CRTC_ENABLE)) {
+            draw_fb = true;
             this->crtc_update();
         }
         return;

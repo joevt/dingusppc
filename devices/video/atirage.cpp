@@ -431,6 +431,7 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         WRITE_VALUE_AND_LOG(ATIRAGE);
 
         if (bit_changed(old_value, new_value, ATI_CRTC_ENABLE)) {
+            draw_fb = true;
             if (bit_set(new_value, ATI_CRTC_ENABLE) &&
                 !bit_set(new_value, ATI_CRTC_DISPLAY_DIS)) {
                 this->crtc_update();
