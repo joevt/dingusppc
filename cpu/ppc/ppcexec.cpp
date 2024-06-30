@@ -529,7 +529,7 @@ void ppc_main_opcode()
 #endif
 }
 
-long long now_ns() {
+uint64_t dppc_now_ns() {
 #ifdef __APPLE__
     return ConvertHostTimeToNanos2(mach_absolute_time());
 #else
@@ -541,7 +541,7 @@ long long now_ns() {
 uint64_t get_virt_time_ns()
 {
     if (g_realtime) {
-        return now_ns() - g_nanoseconds_base;
+        return dppc_now_ns() - g_nanoseconds_base;
     } else {
         return g_icycles << icnt_factor;
     }
@@ -1232,7 +1232,7 @@ void ppc_cpu_init(MemCtrlBase* mem_ctrl, uint32_t cpu_version, bool include_601,
 #ifdef __APPLE__
     mach_timebase_info(&timebase_info);
 #endif
-    g_nanoseconds_base = now_ns();
+    g_nanoseconds_base = dppc_now_ns();
     g_icycles = 0;
 
 //                    //                                        // PDM cpu clock calculated at 0x403036CC in r3
