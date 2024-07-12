@@ -77,7 +77,7 @@ int initialize_gazelle(std::string& id)
     uint64_t timebase_freq = bus_freq / 4;
 
     // init virtual CPU and request MPC603ev
-    ppc_cpu_init(psx_obj, PPC_VER::MPC603EV, false, timebase_freq);
+    ppc_cpu_init(psx_obj, PPC_VER::MPC603EV, timebase_freq);
 
     // CPU frequency is hardcoded to 225 MHz for now
     ppc_state.spr[SPR::HID1] = get_cpu_pll_value(225000000) << 28;
@@ -94,6 +94,8 @@ static const PropMap pm6500_settings = {
         new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
     {"rambank4_size",
         new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"gfxmem_size",
+        new IntProperty( 1, vector<uint32_t>({1, 2, 4}))},
     {"emmo",
         new BinProperty(0)},
 };

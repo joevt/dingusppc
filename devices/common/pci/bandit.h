@@ -85,7 +85,6 @@ public:
 protected:
     uint32_t    config_addr;
     int         bridge_num;
-    bool        is_aspen = false;
 
 private:
     void cfg_setup(uint32_t offset, int size, int &bus_num, int &dev_num,
@@ -135,8 +134,8 @@ public:
     };
 
 private:
+    uint32_t                    base_addr;
     std::unique_ptr<BanditPciDevice> my_pci_device;
-    uint32_t    base_addr;
 };
 
 /**
@@ -149,19 +148,6 @@ public:
 
     static std::unique_ptr<HWComponent> create() {
         return std::unique_ptr<Chaos>(new Chaos("VCI0"));
-    };
-};
-
-/**
-    Aspen PCI Bridge HLE emulation class.
- */
-class AspenPci : public BanditHost {
-public:
-    AspenPci(std::string name);
-    ~AspenPci() = default;
-
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AspenPci>(new AspenPci("Aspen-PCI1"));
     };
 };
 

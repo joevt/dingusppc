@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-23 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -32,7 +32,7 @@ using namespace Hammerhead;
 
 HammerheadCtrl::HammerheadCtrl() : MemCtrlBase()
 {
-    this->name = "Hammerhead";
+    this->name = "Hammerhead Memory Controller";
 
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV);
 
@@ -57,26 +57,31 @@ uint32_t HammerheadCtrl::read(uint32_t rgn_start, uint32_t offset, int size)
 
     switch (offset) {
     case HammerheadReg::CPU_ID:
+        LOG_F(INFO, "Hammerhead: CPU_ID read");
         result = HH_CPU_ID_TNT;
         break;
     case HammerheadReg::MOTHERBOARD_ID:
+        LOG_F(INFO, "Hammerhead: MOTHERBOARD_ID read");
         result = (this->mb_id << 5) | (this->rom_type << 4);
         break;
     case HammerheadReg::CPU_SPEED:
+        LOG_F(INFO, "Hammerhead: CPU_SPEED read");
         result = this->bus_speed << 5;
         break;
     case HammerheadReg::ARBITER_CONFIG:
+        LOG_F(INFO, "Hammerhead: ARBITER_CONFIG read");
         result = this->arb_config;
         break;
     case HammerheadReg::WHO_AM_I:
+        LOG_F(INFO, "Hammerhead: WHO_AM_I read");
         result = BM_PRIMARY_CPU << 3;
         break;
     case HammerheadReg::L2_CACHE_CONFIG:
+        LOG_F(INFO, "Hammerhead: L2_CACHE_CONFIG read");
         result = 0; // say there is no L2 cache
         break;
     default:
-        LOG_F(WARNING, "%s: unknown register read at offset 0x%X", this->name.c_str(),
-              offset);
+        LOG_F(WARNING, "Hammerhead: unknown register read at offset 0x%X", offset);
         return 0;
     }
 
@@ -99,37 +104,36 @@ void HammerheadCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, 
         } else { // update the MSB part
             bank_base[offset >> 1] = (bank_base[offset >> 1] & 0x00FFU) | (value << 8);
         }
-        LOG_F(INFO, "%s: bank base #%d set to 0x%X", this->name.c_str(),
-              offset >> 1, bank_base[offset >> 1]);
+        LOG_F(INFO, "Hammerhead: bank base #%d set to 0x%X", offset >> 1, bank_base[offset >> 1]);
         return;
     }
 
     switch (offset) {
     case HammerheadReg::MEM_TIMING_0:
-        LOG_F(9, "%s: MEM_TIMING_0 set to 0x%X", this->name.c_str(), value);
+        LOG_F(INFO, "Hammerhead: MEM_TIMING_0 set to 0x%X", value);
         break;
     case HammerheadReg::MEM_TIMING_1:
-        LOG_F(9, "%s: MEM_TIMING_1 set to 0x%X", this->name.c_str(), value);
+        LOG_F(INFO, "Hammerhead: MEM_TIMING_1 set to 0x%X", value);
         break;
     case HammerheadReg::REFRESH_TIMING:
-        LOG_F(9, "%s: REFRESH_TIMING set to 0x%X", this->name.c_str(), value);
+        LOG_F(INFO, "Hammerhead: REFRESH_TIMING set to 0x%X", value);
         break;
     case HammerheadReg::ROM_TIMING:
-        LOG_F(9, "%s: ROM_TIMING set to 0x%X", this->name.c_str(), value);
+        LOG_F(INFO, "Hammerhead: ROM_TIMING set to 0x%X", value);
         break;
     case HammerheadReg::ARBITER_CONFIG:
+        LOG_F(INFO, "Hammerhead: ARBITER_CONFIG set to 0x%X", value);
         this->arb_config = value;
         break;
     default:
-        LOG_F(WARNING, "%s: unknown register write at offset 0x%X", this->name.c_str(),
-              offset);
+        LOG_F(WARNING, "Hammerhead: unknown register write at offset 0x%X", offset);
     }
 }
 
 void HammerheadCtrl::insert_ram_dimm(int slot_num, uint32_t capacity)
 {
     if (slot_num < 0 || slot_num >= 26) {
-        ABORT_F("%s: invalid DIMM slot number %d", this->name.c_str(), slot_num);
+        ABORT_F("Hammerhead: invalid DIMM slot number %d", slot_num);
     }
 
     switch (capacity) {
@@ -146,7 +150,7 @@ void HammerheadCtrl::insert_ram_dimm(int slot_num, uint32_t capacity)
         this->bank_size[slot_num * 2 + 1] = DRAM_CAP_64MB;
         break;
     default:
-        ABORT_F("%s: unsupported DRAM capacity %d", this->name.c_str(), capacity);
+        ABORT_F("Hammerhead: unsupported DRAM capacity %d", capacity);
     }
 }
 
@@ -158,10 +162,10 @@ void HammerheadCtrl::map_phys_ram()
         total_ram += this->bank_size[i];
     }
 
-    LOG_F(INFO, "%s: total RAM size = %d bytes", this->name.c_str(), total_ram);
+    LOG_F(INFO, "Hammerhead: total RAM size = %d bytes", total_ram);
 
     if (!add_ram_region(0x00000000, total_ram)) {
-        ABORT_F("%s: could not allocate physical RAM storage", this->name.c_str());
+        ABORT_F("Hammerhead: could not allocate physical RAM storage");
     }
 }
 

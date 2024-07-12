@@ -97,7 +97,6 @@ static const map<string, string> PropHelp = {
     {"vci_F",           "insert a VCI device 0x0F"},
     {"serial_backend",  "specifies the backend for the serial port"},
     {"emmo",            "enables/disables factory HW tests during startup"},
-    {"cpu",             "specifies CPU"},
 };
 
 bool MachineFactory::add(const string& machine_id, MachineDescription desc)
@@ -234,16 +233,10 @@ void MachineFactory::get_device_settings(DeviceDescription& dev, map<string, str
     }
 
     for (auto& p : dev.properties) {
-        if (settings.count(p.first)) {
-            // This is a hack. Need to implement hierarchical paths and per device properties.
-            LOG_F(ERROR, "Duplicate setting \"%s\".", p.first.c_str());
-        }
-        else {
-            settings[p.first] = p.second->get_string();
+        settings[p.first] = p.second->get_string();
 
-            // populate dynamic machine settings from presets
-            gMachineSettings[p.first] = unique_ptr<BasicProperty>(p.second->clone());
-        }
+        // populate dynamic machine settings from presets
+        gMachineSettings[p.first] = unique_ptr<BasicProperty>(p.second->clone());
     }
 }
 

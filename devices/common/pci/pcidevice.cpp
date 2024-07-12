@@ -69,6 +69,7 @@ void PCIDevice::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &
         this->pci_wr_exp_rom_bar(value);
         break;
     case PCI_CFG_DWORD_15:
+        //LOG_F(INFO, "%s: set irq-line %d", name.c_str(), value >> 24);
         this->irq_line = value >> 24;
         break;
     default:

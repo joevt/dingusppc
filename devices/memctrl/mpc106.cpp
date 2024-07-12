@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-23 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -24,10 +24,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/hwcomponent.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/deviceregistry.h>
+#include <devices/memctrl/memctrlbase.h>
 #include <devices/memctrl/mpc106.h>
 #include <loguru.hpp>
 
-#include <algorithm>
 #include <cinttypes>
 #include <cstring>
 #include <string>
@@ -60,9 +60,7 @@ int MPC106::device_postinit()
     std::string pci_dev_name;
 
     static const std::map<std::string, int> pci_slots = {
-        {"pci_PERCH", DEV_FUN(0xC,0)}, {"pci_A1", DEV_FUN(0xD,0)},
-        {"pci_B1",    DEV_FUN(0xE,0)}, {"pci_C1", DEV_FUN(0xF,0)},
-        {"pci_GPU",   DEV_FUN(0x12,0)}
+        {"pci_PERCH", DEV_FUN(0xC,0)}, {"pci_A1", DEV_FUN(0xD,0)}, {"pci_B1", DEV_FUN(0xE,0)}, {"pci_C1", DEV_FUN(0xF,0)}
     };
 
     for (auto& slot : pci_slots) {
@@ -74,7 +72,6 @@ int MPC106::device_postinit()
 
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
-
     this->irq_id_PCI_A     = this->int_ctrl->register_dev_int(IntSrc::PCI_A    );
     this->irq_id_PCI_B     = this->int_ctrl->register_dev_int(IntSrc::PCI_B    );
     this->irq_id_PCI_C     = this->int_ctrl->register_dev_int(IntSrc::PCI_C    );
@@ -90,7 +87,7 @@ void MPC106::pci_interrupt(uint8_t irq_line_state, PCIBase *dev) {
             return p.second == dev;
         }
     );
-
+ 
     if (it == dev_map.end()) {
         LOG_F(ERROR, "Interrupt from unknown device %s", dev->get_name().c_str());
     }
@@ -103,13 +100,16 @@ void MPC106::pci_interrupt(uint8_t irq_line_state, PCIBase *dev) {
             case DEV_FUN(0x0F,0): irq_id = this->irq_id_PCI_C    ; break;
             case DEV_FUN(0x12,0): irq_id = this->irq_id_PCI_GPU  ; break;
             default:
-                LOG_F(ERROR, "Interrupt from device %s at unexpected device/function %02x.%x",
-                      dev->get_name().c_str(), it->first >> 3, it->first & 7);
+                LOG_F(ERROR, "Interrupt from device %s at unexpected device/function %02x.%x", dev->get_name().c_str(), it->first >> 3, it->first & 7);
                 return;
         }
         if (this->int_ctrl)
             this->int_ctrl->ack_int(irq_id, irq_line_state);
     }
+}
+
+bool MPC106::needs_swap_endian(bool is_mmio) {
+    return is_mmio && needs_swap_endian_pci();
 }
 
 uint32_t MPC106::read(uint32_t rgn_start, uint32_t offset, int size) {
@@ -131,7 +131,7 @@ uint32_t MPC106::read(uint32_t rgn_start, uint32_t offset, int size) {
             // bytes 0 to 3 repeat
             return pci_conv_rd_data(value, value, details);
         }
-        LOG_READ_NON_EXISTENT_PCI_DEVICE();
+        //LOG_READ_NON_EXISTENT_PCI_DEVICE();
         return 0xFFFFFFFFUL; // PCI spec §6.1
     }
     return 0;
@@ -354,8 +354,6 @@ static const PropMap Grackle_Properties = {
     {"pci_B1",
         new StrProperty("")},
     {"pci_C1",
-        new StrProperty("")},
-    {"pci_GPU",
         new StrProperty("")},
 };
 

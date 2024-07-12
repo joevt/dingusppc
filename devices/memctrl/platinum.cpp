@@ -34,7 +34,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace Platinum;
 
-PlatinumCtrl::PlatinumCtrl() : MemCtrlBase(), VideoCtrlBase() {
+PlatinumCtrl::PlatinumCtrl() : MemCtrlBase(), VideoCtrlBase(640, 480) {
     set_name("Platinum");
 
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV);
@@ -443,13 +443,6 @@ void PlatinumCtrl::enable_display() {
     this->dacula->set_fb_parameters(this->active_width, this->active_height, this->fb_pitch);
 
     this->stop_refresh_task();
-
-    if (this->active_width <= 0 || this->active_height <= 0 || this->pixel_clock <= 0) {
-        this->blank_on = true;
-        this->crtc_on = false;
-        this->blank_display();
-        return;
-    }
 
     this->refresh_rate = (double)(this->pixel_clock) / (this->hori_total * this->vert_total);
     this->start_refresh_task();

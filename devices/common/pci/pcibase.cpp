@@ -70,7 +70,7 @@ uint32_t PCIBase::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
         return (pci_rd_bist() << 24) | (this->hdr_type << 16) |
                (pci_rd_lat_timer() << 8) | pci_rd_cache_lnsz();
     }
-    LOG_READ_UNIMPLEMENTED_CONFIG_REGISTER();
+    //LOG_READ_UNIMPLEMENTED_CONFIG_REGISTER();
     return 0;
 }
 

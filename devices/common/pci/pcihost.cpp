@@ -30,6 +30,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 
 #include <cinttypes>
+#include <cpu/ppc/ppcemu.h>
+#include <debugger/debugger.h>
 
 bool PCIHost::pci_register_device(int dev_fun_num, PCIBase* dev_instance)
 {
@@ -179,7 +181,11 @@ uint32_t PCIHost::pci_io_read_broadcast(uint32_t offset, int size)
         hwc ? hwc->get_name().c_str() : "PCIHost", offset,
         SIZE_ARG(size)
     );
+    // drop to debugger so we can see wtf is happening here
+    power_off_reason = po_enter_debugger;
+    enter_debugger();
     // FIXME: add machine check exception (DEFAULT CATCH!, code=FFF00200)
+    ppc_exception_handler(Except_Type::EXC_MACHINE_CHECK, 0);
     return 0;
 }
 
@@ -197,6 +203,8 @@ void PCIHost::pci_io_write_broadcast(uint32_t offset, int size, uint32_t value)
         SIZE_ARG(size),
         size * 2, BYTESWAP_SIZED(value, size)
     );
+    power_off_reason = po_enter_debugger;
+    enter_debugger();
 }
 
 PCIBase *PCIHost::pci_find_device(uint8_t bus_num, uint8_t dev_num, uint8_t fun_num)

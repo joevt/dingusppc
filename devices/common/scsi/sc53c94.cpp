@@ -43,10 +43,10 @@ Sc53C94::Sc53C94(uint8_t chip_id, uint8_t my_id) : ScsiDevice("SC53C94", my_id)
 
 int Sc53C94::device_postinit()
 {
-    ScsiBus* bus = dynamic_cast<ScsiBus*>(gMachineObj->get_comp_by_name("ScsiCurio"));
-    if (bus) {
-        bus->register_device(7, static_cast<ScsiDevice*>(this));
-        bus->attach_scsi_devices("");
+    this->bus_obj = dynamic_cast<ScsiBus*>(gMachineObj->get_comp_by_name("ScsiCurio"));
+    if (this->bus_obj) {
+        this->bus_obj->register_device(7, static_cast<ScsiDevice*>(this));
+        this->bus_obj->attach_scsi_devices("");
     }
 
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
@@ -59,7 +59,7 @@ int Sc53C94::device_postinit()
 void Sc53C94::reset_device()
 {
     // part-unique ID to be read using a magic sequence
-    this->xfer_count = this->chip_id << 16;
+    this->set_xfer_count = this->chip_id << 16;
 
     this->clk_factor   = 2;
     this->sel_timeout  = 0;
@@ -172,7 +172,7 @@ uint16_t Sc53C94::pseudo_dma_read()
         // remove one word from FIFO
         data_word = (this->data_fifo[0] << 8) | this->data_fifo[1];
         this->data_fifo_pos -= 2;
-        std::memmove(this->data_fifo, &this->data_fifo[2], this->data_fifo_pos);
+        std:memmove(this->data_fifo, &this->data_fifo[2], this->data_fifo_pos);
 
         // update DMA status
         if (this->is_dma_cmd) {
@@ -215,14 +215,14 @@ void Sc53C94::pseudo_dma_write(uint16_t data) {
 
 void Sc53C94::update_command_reg(uint8_t cmd)
 {
-    if (this->on_reset && (cmd & CMD_OPCODE) != CMD_NOP) {
+    if (this->on_reset && (cmd & 0x7F) != CMD_NOP) {
         LOG_F(WARNING, "%s: command register blocked after RESET!", this->name.c_str());
         return;
     }
 
     // NOTE: Reset Device (chip), Reset Bus and DMA Stop commands execute
     // immediately while all others are placed into the command FIFO
-    switch (cmd & CMD_OPCODE) {
+    switch (cmd & 0x7F) {
     case CMD_RESET_DEVICE:
     case CMD_RESET_BUS:
     case CMD_DMA_STOP:
@@ -280,14 +280,9 @@ void Sc53C94::exec_command()
         // assert RST line
         this->bus_obj->assert_ctrl_line(this->my_bus_id, SCSI_CTRL_RST);
         // release RST line after 25 us
-        if (my_timer_id) {
-            TimerManager::get_instance()->cancel_timer(this->my_timer_id);
-            my_timer_id = 0;
-        }
         my_timer_id = TimerManager::get_instance()->add_oneshot_timer(
             USECS_TO_NSECS(25),
             [this]() {
-                my_timer_id = 0;
                 this->bus_obj->release_ctrl_line(this->my_bus_id, SCSI_CTRL_RST);
         });
         if (!(config1 & 0x40)) {
@@ -311,9 +306,9 @@ void Sc53C94::exec_command()
         break;
     case CMD_COMPLETE_STEPS:
         static SeqDesc * complete_steps_desc = new SeqDesc[3]{
-            {(CMD_COMPLETE_STEPS << 8) + 1, SeqState::RCV_STATUS,   0,          0},
-            {(CMD_COMPLETE_STEPS << 8) + 2, SeqState::RCV_MESSAGE,  0,          0},
-            {(CMD_COMPLETE_STEPS << 8) + 3, SeqState::CMD_COMPLETE, 0, INTSTAT_SR | INTSTAT_SO}
+            {SeqState::RCV_STATUS,   0,          0},
+            {SeqState::RCV_MESSAGE,  0,          0},
+            {SeqState::CMD_COMPLETE, 0, INTSTAT_SR}
         };
         if (this->bus_obj->current_phase() != ScsiPhase::STATUS) {
             ABORT_F("%s: complete steps only works in the STATUS phase", this->name.c_str());
@@ -335,9 +330,9 @@ void Sc53C94::exec_command()
         break;
     case CMD_SELECT_NO_ATN:
         static SeqDesc * sel_no_atn_desc = new SeqDesc[3]{
-            {(CMD_SELECT_NO_ATN << 8) + 1, SeqState::SEL_BEGIN,    0, INTSTAT_DIS            },
-            {(CMD_SELECT_NO_ATN << 8) + 2, SeqState::SEND_CMD,     3, INTSTAT_SR | INTSTAT_SO},
-            {(CMD_SELECT_NO_ATN << 8) + 3, SeqState::CMD_COMPLETE, 4, INTSTAT_SR | INTSTAT_SO},
+            {SeqState::SEL_BEGIN,    0, INTSTAT_DIS            },
+            {SeqState::SEND_CMD,     3, INTSTAT_SR | INTSTAT_SO},
+            {SeqState::CMD_COMPLETE, 4, INTSTAT_SR | INTSTAT_SO},
         };
         this->seq_step = 0;
         this->cmd_steps = sel_no_atn_desc;
@@ -347,10 +342,10 @@ void Sc53C94::exec_command()
         break;
     case CMD_SELECT_WITH_ATN:
         static SeqDesc * sel_with_atn_desc = new SeqDesc[4]{
-            {(CMD_SELECT_WITH_ATN << 8) + 1, SeqState::SEL_BEGIN,    0, INTSTAT_DIS            },
-            {(CMD_SELECT_WITH_ATN << 8) + 2, SeqState::SEND_MSG,     2, INTSTAT_SR | INTSTAT_SO},
-            {(CMD_SELECT_WITH_ATN << 8) + 3, SeqState::SEND_CMD,     3, INTSTAT_SR | INTSTAT_SO},
-            {(CMD_SELECT_WITH_ATN << 8) + 4, SeqState::CMD_COMPLETE, 4, INTSTAT_SR | INTSTAT_SO},
+            {SeqState::SEL_BEGIN,    0, INTSTAT_DIS            },
+            {SeqState::SEND_MSG,     2, INTSTAT_SR | INTSTAT_SO},
+            {SeqState::SEND_CMD,     3, INTSTAT_SR | INTSTAT_SO},
+            {SeqState::CMD_COMPLETE, 4, INTSTAT_SR | INTSTAT_SO},
         };
         this->seq_step  = 0;
         this->bytes_out = 1; // set message length
@@ -381,8 +376,6 @@ void Sc53C94::exec_next_command()
     }
 }
 
-#define DATA_FIFO_MAX   16
-
 void Sc53C94::fifo_push(const uint8_t data)
 {
     if (this->data_fifo_pos < DATA_FIFO_MAX) {
@@ -403,7 +396,7 @@ uint8_t Sc53C94::fifo_pop()
     } else {
         data = this->data_fifo[0];
         this->data_fifo_pos--;
-        std::memmove(this->data_fifo, &this->data_fifo[1], this->data_fifo_pos);
+        std:memmove(this->data_fifo, &this->data_fifo[1], this->data_fifo_pos);
     }
 
     return data;
@@ -411,16 +404,10 @@ uint8_t Sc53C94::fifo_pop()
 
 void Sc53C94::seq_defer_state(uint64_t delay_ns)
 {
-    if (seq_timer_id) {
-        TimerManager::get_instance()->cancel_timer(this->seq_timer_id);
-        seq_timer_id = 0;
-    }
-
     seq_timer_id = TimerManager::get_instance()->add_oneshot_timer(
         delay_ns,
         [this]() {
             // re-enter the sequencer with the state specified in next_state
-            this->seq_timer_id = 0;
             this->cur_state = this->next_state;
             this->sequencer();
     });
@@ -484,8 +471,7 @@ void Sc53C94::sequencer()
         break;
     case SeqState::SEND_MSG:
         if (this->data_fifo_pos < 1 && this->is_dma_cmd) {
-            if (this->drq_cb)
-                this->drq_cb(1);
+            this->drq_cb(1);
             this->int_status = INTSTAT_SR;
             this->update_irq();
             break;
@@ -495,8 +481,7 @@ void Sc53C94::sequencer()
         break;
     case SeqState::SEND_CMD:
         if (this->data_fifo_pos < 1 && this->is_dma_cmd) {
-            if (this->drq_cb)
-                this->drq_cb(1);
+            this->drq_cb(1);
             this->int_status |= INTSTAT_SR;
             this->update_irq();
             break;
@@ -506,7 +491,6 @@ void Sc53C94::sequencer()
     case SeqState::CMD_COMPLETE:
         this->seq_step   = this->cmd_steps->step_num;
         this->int_status = this->cmd_steps->status;
-        this->cur_state = SeqState::IDLE;
         this->update_irq();
         exec_next_command();
         break;
@@ -538,7 +522,6 @@ void Sc53C94::sequencer()
             this->bus_obj->target_next_step();
         }
         this->int_status = INTSTAT_SR;
-        this->cur_state = SeqState::IDLE;
         this->update_irq();
         exec_next_command();
         break;
@@ -579,7 +562,7 @@ void Sc53C94::update_irq()
     uint8_t new_irq = !!(this->int_status != 0);
     if (new_irq != this->irq) {
         this->irq = new_irq;
-        this->status = (this->status & ~STAT_INT) | (new_irq << 7);
+        this->status = (this->status & 0x7F) | (new_irq << 7);
         this->int_ctrl->ack_int(this->irq_id, new_irq);
     }
 }
@@ -591,7 +574,6 @@ void Sc53C94::notify(ScsiMsg msg_type, int param)
         if (this->target_id == param) {
             // cancel selection timeout timer
             TimerManager::get_instance()->cancel_timer(this->seq_timer_id);
-            seq_timer_id = 0;
             this->cur_state = SeqState::SEL_END;
             this->sequencer();
         } else {
@@ -661,7 +643,7 @@ void Sc53C94::real_dma_xfer_out()
 {
     // transfer data from host's memory to target
 
-    if (this->xfer_count) {
+    while (this->xfer_count) {
         uint32_t got_bytes;
         uint8_t* src_ptr;
         this->dma_ch->pull_data(std::min((int)this->xfer_count, DATA_FIFO_MAX),
@@ -678,16 +660,6 @@ void Sc53C94::real_dma_xfer_out()
             this->sequencer();
         }
     }
-
-    if (this->xfer_count) {
-        this->dma_timer_id = TimerManager::get_instance()->add_oneshot_timer(
-            10000,
-            [this]() {
-                // re-enter the sequencer with the state specified in next_state
-                this->dma_timer_id = 0;
-                this->real_dma_xfer_out();
-        });
-    }
 }
 
 void Sc53C94::real_dma_xfer_in()
@@ -696,59 +668,24 @@ void Sc53C94::real_dma_xfer_in()
 
     // transfer data from target to host's memory
 
-    if (this->xfer_count && this->data_fifo_pos) {
-        this->dma_ch->push_data((char*)this->data_fifo, this->data_fifo_pos);
+    while (this->xfer_count) {
+        if (this->data_fifo_pos) {
+            this->dma_ch->push_data((char*)this->data_fifo, this->data_fifo_pos);
 
-        this->xfer_count -= this->data_fifo_pos;
-        this->data_fifo_pos = 0;
-        if (!this->xfer_count) {
-            is_done = true;
-            this->status |= STAT_TC; // signal zero transfer count
-            this->cur_state = SeqState::XFER_END;
+            this->xfer_count -= this->data_fifo_pos;
+            this->data_fifo_pos = 0;
+            if (!this->xfer_count) {
+                is_done = true;
+                this->status |= STAT_TC; // signal zero transfer count
+                this->cur_state = SeqState::XFER_END;
+                this->sequencer();
+            }
+        }
+
+        // see if we need to refill FIFO
+        if (!this->data_fifo_pos && !is_done) {
             this->sequencer();
         }
-    }
-
-    // see if we need to refill FIFO
-    if (!this->data_fifo_pos && !is_done) {
-        this->sequencer();
-        this->dma_timer_id = TimerManager::get_instance()->add_oneshot_timer(
-            10000,
-            [this]() {
-                // re-enter the sequencer with the state specified in next_state
-                this->dma_timer_id = 0;
-                this->real_dma_xfer_in();
-        });
-    }
-}
-
-void Sc53C94::dma_wait() {
-    if (this->cur_bus_phase == ScsiPhase::DATA_IN && this->cur_state == SeqState::RCV_DATA) {
-        real_dma_xfer_in();
-    }
-    else if (this->cur_bus_phase == ScsiPhase::DATA_OUT && this->cur_state == SeqState::SEND_DATA) {
-        real_dma_xfer_out();
-    }
-    else {
-        this->dma_timer_id = TimerManager::get_instance()->add_oneshot_timer(
-            10000,
-            [this]() {
-                this->dma_timer_id = 0;
-                this->dma_wait();
-        });
-    }
-}
-
-void Sc53C94::dma_start()
-{
-    dma_wait();
-}
-
-void Sc53C94::dma_stop()
-{
-    if (this->dma_timer_id) {
-        TimerManager::get_instance()->cancel_timer(this->dma_timer_id);
-        this->dma_timer_id = 0;
     }
 }
 

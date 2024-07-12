@@ -19,24 +19,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-//#define CURSOR_LO_DELAY
-/* Uncomment this to add a delay before allowing the low byte of the cursor
-   position to be latched. In that case, a write to the high byte of the
-   cursor position latches the low byte immediately since the high byte is
-   expected to always be the second byte written. This change solves the issue
-   described below.
-
-   The horizontal position of the cursor may be incorrect between the times
-   when the low byte and the high byte are written. This is true when both
-   bytes change such as when the position changes from 0xFF to 0x100. This is
-   usually not a problem since the position usually changes only during a VBL.
-
-   In the case of Open Firmware, there is at least 2 ms between writes so
-   the cursor position could be incorrect for a third of the refresh cycle.
-   Open Firmware doesn't use VBLs. It also doesn't usually use a hardware
-   cursor so this change isn't usually useful.
-*/
-
 /** Definitions for the Apple RAMDAC ASICs (RaDACal & DACula). */
 
 #ifndef APPLE_RAMDAC_H
@@ -53,8 +35,7 @@ enum DacFlavour {
     DACULA,
 };
 
-#define DACULA_VENDOR_SIERRA    0x3C // 14.3 MHz
-#define DACULA_VENDOR_ATT       0x84 // 15 MHz
+#define DACULA_VENDOR_SIERRA    0x3C
 
 constexpr auto VIDEO_XTAL = 14318180.0f; // external crystal oscillator frequency
 
@@ -69,19 +50,17 @@ enum RamdacRegs : uint8_t {
     // multipurpose section registers (both RaDACal & DACula)
     CURSOR_POS_HI   = 0x10, // cursor position, high-order byte
     CURSOR_POS_LO   = 0x11, // cursor position, low-order byte
-    MISC_CTRL       = 0x20, // miscellaneus control bits ; Dacula: read ; when 1MB VRAM then write (mode&15) else write (mode)
-    DBL_BUF_CTRL    = 0x21, // double buffer control bits ; Dacula: write 4; Radical: set to 0 if using optional bank (bankb) in Open Firmware or for 2nd page in ndrv
-    TEST_CTRL       = 0x22, // enable/disable DAC tests ; Dacula: write 0
+    MISC_CTRL       = 0x20, // miscellaneus control bits
+    DBL_BUF_CTRL    = 0x21, // double buffer control bits
+    TEST_CTRL       = 0x22, // enable/disable DAC tests
 
     // multipurpose section registers (DACula only)
-    PLL_CTRL        = 0x23, // phase locked loop control ; Dacula: if read 2 then write 3 else write 2 <-
-    VIDCLK_M_SET_A  = 0x24, // M parameter for the set A ; Dacula: N2 for 2
-    VIDCLK_PN_SET_A = 0x25, // P & N parameters for the set A ; Dacula: D2 for 2
-    //              = 0x26, // Dacula: write 0xc6 before changing the clock
-    VIDCLK_M_SET_B  = 0x27, // M parameter for the set B ; Dacula: N2 for 3 <-
-    VIDCLK_PN_SET_B = 0x28, // P & N parameters for the set B ; Dacula: D2 for 3 <-
-    DAC_29          = 0x29, // Dacula: linux writes 0xa6 after changing the clock ; macrom writes 0xc6
-    VENDOR_ID       = 0x40, // Dacula: DAC_TYPE 0x3c or 0x84
+    PLL_CTRL        = 0x23, // phase locked loop control
+    VIDCLK_M_SET_A  = 0x24, // M parameter for the set A
+    VIDCLK_PN_SET_A = 0x25, // P & N parameters for the set A
+    VIDCLK_M_SET_B  = 0x27, // M parameter for the set B
+    VIDCLK_PN_SET_B = 0x28, // P & N parameters for the set B
+    VENDOR_ID       = 0x40,
 };
 
 }; // namespace RamdacRegs
@@ -101,7 +80,6 @@ public:
     int get_clock_div();
     int get_pix_width();
     int get_dot_freq();
-    uint8_t get_dbl_buf_cr() { return dbl_buf_cr; }
 
     void set_fb_parameters(int width, int height, uint32_t pitch) {
         this->video_width  = width;
@@ -125,20 +103,16 @@ protected:
     uint16_t    cursor_xpos     = 0; // horizontal position of the cursor region
     uint16_t    cursor_ypos     = 0;
     uint16_t    cursor_height   = 0;
+    uint8_t     cursor_pos_lo   = 0;
     uint8_t     clk_m[2]        = {};
     uint8_t     clk_pn[2]       = {};
     uint8_t     pll_cr          = 0;
-    uint8_t     dac_vendor      = DACULA_VENDOR_SIERRA;
     uint8_t     comp_index      = 0;
     uint8_t     clut_color[3]   = {};
     uint32_t    cursor_clut[8]  = {};
     int         video_width     = 0;
     int         video_height    = 0;
     uint32_t    fb_pitch        = 0;
-#ifdef CURSOR_LO_DELAY
-    uint8_t     cursor_pos_lo   = 0;
-    uint32_t    cursor_timer_id = 0;
-#endif
 };
 
 #endif // APPLE_RAMDAC_H

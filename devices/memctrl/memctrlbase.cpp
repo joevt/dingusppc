@@ -154,7 +154,9 @@ bool MemCtrlBase::add_mem_region(uint32_t start_addr, uint32_t size,
     if (!is_range_free(start_addr, size))
         return false;
 
-    uint8_t* reg_content = new uint8_t[size](); // allocate and clear to zero
+    // allocate 64-bits aligned in host memory.
+    uint8_t* reg_content = new uint8_t[size + 8]();    // allocate and clear to zero
+    size_t align_val = (size_t)reg_content & 0x7;
 
     this->mem_regions.push_back(reg_content);
 
@@ -168,6 +170,9 @@ bool MemCtrlBase::add_mem_region(uint32_t start_addr, uint32_t size,
     entry->devobj  = nullptr;
     entry->mem_ptr = reg_content;
 
+    if (align_val != 0) {
+        reg_content = &reg_content[8 - align_val];
+    }
     this->address_map.push_back(entry);
 
     LOG_F(INFO, "Added mem region 0x%X..0x%X (%s%s%s%s) -> 0x%X", start_addr, end,
@@ -340,6 +345,10 @@ bool MemCtrlBase::remove_mmio_region(uint32_t start_addr, uint32_t size, MMIODev
     return (found > 0);
 }
 
+bool MemCtrlBase::needs_swap_endian(bool is_mmio) {
+    return false;
+}
+
 AddressMapEntry* MemCtrlBase::find_rom_region()
 {
     for (auto& entry : address_map) {
@@ -349,15 +358,4 @@ AddressMapEntry* MemCtrlBase::find_rom_region()
     }
 
     return nullptr;
-}
-
-uint8_t *MemCtrlBase::get_region_hostmem_ptr(const uint32_t addr) {
-    AddressMapEntry *reg_desc = this->find_range(addr);
-    if (reg_desc == nullptr || reg_desc->type == RT_MMIO)
-        return nullptr;
-
-    if (reg_desc->type == RT_MIRROR)
-        return (addr - reg_desc->mirror) + reg_desc->mem_ptr;
-    else
-        return (addr - reg_desc->start) + reg_desc->mem_ptr;
 }

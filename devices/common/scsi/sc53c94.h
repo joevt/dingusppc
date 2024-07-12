@@ -30,13 +30,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define SC_53C94_H
 
 #include <devices/common/scsi/scsi.h>
-#include <devices/common/dbdma.h>
 
 #include <cinttypes>
 #include <functional>
 #include <memory>
 
+class DmaBidirChannel;
 class InterruptCtrl;
+
+#define DATA_FIFO_MAX   16
 
 /** 53C94 read registers */
 namespace Read {
@@ -179,7 +181,6 @@ namespace SeqState {
 
 /** Sequence descriptor for sequencer commands. */
 typedef struct {
-    int seq_id;
     int next_step;
     int step_num;
     int status;
@@ -209,18 +210,8 @@ public:
     void real_dma_xfer_out();
     void real_dma_xfer_in();
 
-    void dma_start();
-    void dma_wait();
-    void dma_stop();
     void set_dma_channel(DmaBidirChannel *dma_ch) {
         this->dma_ch = dma_ch;
-        auto dbdma_ch = dynamic_cast<DMAChannel*>(dma_ch);
-        if (dbdma_ch) {
-            dbdma_ch->set_callbacks(
-                std::bind(&Sc53C94::dma_start, this),
-                std::bind(&Sc53C94::dma_stop, this)
-            );
-        }
     };
 
     void set_drq_callback(DrqCb cb) {
@@ -253,6 +244,7 @@ protected:
 private:
     uint8_t     chip_id = 0;
     uint8_t     my_bus_id = 0;
+    ScsiBus*    bus_obj;
     uint32_t    my_timer_id = 0;
 
     uint8_t     cmd_fifo[2];
@@ -292,7 +284,6 @@ private:
     // DMA related stuff
     DmaBidirChannel*    dma_ch = nullptr;
     DrqCb               drq_cb = nullptr;
-    uint32_t            dma_timer_id = 0;
 };
 
 #endif // SC_53C94_H

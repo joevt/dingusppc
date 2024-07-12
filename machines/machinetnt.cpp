@@ -61,11 +61,11 @@ int initialize_tnt(std::string& id)
     // attach IOBus Device #1 0xF301A000
     gMachineObj->add_device("BoardReg1", std::unique_ptr<BoardRegister>(
         new BoardRegister("Board Register 1",
-            0x3F                                                                       | // pull up all PRSNT bits
-            ((GET_BIN_PROP("emmo") ^ 1) << 8)                                          | // factory tests (active low)
-            ((gMachineObj->get_comp_by_name_optional("Sixty6Video") == nullptr) << 13) | // composite video out (active low)
-            ((gMachineObj->get_comp_by_name_optional("MeshTnt") != nullptr) << 14)     | // fast SCSI (active high)
-            0x8000U                                                                      // pull up unused bits
+            0x3F                                        | // pull up all PRSNT bits
+            ((GET_BIN_PROP("emmo") ^ 1) << 8)           | // factory tests (active low)
+            ((GET_BIN_PROP("has_sixty6") ^ 1) << 13)    | // composite video out (active low)
+            (GET_BIN_PROP("has_mesh") << 14)            | // fast SCSI (active high)
+            0x8000U                                       // pull up unused bits
     )));
     gc_obj->attach_iodevice(0, dynamic_cast<BoardRegister*>(gMachineObj->get_comp_by_name("BoardReg1")));
 
@@ -83,8 +83,7 @@ int initialize_tnt(std::string& id)
     // get (raw) pointer to the memory controller
     memctrl_obj = dynamic_cast<HammerheadCtrl*>(gMachineObj->get_comp_by_name("Hammerhead"));
 
-    memctrl_obj->set_motherboard_id((vci_host ? Hammerhead::MBID_VCI0_PRESENT : 0) |
-                                    (pci2_host ? Hammerhead::MBID_PCI2_PRESENT : 0));
+    memctrl_obj->set_motherboard_id((vci_host ? Hammerhead::MBID_VCI0_PRESENT : 0) | (pci2_host ? Hammerhead::MBID_PCI2_PRESENT : 0));
     memctrl_obj->set_bus_speed(Hammerhead::BUS_SPEED_50_MHZ);
 
     // allocate ROM region
@@ -100,29 +99,14 @@ int initialize_tnt(std::string& id)
     memctrl_obj->map_phys_ram();
 
     // init virtual CPU
-    std::string cpu = GET_STR_PROP("cpu");
-    if (cpu == "604e")
-        ppc_cpu_init(memctrl_obj, PPC_VER::MPC604E, false, 12500000ULL);
-    else if (cpu == "604")
-        ppc_cpu_init(memctrl_obj, PPC_VER::MPC604, false, 12500000ULL);
-    else if (cpu == "601")
-        ppc_cpu_init(memctrl_obj, PPC_VER::MPC601, true, 7833600ULL);
-    else if (cpu == "750") {
-        // configure CPU clocks
-        uint64_t bus_freq      = 50000000ULL;
-        uint64_t timebase_freq = bus_freq / 4;
-
-        // initialize virtual CPU and request MPC750 CPU aka G3
-        ppc_cpu_init(memctrl_obj, PPC_VER::MPC750, false, timebase_freq);
-
-        // set CPU PLL ratio to 3.5
-        ppc_state.spr[SPR::HID1] = 0xE << 28;
-    }
+    if (id == "pm7300")
+        ppc_cpu_init(memctrl_obj, PPC_VER::MPC604E, 12500000ULL);
+    else
+        ppc_cpu_init(memctrl_obj, PPC_VER::MPC601, 7833600ULL);
 
     return 0;
 }
 
-template <uint32_t cpu>
 static const PropMap pm7500_settings = {
     {"rambank1_size",
         new IntProperty(16, vector<uint32_t>({4, 8, 16, 32, 64, 128}))},
@@ -132,37 +116,25 @@ static const PropMap pm7500_settings = {
         new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
     {"rambank4_size",
         new IntProperty( 0, vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"gfxmem_size",
+        new IntProperty( 1, vector<uint32_t>({1, 2, 4}))},
     {"emmo",
         new BinProperty(0)},
-    {"cpu",
-        new StrProperty(
-            cpu == PPC_VER::MPC601  ? "601" :
-            cpu == PPC_VER::MPC604  ? "604" :
-            cpu == PPC_VER::MPC604E ? "604e" :
-            "604e", vector<std::string>({"601", "604", "604e", "750"})
-        )
-    },
+    {"has_sixty6",
+        new BinProperty(0)},
+    {"has_mesh",
+        new BinProperty(1)},
 };
 
 static vector<string> pm7500_devices = {
-    "Hammerhead", "Bandit1", "Chaos", "ScsiMesh", "MeshTnt", "GrandCentral",
-    "ControlVideo"
-};
-
-static vector<string> pm8500_devices = {
-    "Hammerhead", "Bandit1", "Chaos", "ScsiMesh", "MeshTnt", "GrandCentral",
-    "ControlVideo", "Sixty6Video"
-};
-
-static vector<string> pm9500_devices = {
-    "Hammerhead", "Bandit1", "Bandit2", "ScsiMesh", "MeshTnt", "GrandCentral"
+    "Hammerhead", "Bandit1", "Chaos", "ScsiMesh", "MeshTnt", "GrandCentral", "ControlVideo", "Sixty6Video"
 };
 
 static const MachineDescription pm7300_descriptor = {
     .name = "pm7300",
     .description = "Power Macintosh 7300",
     .devices = pm7500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC604E>,
+    .settings = pm7500_settings,
     .init_func = &initialize_tnt
 };
 
@@ -170,54 +142,9 @@ static const MachineDescription pm7500_descriptor = {
     .name = "pm7500",
     .description = "Power Macintosh 7500",
     .devices = pm7500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC601>,
-    .init_func = &initialize_tnt
-};
-
-static const MachineDescription pm8500_descriptor = {
-    .name = "pm8500",
-    .description = "Power Macintosh 8500",
-    .devices = pm8500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC604>,
-    .init_func = &initialize_tnt
-};
-
-static const MachineDescription pm9500_descriptor = {
-    .name = "pm9500",
-    .description = "Power Macintosh 9500",
-    .devices = pm9500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC604>,
-    .init_func = &initialize_tnt
-};
-
-static const MachineDescription pm7600_descriptor = {
-    .name = "pm7600",
-    .description = "Power Macintosh 7600",
-    .devices = pm7500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC604E>,
-    .init_func = &initialize_tnt
-};
-
-static const MachineDescription pm8600_descriptor = {
-    .name = "pm8600",
-    .description = "Power Macintosh 8600",
-    .devices = pm8500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC604E>,
-    .init_func = &initialize_tnt
-};
-
-static const MachineDescription pm9600_descriptor = {
-    .name = "pm9600",
-    .description = "Power Macintosh 9600",
-    .devices = pm9500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC604E>,
+    .settings = pm7500_settings,
     .init_func = &initialize_tnt
 };
 
 REGISTER_MACHINE(pm7300, pm7300_descriptor);
 REGISTER_MACHINE(pm7500, pm7500_descriptor);
-REGISTER_MACHINE(pm8500, pm8500_descriptor);
-REGISTER_MACHINE(pm9500, pm9500_descriptor);
-REGISTER_MACHINE(pm7600, pm7600_descriptor);
-REGISTER_MACHINE(pm8600, pm8600_descriptor);
-REGISTER_MACHINE(pm9600, pm9600_descriptor);

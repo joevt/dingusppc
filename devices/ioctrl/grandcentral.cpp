@@ -93,21 +93,9 @@ GrandCentral::GrandCentral() : PCIDevice("mac-io/grandcentral"), InterruptCtrl()
 
     // connect serial HW
     this->escc = dynamic_cast<EsccController*>(gMachineObj->get_comp_by_name("Escc"));
-    this->escc_a_tx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_a_tx"));
-    this->escc_a_rx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_a_rx"));
-    this->escc_b_tx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_b_tx"));
-    this->escc_b_rx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_b_rx"));
-    this->escc_a_tx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCA_Tx));
-    this->escc_a_rx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCA_Rx));
-    this->escc_b_tx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCB_Tx));
-    this->escc_b_rx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCB_Rx));
-    this->escc->set_dma_channel(0, this->escc_a_tx_dma.get());
-    this->escc->set_dma_channel(1, this->escc_a_rx_dma.get());
-    this->escc->set_dma_channel(2, this->escc_b_tx_dma.get());
-    this->escc->set_dma_channel(3, this->escc_b_rx_dma.get());
 
     // connect MESH (internal SCSI)
-    this->mesh = dynamic_cast<MeshController*>(gMachineObj->get_comp_by_name_optional("MeshTnt"));
+    this->mesh = dynamic_cast<MeshController*>(gMachineObj->get_comp_by_name("MeshTnt"));
     if (this->mesh == nullptr) {
         LOG_F(WARNING, "%s: Mesh not found, using MeshStub instead", this->name.c_str());
         this->mesh_stub = std::unique_ptr<MeshStub>(new MeshStub());
@@ -185,10 +173,7 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
         case 7: // VIA-CUDA
             return this->viacuda->read((offset >> 9) & 0xF);
         case 8: // MESH SCSI
-            if (this->mesh)
-                return this->mesh->read((offset >> 4) & 0xF);
-            else if (this->mesh_stub)
-                return this->mesh_stub->read((offset >> 4) & 0xF);
+            return this->mesh->read((offset >> 4) & 0xF);
         case 9: // ENET-ROM
             return ENET_ROM[(offset >> 4) & 0x7];
         case 0xA: // IOBus device #1 ; Board register 1 and bandit1 PRSNT bits
@@ -221,25 +206,13 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
             return this->curio_dma->reg_read(offset & 0xFF, size);
         case MIO_GC_DMA_FLOPPY:
             return this->floppy_dma->reg_read(offset & 0xFF, size);
-        case MIO_GC_DMA_ESCC_A_XMIT:
-            return this->escc_a_tx_dma->reg_read(offset & 0xFF, size);
-        case MIO_GC_DMA_ESCC_A_RCV:
-            return this->escc_a_rx_dma->reg_read(offset & 0xFF, size);
-        case MIO_GC_DMA_ESCC_B_XMIT:
-            return this->escc_b_tx_dma->reg_read(offset & 0xFF, size);
-        case MIO_GC_DMA_ESCC_B_RCV:
-            return this->escc_b_rx_dma->reg_read(offset & 0xFF, size);
         case MIO_GC_DMA_AUDIO_OUT:
             return this->snd_out_dma->reg_read(offset & 0xFF, size);
         case MIO_GC_DMA_AUDIO_IN:
-            //LOG_F(WARNING, "%s: Unsupported DMA channel DMA_AUDIO_IN read  @%02x.%c", this->name.c_str(), offset & 0xFF, SIZE_ARG(size));
+            //LOG_F(WARNING, "%s: Unsupported DMA channel MIO_GC_DMA_AUDIO_IN read  @%02x.%c", this->name.c_str(), offset & 0xFF, SIZE_ARG(size));
             return 0; // this->snd_in_dma->reg_read(offset & 0xFF, size);
         case MIO_GC_DMA_SCSI_MESH:
-            if (this->mesh_dma) {
-                return this->mesh_dma->reg_read(offset & 0xFF, size);
-                break;
-            }
-            // fallthrough
+            return this->mesh_dma->reg_read(offset & 0xFF, size);
         default:
             LOG_F(WARNING, "%s: unimplemented DMA register at 0x%X",
                   this->name.c_str(), this->base_addr + offset);
@@ -296,10 +269,7 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             this->viacuda->write((offset >> 9) & 0xF, value);
             break;
         case 8: // MESH SCSI
-            if (this->mesh)
-                this->mesh->write((offset >> 4) & 0xF, value);
-            else if (this->mesh_stub)
-                this->mesh_stub->write((offset >> 4) & 0xF, value);
+            this->mesh->write((offset >> 4) & 0xF, value);
             break;
         case 0xA: // IOBus device #1 ; Board register 1 and bandit1 PRSNT bits
         case 0xB: // IOBus device #2 ; RaDACal/DACula
@@ -338,31 +308,16 @@ void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         case MIO_GC_DMA_FLOPPY:
             this->floppy_dma->reg_write(offset & 0xFF, value, size);
             break;
-        case MIO_GC_DMA_ESCC_A_XMIT:
-            this->escc_a_tx_dma->reg_write(offset & 0xFF, value, size);
-            break;
-        case MIO_GC_DMA_ESCC_A_RCV:
-            this->escc_a_rx_dma->reg_write(offset & 0xFF, value, size);
-            break;
-        case MIO_GC_DMA_ESCC_B_XMIT:
-            this->escc_b_tx_dma->reg_write(offset & 0xFF, value, size);
-            break;
-        case MIO_GC_DMA_ESCC_B_RCV:
-            this->escc_b_rx_dma->reg_write(offset & 0xFF, value, size);
-            break;
         case MIO_GC_DMA_AUDIO_OUT:
             this->snd_out_dma->reg_write(offset & 0xFF, value, size);
             break;
         case MIO_GC_DMA_AUDIO_IN:
-            LOG_F(WARNING, "%s: Unsupported DMA channel DMA_AUDIO_IN write @%02x.%c = %0*x", this->name.c_str(), offset & 0xFF, SIZE_ARG(size), size * 2, value);
+            LOG_F(WARNING, "%s: Unsupported DMA channel MIO_GC_DMA_AUDIO_IN write @%02x.%c = %0*x", this->name.c_str(), offset & 0xFF, SIZE_ARG(size), size * 2, value);
             //this->snd_in_dma->reg_write(offset & 0xFF, value, size);
             break;
         case MIO_GC_DMA_SCSI_MESH:
-            if (this->mesh_dma) {
-                this->mesh_dma->reg_write(offset & 0xFF, value, size);
-                break;
-            }
-            // fallthrough
+            this->mesh_dma->reg_write(offset & 0xFF, value, size);
+            break;
         default:
             LOG_F(WARNING, "%s: unimplemented DMA register at 0x%X",
                   this->name.c_str(), this->base_addr + offset);
@@ -459,12 +414,6 @@ uint32_t GrandCentral::register_dma_int(IntSrc src_id) {
 void GrandCentral::ack_int_common(uint32_t irq_id, uint8_t irq_line_state) {
     // native mode:   set IRQ bits in int_events1 on a 0-to-1 transition
     // emulated mode: set IRQ bits in int_events1 on all transitions
-//#if 1
-//    if (irq_id & ~(INT_TO_IRQ_ID(0x12) | INT_TO_IRQ_ID(0x1A)))
-//        LOG_F(INTERRUPT, "%s: native interrupt mask:%08x events:%08x levels:%08x change:%08x state:%d",
- //           this->name.c_str(), this->int_mask, this->int_events + 0, this->int_levels + 0, irq_id, irq_line_state
- //       );
-//#endif
     if ((this->int_mask & MACIO_INT_MODE) ||
         (irq_line_state && !(this->int_levels & irq_id))) {
         this->int_events |= irq_id;

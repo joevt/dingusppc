@@ -46,12 +46,17 @@ void ScsiHardDisk::insert_image(std::string filename) {
     uint64_t tb = (this->img_size + this->sector_size - 1) / this->sector_size;
     this->total_blocks = static_cast<int>(tb);
     if (this->total_blocks < 0 || tb != this->total_blocks) {
-        ABORT_F("%s: file size is too large", this->name.c_str());
+        ABORT_F("ScsiHardDisk: file size is too large");
     }
 }
 
 void ScsiHardDisk::process_command() {
-    uint32_t lba;
+    uint32_t lba          = 0;
+    uint16_t transfer_len = 0;
+    uint16_t alloc_len    = 0;
+
+    uint8_t  page_code    = 0;
+    uint8_t  subpage_code = 0;
 
     this->pre_xfer_action  = nullptr;
     this->post_xfer_action = nullptr;
@@ -64,13 +69,14 @@ void ScsiHardDisk::process_command() {
 
     switch (cmd[0]) {
     case ScsiCommand::TEST_UNIT_READY:
-        this->test_unit_ready();
+        test_unit_ready();
         break;
     case ScsiCommand::REWIND:
         this->illegal_command(cmd);
         break;
     case ScsiCommand::REQ_SENSE:
-        this->req_sense(cmd[4]);
+        alloc_len = cmd[4];
+        req_sense(alloc_len);
         break;
     case ScsiCommand::FORMAT_UNIT:
         this->format();
@@ -80,11 +86,13 @@ void ScsiHardDisk::process_command() {
         break;
     case ScsiCommand::READ_6:
         lba = ((cmd[1] & 0x1F) << 16) + (cmd[2] << 8) + cmd[3];
-        this->read(lba, cmd[4], 6);
+        transfer_len = cmd[4];
+        read(lba, transfer_len, 6);
         break;
     case ScsiCommand::WRITE_6:
-        lba = ((cmd[1] & 0x1F) << 16) + (cmd[2] << 8) + cmd[3];
-        this->write(lba, cmd[4], 6);
+        lba          = ((cmd[1] & 0x1F) << 16) + (cmd[2] << 8) + cmd[3];
+        transfer_len = cmd[4];
+        write(lba, transfer_len, 6);
         break;
     case ScsiCommand::SEEK_6:
         this->illegal_command(cmd);
@@ -116,23 +124,18 @@ void ScsiHardDisk::process_command() {
     case ScsiCommand::SEND_DIAGS:
         this->illegal_command(cmd);
         break;
-    case ScsiCommand::PREVENT_ALLOW_MEDIUM_REMOVAL:
-        this->eject_allowed = (cmd[4] & 1) == 0;
-        this->switch_phase(ScsiPhase::STATUS);
-        break;
     case ScsiCommand::READ_CAPACITY_10:
         this->read_capacity_10();
         break;
     case ScsiCommand::READ_10:
-        lba = READ_DWORD_BE_U(&cmd[2]);
-        if (cmd[1] & 1) {
-            ABORT_F("%s: RelAdr bit set in READ_10", this->name.c_str());
-        }
-        this->read(lba, READ_WORD_BE_U(&cmd[7]), 10);
+        lba          = (cmd[2] << 24) + (cmd[3] << 16) + (cmd[4] << 8) + cmd[5];
+        transfer_len = (cmd[7] << 8) + cmd[8];
+        read(lba, transfer_len, 10);
         break;
     case ScsiCommand::WRITE_10:
-        lba = READ_DWORD_BE_U(&cmd[2]);
-        this->write(lba, READ_WORD_BE_U(&cmd[7]), 10);
+        lba          = (cmd[2] << 24) + (cmd[3] << 16) + (cmd[4] << 8) + cmd[5];
+        transfer_len = (cmd[7] << 8) + cmd[8];
+        write(lba, transfer_len, 10);
         this->switch_phase(ScsiPhase::DATA_OUT);
         break;
     case ScsiCommand::VERIFY_10:
@@ -179,20 +182,17 @@ bool ScsiHardDisk::prepare_data() {
         } else {
             this->data_buf[0] = ScsiStatus::CHECK_CONDITION;
         }
-        this->bytes_out = 1;
-        this->data_ptr = (uint8_t*)this->data_buf;
-        this->data_size = this->bytes_out;
+        this->data_size = 1;
         break;
     case ScsiPhase::MESSAGE_IN:
         this->data_buf[0] = this->msg_code;
-        this->bytes_out = 1;
-        this->data_ptr = (uint8_t*)this->data_buf;
-        this->data_size = this->bytes_out;
+        this->data_size = 1;
         break;
     default:
         LOG_F(WARNING, "%s: unexpected phase in prepare_data", this->name.c_str());
         return false;
     }
+
     return true;
 }
 
@@ -202,59 +202,11 @@ int ScsiHardDisk::test_unit_ready() {
 }
 
 int ScsiHardDisk::req_sense(uint16_t alloc_len) {
-    //if (!check_lun())
-    //    return;
-
-    //int next_phase;
-
-    int lun;
-    if (this->last_selection_has_atention) {
-        lun = this->last_selection_message & 7;
+    if (alloc_len != 252) {
+        LOG_F(WARNING, "%s: inappropriate Allocation Length: %d", this->name.c_str(),
+              alloc_len);
     }
-    else {
-        lun = cmd_buf[1] >> 5;
-    }
-
-    if (lun == this->lun) {
-        this->status = ScsiStatus::GOOD;
-        this->data_buf[ 2] = this->sense;      // Reserved:0xf0, Sense Key:0x0f ; e.g. ScsiSense::ILLEGAL_REQ
-        this->data_buf[12] = this->asc;        // addition sense code
-        this->data_buf[13] = this->ascq;       // additional sense qualifier
-        this->data_buf[15] = this->sksv;       // SKSV:0x80, C/D:0x40, Reserved:0x30, BPV:8, Bit Pointer:7
-        this->data_buf[16] = this->field >> 8; // field pointer
-        this->data_buf[17] = this->field;
-    }
-    else {
-        this->data_buf[ 2] = this->sense;      // Reserved:0xf0, Sense Key:0x0f ; e.g. ScsiSense::ILLEGAL_REQ
-        this->data_buf[12] = 0x25;             // addition sense code = Logical Unit Not Supported
-        this->data_buf[13] = 0;                // additional sense qualifier
-        this->data_buf[15] = 0;                // SKSV:0x80, C/D:0x40, Reserved:0x30, BPV:8, Bit Pointer:7
-        this->data_buf[16] = 0;                // field pointer
-        this->data_buf[17] = 0;
-    }
-
-    {
-        // FIXME: there should be a way to set the VALID and ILI bits.
-        this->data_buf[ 0] = 0x70; // Valid:0x80, Error Code:0x7f
-        this->data_buf[ 1] =    0; // segment number
-        this->data_buf[ 3] =    0; // information
-        this->data_buf[ 4] =    0;
-        this->data_buf[ 5] =    0;
-        this->data_buf[ 6] =    0;
-        this->data_buf[ 7] =   10; // additional sense length
-        this->data_buf[ 8] =    0; // command specific information
-        this->data_buf[ 9] =    0;
-        this->data_buf[10] =    0;
-        this->data_buf[11] =    0;
-        this->data_buf[14] =    0; // field replaceable unit code
-        this->data_buf[18] =    0; // reserved
-        this->data_buf[19] =    0; // reserved
-    }
-
-    this->bytes_out = alloc_len; // Open Firmware 1.0.5 asks for 18 bytes.
-
-    this->switch_phase(ScsiPhase::DATA_IN);
-    return ScsiError::NO_ERROR;
+    return ScsiError::NO_ERROR;    // placeholder - no sense
 }
 
 void ScsiHardDisk::inquiry() {
@@ -265,45 +217,27 @@ void ScsiHardDisk::inquiry() {
         ABORT_F("%s: invalid page number in INQUIRY", this->name.c_str());
     }
 
-    if (alloc_len > 36) {
-        LOG_F(INFO, "%s: %d bytes requested in INQUIRY", this->name.c_str(), alloc_len);
-    }
+    if (alloc_len >= 36) {
+        this->data_buf[0] = 0;    // device type: Direct-access block device
+        this->data_buf[1] = 0;    // non-removable media
+        this->data_buf[2] = 2;    // ANSI version: SCSI-2
+        this->data_buf[3] = 1;    // response data format
+        this->data_buf[4] = 0;    // additional length
+        this->data_buf[5] = 0;
+        this->data_buf[6] = 0;
+        this->data_buf[7] = 0x18; // supports synchronous xfers and linked commands
+        std::memcpy(data_buf + 8, vendor_info, 8);
+        std::memcpy(data_buf + 16, prod_info, 16);
+        std::memcpy(data_buf + 32, rev_info, 4);
 
-    int lun;
-    if (this->last_selection_has_atention) {
-        LOG_F(INFO, "%s: INQUIRY (%d bytes) with ATN LUN = %02x & 7", this->name.c_str(), alloc_len, this->last_selection_message);
-        lun = this->last_selection_message & 7;
+        this->bytes_out  = 36;
+
+        this->switch_phase(ScsiPhase::DATA_IN);
     }
     else {
-        LOG_F(INFO, "%s: INQUIRY (%d bytes) with NO ATN LUN = %02x >> 5", this->name.c_str(), alloc_len, cmd_buf[1]);
-        lun = cmd_buf[1] >> 5;
-    }
-
-    this->data_buf[0] = (lun == this->lun) ? 0 : 0x7f; // device type: Direct-access block device (hard drive)
-    this->data_buf[1] =    0; // non-removable media; 0x80 = removable media
-    this->data_buf[2] =    2; // ANSI version: SCSI-2
-    this->data_buf[3] =    1; // response data format
-    this->data_buf[4] = 0x1F; // additional length
-    this->data_buf[5] =    0;
-    this->data_buf[6] =    0;
-    this->data_buf[7] = 0x18; // supports synchronous xfers and linked commands
-    std::memcpy(&this->data_buf[8], vendor_info, 8);
-    std::memcpy(&this->data_buf[16], prod_info, 16);
-    std::memcpy(&this->data_buf[32], rev_info, 4);
-    //std::memcpy(&this->data_buf[36], serial_number, 8);
-    //etc.
-
-    if (alloc_len < 36) {
-        LOG_F(ERROR, "%s: allocation length too small: %d", this->name.c_str(),
+        LOG_F(WARNING, "%s: allocation length too small: %d", this->name.c_str(),
               alloc_len);
     }
-    else {
-        memset(&this->data_buf[36], 0, alloc_len - 36);
-    }
-
-    this->bytes_out = alloc_len;
-
-    this->switch_phase(ScsiPhase::DATA_IN);
 }
 
 int ScsiHardDisk::send_diagnostic() {
@@ -332,124 +266,51 @@ static char Apple_Copyright_Page_Data[] = "APPLE COMPUTER, INC   ";
 void ScsiHardDisk::mode_sense_6() {
     uint8_t page_code = this->cmd_buf[2] & 0x3F;
     uint8_t page_ctrl = this->cmd_buf[2] >> 6;
-    uint8_t sub_page_code = this->cmd_buf[3];
     uint8_t alloc_len = this->cmd_buf[4];
 
-    if (page_ctrl == 1) {
-        LOG_F(INFO, "%s: page_ctrl 1 CHANGEABLE VALUES is not implemented", this->name.c_str());
-        this->status = ScsiStatus::CHECK_CONDITION;
-        this->sense  = ScsiSense::ILLEGAL_REQ;
-        this->asc    = 0x24; // Invalid Field in CDB
-        this->ascq   = 0;
-        this->sksv   = 0xc0; // sksv=1, C/D=Command, BPV=0, BP=0
-        this->field  = 2;
-        this->switch_phase(ScsiPhase::STATUS);
-        return;
-    }
-
-    if (page_ctrl == 2) {
-        LOG_F(ERROR, "%s: page_ctrl 2 DEFAULT VALUES is not implemented", this->name.c_str());
-        this->status = ScsiStatus::CHECK_CONDITION;
-        this->sense  = ScsiSense::ILLEGAL_REQ;
-        this->asc    = 0x24; // Invalid Field in CDB
-        this->ascq   = 0;
-        this->sksv   = 0xc0; // sksv=1, C/D=Command, BPV=0, BP=0
-        this->field  = 2;
-        this->switch_phase(ScsiPhase::STATUS);
-        return;
-    }
-
-    if (page_ctrl == 3) {
-        LOG_F(INFO, "%s: page_ctrl 3 SAVED VALUES is not implemented", this->name.c_str());
-        this->status = ScsiStatus::CHECK_CONDITION;
-        this->sense  = ScsiSense::ILLEGAL_REQ;
-        this->asc    = 0x39; // Saving Parameters Not Supported
-        this->ascq   = 0;
-        this->sksv   = 0;
-        this->field  = 0;
-        this->switch_phase(ScsiPhase::STATUS);
-        return;
-    }
-
+    this->data_buf[ 0] = 13; // initial data size
     this->data_buf[ 1] =  0; // medium type
-    this->data_buf[ 2] =  0; // 0:medium is not write protected; 0x80 write protected
-
+    this->data_buf[ 2] =  0; // medium is write enabled
     this->data_buf[ 3] =  8; // block description length
-    WRITE_DWORD_BE_A(&this->data_buf[4], this->total_blocks);
+
+    this->data_buf[ 4] =  0; // density code
+    this->data_buf[ 5] =  (this->total_blocks >> 16) & 0xFFU;
+    this->data_buf[ 6] =  (this->total_blocks >>  8) & 0xFFU;
+    this->data_buf[ 7] =  (this->total_blocks      ) & 0xFFU;
     WRITE_DWORD_BE_A(&this->data_buf[8], this->sector_size);
 
-    uint8_t *p_buf = &this->data_buf[12];
-    bool got_page = false;
-    int page_size;
+    this->data_buf[12] = page_code;
 
-    if (page_code == 1 || page_code == 0x3f) { // read-write error recovery page
-        if (sub_page_code != 0x00 && sub_page_code != 0xff)
-            goto bad_sub_page;
-        page_size = 8;
-        p_buf[0] = 1; // page code
-        p_buf[1] = page_size - 2; // data size - 1
-        std::memset(&p_buf[2], 0, 6);
-        p_buf += page_size;
-        got_page = true;
-    }
-
-    if (page_code == 3 || page_code == 0x3f) { // Format device page
-        if (sub_page_code != 0x00 && sub_page_code != 0xff)
-            goto bad_sub_page;
-        page_size = 24;
-        p_buf[ 0] =    3; // page code
-        p_buf[ 1] = page_size - 2; // data size - 1
-        std::memset(&p_buf[2], 0, 22);
+    switch(page_code) {
+    case 1: // read-write error recovery page
+        this->data_buf[13] = 6; // data size - 1
+        std::memset(&this->data_buf[14], 0, 6);
+        break;
+    case 3: // Format device page
+        this->data_buf[13] = 22; // data size - 1
+        std::memset(&this->data_buf[14], 0, 22);
         // default values taken from Empire 540/1080S manual
-        WRITE_WORD_BE_U(&p_buf[ 2],   6); // tracks per defect zone
-        WRITE_WORD_BE_U(&p_buf[ 4],   1); // alternate sectors per zone
-        WRITE_WORD_BE_U(&p_buf[10],  92); // sectors per track in the outermost zone
-        WRITE_WORD_BE_U(&p_buf[12], 512); // bytes per sector
-        WRITE_WORD_BE_U(&p_buf[14],   1); // interleave factor
-        WRITE_WORD_BE_U(&p_buf[16],  19); // track skew factor
-        WRITE_WORD_BE_U(&p_buf[18],  25); // cylinder skew factor
-        p_buf[20] = 0x80; // SSEC=1, HSEC=0, RMB=0, SURF=0, INS=0
-        p_buf += page_size;
-        got_page = true;
-    }
-
-    if (page_code == 0x30 || page_code == 0x3f) { // Copyright page for Apple certified drives
-        if (sub_page_code != 0x00 && sub_page_code != 0xff)
-            goto bad_sub_page;
-        page_size = 24;
-        p_buf[0] = 0x30; // page code
-        p_buf[1] = page_size - 2; // data size - 1
-        std::memcpy(&p_buf[2], Apple_Copyright_Page_Data, 22);
-        p_buf += page_size;
-        got_page = true;
-    }
-
-    if (!(got_page || page_code == 0x3f)) { // not any of the supported pages or all pages
-        LOG_F(WARNING, "%s: unsupported page 0x%02x in MODE_SENSE_6", this->name.c_str(), page_code);
-        this->status = ScsiStatus::CHECK_CONDITION;
-        this->sense  = ScsiSense::ILLEGAL_REQ;
-        this->asc    = 0x24; // Invalid Field in CDB
-        this->ascq   = 0;
-        this->sksv   = 0xc0; // sksv=1, C/D=Command, BPV=0, BP=0
-        this->field  = 2;
-        this->switch_phase(ScsiPhase::STATUS);
-        return;
-    bad_sub_page:
-        LOG_F(WARNING, "%s: unsupported page/subpage %02xh/%02xh in MODE_SENSE_6", this->name.c_str(), page_code, sub_page_code);
-        this->status = ScsiStatus::CHECK_CONDITION;
-        this->sense  = ScsiSense::ILLEGAL_REQ;
-        this->asc    = 0x24; // Invalid Field in CDB
-        this->ascq   = 0;
-        this->sksv   = 0xc0; // sksv=1, C/D=Command, BPV=0, BP=0
-        this->field  = 3;
-        this->switch_phase(ScsiPhase::STATUS);
-        return;
-    }
+        this->data_buf[15] =    6; // tracks per defect zone
+        this->data_buf[17] =    1; // alternate sectors per zone
+        this->data_buf[23] =   92; // sectors per track in the outermost zone
+        this->data_buf[27] =    1; // interleave factor
+        this->data_buf[29] =   19; // track skew factor
+        this->data_buf[31] =   25; // cylinder skew factor
+        this->data_buf[32] = 0x80; // SSEC=1, HSEC=0, RMB=0, SURF=0, INS=0
+        WRITE_WORD_BE_U(&this->data_buf[24], 512); // bytes per sector
+        break;
+    case 0x30: // Copyright page for Apple certified drives
+        this->data_buf[13] = 22; // data size - 1
+        std::memcpy(&this->data_buf[14], Apple_Copyright_Page_Data, 22);
+        break;
+    default:
+        ABORT_F("%s: unsupported page %d in MODE_SENSE_6", this->name.c_str(), page_code);
+    };
 
     // adjust for overall mode sense data length
-    this->data_buf[0] = p_buf - this->data_buf - 1;
+    this->data_buf[0] += this->data_buf[13] + 1;
 
-    this->bytes_out = std::min((int)alloc_len, (int)this->data_buf[0] + 1);
+    this->bytes_out = std::min(alloc_len, (uint8_t)this->data_buf[0]);
 
     this->switch_phase(ScsiPhase::DATA_IN);
 }
@@ -465,27 +326,21 @@ void ScsiHardDisk::read_capacity_10() {
         LOG_F(ERROR, "%s: non-zero LBA for PMI=0", this->name.c_str());
         this->status = ScsiStatus::CHECK_CONDITION;
         this->sense  = ScsiSense::ILLEGAL_REQ;
-        this->asc    = 0x24; // Invalid Field in CDB
-        this->ascq   = 0;
-        this->sksv   = 0xc0; // sksv=1, C/D=Command, BPV=0, BP=0
-        this->field  = 8;
         this->switch_phase(ScsiPhase::STATUS);
         return;
     }
 
-    if (!check_lun())
-        return;
-
     uint32_t last_lba = this->total_blocks - 1;
     uint32_t blk_len  = this->sector_size;
 
-    WRITE_DWORD_BE_A(&this->data_buf[0], last_lba);
-    WRITE_DWORD_BE_A(&this->data_buf[4], blk_len);
+    WRITE_DWORD_BE_A(&data_buf[0], last_lba);
+    WRITE_DWORD_BE_A(&data_buf[4], blk_len);
 
     this->bytes_out = 8;
 
     this->switch_phase(ScsiPhase::DATA_IN);
 }
+
 
 void ScsiHardDisk::format() {
     LOG_F(WARNING, "%s: attempt to format the disk!", this->name.c_str());
@@ -499,12 +354,9 @@ void ScsiHardDisk::format() {
 }
 
 void ScsiHardDisk::read(uint32_t lba, uint16_t transfer_len, uint8_t cmd_len) {
-    if (!check_lun())
-        return;
-
     uint32_t transfer_size = transfer_len;
 
-    std::memset(this->data_buf, 0, sizeof(this->data_buf));
+    std::memset(data_buf, 0, sizeof(data_buf));
 
     if (cmd_len == 6 && transfer_len == 0) {
         transfer_size = 256;
@@ -513,7 +365,7 @@ void ScsiHardDisk::read(uint32_t lba, uint16_t transfer_len, uint8_t cmd_len) {
     transfer_size *= this->sector_size;
     uint64_t device_offset = (uint64_t)lba * this->sector_size;
 
-    this->disk_img.read(this->data_buf, device_offset, transfer_size);
+    this->disk_img.read(data_buf, device_offset, transfer_size);
 
     this->bytes_out = transfer_size;
 

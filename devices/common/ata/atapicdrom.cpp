@@ -31,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <memaccess.h>
 
 #include <string>
+#include <core/timermanager.h>
 
 using namespace ata_interface;
 
@@ -74,6 +75,25 @@ void AtapiCdrom::perform_packet_command() {
         this->doing_sector_areas = false;
         LOG_F(WARNING, "%s: doing_sector_areas reset", this->name.c_str());
     }
+
+    #if 0
+    LOG_F(
+        INFO,
+        "%s: ATAPI command %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+        name.c_str(),
+        cmd_pkt[0],
+        cmd_pkt[1],
+        cmd_pkt[2],
+        cmd_pkt[3],
+        cmd_pkt[4],
+        cmd_pkt[5],
+        cmd_pkt[6],
+        cmd_pkt[7],
+        cmd_pkt[8],
+        cmd_pkt[9],
+        cmd_pkt[10],
+        cmd_pkt[11]);
+    #endif
 
     switch (this->cmd_pkt[0]) {
     case ScsiCommand::TEST_UNIT_READY:
@@ -146,6 +166,14 @@ void AtapiCdrom::perform_packet_command() {
     case ScsiCommand::READ_6:
         lba      = this->cmd_pkt[1] << 16 | READ_WORD_BE_U(&this->cmd_pkt[2]);
         xfer_len = this->cmd_pkt[4];
+
+        // if transfer length is zero then just complete command
+        if (xfer_len == 0) {
+            this->status_good();
+            this->present_status();
+            break;
+        }
+
         if (this->r_features & ATAPI_Features::DMA) {
             LOG_F(WARNING, "ATAPI DMA transfer requsted");
         }
@@ -157,8 +185,23 @@ void AtapiCdrom::perform_packet_command() {
         this->data_out_phase();
         break;
     case ScsiCommand::READ_10:
+        if (this->xfer_cnt > 0) {
+            LOG_F(ERROR, "%s: READ(10) when transfer already in progress", name.c_str());
+
+            this->status_error(ScsiSense::NOT_READY, ScsiError::DEV_NOT_READY);
+            this->present_status();
+            break;
+        }
         lba      = READ_DWORD_BE_U(&this->cmd_pkt[2]);
         xfer_len = READ_WORD_BE_U(&this->cmd_pkt[7]);
+
+        // if transfer length is zero then just complete command
+        if (xfer_len == 0) {
+            this->status_good();
+            this->present_status();
+            break;
+        }
+
         if (this->r_features & ATAPI_Features::DMA) {
             LOG_F(WARNING, "ATAPI DMA transfer requsted");
         }
@@ -167,11 +210,23 @@ void AtapiCdrom::perform_packet_command() {
         this->r_byte_count = this->xfer_cnt;
         this->data_ptr = (uint16_t*)this->data_cache.get();
         this->status_good();
+        #if 0
+        TimerManager::get_instance()->add_oneshot_timer(
+            USECS_TO_NSECS(100), [this]() { this->data_out_phase(); });
+        #endif
         this->data_out_phase();
         break;
     case ScsiCommand::READ_12:
         lba      = READ_DWORD_BE_U(&this->cmd_pkt[2]);
         xfer_len = READ_DWORD_BE_U(&this->cmd_pkt[6]);
+
+        // if transfer length is zero then just complete command
+        if (xfer_len == 0) {
+            this->status_good();
+            this->present_status();
+            break;
+        }
+
         if (this->r_features & ATAPI_Features::DMA) {
             LOG_F(WARNING, "ATAPI DMA transfer requsted");
         }
@@ -192,6 +247,18 @@ void AtapiCdrom::perform_packet_command() {
     {
         lba = READ_DWORD_BE_U(&this->cmd_pkt[2]);
         xfer_len = (this->cmd_pkt[6] << 16) | READ_WORD_BE_U(&this->cmd_pkt[7]);
+        if (this->cmd_pkt[9] == 0 && (this->cmd_pkt[10] & 7) == 0) {
+            // Treat as a non-data command.
+            xfer_len = 0;
+        }
+
+        // if transfer length is zero then just complete command
+        if (xfer_len == 0) {
+            this->status_good();
+            this->present_status();
+            break;
+        }
+
         if (this->cmd_pkt[1] || (this->cmd_pkt[9] & ~0xf8) || ((this->cmd_pkt[9] & 0xf8) == 0) || this->cmd_pkt[10])
             LOG_F(WARNING, "%s: unsupported READ_CD params: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
                 this->name.c_str(),

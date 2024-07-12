@@ -118,22 +118,19 @@ long sound_out_callback(cubeb_stream *stream, void *user_data,
 
     while (req_frames > 0) {
         if (!dma_ch->pull_data((uint32_t)req_frames << 2, &got_len, &p_in)) {
-            if ((in_buf = (int16_t*)p_in)) {
-                frames = got_len >> 2;
+            frames = got_len >> 2;
 
-                for (int i = (int)frames; i > 0; i--) {
-                    out_buf[0] = BYTESWAP_16(in_buf[0]);
-                    out_buf[1] = BYTESWAP_16(in_buf[1]);
-                    in_buf += 2;
-                    out_buf += 2;
-                }
+            in_buf = (int16_t*)p_in;
 
-                req_frames -= frames;
-                out_frames += frames;
+            for (int i = (int)frames; i > 0; i--) {
+                out_buf[0] = BYTESWAP_16(in_buf[0]);
+                out_buf[1] = BYTESWAP_16(in_buf[1]);
+                in_buf += 2;
+                out_buf += 2;
             }
-            else {
-                LOG_F(ERROR, "Didn't get qdata");
-            }
+
+            req_frames -= frames;
+            out_frames += frames;
         }
         else {
             break;

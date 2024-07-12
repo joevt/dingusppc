@@ -30,7 +30,6 @@ class MMIODevice;
 
 /* Common DRAM capacities. */
 enum {
-    DRAM_CAP_1MB    = (1 << 20),
     DRAM_CAP_2MB    = (1 << 21),
     DRAM_CAP_4MB    = (1 << 22),
     DRAM_CAP_8MB    = (1 << 23),
@@ -77,6 +76,11 @@ public:
 
     virtual bool set_data(uint32_t reg_addr, const uint8_t* data, uint32_t size);
 
+    virtual bool needs_swap_endian(bool is_mmio);
+    bool needs_swap_endian(AddressMapEntry* entry) {
+        return needs_swap_endian((entry->type & RT_MMIO) != 0);
+    }
+
     AddressMapEntry* find_range(uint32_t addr);
     AddressMapEntry* find_range_exact(uint32_t addr, uint32_t size,
                                       MMIODevice* dev_instance);
@@ -85,8 +89,6 @@ public:
     bool is_range_free(uint32_t addr, uint32_t size);
 
     AddressMapEntry* find_rom_region();
-
-    uint8_t *get_region_hostmem_ptr(const uint32_t addr);
 
 protected:
     bool add_mem_region(

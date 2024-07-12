@@ -69,6 +69,9 @@ public:
     };
 
 protected:
+    bool framebuffer_in_main_memory(void) override {
+        return true;
+    }
     void set_depth_internal(int width);
     void enable_video_internal();
     void disable_video_internal();

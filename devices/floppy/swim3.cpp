@@ -57,7 +57,7 @@ Swim3Ctrl::Swim3Ctrl()
     // Attach virtual Superdrive to the internal drive connector
     // TODO: make SWIM3/drive wiring user selectable
     this->int_drive = std::unique_ptr<MacSuperdrive::MacSuperDrive>
-        (new MacSuperdrive::MacSuperDrive("Superdrive1"));
+        (new MacSuperdrive::MacSuperDrive());
 }
 
 int Swim3Ctrl::device_postinit()
@@ -410,7 +410,7 @@ static const PropMap Swim3_Properties = {
     {"fdd_img",
         new StrProperty("")},
     {"fdd_wr_prot",
-        new BinProperty(1)},
+        new BinProperty(0)},
     {"fdd_fmt",
         new StrProperty("", FloppyFormats)},
 };

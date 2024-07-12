@@ -72,6 +72,8 @@ uint32_t BanditPciDevice::pci_cfg_read(uint32_t reg_offs, AccessDetails &details
         return PCIDevice::pci_cfg_read(reg_offs, details);
     }
 
+    LOG_F(INFO, "Bandit: read config %08x", reg_offs);
+
     switch (reg_offs) {
     case BANDIT_ADDR_MASK:
         return this->addr_mask;
@@ -93,6 +95,8 @@ void BanditPciDevice::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDet
         PCIDevice::pci_cfg_write(reg_offs, value, details);
         return;
     }
+
+    LOG_F(INFO, "Bandit: write config %08x = %08x", reg_offs, value);
 
     switch (reg_offs) {
     case BANDIT_ADDR_MASK:
@@ -161,7 +165,7 @@ uint32_t BanditHost::read(uint32_t rgn_start, uint32_t offset, int size)
         return 0xFFFFFFFFUL; // PCI spec §6.1
 
     case 2: // CONFIG_ADDR
-        return (this->is_aspen) ? this->config_addr : BYTESWAP_32(this->config_addr);
+        return BYTESWAP_32(this->config_addr);
 
     default: // I/O space
         return pci_io_read_broadcast(offset, size);
@@ -193,7 +197,7 @@ void BanditHost::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int 
         break;
 
     case 2: // CONFIG_ADDR
-        this->config_addr = (this->is_aspen) ? value : BYTESWAP_32(value);
+        this->config_addr = BYTESWAP_32(value);
         break;
 
     default: // I/O space
@@ -218,23 +222,20 @@ inline void BanditHost::cfg_setup(uint32_t offset, int size, int &bus_num,
     }
     details.flags = PCI_CONFIG_TYPE_0;
     bus_num = 0; // use dummy value for bus number
-    if (is_aspen)
-        dev_num = (this->config_addr >> 11) + 11; // IDSEL = 1 << (dev_num + 11)
-    else {
-        uint32_t idsel = this->config_addr & 0xFFFFF800U;
-        if (!SINGLE_BIT_SET(idsel)) {
-            for (dev_num = -1, idsel = this->config_addr; idsel; idsel >>= 1, dev_num++) {}
-            LOG_F(ERROR, "%s: config_addr 0x%08x does not contain valid IDSEL",
-                  this->name.c_str(), (uint32_t)this->config_addr);
-            device = NULL;
-            return;
-        }
-        dev_num = WHAT_BIT_SET(idsel);
+    uint32_t idsel = this->config_addr & 0xFFFFF800U;
+    if (!SINGLE_BIT_SET(idsel)) {
+        for (dev_num = -1, idsel = this->config_addr; idsel; idsel >>= 1, dev_num++) {}
+        LOG_F(ERROR, "%s: config_addr 0x%08x does not contain valid IDSEL",
+              this->name.c_str(), (uint32_t)this->config_addr);
+        device = NULL;
+        return;
     }
+    dev_num = WHAT_BIT_SET(idsel);
     device = pci_find_device(dev_num, fun_num);
 }
 
-int BanditHost::device_postinit() {
+int BanditHost::device_postinit()
+{
     std::string pci_dev_name;
 
     static const std::map<std::string, int> pci_slots1 = {
@@ -306,23 +307,6 @@ Chaos::Chaos(std::string name) : BanditHost(0)
     mem_ctrl->add_mmio_region(0xF0000000UL, 0x01000000, this);
 }
 
-AspenPci::AspenPci(std::string name) : BanditHost(1) {
-    this->name = name;
-
-    supports_types(HWCompType::PCI_HOST);
-
-    this->is_aspen = true;
-
-    MemCtrlBase *mem_ctrl = dynamic_cast<MemCtrlBase *>
-    (gMachineObj->get_comp_by_type(HWCompType::MEM_CTRL));
-
-    // add memory mapped I/O region for Aspen PCI control registers
-    // This region has the following layout:
-    // base_addr +  0x800000 --> CONFIG_ADDR
-    // base_addr +  0xC00000 --> CONFIG_DATA
-    mem_ctrl->add_mmio_region(0xF2000000UL, 0x01000000, this);
-}
-
 static const PropMap Bandit1_Properties = {
     {"pci_A1",
         new StrProperty("")},
@@ -366,12 +350,7 @@ static const DeviceDescription Chaos_Descriptor = {
     Chaos::create, {}, Chaos_Properties
 };
 
-static const DeviceDescription AspenPci1_Descriptor = {
-    AspenPci::create, {}, Bandit1_Properties
-};
-
-REGISTER_DEVICE(Bandit1,    Bandit1_Descriptor);
-REGISTER_DEVICE(Bandit2,    Bandit2_Descriptor);
-REGISTER_DEVICE(PsxPci1,    PsxPci1_Descriptor);
-REGISTER_DEVICE(AspenPci1,  AspenPci1_Descriptor);
-REGISTER_DEVICE(Chaos,      Chaos_Descriptor);
+REGISTER_DEVICE(Bandit1, Bandit1_Descriptor);
+REGISTER_DEVICE(Bandit2, Bandit2_Descriptor);
+REGISTER_DEVICE(PsxPci1, PsxPci1_Descriptor);
+REGISTER_DEVICE(Chaos,   Chaos_Descriptor);

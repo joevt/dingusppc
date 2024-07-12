@@ -123,10 +123,8 @@ int initialize_gossamer(std::string& id)
     // add pci devices
     grackle_obj->pci_register_device(
         DEV_FUN(0x10,0), dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("Heathrow")));
-
-    std::string gpu = GET_STR_PROP("pci_GPU");
-    if (gpu.empty())
-        SET_STR_PROP("pci_GPU", id == "pmg3twr" ? "AtiRagePro" : "AtiRageGT");
+    grackle_obj->pci_register_device(
+        DEV_FUN(0x12,0), dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name(id == "pmg3twr" ? "AtiRagePro" : "AtiRageGT")));
 
     // add Athens clock generator device and register it with the I2C host
     gMachineObj->add_device("Athens", std::unique_ptr<AthensClocks>(new AthensClocks(0x28)));
@@ -146,7 +144,7 @@ int initialize_gossamer(std::string& id)
     uint64_t timebase_freq = bus_freq / 4;
 
     // initialize virtual CPU and request MPC750 CPU aka G3
-    ppc_cpu_init(grackle_obj, PPC_VER::MPC750, false, timebase_freq);
+    ppc_cpu_init(grackle_obj, PPC_VER::MPC750, timebase_freq);
 
     // set CPU PLL ratio to 3.5
     ppc_state.spr[SPR::HID1] = 0xE << 28;
@@ -170,11 +168,11 @@ static const PropMap gossamer_settings = {
 };
 
 static vector<string> pmg3_devices = {
-    "Grackle", "ScreamerSnd", "Heathrow", "AtaHardDisk", "AtapiCdrom"
+    "Grackle", "ScreamerSnd", "Heathrow", "AtiRageGT", "AtaHardDisk", "AtapiCdrom"
 };
 
 static vector<string> pmg3twr_devices = {
-    "Grackle", "ScreamerSnd", "Heathrow", "AtaHardDisk", "AtapiCdrom"
+    "Grackle", "ScreamerSnd", "Heathrow", "AtiRagePro", "AtaHardDisk", "AtapiCdrom"
 };
 
 static const MachineDescription pmg3dt_descriptor = {

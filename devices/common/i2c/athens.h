@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-22 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -31,8 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #define ATHENS_NUM_REGS 8
 
-/** Default external crystal oscillator frequency. */
-constexpr auto ATHENS_XTAL = 31334400.0f;
+constexpr auto ATHENS_XTAL = 31334400.0f; // external crystal oscillator frequency
 
 namespace AthensRegs {
 
@@ -53,7 +52,6 @@ class AthensClocks : public I2CDevice, public HWComponent
 {
 public:
     AthensClocks(uint8_t dev_addr);
-    AthensClocks(uint8_t dev_addr, const float crystal_freq);
     ~AthensClocks() = default;
 
     // I2CDevice methods
@@ -70,9 +68,8 @@ private:
     uint8_t     my_addr = 0;
     uint8_t     reg_num = 0;
     int         pos = 0;
-    float       xtal_freq = ATHENS_XTAL;
 
-    uint8_t     regs[ATHENS_NUM_REGS] = {};
+    uint8_t     regs[ATHENS_NUM_REGS];
 };
 
 #endif // ATHENS_H

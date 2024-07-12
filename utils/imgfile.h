@@ -25,6 +25,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef IMGFILE_H
 #define IMGFILE_H
 
+//#define _FILE_OFFSET_BITS 64
+
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -41,6 +43,7 @@ public:
 
     size_t read(void* buf, off_t offset, size_t length) const;
     size_t write(const void* buf, off_t offset, size_t length);
+
 private:
     class Impl; // Holds private fields
     std::unique_ptr<Impl> impl;

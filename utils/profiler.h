@@ -31,14 +31,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 
-enum class ProfileVarFmt { DEC, HEX, COUNT };
+enum class ProfileVarFmt { DEC, HEX };
 
 /** Define a special data type for profile variables. */
 typedef struct ProfileVar {
     std::string     name;
     ProfileVarFmt   format;
     uint64_t        value;
-    uint64_t        count_total;
 } ProfileVar;
 
 /** Base class for user-defined profiles. */

@@ -78,6 +78,7 @@ void PCIBridgeBase::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetai
         this->pci_wr_primary_bus(value & 0xFFU);
         break;
     case PCI_CFG_DWORD_15:
+        //LOG_F(INFO, "%s: set irq-line %d", name.c_str(), value >> 24);
         this->irq_line = value >> 24;
         this->pci_wr_bridge_control(value >> 16);
         break;

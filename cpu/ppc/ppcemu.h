@@ -85,18 +85,17 @@ extern SetPRS ppc_state;
 
 /** symbolic names for frequently used SPRs */
 enum SPR : int {
-    MQ      = 0,   // MQ (601)
+    MQ      = 0,
     XER     = 1,
-    RTCU_U  = 4,   // user mode RTCU (601)
-    RTCL_U  = 5,   // user mode RTCL (601)
-    DEC_U   = 6,   // user mode decrementer (601)
+    RTCU_U  = 4,   // user RTCU
+    RTCL_U  = 5,   // user RTCL
     LR      = 8,
     CTR     = 9,
     DSISR   = 18,
     DAR     = 19,
-    RTCU_S  = 20,  // supervisor RTCU (601)
-    RTCL_S  = 21,  // supervisor RTCL (601)
-    DEC_S   = 22,  // supervisor decrementer
+    RTCU_S  = 20,  // supervisor RTCU
+    RTCL_S  = 21,  // supervisor RTCL
+    DEC     = 22,  // decrementer
     SDR1    = 25,
     SRR0    = 26,
     SRR1    = 27,
@@ -185,6 +184,7 @@ enum {
     EXEF_BRANCH    = 1 << 0,
     EXEF_EXCEPTION = 1 << 1,
     EXEF_RFI       = 1 << 2,
+    EXEF_TIMER     = 1 << 7
 };
 
 enum CR_select : int32_t {
@@ -299,7 +299,11 @@ enum Exc_Cause : uint32_t {
     TRAP        = 1 << (31 - 14),
 };
 
+#ifdef EXEC_FLAGS_ATOMIC
+extern std::atomic<unsigned> exec_flags;
+#else
 extern unsigned exec_flags;
+#endif
 
 extern jmp_buf exc_env;
 
@@ -334,7 +338,9 @@ extern uint32_t ppc_effective_address;
 extern uint32_t ppc_next_instruction_address;
 
 inline void ppc_set_cur_instruction(const uint8_t* ptr) {
-    ppc_cur_instruction = READ_DWORD_BE_A(ptr);
+    extern MemCtrlBase* mem_ctrl_instance;
+    bool needs_swap = mem_ctrl_instance->needs_swap_endian(false);
+    ppc_cur_instruction = needs_swap ? READ_DWORD_LE_A(ptr) : READ_DWORD_BE_A(ptr);
 }
 
 // Profiling Stats
@@ -399,7 +405,7 @@ typedef enum {
 } field_601;
 
 // Function prototypes
-extern void ppc_cpu_init(MemCtrlBase* mem_ctrl, uint32_t cpu_version, bool include_601, uint64_t tb_freq);
+extern void ppc_cpu_init(MemCtrlBase* mem_ctrl, uint32_t cpu_version, uint64_t tb_freq);
 extern void ppc_mmu_init();
 
 void ppc_illegalop();
@@ -415,7 +421,7 @@ void ppc_opcode31();
 void ppc_opcode59();
 void ppc_opcode63();
 
-void initialize_ppc_opcode_tables(bool include_601);
+void initialize_ppc_opcode_tables();
 
 extern double fp_return_double(uint32_t reg);
 extern uint64_t fp_return_uint64(uint32_t reg);

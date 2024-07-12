@@ -57,34 +57,15 @@ namespace loguru {
 }
 
 ControlVideo::ControlVideo()
-    : PCIDevice("Control-Video"), VideoCtrlBase()
+    : PCIDevice("Control-Video"), VideoCtrlBase(640, 480)
 {
     supports_types(HWCompType::PCI_HOST | HWCompType::PCI_DEV);
 
     // get VRAM size in MBs and convert it to bytes
     this->vram_size = GET_INT_PROP("gfxmem_size") << 20;
 
-    // get VRAM banks
-    this->vram_banks = GET_INT_PROP("gfxmem_banks"); // bit 0: standard bank; bit 1: optional bank
-
-    switch(this->vram_banks) {
-        case 0:
-            this->vram_size = 0;
-            break;
-        case 1:
-        case 2:
-            this->vram_size = 2 << 20;
-            break;
-        default:
-            switch (this->vram_size) {
-                case 0:
-                    this->vram_banks = 0;
-                    break;
-                case 2:
-                    this->vram_banks = 1;
-                    break;
-            }
-    }
+    // calculate number of VRAM banks from VRAM size
+    this->num_banks = this->vram_size >> 21; // 2 MB => 1 bank, 4 MB >> 2 banks
 
     // allocate VRAM
     this->vram_ptr = std::unique_ptr<uint8_t[]> (new uint8_t[this->vram_size]);
@@ -140,24 +121,28 @@ ControlVideo::ControlVideo()
     this->display_id = std::unique_ptr<DisplayID> (new DisplayID());
 }
 
-void ControlVideo::change_one_bar(uint32_t &aperture, uint32_t aperture_size, uint32_t aperture_new, int bar_num) {
-    if (aperture != aperture_new) {
-        if (aperture)
-            this->host_instance->pci_unregister_mmio_region(aperture, aperture_size, this);
-
-        aperture = aperture_new;
-        if (aperture)
-            this->host_instance->pci_register_mmio_region(aperture, aperture_size, this);
-
-        LOG_F(INFO, "%s: aperture[%d] set to 0x%08X", this->name.c_str(), bar_num, aperture);
-    }
-}
-
 void ControlVideo::notify_bar_change(int bar_num) {
     switch (bar_num) {
-    case 0: change_one_bar(this->io_base  ,          4, this->bars[bar_num] & ~ 3, bar_num); break;
-    case 1: change_one_bar(this->regs_base,     0x1000, this->bars[bar_num] & ~15, bar_num); break;
-    case 2: change_one_bar(this->vram_base, 0x04000000, this->bars[bar_num] & ~15, bar_num); break;
+    case 0:
+        this->io_base = this->bars[bar_num] & ~3;
+        LOG_F(INFO, "Control: I/O space address set to 0x%08X", this->io_base);
+        break;
+    case 1:
+        if (this->regs_base != (this->bars[bar_num] & 0xFFFFFFF0UL)) {
+            this->regs_base = this->bars[bar_num] & 0xFFFFFFF0UL;
+            this->host_instance->pci_register_mmio_region(this->regs_base,
+                0x1000, this);
+            LOG_F(INFO, "Control: register aperture set to 0x%08X", this->regs_base);
+        }
+        break;
+    case 2:
+        if (this->vram_base != (this->bars[bar_num] & 0xFFFFFFF0UL)) {
+            this->vram_base = this->bars[bar_num] & 0xFFFFFFF0UL;
+            this->host_instance->pci_register_mmio_region(this->vram_base,
+                0x04000000, this);
+            LOG_F(INFO, "Control: VRAM aperture set to 0x%08X", this->vram_base);
+        }
+        break;
     }
 }
 
@@ -217,74 +202,26 @@ static const char * get_name_controlreg(int offset) {
 uint32_t ControlVideo::read(uint32_t rgn_start, uint32_t offset, int size)
 {
     if (rgn_start == this->vram_base) {
-        if (offset & 0x800000) { // repeats every 16MB
+        if (offset >= 0x800000) {
             // HACK: writing to VRAM in 128bit mode with only the standard
             // bank populated seems to replicate the first 64bit portion of data
             // in the second 64bit portion. This "feature" is used by
             // the Mac OS driver to detect how much physical VRAM is installed.
             // I handle this case here because reads from VRAM seem to happen
             // far less frequently than writes.
-            if (this->enables & VRAM_WIDE_MODE) {
-                // Note: we ignore access to 4MB range at 0xC00000 because it is undefined for VRAM_WIDE_MODE.
-                // There is data there but it is not in the same order as the first 4MB.
-                switch (this->vram_banks) {
-                    case 0: // no banks
-                        return 0;
-                    case 1: // standard bank
-                        // FIXME: verify real Power Mac behavior with only standard bank
-                        offset &= ~8UL;
-                        return read_mem(&this->vram_ptr[offset & 0x1FFFFF], size);
-                    case 2: // optional bank
-                        // FIXME: verify real Power Mac behavior with only optional bank
-                        offset |= 8UL;
-                        return read_mem(&this->vram_ptr[offset & 0x1FFFFF], size);
-                    case 3: // both banks
-                        return read_mem(&this->vram_ptr[offset & 0x3FFFFF], size);
-                }
-            }
-            else {
-                switch (this->vram_banks) {
-                    case 0: // no banks
-                        return 0;
-                    case 1: // standard bank
-                        switch ((offset >> 21) & 3) {
-                            case 0: // mirror
-                            case 1: // mirror
-                            case 2: // standard bank
-                                return read_mem(&this->vram_ptr[offset & 0x1FFFFF], size);
-                            case 3: // optional bank
-                                return 0;
-                        }
-                    case 2: // optional bank
-                        switch ((offset >> 21) & 3) {
-                            case 0: // mirror
-                            case 1: // mirror
-                            case 2: // standard bank
-                                return 0;
-                            case 3: // optional bank
-                                return read_mem(&this->vram_ptr[offset & 0x1FFFFF], size);
-                        }
-                    case 3: // both banks
-                        switch ((offset >> 21) & 3) {
-                            case 0: // mirror
-                            case 1: // mirror
-                            case 2: // standard bank
-                                return read_mem(&this->vram_ptr[offset & 0x1FFFFF], size);
-                            case 3: // optional bank
-                                return read_mem(&this->vram_ptr[offset & 0x1FFFFF + 0x200000], size);
-                        }
-                } // switch
-            } // if not VRAM_WIDE_MODE
+            if ((this->enables & VRAM_WIDE_MODE) && this->num_banks == 1)
+                offset &= ~8UL;
+            return read_mem(&this->vram_ptr[offset & 0x3FFFFF], size);
         }
 
-        LOG_F(ERROR, "%s: read from little-endian aperture address 0x%X", this->name.c_str(),
+        LOG_F(ERROR, "%s: read from unmapped aperture address 0x%X", this->name.c_str(),
               this->vram_base + offset);
         return 0;
     }
 
-    if (rgn_start == this->regs_base) {
-        uint32_t value;
+    uint32_t value;
 
+    if (rgn_start == this->regs_base) {
         switch (offset >> 4) {
         case ControlRegs::CUR_LINE:
             value = 0; // current active video line should relate this to refresh rate
@@ -321,8 +258,7 @@ uint32_t ControlVideo::read(uint32_t rgn_start, uint32_t offset, int size)
             value = this->row_words;
             break;
         case ControlRegs::MON_SENSE:
-            value = (this->cur_mon_id << 6) | this->mon_sense;
-            LOG_F(CONTROL, "%s: read  MON_SENSE %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
+            value = this->cur_mon_id << 6;
             break;
         case ControlRegs::MISC_ENABLES:
             value = this->enables;
@@ -361,63 +297,10 @@ uint32_t ControlVideo::read(uint32_t rgn_start, uint32_t offset, int size)
 void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
 {
     if (rgn_start == this->vram_base) {
-        if (offset & 0x800000) {
-            if (this->enables & VRAM_WIDE_MODE) {
-                // Note: we ignore access to 4MB range at 0xC00000 because it is undefined for VRAM_WIDE_MODE.
-                // There is data there but it is not in the same order as the first 4MB.
-                switch (this->vram_banks) {
-                    case 0: // no banks
-                        return;
-                    case 1: // standard bank
-                        // FIXME: verify real Power Mac behavior with only standard bank
-                        offset &= ~8UL;
-                        return write_mem(&this->vram_ptr[offset & 0x1FFFFF], value, size);
-                    case 2: // optional bank
-                        // FIXME: verify real Power Mac behavior with only optional bank
-                        offset |= 8UL;
-                        return write_mem(&this->vram_ptr[offset & 0x1FFFFF], value, size);
-                    case 3: // both banks
-                        return write_mem(&this->vram_ptr[offset & 0x3FFFFF], value, size);
-                }
-            }
-            else {
-                switch (this->vram_banks) {
-                    case 0: // no banks
-                        return;
-                    case 1: // standard bank
-                        switch ((offset >> 21) & 3) {
-                            case 0: // mirror
-                            case 1: // mirror
-                            case 2: // standard bank
-                                return write_mem(&this->vram_ptr[offset & 0x1FFFFF], value, size);
-                            case 3: // optional bank
-                                return;
-                        }
-                    case 2: // optional bank
-                        switch ((offset >> 21) & 3) {
-                            case 0: // mirror
-                            case 1: // mirror
-                            case 3: // optional bank
-                                return write_mem(&this->vram_ptr[offset & 0x1FFFFF], value, size);
-                            case 2: // standard bank
-                                return;
-                        }
-                    case 3: // both banks
-                        switch ((offset >> 21) & 3) {
-                            case 0: // mirror
-                            case 1: // mirror
-                                write_mem(&this->vram_ptr[offset & 0x1FFFFF], value, size);
-                                write_mem(&this->vram_ptr[offset & 0x1FFFFF + 0x200000], value, size);
-                                return;
-                            case 2: // standard bank
-                                return write_mem(&this->vram_ptr[offset & 0x1FFFFF], value, size);
-                            case 3: // optional bank
-                                return write_mem(&this->vram_ptr[offset & 0x1FFFFF + 0x200000], value, size);
-                        }
-                } // switch
-            } // if not VRAM_WIDE_MODE
+        if (offset >= 0x800000) {
+            write_mem(&this->vram_ptr[offset & 0x3FFFFF], value, size);
         } else {
-            LOG_F(ERROR, "%s: write to little-endian aperture address 0x%X", this->name.c_str(),
+            LOG_F(ERROR, "%s: write to unmapped aperture address 0x%X", this->name.c_str(),
                   this->vram_base + offset);
         }
         return;
@@ -429,23 +312,9 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         switch (offset >> 4) {
         case ControlRegs::PIPE_DELAY:
             this->swatch_params[(offset >> 4) - ControlRegs::VFPEQ] = value & 0x3FF;
-            if (value & ~0x3FF)
-                LOG_F(ERROR, "%s: write PIPE_DELAY %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
-            else
-                LOG_F(CONTROL, "%s: write PIPE_DELAY %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
-            if (this->display_enabled) {
-                this->enable_display();
-            }
             break;
         case ControlRegs::HEQ:
             this->swatch_params[(offset >> 4) - ControlRegs::VFPEQ] = value & 0xFFU;
-            if (value & ~0xFFU)
-                LOG_F(ERROR, "%s: write HEQ %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
-            else
-                LOG_F(CONTROL, "%s: write HEQ %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
-            if (this->display_enabled) {
-                this->enable_display();
-            }
             break;
         case ControlRegs::VFPEQ:
         case ControlRegs::VFP:
@@ -462,21 +331,12 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         case ControlRegs::HLFLN:
         case ControlRegs::HSERR:
             this->swatch_params[(offset >> 4) - ControlRegs::VFPEQ] = value & 0xFFF;
-            if (value & ~0xFFF)
-                LOG_F(ERROR, "%s: write %s %03x.%c = %0*x", this->name.c_str(), get_name_controlreg(offset), offset, SIZE_ARG(size), size * 2, value);
-            else
-                LOG_F(CONTROL, "%s: write %s %03x.%c = %0*x", this->name.c_str(), get_name_controlreg(offset), offset, SIZE_ARG(size), size * 2, value);
-            if (this->display_enabled) {
-                this->enable_display();
-            }
             break;
         case ControlRegs::CNTTST:
-            this->cnt_tst = value & 0xFFF;
             if (value)
                 LOG_F(WARNING, "%s: CNTTST set to 0x%X", this->name.c_str(), value);
             break;
         case ControlRegs::SWATCH_CTRL:
-            value &= 0x7FF;
             if ((this->swatch_ctrl ^ value) & DISABLE_TIMING) {
                 this->swatch_ctrl = value;
                 this->strobe_counter = 0;
@@ -485,13 +345,10 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
                 if (value & RESET_TIMING) { // count 0-to-1 transitions
                     this->strobe_counter++;
                     if (this->strobe_counter >= 2) {
-                        if (value & DISABLE_TIMING) {
+                        if (value & DISABLE_TIMING)
                             disable_display();
-                            this->display_enabled = false;
-                        } else {
+                        else
                             enable_display();
-                            this->display_enabled = true;
-                        }
                     }
                 }
             } else
@@ -499,24 +356,13 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             break;
         case ControlRegs::GBASE:
             this->fb_base = value & 0x3FFFE0;
-            if (this->display_enabled) {
-                this->enable_display();
-            }
             break;
         case ControlRegs::ROW_WORDS:
             this->row_words = value & 0x7FE0;
-            if (this->display_enabled) {
-                this->enable_display();
-            }
             break;
         case ControlRegs::MON_SENSE: {
-                if (value & ~0x3F)
-                    LOG_F(ERROR, "%s: write MON_SENSE %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
-                else
-                    LOG_F(CONTROL, "%s: write MON_SENSE %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
                 uint8_t dirs   = ((value >> 3) & 7) ^ 7;
                 uint8_t levels = ((value & 7) & dirs) | (dirs ^ 7);
-                this->mon_sense = value & 0x3F;
                 this->cur_mon_id = this->display_id->read_monitor_sense(levels, dirs);
             }
             break;
@@ -529,15 +375,13 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
                     this->blank_display();
                 }
             }
-            this->enables = value & 0xFFF;
+            this->enables = value;
             if (this->enables & FB_ENDIAN_LITTLE)
-                LOG_F(ERROR, "%s: little-endian framebuffer is not implemented yet", this->name.c_str());
+                ABORT_F("%s: little-endian framebuffer is not implemented yet",
+                        this->name.c_str());
             break;
         case ControlRegs::GSC_DIVIDE:
             this->clock_divider = value & 3;
-            if (this->display_enabled) {
-                this->enable_display();
-            }
             break;
         case ControlRegs::REFRESH_COUNT:
             LOG_F(9, "Control: VRAM refresh count set to %d", value);
@@ -586,15 +430,9 @@ void ControlVideo::enable_display()
     // set framebuffer parameters
     this->fb_ptr   = &this->vram_ptr[this->fb_base];
     this->fb_pitch = this->row_words;
-    if (~this->enables & SCAN_CONTROL) {
-        this->fb_pitch >>= 1;
-    }
 
     this->pixel_depth = this->radacal->get_pix_width();
-    if (swatch_params[ControlRegs::HAL-1] != swatch_params[ControlRegs::PIPE_DELAY-1] + 1 ||
-        this->pixel_depth == 32 ||
-        (this->pixel_depth == 16 && this->active_width == 1280)
-    ) {
+    if (swatch_params[ControlRegs::HAL-1] != swatch_params[ControlRegs::PIPE_DELAY-1] + 1 || this->pixel_depth == 32) {
         // don't know how to calculate offset from GBASE (fb_base); it is always hard coded as + 16 in the ndrv.
         this->fb_ptr += 16; // first 16 bytes are for 4 bpp HW cursor
     }
@@ -607,9 +445,6 @@ void ControlVideo::enable_display()
          - HAL == PIPE_DELAY + 1
          - depth_mode = 0 // 8 bit indexed
          */
-    }
-    if (this->radacal->get_dbl_buf_cr() == 0 && this->vram_banks == 3) {
-        this->fb_ptr += 0x200000;
     }
 
     // get pixel depth from RaDACal
@@ -656,10 +491,7 @@ void ControlVideo::enable_display()
     // set up periodic timer for display updates
     if (this->active_width > 0 && this->active_height > 0 && this->pixel_clock > 0) {
         this->refresh_rate = (double)(this->pixel_clock) / (this->hori_total * this->vert_total);
-        if (~this->enables & SCAN_CONTROL) {
-            this->refresh_rate *= 2;
-        }
-        LOG_F(INFO, "%s: refresh rate set to %f Hz", this->name.c_str(), this->refresh_rate);
+        LOG_F(INFO, "Control: refresh rate set to %f Hz", this->refresh_rate);
 
         this->start_refresh_task();
 
@@ -684,10 +516,8 @@ void ControlVideo::disable_display()
 // ========================== Device registry stuff ==========================
 
 static const PropMap Control_Properties = {
-    {"gfxmem_banks",
-        new IntProperty(3, vector<uint32_t>({0, 1, 2, 3}))},
     {"gfxmem_size",
-        new IntProperty(4, vector<uint32_t>({0, 2, 4}))},
+        new IntProperty(  2, vector<uint32_t>({2, 4}))},
     {"mon_id",
         new StrProperty("AppleVision1710")},
 };

@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-22 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -21,11 +21,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /** @file Enhanced Serial Communications Controller (ESCC) emulation. */
 
-#include <core/timermanager.h>
 #include <devices/deviceregistry.h>
 #include <devices/serial/chario.h>
 #include <devices/serial/escc.h>
-#include <devices/serial/z85c30.h>
 #include <loguru.hpp>
 #include <machines/machineproperties.h>
 
@@ -60,15 +58,13 @@ EsccController::EsccController()
     );
     this->ch_b->attach_backend(CHARIO_BE_NULL);
 
-    this->master_int_cntrl = 0;
-    this->reset();
+    this->reg_ptr = 0;
 }
 
 void EsccController::reset()
 {
-    this->master_int_cntrl &= (WR9_NO_VECTOR | WR9_VECTOR_INCLUDES_STATUS);
-    this->master_int_cntrl |= WR9_FORCE_HARDWARE_RESET;
-    this->reg_ptr = WR0; // or RR0
+    this->master_int_cntrl &= 0xFC;
+    this->master_int_cntrl |= 0xC0;
 
     this->ch_a->reset(true);
     this->ch_b->reset(true);
@@ -76,33 +72,36 @@ void EsccController::reset()
 
 uint8_t EsccController::read(uint8_t reg_offset)
 {
-    uint8_t value;
+    uint8_t result = 0;
 
     switch(reg_offset) {
     case EsccReg::Port_B_Cmd:
-        value = this->read_internal(this->ch_b.get());
+        LOG_F(9, "ESCC: reading Port B register RR%d", this->reg_ptr);
+        if (this->reg_ptr == 2) {
+            // TODO: implement interrupt vector modifications
+            result = this->int_vec;
+        } else {
+            result = this->ch_b->read_reg(this->reg_ptr);
+        }
+        this->reg_ptr = 0;
         break;
     case EsccReg::Port_A_Cmd:
-        value = this->read_internal(this->ch_a.get());
+        LOG_F(9, "ESCC: reading Port A register RR%d", this->reg_ptr);
+        if (this->reg_ptr == 2) {
+            return this->int_vec;
+        } else {
+            return this->ch_a->read_reg(this->reg_ptr);
+        }
         break;
     case EsccReg::Port_B_Data:
-        value = this->ch_b->receive_byte();
-        break;
+        return this->ch_b->receive_byte();
     case EsccReg::Port_A_Data:
-        value = this->ch_a->receive_byte();
-        break;
-    case EsccReg::Enh_Reg_B:
-        value = this->ch_b->get_enh_reg();
-        break;
-    case EsccReg::Enh_Reg_A:
-        value = this->ch_a->get_enh_reg();
-        break;
+        return this->ch_a->receive_byte();
     default:
-        LOG_F(WARNING, "ESCC: reading from unimplemented register 0x%x", reg_offset);
-        value = 0;
+        LOG_F(9, "ESCC: reading from unimplemented register 0x%x", reg_offset);
     }
 
-    return value;
+    return result;
 }
 
 void EsccController::write(uint8_t reg_offset, uint8_t value)
@@ -120,70 +119,46 @@ void EsccController::write(uint8_t reg_offset, uint8_t value)
     case EsccReg::Port_A_Data:
         this->ch_a->send_byte(value);
         break;
-    case EsccReg::Enh_Reg_B:
-        this->ch_b->set_enh_reg(value);
-        break;
-    case EsccReg::Enh_Reg_A:
-        this->ch_a->set_enh_reg(value);
-        break;
     default:
         LOG_F(9, "ESCC: writing 0x%X to unimplemented register 0x%x", value, reg_offset);
     }
 }
 
-uint8_t EsccController::read_internal(EsccChannel *ch)
-{
-    uint8_t value;
-    switch (this->reg_ptr) {
-    case RR2:
-        // TODO: implement interrupt vector modifications
-        value = this->int_vec;
-        break;
-    default:
-        value = ch->read_reg(this->reg_ptr);
-    }
-    this->reg_ptr = RR0; // or WR0
-    return value;
-}
-
 void EsccController::write_internal(EsccChannel *ch, uint8_t value)
 {
-    switch (this->reg_ptr) {
-    // chip-specific registers
-    case WR0:
-        this->reg_ptr = value & WR0_REGISTER_SELECTION_CODE;
-        switch (value & WR0_COMMAND_CODES) {
-        case WR0_COMMAND_POINT_HIGH:
-            this->reg_ptr |= WR8; // or RR8
-            break;
-        }
-        return;
-    case WR2:
-        this->int_vec = value;
-        break;
-    case WR9:
-        // see if some reset is requested
-        switch (value & WR9_RESET_COMMAND_BITS) {
-        case WR9_CHANNEL_RESET_B:
-            this->master_int_cntrl &= ~WR9_INTERRUPT_MASKING_WITHOUT_INTACK;
-            this->ch_b->reset(false);
-            break;
-        case WR9_CHANNEL_RESET_A:
-            this->master_int_cntrl &= ~WR9_INTERRUPT_MASKING_WITHOUT_INTACK;
-            this->ch_a->reset(false);
-            break;
-        case WR9_FORCE_HARDWARE_RESET:
-            this->reset();
-            break;
-        }
+    if (this->reg_ptr) {
+        // chip-specific registers
+        if (this->reg_ptr == 9) {
+            // see if some reset is requested
+            switch(value & 0xC0) {
+            case RESET_CH_B:
+                this->master_int_cntrl &= 0xDF;
+                this->ch_b->reset(false);
+                break;
+            case RESET_CH_A:
+                this->master_int_cntrl &= 0xDF;
+                this->ch_a->reset(false);
+                break;
+            case RESET_ESCC:
+                this->reset();
+                break;
+            }
 
-        this->master_int_cntrl = value & WR9_INTERRUPT_CONTROL_BITS;
-        break;
-    default:
-        // channel-specific registers
-        ch->write_reg(this->reg_ptr, value);
+            this->master_int_cntrl = value & 0x3F;
+        } else if (this->reg_ptr == 2) {
+            this->int_vec = value;
+        } else { // channel-specific registers
+            ch->write_reg(this->reg_ptr, value);
+        }
+        this->reg_ptr = 0;
+    } else {
+        this->reg_ptr = value & 7;
+        switch(value >> 3) {
+        case WR0Cmd::Point_High:
+            this->reg_ptr |= 8;
+            break;
+        }
     }
-    this->reg_ptr = WR0; // or RR0
 }
 
 // ======================== ESCC Channel methods ==============================
@@ -212,23 +187,17 @@ void EsccChannel::reset(bool hw_reset)
 {
     this->chario->rcv_disable();
 
-    /*
-        We use hex values here instead of enums to more
-        easily compare with the z85c30 data sheet.
-    */
+    this->write_regs[1] &= 0x24;
+    this->write_regs[3] &= 0xFE;
+    this->write_regs[4] |= 0x04;
+    this->write_regs[5] &= 0x61;
+    this->write_regs[15] = 0xF8;
 
-    this->write_regs[WR0] = 0;
-    this->write_regs[WR1] &= 0x24;
-    this->write_regs[WR3] &= 0xFE;
-    this->write_regs[WR4] |= 0x04;
-    this->write_regs[WR5] &= 0x61;
-    this->write_regs[WR15] = 0xF8;
-
-    this->read_regs[RR0] &= 0x38;
-    this->read_regs[RR0] |= 0x44;
-    this->read_regs[RR1]  = 0x06 | RR1_ALL_SENT; // HACK: also set ALL_SENT flag.
-    this->read_regs[RR3]  = 0x00;
-    this->read_regs[RR10] = 0x00;
+    this->read_regs[0] &= 0x3C;
+    this->read_regs[0] |= 0x44;
+    this->read_regs[1]  = 0x06;
+    this->read_regs[3]  = 0x00;
+    this->read_regs[10] = 0x00;
 
     // initialize DPLL
     this->dpll_active    = 0;
@@ -240,84 +209,81 @@ void EsccChannel::reset(bool hw_reset)
     this->brg_clock_src = 0;
 
     if (hw_reset) {
-        this->write_regs[WR9] &= 0x03; // clear all except (WR9_NO_VECTOR | WR9_VECTOR_INCLUDES_STATUS)
-        this->write_regs[WR9] |= 0xC0; // set WR9_FORCE_HARDWARE_RESET
-        this->write_regs[WR10] = 0;
-        this->write_regs[WR11] = 8;
-        this->write_regs[WR14] &= 0xC0;
+        this->write_regs[10] = 0;
+        this->write_regs[11] = 8;
+        this->write_regs[14] &= 0xC0;
+        this->write_regs[14] |= 0x20;
     } else {
-        this->write_regs[WR9] &= ~0x20; // clear WR9_INTERRUPT_MASKING_WITHOUT_INTACK
-        this->write_regs[WR10] &= 0x60;
-        this->write_regs[WR14] &= 0xC3;
+        this->write_regs[10] &= 0x60;
+        this->write_regs[14] &= 0xC3;
+        this->write_regs[14] |= 0x20;
     }
-    this->write_regs[WR14] |= 0x20;
 }
 
 void EsccChannel::write_reg(int reg_num, uint8_t value)
 {
     switch (reg_num) {
-    case WR3:
-        if ((this->write_regs[WR3] ^ value) & WR3_ENTER_HUNT_MODE) {
-            this->write_regs[WR3] |= WR3_ENTER_HUNT_MODE;
-            this->read_regs[RR0] |= RR0_SYNC_HUNT;
+    case 3:
+        if ((this->write_regs[3] ^ value) & 0x10) {
+            this->write_regs[3] |= 0x10;
+            this->read_regs[0] |= 0x10; // set SYNC_HUNT flag
             LOG_F(9, "%s: Hunt mode entered.", this->name.c_str());
         }
-        if ((this->write_regs[WR3] ^ value) & WR3_RX_ENABLE) {
-            if (value & WR3_RX_ENABLE) {
-                this->write_regs[WR3] |= WR3_RX_ENABLE;
+        if ((this->write_regs[3] ^ value) & 1) {
+            if (value & 1) {
+                this->write_regs[3] |= 0x1;
                 this->chario->rcv_enable();
                 LOG_F(9, "%s: receiver enabled.", this->name.c_str());
             } else {
-                this->write_regs[WR3] ^= WR3_RX_ENABLE;
+                this->write_regs[3] ^= 0x1;
                 this->chario->rcv_disable();
                 LOG_F(9, "%s: receiver disabled.", this->name.c_str());
-                this->write_regs[WR3] |= WR3_ENTER_HUNT_MODE;
-                this->read_regs[RR0] |= RR0_SYNC_HUNT;
+                this->write_regs[3] |= 0x10; // enter HUNT mode
+                this->read_regs[0] |= 0x10; // set SYNC_HUNT flag
             }
         }
-        this->write_regs[WR3] = (this->write_regs[WR3] & (WR3_RX_ENABLE | WR3_ENTER_HUNT_MODE)) | (value & ~(WR3_RX_ENABLE | WR3_ENTER_HUNT_MODE));
+        this->write_regs[3] = (this->write_regs[3] & 0x11) | (value & 0xEE);
         return;
-    case WR7:
-        if (this->write_regs[WR15] & WR15_SDLC_HDLC_ENHANCEMENT_ENABLE) {
+    case 7:
+        if (this->write_regs[15] & 1) {
             this->wr7_enh = value;
             return;
         }
         break;
-    case WR8:
-        this->send_byte(value);
-        return;
-    case WR14:
-        switch (value & WR14_DPLL_COMMAND_BITS) {
-        case WR14_DPLL_NULL_COMMAND:
+    case 14:
+        switch (value >> 5) {
+        case DPLL_NULL_CMD:
             break;
-        case WR14_DPLL_ENTER_SEARCH_MODE:
+        case DPLL_ENTER_SRC_MODE:
             this->dpll_active = 1;
-            this->read_regs[RR10] &= ~(RR10_TWO_CLOCKS_MISSING | RR10_ONE_CLOCK_MISSING);
+            this->read_regs[10] &= 0x3F;
             break;
-        case WR14_DPLL_RESET_MISSING_CLOCK:
-            this->read_regs[RR10] &= ~(RR10_TWO_CLOCKS_MISSING | RR10_ONE_CLOCK_MISSING);
-            break;
-        case WR14_DPLL_DISABLE_DPLL:
+        case DPLL_DISABLE:
             this->dpll_active = 0;
             // fallthrough
-        case WR14_DPLL_SET_SOURCE_BR_GENERATOR:
+        case DPLL_RST_MISSING_CLK:
+            this->read_regs[10] &= 0x3F;
+            break;
+        case DPLL_SET_SRC_BGR:
             this->dpll_clock_src = 0;
             break;
-        case WR14_DPLL_SET_SOURCE_RTXC:
+        case DPLL_SET_SRC_RTXC:
             this->dpll_clock_src = 1;
             break;
-        case WR14_DPLL_SET_FM_MODE:
+        case DPLL_SET_FM_MODE:
             this->dpll_mode = DpllMode::FM;
             break;
-        case WR14_DPLL_SET_NRZI_MODE:
+        case DPLL_SET_NRZI_MODE:
             this->dpll_mode = DpllMode::NRZI;
             break;
+        default:
+            LOG_F(WARNING, "%s: unimplemented DPLL command %d", this->name.c_str(), value >> 5);
         }
-        if (value & (WR14_LOCAL_LOOPBACK | WR14_AUTO_ECHO | WR14_DTR_REQUEST_FUNCTION)) {
+        if (value & 0x1C) { // Local Loopback, Auto Echo DTR/REQ bits set
             LOG_F(WARNING, "%s: unexpected value in WR14 = 0x%X", this->name.c_str(), value);
         }
-        if (this->brg_active ^ (value & WR14_BR_GENERATOR_ENABLE)) {
-            this->brg_active = value & WR14_BR_GENERATOR_ENABLE;
+        if (this->brg_active ^ (value & 1)) {
+            this->brg_active = value & 1;
             LOG_F(9, "%s: BRG %s", this->name.c_str(), this->brg_active ? "enabled" : "disabled");
         }
         return;
@@ -328,16 +294,10 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
 
 uint8_t EsccChannel::read_reg(int reg_num)
 {
-    switch (reg_num) {
-    case RR0:
+    if (!reg_num) {
         if (this->chario->rcv_char_available()) {
-            return this->read_regs[RR0] |= RR0_RX_CHARACTER_AVAILABLE;
-        } else {
-            return this->read_regs[RR0] &= ~RR0_RX_CHARACTER_AVAILABLE;
+            this->read_regs[0] |= 1;
         }
-        break;
-    case RR8:
-        return this->receive_byte();
     }
     return this->read_regs[reg_num];
 }
@@ -346,7 +306,6 @@ void EsccChannel::send_byte(uint8_t value)
 {
     // TODO: put one byte into the Data FIFO
 
-    this->write_regs[WR8] = value;
     this->chario->xmit_char(value);
 }
 
@@ -361,120 +320,8 @@ uint8_t EsccChannel::receive_byte()
     } else {
         c = 0;
     }
-    this->read_regs[RR0] &= ~RR0_RX_CHARACTER_AVAILABLE;
-    this->read_regs[RR8] = c;
+    this->read_regs[0] &= ~1;
     return c;
-}
-
-uint8_t EsccChannel::get_enh_reg()
-{
-    return this->enh_reg;
-}
-
-void EsccChannel::set_enh_reg(uint8_t value)
-{
-    uint8_t changed_bits = value ^ this->enh_reg;
-    if (changed_bits & 0x10) {
-        if (value & 0x10)
-            LOG_F(ERROR, "%s: CTS connected to GPIO; DCD connected to GND", this->name.c_str());
-        else
-            LOG_F(INFO, "%s: CTS connected to TRXC_In_l; DCD connected to GPIO", this->name.c_str());
-        this->enh_reg = value & 0x10;
-    } else if (changed_bits & ~0x10) {
-        if (value & ~0x10)
-            LOG_F(ERROR, "%s: Ignoring attempt to set Enh_Reg bits 0x%02x", this->name.c_str(), value & ~0x10);
-    }
-}
-
-void EsccChannel::dma_start_tx()
-{
-
-}
-
-void EsccChannel::dma_start_rx()
-{
-
-}
-
-void EsccChannel::dma_stop_tx()
-{
-    if (this->timer_id_tx) {
-        TimerManager::get_instance()->cancel_timer(this->timer_id_tx);
-        this->timer_id_tx = 0;
-    }
-}
-
-void EsccChannel::dma_stop_rx()
-{
-    if (this->timer_id_rx) {
-        TimerManager::get_instance()->cancel_timer(this->timer_id_rx);
-        this->timer_id_rx = 0;
-    }
-}
-
-void EsccChannel::dma_in_tx()
-{
-    LOG_F(ERROR, "%s: Unexpected DMA INPUT command for transmit.", this->name.c_str());
-}
-
-void EsccChannel::dma_in_rx()
-{
-    if (dma_ch[1]->get_push_data_remaining()) {
-        this->timer_id_rx = TimerManager::get_instance()->add_oneshot_timer(
-            0,
-            [this]() {
-                this->timer_id_rx = 0;
-                char c = receive_byte();
-                int xx = dma_ch[1]->push_data(&c, 1);
-                this->dma_in_rx();
-        });
-    }
-}
-
-void EsccChannel::dma_out_tx()
-{
-    this->timer_id_tx = TimerManager::get_instance()->add_oneshot_timer(
-        10,
-        [this]() {
-            this->timer_id_tx = 0;
-            uint8_t *data;
-            uint32_t avail_len;
-
-            if (dma_ch[1]->pull_data(256, &avail_len, &data) == MoreData) {
-                while(avail_len) {
-                    this->send_byte(*data++);
-                    avail_len--;
-                }
-                this->dma_out_tx();
-            }
-    });
-}
-
-void EsccChannel::dma_out_rx()
-{
-    LOG_F(ERROR, "%s: Unexpected DMA OUTPUT command for receive.", this->name.c_str());
-}
-
-void EsccChannel::dma_flush_tx()
-{
-    this->dma_stop_tx();
-    this->timer_id_tx = TimerManager::get_instance()->add_oneshot_timer(
-        10,
-        [this]() {
-            this->timer_id_tx = 0;
-            dma_ch[1]->end_pull_data();
-    });
-}
-
-void EsccChannel::dma_flush_rx()
-{
-    this->dma_stop_rx();
-    this->timer_id_rx = TimerManager::get_instance()->add_oneshot_timer(
-        10,
-        [this]() {
-            this->timer_id_rx = 0;
-            dma_ch[1]->end_push_data();
-    });
 }
 
 static const vector<string> CharIoBackends = {"null", "stdio", "socket"};

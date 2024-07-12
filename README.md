@@ -1,3 +1,9 @@
+# dingusppc-nt
+
+Fork of dingusppc with changes to support powerpc & mpc106 little endian mode, and thus Windows NT.
+
+Note that DMA is still broken in little endian mode for now.
+
 # DingusPPC
 
 Written by divingkatae and maximumspatium

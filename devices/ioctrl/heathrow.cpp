@@ -103,6 +103,10 @@ HeathrowIC::HeathrowIC() : PCIDevice("mac-io/heathrow"), InterruptCtrl()
     this->emmo_pin = GET_BIN_PROP("emmo") ^ 1;
 }
 
+void HeathrowIC::set_media_bay_id(uint8_t id) {
+    this->mb_id = id;
+}
+
 void HeathrowIC::notify_bar_change(int bar_num)
 {
     if (bar_num) // only BAR0 is supported
@@ -197,6 +201,9 @@ uint32_t HeathrowIC::read(uint32_t rgn_start, uint32_t offset, int size) {
         return this->swim3->read((offset >> 4 )& 0xF);
     case 0x16: // VIA-CUDA
     case 0x17:
+        if ((((offset - 0x16000) >> 9) & 0xf) == 1 || (((offset - 0x16000) >> 9) & 0xf) == 16) {
+            LOG_F(INFO, "???r %x %x", offset, size);
+        }
         res = this->viacuda->read((offset - 0x16000) >> 9);
         break;
     case 0x20: // IDE 0
@@ -251,6 +258,9 @@ void HeathrowIC::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int 
         break;
     case 0x16: // VIA-CUDA
     case 0x17:
+        if ((((offset - 0x16000) >> 9) & 0xf) == 1 || (((offset - 0x16000) >> 9) & 0xf) == 16) {
+            LOG_F(INFO, "???w %x %x %x", offset, size, value);
+        }
         this->viacuda->write((offset - 0x16000) >> 9, value);
         break;
     case 0x20: // IDE O
@@ -315,7 +325,14 @@ uint32_t HeathrowIC::mio_ctrl_read(uint32_t offset, int size) {
 void HeathrowIC::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
     switch (offset & 0xFC) {
     case MIO_INT_MASK2:
+
         this->int_mask2 |= BYTESWAP_32(value) & ~MACIO_INT_MODE;
+        // recalculate events, fire interrupt if needed
+        this->int_events2 = this->int_levels2 & this->int_mask2;
+        if (this->int_events2 != 0) {
+            //LOG_F(INFO, "MIOINT: Recalc(1): %08x&%08x", int_levels2, int_mask2);
+        }
+        if (!this->cpu_int_latch) this->signal_cpu_int();
         break;
     case MIO_INT_CLEAR2:
         this->int_events2 &= ~(BYTESWAP_32(value) & 0x7FFFFFFFUL);
@@ -325,6 +342,12 @@ void HeathrowIC::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
         this->int_mask1 = BYTESWAP_32(value);
         // copy IntMode bit to InterruptMask2 register
         this->int_mask2 = (this->int_mask2 & ~MACIO_INT_MODE) | (this->int_mask1 & MACIO_INT_MODE);
+        // recalculate events, fire interrupt if needed
+        this->int_events1 = this->int_levels1 & this->int_mask1;
+        if (this->int_events1 != 0) {
+            //LOG_F(INFO, "MIOINT: Recalc(0): %08x&%08x", int_levels1, int_mask1);
+        }
+        if (!this->cpu_int_latch) this->signal_cpu_int();
         break;
     case MIO_INT_CLEAR1:
         if ((this->int_mask1 & MACIO_INT_MODE) && (value & MACIO_INT_CLR)) {
@@ -440,12 +463,13 @@ uint32_t HeathrowIC::register_dma_int(IntSrc src_id)
 void HeathrowIC::ack_int(uint32_t irq_id, uint8_t irq_line_state)
 {
 #if 1
+    unsigned long irq_number = 0;
     if (!IS_INT1(irq_id)) { // does this irq_id belong to the second set?
         IRQ_ID_TO_INT2_MASK(irq_id);
+        _BitScanReverse(&irq_number, irq_id);
+        irq_number += 32;
 #if 0
-        LOG_F(INFO, "%s: native interrupt events:%08x.%08x levels:%08x.%08x change2:%08x state:%d",
-            this->name.c_str(), this->int_events1 + 0, this->int_events2 + 0, this->int_levels1 + 0, this->int_levels2 + 0, irq_id, irq_line_state
-        );
+        LOG_F(INFO, "%s: native interrupt events:%08x.%08x levels:%08x.%08x change2:%08x state:%d", this->name.c_str(), this->int_events1, this->int_events2, this->int_levels1, this->int_levels2, irq_id, irq_line_state);
 #endif
         // native mode:   set IRQ bits in int_events2 on a 0-to-1 transition
         // emulated mode: set IRQ bits in int_events2 on all transitions
@@ -455,6 +479,17 @@ void HeathrowIC::ack_int(uint32_t irq_id, uint8_t irq_line_state)
         } else {
             this->int_events2 &= ~irq_id;
         }
+        #if 0
+        LOG_F(
+            INFO,
+            "%s: %ssetting %smasked interrupt %d (%08x&%08x)",
+            name.c_str(),
+            (int_events2 & irq_id) != 0 ? "" : "un",
+            (int_mask2 & irq_id) != 0 ? "un" : "",
+            irq_number,
+            int_events2,
+            int_mask2);
+        #endif
         this->int_events2 &= this->int_mask2;
         // update IRQ line state
         if (irq_line_state) {
@@ -464,11 +499,11 @@ void HeathrowIC::ack_int(uint32_t irq_id, uint8_t irq_line_state)
         }
     } else {
         IRQ_ID_TO_INT1_MASK(irq_id);
+        _BitScanReverse(&irq_number, irq_id);
         // native mode:   set IRQ bits in int_events1 on a 0-to-1 transition
         // emulated mode: set IRQ bits in int_events1 on all transitions
 #if 0
-        LOG_F(INFO, "%s: native interrupt events:%08x.%08x levels:%08x.%08x change1:%08x state:%d",
-            this->name.c_str(), this->int_events1 + 0, this->int_events2 + 0, this->int_levels1 + 0, this->int_levels2 + 0, irq_id, irq_line_state);
+        LOG_F(INFO, "%s: native interrupt events:%08x.%08x levels:%08x.%08x change1:%08x state:%d", this->name.c_str(), this->int_events1, this->int_events2, this->int_levels1, this->int_levels2, irq_id, irq_line_state);
 #endif
         if ((this->int_mask1 & MACIO_INT_MODE) ||
             (irq_line_state && !(this->int_levels1 & irq_id))) {
@@ -476,6 +511,18 @@ void HeathrowIC::ack_int(uint32_t irq_id, uint8_t irq_line_state)
         } else {
             this->int_events1 &= ~irq_id;
         }
+
+        #if 0
+        LOG_F(
+            INFO,
+            "%s: %ssetting %smasked interrupt %d (%08x&%08x)",
+            name.c_str(),
+            (int_events1 & irq_id) != 0 ? "" : "un",
+            (int_mask1 & irq_id) != 0 ? "un" : "",
+            irq_number,
+            int_events1,
+            int_mask1);
+        #endif
         this->int_events1 &= this->int_mask1;
         // update IRQ line state
         if (irq_line_state) {

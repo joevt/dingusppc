@@ -48,7 +48,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/nvram.h>
 
 #include <memory>
-#include <chrono>
 
 class AdbBus;
 class InterruptCtrl;
@@ -128,6 +127,7 @@ enum {
     CUDA_SET_DEVICE_LIST     = 0x19, /* set device list */
     CUDA_GET_DEVICE_LIST     = 0x1A, /* get device list */
     CUDA_ONE_SECOND_MODE     = 0x1B, /* one second interrupt mode */
+    CUDA_SET_POWER_MESSAGES  = 0x21, /* set power button messages flag */
     CUDA_READ_WRITE_I2C      = 0x22, /* read/write I2C device */
     CUDA_COMB_FMT_I2C        = 0x25, /* combined format I2C transaction */
     CUDA_OUT_PB0             = 0x26, /* output one bit to Cuda's PB0 line */
@@ -182,13 +182,16 @@ private:
 
     // VIA internal state
     uint32_t sr_timer_id = 0;
+    bool     sr_timer_on = false;
 
     // timer 1 state
+    bool     t1_active;
     uint16_t t1_counter;
     uint32_t t1_timer_id = 0;
     uint64_t t1_start_time = 0;
 
     // timer 2 state
+    bool     t2_active;
     uint16_t t2_counter;
     uint32_t t2_timer_id = 0;
     uint64_t t2_start_time = 0;
@@ -211,10 +214,7 @@ private:
     int32_t  out_count;
     int32_t  out_pos;
     uint8_t  poll_rate;
-    uint32_t last_time = 0;
-    uint32_t time_offset = 0;
-    std::chrono::time_point<std::chrono::system_clock> mac_epoch;
-    uint8_t  one_sec_mode = 0;
+    int32_t  real_time = 0;
     bool     file_server;
     uint16_t device_mask = 0;
 
@@ -247,8 +247,7 @@ private:
     void error_response(uint32_t error);
     void process_packet();
     void process_adb_command();
-    void pseudo_command();
-    uint32_t calc_real_time();
+    void pseudo_command(int cmd, int data_count);
 
     void null_out_handler(void);
     void pram_out_handler(void);

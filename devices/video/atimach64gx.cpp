@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <core/bitops.h>
 #include <devices/deviceregistry.h>
+#include <devices/video/atimach64defs.h>
 #include <devices/video/atimach64gx.h>
 #include <devices/video/displayid.h>
 #include <devices/video/rgb514defs.h>
@@ -123,7 +124,7 @@ static const std::map<uint16_t, std::string> rgb514_reg_names = {
 };
 
 AtiMach64Gx::AtiMach64Gx()
-    : PCIDevice("ati-mach64-gx"), VideoCtrlBase()
+    : PCIDevice("ati-mach64-gx"), VideoCtrlBase(1024, 768)
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV);
 
@@ -131,7 +132,6 @@ AtiMach64Gx::AtiMach64Gx()
     this->vendor_id   = PCI_VENDOR_ATI;
     this->device_id   = ATI_MACH64_GX_DEV_ID;
     this->class_rev   = (0x030000 << 8) | 0x03;
-    this->irq_pin     = 1;
     for (int i = 0; i < this->aperture_count; i++) {
         this->bars_cfg[i] = (uint32_t)(-this->aperture_size[i] | this->aperture_flag[i]);
     }
@@ -143,15 +143,15 @@ AtiMach64Gx::AtiMach64Gx()
 
     // declare expansion ROM containing FCode and Mac OS drivers
     if (this->attach_exp_rom_image(std::string("113-32900-004_Apple_MACH64.bin"))) {
-        LOG_F(WARNING, "%s: could not load ROM - this device may not work properly!",
-              this->name.c_str());
+        ABORT_F("%s: could not load ROM - this device won't work properly!",
+                this->name.c_str());
     }
 
     // initialize display identification
-    this->disp_id = std::unique_ptr<DisplayID> (new DisplayID());
+    this->disp_id = std::unique_ptr<DisplayID> (new DisplayID(0x07, 0x3A));
 
     // allocate video RAM
-    this->vram_size = GET_INT_PROP("gfxmem_size") << 20; // convert MBs to bytes
+    this->vram_size = 6 << 20; // 2MB ; up to 6MB supported
     this->vram_ptr = std::unique_ptr<uint8_t[]> (new uint8_t[this->vram_size]);
 
     // set up RAMDAC identification
@@ -166,9 +166,7 @@ AtiMach64Gx::AtiMach64Gx()
     set_bit(regs[ATI_CRTC_GEN_CNTL], ATI_CRTC_DISPLAY_DIS); // because blank_on is true
 }
 
-void AtiMach64Gx::change_one_bar(uint32_t &aperture, uint32_t aperture_size,
-                                 uint32_t aperture_new, int bar_num)
-{
+void AtiMach64Gx::change_one_bar(uint32_t &aperture, uint32_t aperture_size, uint32_t aperture_new, int bar_num) {
     if (aperture != aperture_new) {
         if (aperture)
             this->host_instance->pci_unregister_mmio_region(aperture, aperture_size, this);
@@ -186,11 +184,11 @@ void AtiMach64Gx::notify_bar_change(int bar_num)
     if (bar_num) // only BAR0 is supported
         return;
 
-    change_one_bar(this->aperture_base[bar_num], this->aperture_size[bar_num],
-                   this->bars[bar_num] & ~15, bar_num);
-    // copy aperture address to CONFIG_CNTL:CFG_MEM_AP_LOC
-    insert_bits<uint32_t>(this->config_cntl[0], this->aperture_base[0] >> 22,
-                          ATI_CFG_MEM_AP_LOC, ATI_CFG_MEM_AP_LOC_size);
+    {
+        change_one_bar(this->aperture_base[bar_num], this->aperture_size[bar_num], this->bars[bar_num] & ~15, bar_num);
+        // copy aperture address to CONFIG_CNTL:CFG_MEM_AP_LOC
+        insert_bits<uint32_t>(this->config_cntl, this->aperture_base[0] >> 22, ATI_CFG_MEM_AP_LOC, ATI_CFG_MEM_AP_LOC_size);
+    }
 }
 
 #if 0
@@ -305,31 +303,22 @@ bool AtiMach64Gx::pci_io_write(uint32_t offset, uint32_t value, uint32_t size)
 
     // CONFIG_CNTL is accessible from I/O space only
     if ((offset >> 2) == ATI_CONFIG_CNTL) {
-        if (size + (offset & 3) > 4)
-            LOG_F(ERROR, "%s: size + offset > 4!", this->name.c_str());
         write_mem(((uint8_t *)&this->config_cntl) + (offset & 3), value, size);
-        if (offset == ATI_CONFIG_CNTL << 2) {
-            switch (extract_bits<uint32_t>(this->config_cntl[0], ATI_CFG_MEM_AP_SIZE, ATI_CFG_MEM_AP_SIZE_size)) {
-            case 0:
-                LOG_F(WARNING, "%s: CONFIG_CNTL linear aperture disabled!", this->name.c_str());
-                break;
-            case 1:
-                LOG_F(INFO, "%s: CONFIG_CNTL aperture size set to 4MB", this->name.c_str());
-                this->mm_regs_offset = MM_REGS_2_OFF;
-                break;
-            case 2:
-                LOG_F(INFO, "%s: CONFIG_CNTL aperture size set to 8MB", this->name.c_str());
-                this->mm_regs_offset = MM_REGS_0_OFF;
-                break;
-            default:
-                LOG_F(ERROR, "%s: CONFIG_CNTL invalid aperture size", this->name.c_str());
-            }
+        switch (this->config_cntl & 3) {
+        case 0:
+            LOG_F(WARNING, "%s: linear aperture disabled!", this->name.c_str());
+            break;
+        case 1:
+            LOG_F(INFO, "%s: aperture size set to 4MB", this->name.c_str());
+            this->mm_regs_offset = MM_REGS_2_OFF;
+            break;
+        case 2:
+            LOG_F(INFO, "%s: aperture size set to 8MB", this->name.c_str());
+            this->mm_regs_offset = MM_REGS_0_OFF;
+            break;
+        default:
+            LOG_F(ERROR, "%s: invalid aperture size in CONFIG_CNTL", this->name.c_str());
         }
-
-        LOG_F(INFO, "%s: write %s %04x.%c = %0*x = %08x", this->name.c_str(),
-            get_reg_name(offset >> 2), offset, SIZE_ARG(size), size * 2,
-            value, this->config_cntl[0]
-        );
     } else {
         this->write_reg(offset, BYTESWAP_SIZED(value, size), size);
     }
@@ -362,15 +351,6 @@ uint32_t AtiMach64Gx::read_reg(uint32_t reg_offset, uint32_t size)
     return static_cast<uint32_t>(result);
 }
 
-#define WRITE_VALUE_AND_LOG() \
-    do { \
-        this->regs[reg_num] = new_value; \
-        LOG_F(9, "%s: write %s %04x.%c = %0*x = %08x", this->name.c_str(), \
-            get_reg_name(reg_num), reg_offset, SIZE_ARG(size), size * 2, \
-            (uint32_t)extract_bits<uint64_t>(value, offset * 8, size * 8), new_value \
-        ); \
-    } while (0)
-
 void AtiMach64Gx::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size)
 {
     uint32_t reg_num = reg_offset >> 2;
@@ -398,7 +378,6 @@ void AtiMach64Gx::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size)
         break;
     case ATI_CRTC_OFF_PITCH:
         new_value = value;
-        WRITE_VALUE_AND_LOG();
         this->crtc_update();
         return;
     case ATI_CRTC_INT_CNTL:
@@ -512,44 +491,6 @@ void AtiMach64Gx::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size)
         }
         break;
     }
-    case ATI_OVR_CLR:
-    case ATI_OVR_WID_LEFT_RIGHT:
-    case ATI_OVR_WID_TOP_BOTTOM:
-        new_value = value;
-        WRITE_VALUE_AND_LOG();
-        if (value != 0) {
-            LOG_F(ERROR, "%s: Unhandled value 0x%08x.", this->name.c_str(), value);
-        }
-        return;
-    case ATI_CUR_CLR0:
-    case ATI_CUR_CLR1:
-        new_value = value;
-        this->cursor_dirty = true;
-        draw_fb = true;
-        WRITE_VALUE_AND_LOG();
-        return;
-    case ATI_CUR_OFFSET:
-        new_value = value;
-        if (old_value != new_value)
-            this->cursor_dirty = true;
-        draw_fb = true;
-        WRITE_VALUE_AND_LOG();
-        return;
-    case ATI_CUR_HORZ_VERT_OFF:
-        new_value = value;
-        if (
-            extract_bits<uint32_t>(new_value, ATI_CUR_VERT_OFF, ATI_CUR_VERT_OFF_size) !=
-            extract_bits<uint32_t>(old_value, ATI_CUR_VERT_OFF, ATI_CUR_VERT_OFF_size)
-        )
-            this->cursor_dirty = true;
-        draw_fb = true;
-        WRITE_VALUE_AND_LOG();
-        return;
-    case ATI_CUR_HORZ_VERT_POSN:
-        new_value = value;
-        draw_fb = true;
-        WRITE_VALUE_AND_LOG();
-        return;
     case ATI_DAC_REGS:
         new_value = old_value; // no change
         if (size == 1) { // only byte accesses are allowed for DAC registers
@@ -561,13 +502,10 @@ void AtiMach64Gx::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size)
         new_value = value;
         // monitor ID is usually accessed using 8bit writes
         if (offset <= 3 && offset + size > 3) {
-            uint8_t gpio_dirs = extract_bits<uint32_t>(new_value, ATI_DAC_GIO_DIR,
-                                                       ATI_DAC_GIO_DIR_size);
-            uint8_t gpio_levels = extract_bits<uint32_t>(new_value, ATI_DAC_GIO_STATE,
-                                                         ATI_DAC_GIO_STATE_size);
+            uint8_t gpio_dirs   = extract_bits<uint32_t>(new_value, ATI_DAC_GIO_DIR, ATI_DAC_GIO_DIR_size);
+            uint8_t gpio_levels = extract_bits<uint32_t>(new_value, ATI_DAC_GIO_STATE, ATI_DAC_GIO_STATE_size);
             gpio_levels = this->disp_id->read_monitor_sense(gpio_levels, gpio_dirs);
-            insert_bits<uint32_t>(new_value, gpio_levels, ATI_DAC_GIO_STATE,
-                                  ATI_DAC_GIO_STATE_size);
+            insert_bits<uint32_t>(new_value, gpio_levels, ATI_DAC_GIO_STATE, ATI_DAC_GIO_STATE_size);
         }
         break;
     case ATI_CONFIG_STAT0:
@@ -587,8 +525,17 @@ uint32_t AtiMach64Gx::read(uint32_t rgn_start, uint32_t offset, int size)
         if (offset < this->vram_size) {
             return read_mem(&this->vram_ptr[offset], size);
         }
-        if (offset >= this->mm_regs_offset && offset < this->mm_regs_offset + 0x400) {
-            return BYTESWAP_SIZED(read_reg(offset - this->mm_regs_offset, size), size);
+        if (offset >= this->mm_regs_offset) {
+            uint32_t value = read_reg(offset - this->mm_regs_offset, size);
+            #if 0
+            LOG_F(
+                INFO,
+                "ATIMach64 Read: offset=%x, value=%x, size=%x",
+                offset - mm_regs_offset,
+                BYTESWAP_SIZED(value, size),
+                size);
+            #endif
+            return BYTESWAP_SIZED(value, size);
         }
         return 0;
     }
@@ -607,10 +554,10 @@ void AtiMach64Gx::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int
 {
     if (rgn_start == this->aperture_base[0]) {
         if (offset < this->vram_size) {
-            draw_fb = true;
             return write_mem(&this->vram_ptr[offset], value, size);
         }
-        if (offset >= this->mm_regs_offset && offset < this->mm_regs_offset + 0x400) {
+        if (offset >= this->mm_regs_offset) {
+            //LOG_F(INFO, "ATIMach64 Write: offset=%x, value=%x, size=%x", offset - mm_regs_offset, BYTESWAP_SIZED(value, size), size);
             return write_reg(offset - this->mm_regs_offset, BYTESWAP_SIZED(value, size), size);
         }
         return;
@@ -623,6 +570,9 @@ void AtiMach64Gx::verbose_pixel_format(int crtc_index) {
         return;
     }
 
+/*
+    int fmt = extract_bits<uint32_t>(this->regs[ATI_CRTC_GEN_CNTL], ATI_CRTC_PIX_WIDTH, ATI_CRTC_PIX_WIDTH_size);
+*/
     int pix_fmt = this->pixel_format;
 
     const char* what = "Pixel format:";
@@ -664,10 +614,8 @@ void AtiMach64Gx::crtc_update()
 
     bool need_recalc = false;
 
-    new_width  = (extract_bits<uint32_t>(this->regs[ATI_CRTC_H_TOTAL_DISP],
-                    ATI_CRTC_H_DISP, ATI_CRTC_H_DISP_size) + 1) * 8;
-    new_height =  extract_bits<uint32_t>(this->regs[ATI_CRTC_V_TOTAL_DISP],
-                    ATI_CRTC_V_DISP, ATI_CRTC_V_DISP_size) + 1;
+    new_width  = (extract_bits<uint32_t>(this->regs[ATI_CRTC_H_TOTAL_DISP], ATI_CRTC_H_DISP, ATI_CRTC_H_DISP_size) + 1) * 8;
+    new_height =  extract_bits<uint32_t>(this->regs[ATI_CRTC_V_TOTAL_DISP], ATI_CRTC_V_DISP, ATI_CRTC_V_DISP_size) + 1;
 
     if (new_width != this->active_width || new_height != this->active_height) {
         this->create_display_window(new_width, new_height);
@@ -675,10 +623,8 @@ void AtiMach64Gx::crtc_update()
     }
 
     uint32_t new_htotal, new_vtotal;
-    new_htotal = (extract_bits<uint32_t>(this->regs[ATI_CRTC_H_TOTAL_DISP],
-                    ATI_CRTC_H_TOTAL, ATI_CRTC_H_TOTAL_size) + 1) * 8;
-    new_vtotal =  extract_bits<uint32_t>(this->regs[ATI_CRTC_V_TOTAL_DISP],
-                    ATI_CRTC_V_TOTAL, ATI_CRTC_V_TOTAL_size) + 1;
+    new_htotal = (extract_bits<uint32_t>(this->regs[ATI_CRTC_H_TOTAL_DISP], ATI_CRTC_H_TOTAL, ATI_CRTC_H_TOTAL_size) + 1) * 8;
+    new_vtotal =  extract_bits<uint32_t>(this->regs[ATI_CRTC_V_TOTAL_DISP], ATI_CRTC_V_TOTAL, ATI_CRTC_V_TOTAL_size) + 1;
 
     if (new_htotal != this->hori_total || new_vtotal != this->vert_total) {
         this->hori_total = new_htotal;
@@ -688,7 +634,7 @@ void AtiMach64Gx::crtc_update()
 
     uint32_t new_vert_blank = new_vtotal - new_height;
     if (new_vert_blank != this->vert_blank) {
-        this->vert_blank = new_vert_blank;
+        this->vert_blank = vert_blank;
         need_recalc = true;
     }
 
@@ -700,14 +646,17 @@ void AtiMach64Gx::crtc_update()
 
     static uint8_t bits_per_pixel[8] = {0, 0, 4, 8, 16, 24, 32, 0};
 
-    int new_fb_pitch = extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH],
-        ATI_CRTC_PITCH, ATI_CRTC_PITCH_size) * bits_per_pixel[this->pixel_format];
+    int new_fb_pitch_reg = extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH], ATI_CRTC_PITCH, ATI_CRTC_PITCH_size);
+    // HACK: should not be zero!
+    if (new_fb_pitch_reg == 0) {
+        new_fb_pitch_reg = active_width / 8; // "Display pitch in pixels * 8"
+    }
+    int new_fb_pitch = new_fb_pitch_reg * bits_per_pixel[this->pixel_format];
     if (new_fb_pitch != this->fb_pitch) {
         this->fb_pitch = new_fb_pitch;
         need_recalc = true;
     }
-    uint8_t* new_fb_ptr = &this->vram_ptr[extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH],
-                          ATI_CRTC_OFFSET, ATI_CRTC_OFFSET_size) * 8];
+    uint8_t* new_fb_ptr = &this->vram_ptr[extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH], ATI_CRTC_OFFSET, ATI_CRTC_OFFSET_size) * 8];
     if (new_fb_ptr != this->fb_ptr) {
         this->fb_ptr = new_fb_ptr;
         need_recalc = true;
@@ -726,8 +675,6 @@ void AtiMach64Gx::crtc_update()
     if (!need_recalc)
         return;
 
-    this->draw_fb = true;
-
     // calculate display refresh rate
     this->refresh_rate = this->pixel_clock / this->hori_total / this->vert_total;
 
@@ -741,37 +688,54 @@ void AtiMach64Gx::crtc_update()
     switch (this->pixel_format) {
     case 2:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_4bpp_indexed(dst_buf, dst_pitch);
         };
         break;
     case 3:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_8bpp_indexed(dst_buf, dst_pitch);
         };
         break;
     case 4:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_15bpp_BE(dst_buf, dst_pitch);
         };
         break;
     case 5:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_24bpp(dst_buf, dst_pitch);
         };
         break;
     case 6:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_32bpp_BE(dst_buf, dst_pitch);
         };
         break;
     default:
         LOG_F(ERROR, "%s: unsupported pixel format %d", this->name.c_str(), this->pixel_format);
     }
+
+    LOG_F(INFO, "%s: primary CRT controller enabled:", this->name.c_str());
+    LOG_F(
+        INFO,
+        "Video mode: %s",
+        bit_set(this->regs[ATI_CRTC_GEN_CNTL], ATI_CRTC_EXT_DISP_EN) ? "extended" : "VGA");
+    LOG_F(INFO, "Video width: %d px", this->active_width);
+    LOG_F(INFO, "Video height: %d px", this->active_height);
+    verbose_pixel_format(0);
+    //LOG_F(INFO, "VPLL frequency: %f MHz", vpll_freq * 1e-6);
+    LOG_F(INFO, "Pixel (dot) clock: %f MHz", this->pixel_clock * 1e-6);
+    LOG_F(INFO, "Refresh rate: %f Hz", this->refresh_rate);
+    LOG_F(
+        INFO,
+        "Framebuffer offset: %x",
+        extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH], ATI_CRTC_OFFSET, ATI_CRTC_OFFSET_size) *
+            8);
+    LOG_F(
+        INFO,
+        "Framebuffer pitch: %x (%x)",
+        new_fb_pitch_reg,
+        fb_pitch);
 
     this->stop_refresh_task();
     this->start_refresh_task();
@@ -780,8 +744,7 @@ void AtiMach64Gx::crtc_update()
 }
 
 void AtiMach64Gx::draw_hw_cursor(uint8_t *dst_row, int dst_pitch) {
-    int vert_offset = extract_bits<uint32_t>(this->regs[ATI_CUR_HORZ_VERT_OFF],
-                                             ATI_CUR_VERT_OFF, ATI_CUR_VERT_OFF_size);
+    int vert_offset = extract_bits<uint32_t>(this->regs[ATI_CUR_HORZ_VERT_OFF], ATI_CUR_VERT_OFF, ATI_CUR_VERT_OFF_size);
     int cur_height = 64 - vert_offset;
 
     uint32_t color0 = this->regs[ATI_CUR_CLR0] | 0x000000FFUL;
@@ -823,7 +786,7 @@ void AtiMach64Gx::get_cursor_position(int& x, int& y) {
 int AtiMach64Gx::device_postinit()
 {
     this->vbl_cb = [this](uint8_t irq_line_state) {
-        insert_bits<uint32_t>(this->regs[ATI_CRTC_INT_CNTL], irq_line_state, ATI_CRTC_VBLANK, irq_line_state);
+        insert_bits<uint32_t>(this->regs[ATI_CRTC_INT_CNTL], irq_line_state, ATI_CRTC_VBLANK, 1);
         if (irq_line_state) {
             set_bit(this->regs[ATI_CRTC_INT_CNTL], ATI_CRTC_VBLANK_INT);
             set_bit(this->regs[ATI_CRTC_INT_CNTL], ATI_CRTC_VLINE_INT);
@@ -842,9 +805,7 @@ int AtiMach64Gx::device_postinit()
 #endif
             0;
 
-        LOG_F(WARNING, "%s: irq_line_state:%d do_interrupt:%d CRTC_INT_CNTL:%08x",
-              this->name.c_str(), irq_line_state, do_interrupt,
-              this->regs[ATI_CRTC_INT_CNTL]);
+        //LOG_F(WARNING, "%s: irq_line_state:%d do_interrupt:%d CRTC_INT_CNTL:%08x", this->name.c_str(), irq_line_state, do_interrupt, this->regs[ATI_CRTC_INT_CNTL]);
 
         if (do_interrupt) {
             this->pci_interrupt(irq_line_state);
@@ -868,7 +829,6 @@ void AtiMach64Gx::rgb514_write_reg(uint8_t reg_addr, uint8_t value)
                                     clut_color[1], clut_color[2], 0xFF);
             this->clut_index++;
             this->comp_index = 0;
-            draw_fb = true;
         }
         break;
     case Rgb514::CLUT_MASK:
@@ -918,15 +878,8 @@ void AtiMach64Gx::rgb514_write_ind_reg(uint8_t reg_addr, uint8_t value)
     }
 }
 
-static const PropMap AtiMach64gx_Properties = {
-    {"gfxmem_size",
-        new IntProperty(  2, vector<uint32_t>({2, 4, 6}))},
-    {"mon_id",
-        new StrProperty("")},
-};
-
 static const DeviceDescription AtiMach64Gx_Descriptor = {
-    AtiMach64Gx::create, {}, AtiMach64gx_Properties
+    AtiMach64Gx::create, {}, {}
 };
 
 REGISTER_DEVICE(AtiMach64Gx, AtiMach64Gx_Descriptor);

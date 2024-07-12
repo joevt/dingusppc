@@ -33,7 +33,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace MeshScsi;
 
-int MeshController::device_postinit() {
+int MeshController::device_postinit()
+{
     this->bus_obj = dynamic_cast<ScsiBus*>(gMachineObj->get_comp_by_name("ScsiMesh"));
 
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
@@ -43,11 +44,11 @@ int MeshController::device_postinit() {
     return 0;
 }
 
-void MeshController::reset(bool is_hard_reset) {
+void MeshController::reset(bool is_hard_reset)
+{
     this->cur_cmd       = SeqCmd::NoOperation;
     this->fifo_cnt      = 0;
     this->int_mask      = 0;
-    this->exception     = 0;
     this->xfer_count    = 0;
     this->src_id        = 7;
 
@@ -57,7 +58,8 @@ void MeshController::reset(bool is_hard_reset) {
     }
 }
 
-uint8_t MeshController::read(uint8_t reg_offset) {
+uint8_t MeshController::read(uint8_t reg_offset)
+{
     switch(reg_offset) {
     case MeshReg::XferCount0:
         return this->xfer_count & 0xFFU;
@@ -72,7 +74,7 @@ uint8_t MeshController::read(uint8_t reg_offset) {
     case MeshReg::FIFOCount:
         return this->fifo_cnt;
     case MeshReg::Exception:
-        return this->exception;
+        return 0;
     case MeshReg::Error:
         return 0;
     case MeshReg::IntMask:
@@ -92,7 +94,8 @@ uint8_t MeshController::read(uint8_t reg_offset) {
     return 0;
 }
 
-void MeshController::write(uint8_t reg_offset, uint8_t value) {
+void MeshController::write(uint8_t reg_offset, uint8_t value)
+{
     uint16_t new_stat;
 
     switch(reg_offset) {
@@ -138,20 +141,19 @@ void MeshController::write(uint8_t reg_offset, uint8_t value) {
     }
 }
 
-void MeshController::perform_command(const uint8_t cmd) {
+void MeshController::perform_command(const uint8_t cmd)
+{
     this->cur_cmd = cmd;
 
     this->int_stat &= ~INT_CMD_DONE;
 
     switch (this->cur_cmd & 0xF) {
     case SeqCmd::Arbitrate:
-        this->exception &= EXC_ARB_LOST;
         this->bus_obj->release_ctrl_lines(this->src_id);
         this->cur_state = SeqState::BUS_FREE;
         this->sequencer();
         break;
     case SeqCmd::Select:
-        this->exception &= EXC_SEL_TIMEOUT;
         this->cur_state = SeqState::SEL_BEGIN;
         this->sequencer();
         break;
@@ -160,7 +162,7 @@ void MeshController::perform_command(const uint8_t cmd) {
         this->int_stat |= INT_CMD_DONE;
         break;
     case SeqCmd::EnaReselect:
-        LOG_F(9, "MESH: EnaReselect stub invoked");
+        LOG_F(INFO, "MESH: EnaReselect stub invoked");
         this->int_stat |= INT_CMD_DONE;
         break;
     case SeqCmd::DisReselect:
@@ -180,7 +182,8 @@ void MeshController::perform_command(const uint8_t cmd) {
     }
 }
 
-void MeshController::seq_defer_state(uint64_t delay_ns) {
+void MeshController::seq_defer_state(uint64_t delay_ns)
+{
     seq_timer_id = TimerManager::get_instance()->add_oneshot_timer(
         delay_ns,
         [this]() {
@@ -251,7 +254,8 @@ void MeshController::sequencer()
     }
 }
 
-void MeshController::update_irq() {
+void MeshController::update_irq()
+{
     uint8_t new_irq = !!(this->int_stat & this->int_mask);
     if (new_irq != this->irq) {
         this->irq = new_irq;

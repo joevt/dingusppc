@@ -35,8 +35,6 @@ AppleRamdac::AppleRamdac(DacFlavour flavour) {
 }
 
 uint16_t AppleRamdac::iodev_read(uint32_t address) {
-    uint16_t result;
-
     switch(address) {
     case RamdacRegs::MULTI:
         switch(this->dac_addr) {
@@ -45,23 +43,12 @@ uint16_t AppleRamdac::iodev_read(uint32_t address) {
         case RamdacRegs::PLL_CTRL:
             return this->pll_cr;
         case RamdacRegs::VENDOR_ID:
-            return this->dac_vendor;
+            return DACULA_VENDOR_SIERRA;
         default:
             LOG_F(WARNING, "%s: read from unsupported multi-register at 0x%X",
                   this->name.c_str(), this->dac_addr);
         }
         break;
-    case RamdacRegs::CLUT_DATA:
-        if (this->comp_index == 0) {
-            this->get_clut_entry_cb(this->dac_addr, this->clut_color);
-        }
-        result = this->clut_color[this->comp_index];
-        this->comp_index++;
-        if (this->comp_index >= 3) {
-            this->dac_addr++; // auto-increment CLUT address
-            this->comp_index = 0;
-        }
-        return result;
     default:
         LOG_F(WARNING, "%s: read from unsupported register at 0x%X",
               this->name.c_str(), address);
@@ -73,7 +60,6 @@ void AppleRamdac::iodev_write(uint32_t address, uint16_t value) {
     switch(address) {
     case RamdacRegs::ADDRESS:
         this->dac_addr = value;
-        this->comp_index = 0;
         break;
     case RamdacRegs::CURSOR_CLUT:
         this->clut_color[this->comp_index++] = value;
@@ -87,31 +73,10 @@ void AppleRamdac::iodev_write(uint32_t address, uint16_t value) {
     case RamdacRegs::MULTI:
         switch (this->dac_addr) {
         case RamdacRegs::CURSOR_POS_HI:
-#ifdef CURSOR_LO_DELAY // HACK: prevents artifacts in some cases, disabled by default
-            if (this->cursor_timer_id) {
-                TimerManager::get_instance()->cancel_timer(this->cursor_timer_id);
-                cursor_timer_id = 0;
-            }
             this->cursor_xpos = (value << 8) | this->cursor_pos_lo;
-#else
-            this->cursor_xpos = (value << 8) | (this->cursor_xpos & 0xff);
-#endif
             break;
         case RamdacRegs::CURSOR_POS_LO:
-#ifdef CURSOR_LO_DELAY // HACK: prevents artifacts in some cases, disabled by default
-            if (this->cursor_timer_id) {
-                TimerManager::get_instance()->cancel_timer(this->cursor_timer_id);
-                this->cursor_xpos = (this->cursor_xpos & 0xff00) | (this->cursor_pos_lo & 0x00ff);
-                cursor_timer_id   = 0;
-            }
-            this->cursor_pos_lo   = value;
-            this->cursor_timer_id = TimerManager::get_instance()->add_oneshot_timer(
-                NS_PER_SEC / 60, [this]() {
-                    this->cursor_xpos = (this->cursor_xpos & 0xff00) | (this->cursor_pos_lo & 0x00ff);
-                });
-#else
-            this->cursor_xpos = (this->cursor_xpos & 0xff00) | (value & 0x00ff);
-#endif
+            this->cursor_pos_lo = value;
             break;
         case RamdacRegs::MISC_CTRL:
             if (bit_changed(this->dac_cr, value, 1)) {
@@ -151,9 +116,6 @@ void AppleRamdac::iodev_write(uint32_t address, uint16_t value) {
         }
         break;
     case RamdacRegs::CLUT_DATA:
-        if (this->comp_index == 0) {
-            this->get_clut_entry_cb(this->dac_addr, this->clut_color);
-        }
         this->clut_color[this->comp_index++] = value;
         if (this->comp_index >= 3) {
             this->set_clut_entry_cb(this->dac_addr, this->clut_color);
@@ -180,15 +142,7 @@ int AppleRamdac::get_dot_freq() {
     uint8_t p = this->clk_pn[this->pll_cr & 1] >> 5;
     uint8_t n = this->clk_pn[this->pll_cr & 1] & 0x1F;
 
-    double dot_freq;
-    if (this->dac_vendor == DACULA_VENDOR_ATT)
-        dot_freq = 15000000.0f * (double)m / ((double)n + 2) / (double)(1 << p);
-    else if (this->dac_vendor == DACULA_VENDOR_SIERRA)
-        dot_freq = 14318180.0f * (double)m / ((double)n * (double)(1 << p));
-    else {
-        dot_freq = 14318180.0f * (double)m / (double)n / (double)(1 << p);
-        LOG_F(ERROR, "%s: unknown VENDOR_ID", this->name.c_str());
-    }
+    double dot_freq = 14318180.0f * (double)m / ((double)n * (double)(1 << p));
     return static_cast<int>(dot_freq + 0.5f);
 }
 
@@ -242,7 +196,6 @@ void AppleRamdac::draw_hw_cursor(uint8_t *src_buf, uint8_t *dst_buf, int dst_pit
     uint8_t *src_row = src_buf + this->fb_pitch * this->cursor_ypos;
     uint8_t *dst_row = dst_buf + this->cursor_ypos * dst_pitch +
                            this->cursor_xpos * sizeof(uint32_t);
-    int src_pitch = this->fb_pitch;
 
     uint32_t *color = &this->cursor_clut[0];
 
@@ -264,7 +217,7 @@ void AppleRamdac::draw_hw_cursor(uint8_t *src_buf, uint8_t *dst_buf, int dst_pit
             }
             dst_16 += 16 * sizeof(uint32_t);
         }
-        src_row += src_pitch;
+        src_row += this->fb_pitch;
         dst_row += dst_pitch;
     }
 }

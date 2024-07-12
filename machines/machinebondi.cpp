@@ -22,9 +22,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 /** @file Construct the Yosemite machine (Power Macintosh G3 Blue & White). */
 
 #include <cpu/ppc/ppcemu.h>
-#include <devices/common/pci/dec21154.h>
 #include <devices/memctrl/mpc106.h>
 #include <devices/memctrl/spdram.h>
+#include <devices/ioctrl/macio.h>
 #include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
@@ -42,25 +42,20 @@ static void setup_ram_slot(std::string name, int i2c_addr, int capacity_megs) {
     i2c_bus->register_device(i2c_addr, ram_dimm);
 }
 
-int initialize_yosemite(std::string& id)
+int initialize_bondi(std::string& id)
 {
-    LOG_F(INFO, "Building machine Yosemite...");
+    LOG_F(INFO, "Building machine Bondi...");
 
     // get pointer to the memory controller/primary PCI bridge object
     MPC106* grackle_obj = dynamic_cast<MPC106*>(gMachineObj->get_comp_by_name("Grackle"));
 
-    // get pointer to the bridge of the secondary PCI bus
-    DecPciBridge *sec_bridge = dynamic_cast<DecPciBridge*>(gMachineObj->get_comp_by_name("Dec21154"));
+    dynamic_cast<HeathrowIC*>(gMachineObj->get_comp_by_name("Heathrow"))->set_media_bay_id(0x30);
 
-    // connect PCI devices
-    grackle_obj->pci_register_device(DEV_FUN(13,0),
-        dynamic_cast<PCIBase*>(gMachineObj->get_comp_by_name("Dec21154")));
-
-    sec_bridge->pci_register_device(DEV_FUN(5,0),
+    grackle_obj->pci_register_device(DEV_FUN(0x10,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("Heathrow")));
 
     grackle_obj->pci_register_device(
-        DEV_FUN(0x10, 0),
+        DEV_FUN(0x12, 0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("AtiMach64Gx")));
 
     // allocate ROM region
@@ -70,10 +65,9 @@ int initialize_yosemite(std::string& id)
     }
 
     // configure RAM slots
-    setup_ram_slot("RAM_DIMM_1", 0x50, GET_INT_PROP("rambank1_size"));
-    setup_ram_slot("RAM_DIMM_2", 0x51, GET_INT_PROP("rambank2_size"));
-    setup_ram_slot("RAM_DIMM_3", 0x52, GET_INT_PROP("rambank3_size"));
-    setup_ram_slot("RAM_DIMM_4", 0x53, GET_INT_PROP("rambank4_size"));
+    // First ram slot is enumerated twice for some reason, the second slot is never enumerated, so put half the ram in each slot.
+    setup_ram_slot("RAM_DIMM_1", 0x50, GET_INT_PROP("rambank1_size") / 2);
+    setup_ram_slot("RAM_DIMM_2", 0x51, GET_INT_PROP("rambank1_size") / 2);
 
     // configure CPU clocks
     uint64_t bus_freq      = 66820000ULL;
@@ -88,30 +82,26 @@ int initialize_yosemite(std::string& id)
     return 0;
 }
 
-static const PropMap yosemite_settings = {
+static const PropMap bondi_settings = {
     {"rambank1_size",
-        new IntProperty(256, vector<uint32_t>({8, 16, 32, 64, 128, 256}))},
-    {"rambank2_size",
-        new IntProperty(  0, vector<uint32_t>({0, 8, 16, 32, 64, 128, 256}))},
-    {"rambank3_size",
-        new IntProperty(  0, vector<uint32_t>({0, 8, 16, 32, 64, 128, 256}))},
-    {"rambank4_size",
-        new IntProperty(  0, vector<uint32_t>({0, 8, 16, 32, 64, 128, 256}))},
-    {"emmo", new BinProperty(0)},
-    {"hdd_config", new StrProperty("Ide0:1")},
-    {"cdr_config", new StrProperty("Ide0:0")},
+        new IntProperty(128, vector<uint32_t>({32, 64, 128}))},
+    {"emmo",
+        new BinProperty(0)},
+    {"hdd_config", new StrProperty("Ide0:0")},
+    {"cdr_config",
+        new StrProperty("Ide1:0")},
 };
 
-static vector<string> yosemite_devices = {
-    "Grackle", "Dec21154", "BurgundySnd", "Heathrow", "AtiMach64Gx", "AtapiCdrom", "AtaHardDisk"
+static vector<string> bondi_devices = {
+    "Grackle", "BurgundySnd", "Heathrow", "AtiMach64Gx", "AtaHardDisk", "AtapiCdrom"
 };
 
-static const MachineDescription yosemite_descriptor = {
-    .name = "pmg3nw",
-    .description = "Power Macintosh G3 Blue and White",
-    .devices = yosemite_devices,
-    .settings = yosemite_settings,
-    .init_func = &initialize_yosemite
+static const MachineDescription bondi_descriptor = {
+    .name = "imacg3",
+    .description = "iMac G3 Bondi Blue",
+    .devices = bondi_devices,
+    .settings = bondi_settings,
+    .init_func = &initialize_bondi
 };
 
-REGISTER_MACHINE(pmg3nw, yosemite_descriptor);
+REGISTER_MACHINE(imacg3, bondi_descriptor);

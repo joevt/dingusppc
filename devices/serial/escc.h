@@ -25,7 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define ESCC_H
 
 #include <devices/common/hwcomponent.h>
-#include <devices/common/dbdma.h>
 #include <devices/serial/chario.h>
 
 #include <cinttypes>
@@ -64,6 +63,29 @@ enum LocalTalkReg : uint8_t {
     Detect_AB   = 0xB,
 };
 
+enum WR0Cmd : uint8_t {
+    Point_High = 1,
+};
+
+/** ESCC reset commands. */
+enum {
+    RESET_ESCC = 0xC0,
+    RESET_CH_A = 0x80,
+    RESET_CH_B = 0x40
+};
+
+/** DPLL commands in WR14. */
+enum {
+    DPLL_NULL_CMD           = 0,
+    DPLL_ENTER_SRC_MODE     = 1,
+    DPLL_RST_MISSING_CLK    = 2,
+    DPLL_DISABLE            = 3,
+    DPLL_SET_SRC_BGR        = 4,
+    DPLL_SET_SRC_RTXC       = 5,
+    DPLL_SET_FM_MODE        = 6,
+    DPLL_SET_NRZI_MODE      = 7
+};
+
 enum DpllMode : uint8_t {
     NRZI = 0,
     FM   = 1
@@ -81,68 +103,17 @@ public:
     void write_reg(int reg_num, uint8_t value);
     void send_byte(uint8_t value);
     uint8_t receive_byte();
-    uint8_t get_enh_reg();
-    void set_enh_reg(uint8_t value);
-
-    void set_dma_channel(int dir_index, DmaBidirChannel *dma_ch) {
-        this->dma_ch[dir_index] = dma_ch;
-        auto dbdma_ch = dynamic_cast<DMAChannel*>(dma_ch);
-        if (dbdma_ch) {
-            switch (dir_index) {
-            case 0:
-                dbdma_ch->set_callbacks(
-                    std::bind(&EsccChannel::dma_start_tx, this),
-                    std::bind(&EsccChannel::dma_stop_tx, this)
-                );
-                dbdma_ch->set_data_callbacks(
-                    std::bind(&EsccChannel::dma_in_tx, this),
-                    std::bind(&EsccChannel::dma_out_tx, this),
-                    std::bind(&EsccChannel::dma_flush_tx, this)
-                );
-                break;
-            case 1:
-                dbdma_ch->set_callbacks(
-                    std::bind(&EsccChannel::dma_start_rx, this),
-                    std::bind(&EsccChannel::dma_stop_rx, this)
-                );
-                dbdma_ch->set_data_callbacks(
-                    std::bind(&EsccChannel::dma_in_rx, this),
-                    std::bind(&EsccChannel::dma_out_rx, this),
-                    std::bind(&EsccChannel::dma_flush_rx, this)
-                );
-                break;
-            }
-        }
-    };
 
 private:
-    uint32_t timer_id_tx = 0;
-    uint32_t timer_id_rx = 0;
-
-    void dma_start_tx();
-    void dma_stop_tx();
-    void dma_in_tx();
-    void dma_out_tx();
-    void dma_flush_tx();
-
-    void dma_start_rx();
-    void dma_stop_rx();
-    void dma_in_rx();
-    void dma_out_rx();
-    void dma_flush_rx();
-
-    DmaBidirChannel*    dma_ch[2];
-
     std::string     name;
-    uint8_t         read_regs[16] = {};
-    uint8_t         write_regs[16] = {};
-    uint8_t         wr7_enh = 0;
+    uint8_t         read_regs[16];
+    uint8_t         write_regs[16];
+    uint8_t         wr7_enh;
     uint8_t         dpll_active;
-    DpllMode        dpll_mode;
+    uint8_t         dpll_mode;
     uint8_t         dpll_clock_src;
     uint8_t         brg_active;
     uint8_t         brg_clock_src;
-    uint8_t         enh_reg = 0;
 
     std::unique_ptr<CharIoBackEnd>  chario;
 };
@@ -161,25 +132,25 @@ public:
     uint8_t read(uint8_t reg_offset);
     void    write(uint8_t reg_offset, uint8_t value);
 
-    void set_dma_channel(int ch_dir_index, DmaBidirChannel *dma_ch) {
-        switch (ch_dir_index >> 1) {
-        case 0: ch_a->set_dma_channel(ch_dir_index & 1, dma_ch); break;
-        case 1: ch_b->set_dma_channel(ch_dir_index & 1, dma_ch); break;
-        }
+    void dma_start();
+    void dma_stop();
+    void set_dma_channel(int ch_index, DmaBidirChannel *dma_ch) {
+        this->dma_ch[ch_index] = dma_ch;
     };
 
 private:
     void reset();
     void write_internal(EsccChannel* ch, uint8_t value);
-    uint8_t read_internal(EsccChannel* ch);
 
     std::unique_ptr<EsccChannel>    ch_a;
     std::unique_ptr<EsccChannel>    ch_b;
 
     int reg_ptr; // register pointer for reading/writing (same for both channels)
 
-    uint8_t master_int_cntrl = 0;
-    uint8_t int_vec = 0;
+    uint8_t master_int_cntrl;
+    uint8_t int_vec;
+
+    DmaBidirChannel*    dma_ch[4];
 };
 
 #endif // ESCC_H

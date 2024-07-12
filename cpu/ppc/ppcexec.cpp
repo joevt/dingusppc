@@ -23,7 +23,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 #include "ppcemu.h"
 #include "ppcmmu.h"
-#include "ppcdisasm.h"
 
 #include <algorithm>
 #include <cstring>
@@ -33,22 +32,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <stdio.h>
 #include <string>
-
-#ifdef __APPLE__
-#include <mach/mach_time.h>
-#undef EXC_SYSCALL
-static struct mach_timebase_info timebase_info;
-static uint64_t
-ConvertHostTimeToNanos2(uint64_t host_time)
-{
-    if (timebase_info.numer == timebase_info.denom)
-        return host_time;
-    long double answer = host_time;
-    answer *= timebase_info.numer;
-    answer /= timebase_info.denom;
-    return (uint64_t)answer;
-}
-#endif
 
 using namespace std;
 using namespace dppc_interpreter;
@@ -69,10 +52,13 @@ uint32_t ppc_cur_instruction;    // Current instruction for the PPC
 uint32_t ppc_effective_address;
 uint32_t ppc_next_instruction_address;    // Used for branching, setting up the NIA
 
-unsigned exec_flags; // execution control flags
-// FIXME: exec_timer is read by main thread ppc_main_opcode;
+#ifdef EXEC_FLAGS_ATOMIC
+std::atomic<unsigned> exec_flags{0}; // execution control flags
+#else
+// FIXME: read by main thread ppc_main_opcode;
 // written by audio dbdma DMAChannel::update_irq .. add_immediate_timer
-volatile bool exec_timer;
+unsigned exec_flags;
+#endif
 bool int_pin = false; // interrupt request pin state: true - asserted
 bool dec_exception_pending = false;
 
@@ -82,9 +68,6 @@ bool dec_exception_pending = false;
 uint32_t    glob_bb_start_la;
 
 /* variables related to virtual time */
-const bool g_realtime = false;
-uint64_t g_nanoseconds_base;
-uint64_t g_icycles_base;
 uint64_t g_icycles;
 int      icnt_factor;
 
@@ -110,9 +93,6 @@ uint64_t num_supervisor_instrs;
 uint64_t num_int_loads;
 uint64_t num_int_stores;
 uint64_t exceptions_processed;
-#ifdef CPU_PROFILING_OPS
-std::unordered_map<uint32_t, uint64_t> num_opcodes;
-#endif
 
 #include "utils/profiler.h"
 #include <memory>
@@ -143,30 +123,6 @@ public:
         vars.push_back({.name = "Exceptions processed",
                         .format = ProfileVarFmt::DEC,
                         .value = exceptions_processed});
-
-        // Generate top N op counts with readable names.
-#ifdef CPU_PROFILING_OPS
-        PPCDisasmContext ctx;
-        ctx.instr_addr = 0;
-        ctx.simplified = false;
-        std::vector<std::pair<std::string, uint64_t>> op_name_counts;
-        for (const auto& pair : num_opcodes) {
-            ctx.instr_code = pair.first;
-            auto op_name = disassemble_single(&ctx);
-            op_name_counts.emplace_back(op_name, pair.second);
-        }
-        size_t top_ops_size = std::min(op_name_counts.size(), size_t(20));
-        std::partial_sort(op_name_counts.begin(), op_name_counts.begin() + top_ops_size, op_name_counts.end(), [](const auto& a, const auto& b) {
-            return b.second < a.second;
-        });
-        op_name_counts.resize(top_ops_size);
-        for (const auto& pair : op_name_counts) {
-            vars.push_back({.name = "Instruction " + pair.first,
-                            .format = ProfileVarFmt::COUNT,
-                            .value = pair.second,
-                            .count_total = num_executed_instrs});
-        }
-#endif
     };
 
     void reset() {
@@ -175,9 +131,6 @@ public:
         num_int_loads = 0;
         num_int_stores = 0;
         exceptions_processed = 0;
-#ifdef CPU_PROFILING_OPS
-        num_opcodes.clear();
-#endif
     };
 };
 
@@ -320,34 +273,17 @@ void ppc_main_opcode()
 {
 #ifdef CPU_PROFILING
     num_executed_instrs++;
-#if defined(CPU_PROFILING_OPS)
-    num_opcodes[ppc_cur_instruction]++;
-#endif
 #endif
     OpcodeGrabber[(ppc_cur_instruction >> 26) & 0x3F]();
 }
 
-long long cpu_now_ns() {
-#ifdef __APPLE__
-    return ConvertHostTimeToNanos2(mach_absolute_time());
-#else
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(
-        std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-#endif
-}
-
 uint64_t get_virt_time_ns()
 {
-    if (g_realtime) {
-        return cpu_now_ns() - g_nanoseconds_base;
-    } else {
-        return g_icycles << icnt_factor;
-    }
+    return g_icycles << icnt_factor;
 }
 
 uint64_t process_events()
 {
-    exec_timer = false;
     uint64_t slice_ns = TimerManager::get_instance()->process_timers();
     if (slice_ns == 0) {
         // execute 10.000 cycles
@@ -360,7 +296,7 @@ uint64_t process_events()
 void force_cycle_counter_reload()
 {
     // tell the interpreter loop to reload cycle counter
-    exec_timer = true;
+    exec_flags |= EXEF_TIMER;
 }
 
 /** Execute PPC code as long as power is on. */
@@ -373,12 +309,14 @@ static void ppc_exec_inner()
 
     max_cycles = 0;
 
+    bool msr_le = (ppc_state.msr & MSR::LE) != 0;
+
     while (power_on) {
         // define boundaries of the next execution block
         // max execution block length = one memory page
         eb_start   = ppc_state.pc;
-        page_start = eb_start & PPC_PAGE_MASK;
-        eb_end     = page_start + PPC_PAGE_SIZE - 1;
+        page_start = eb_start & PAGE_MASK;
+        eb_end     = page_start + PAGE_SIZE - 1;
         exec_flags = 0;
 
         pc_real    = mmu_translate_imem(eb_start);
@@ -386,19 +324,33 @@ static void ppc_exec_inner()
         // interpret execution block
         while (power_on && ppc_state.pc < eb_end) {
             ppc_main_opcode();
-            if (g_icycles++ >= max_cycles || exec_timer) {
+            msr_le = (ppc_state.msr & MSR::LE) != 0;
+            if (g_icycles++ >= max_cycles) {
                 max_cycles = process_events();
             }
 
             if (exec_flags) {
+                // reload cycle counter if requested
+                if (exec_flags & EXEF_TIMER) {
+                    max_cycles = process_events();
+                    if (!(exec_flags & ~EXEF_TIMER)) {
+                        ppc_state.pc += 4;
+                        pc_real += 4;
+                        if (msr_le) pc_real = mmu_translate_imem(ppc_state.pc);
+                        ppc_set_cur_instruction(pc_real);
+                        exec_flags = 0;
+                        continue;
+                    }
+                }
                 // define next execution block
                 eb_start = ppc_next_instruction_address;
-                if (!(exec_flags & EXEF_RFI) && (eb_start & PPC_PAGE_MASK) == page_start) {
+                if (!(exec_flags & EXEF_RFI) && (eb_start & PAGE_MASK) == page_start) {
                     pc_real += (int)eb_start - (int)ppc_state.pc;
+                    if (msr_le) pc_real = mmu_translate_imem(eb_start);
                     ppc_set_cur_instruction(pc_real);
                 } else {
-                    page_start = eb_start & PPC_PAGE_MASK;
-                    eb_end = page_start + PPC_PAGE_SIZE - 1;
+                    page_start = eb_start & PAGE_MASK;
+                    eb_end = page_start + PAGE_SIZE - 1;
                     pc_real = mmu_translate_imem(eb_start);
                 }
                 ppc_state.pc = eb_start;
@@ -406,6 +358,7 @@ static void ppc_exec_inner()
             } else {
                 ppc_state.pc += 4;
                 pc_real += 4;
+                if (msr_le) pc_real = mmu_translate_imem(ppc_state.pc);
                 ppc_set_cur_instruction(pc_real);
             }
         }
@@ -443,7 +396,11 @@ void ppc_exec_single()
     process_events();
 
     if (exec_flags) {
-        ppc_state.pc = ppc_next_instruction_address;
+        if (!(exec_flags & ~EXEF_TIMER)) {
+            ppc_state.pc += 4;
+        } else {
+            ppc_state.pc = ppc_next_instruction_address;
+        }
         exec_flags = 0;
     } else {
         ppc_state.pc += 4;
@@ -461,12 +418,14 @@ static void ppc_exec_until_inner(const uint32_t goal_addr)
 
     max_cycles = 0;
 
+    bool msr_le = (ppc_state.msr & MSR::LE) != 0;
+
     do {
         // define boundaries of the next execution block
         // max execution block length = one memory page
         eb_start   = ppc_state.pc;
-        page_start = eb_start & PPC_PAGE_MASK;
-        eb_end     = page_start + PPC_PAGE_SIZE - 1;
+        page_start = eb_start & PAGE_MASK;
+        eb_end     = page_start + PAGE_SIZE - 1;
         exec_flags = 0;
 
         pc_real    = mmu_translate_imem(eb_start);
@@ -474,19 +433,33 @@ static void ppc_exec_until_inner(const uint32_t goal_addr)
         // interpret execution block
         while (power_on && ppc_state.pc < eb_end) {
             ppc_main_opcode();
-            if (g_icycles++ >= max_cycles || exec_timer) {
+            msr_le = (ppc_state.msr & MSR::LE) != 0;
+            if (g_icycles++ >= max_cycles) {
                 max_cycles = process_events();
             }
 
             if (exec_flags) {
+                // reload cycle counter if requested
+                if (exec_flags & EXEF_TIMER) {
+                    max_cycles = process_events();
+                    if (!(exec_flags & ~EXEF_TIMER)) {
+                        ppc_state.pc += 4;
+                        pc_real += 4;
+                        if (msr_le) pc_real = mmu_translate_imem(ppc_state.pc);
+                        ppc_set_cur_instruction(pc_real);
+                        exec_flags = 0;
+                        continue;
+                    }
+                }
                 // define next execution block
                 eb_start = ppc_next_instruction_address;
-                if (!(exec_flags & EXEF_RFI) && (eb_start & PPC_PAGE_MASK) == page_start) {
+                if (!(exec_flags & EXEF_RFI) && (eb_start & PAGE_MASK) == page_start) {
                     pc_real += (int)eb_start - (int)ppc_state.pc;
+                    if (msr_le) pc_real = mmu_translate_imem(eb_start);
                     ppc_set_cur_instruction(pc_real);
                 } else {
-                    page_start = eb_start & PPC_PAGE_MASK;
-                    eb_end = page_start + PPC_PAGE_SIZE - 1;
+                    page_start = eb_start & PAGE_MASK;
+                    eb_end = page_start + PAGE_SIZE - 1;
                     pc_real = mmu_translate_imem(eb_start);
                 }
                 ppc_state.pc = eb_start;
@@ -494,6 +467,7 @@ static void ppc_exec_until_inner(const uint32_t goal_addr)
             } else {
                 ppc_state.pc += 4;
                 pc_real += 4;
+                if (msr_le) pc_real = mmu_translate_imem(ppc_state.pc);
                 ppc_set_cur_instruction(pc_real);
             }
 
@@ -527,13 +501,14 @@ static void ppc_exec_dbg_inner(const uint32_t start_addr, const uint32_t size)
     uint8_t* pc_real;
 
     max_cycles = 0;
+    bool msr_le = (ppc_state.msr & MSR::LE) != 0;
 
     while (power_on && (ppc_state.pc < start_addr || ppc_state.pc >= start_addr + size)) {
         // define boundaries of the next execution block
         // max execution block length = one memory page
         eb_start   = ppc_state.pc;
-        page_start = eb_start & PPC_PAGE_MASK;
-        eb_end     = page_start + PPC_PAGE_SIZE - 1;
+        page_start = eb_start & PAGE_MASK;
+        eb_end     = page_start + PAGE_SIZE - 1;
         exec_flags = 0;
 
         pc_real    = mmu_translate_imem(eb_start);
@@ -542,19 +517,33 @@ static void ppc_exec_dbg_inner(const uint32_t start_addr, const uint32_t size)
         while (power_on && (ppc_state.pc < start_addr || ppc_state.pc >= start_addr + size)
                 && (ppc_state.pc < eb_end)) {
             ppc_main_opcode();
-            if (g_icycles++ >= max_cycles || exec_timer) {
+            msr_le = (ppc_state.msr & MSR::LE) != 0;
+            if (g_icycles++ >= max_cycles) {
                 max_cycles = process_events();
             }
 
             if (exec_flags) {
+                // reload cycle counter if requested
+                if (exec_flags & EXEF_TIMER) {
+                    max_cycles = process_events();
+                    if (!(exec_flags & ~EXEF_TIMER)) {
+                        ppc_state.pc += 4;
+                        pc_real += 4;
+                        if (msr_le) pc_real = mmu_translate_imem(ppc_state.pc);
+                        ppc_set_cur_instruction(pc_real);
+                        exec_flags = 0;
+                        continue;
+                    }
+                }
                 // define next execution block
                 eb_start = ppc_next_instruction_address;
-                if (!(exec_flags & EXEF_RFI) && (eb_start & PPC_PAGE_MASK) == page_start) {
+                if (!(exec_flags & EXEF_RFI) && (eb_start & PAGE_MASK) == page_start) {
                     pc_real += (int)eb_start - (int)ppc_state.pc;
+                    if (msr_le) pc_real = mmu_translate_imem(eb_start);
                     ppc_set_cur_instruction(pc_real);
                 } else {
-                    page_start = eb_start & PPC_PAGE_MASK;
-                    eb_end = page_start + PPC_PAGE_SIZE - 1;
+                    page_start = eb_start & PAGE_MASK;
+                    eb_end = page_start + PAGE_SIZE - 1;
                     pc_real = mmu_translate_imem(eb_start);
                 }
                 ppc_state.pc = eb_start;
@@ -562,6 +551,7 @@ static void ppc_exec_dbg_inner(const uint32_t start_addr, const uint32_t size)
             } else {
                 ppc_state.pc += 4;
                 pc_real += 4;
+                if (msr_le) pc_real = mmu_translate_imem(ppc_state.pc);
                 ppc_set_cur_instruction(pc_real);
             }
         }
@@ -640,13 +630,13 @@ do { \
 #define OP63d(subopcode, fn) OPXd(SubOpcode63, subopcode, fn)
 #define OP63dc(subopcode, fn, carry) OPXdc(SubOpcode63, subopcode, fn, carry)
 
-void initialize_ppc_opcode_tables(bool include_601) {
+void initialize_ppc_opcode_tables() {
     std::fill_n(OpcodeGrabber, 64, ppc_illegalop);
     OP(3,  ppc_twi);
     //OP(4,  ppc_opcode4); - Altivec instructions not emulated yet. Uncomment once they're implemented.
     OP(7,  ppc_mulli);
     OP(8,  ppc_subfic);
-    if (is_601 || include_601) OP(9, power_dozi);
+    if (is_601) OP(9, power_dozi);
     OP(10, ppc_cmpli);
     OP(11, ppc_cmpi);
     OP(12, ppc_addic<RC0>);
@@ -659,7 +649,7 @@ void initialize_ppc_opcode_tables(bool include_601) {
     if (is_601) OP(19, ppc_opcode19<IS601>); else OP(19, ppc_opcode19<NOT601>);
     OP(20, ppc_rlwimi);
     OP(21, ppc_rlwinm);
-    if (is_601 || include_601) OP(22, power_rlmi);
+    if (is_601) OP(22, power_rlmi);
     OP(23, ppc_rlwnm);
     OP(24, ppc_ori<SHFT0>);
     OP(25, ppc_ori<SHFT1>);
@@ -795,7 +785,7 @@ void initialize_ppc_opcode_tables(bool include_601) {
     OP31(470,    ppc_dcbi);
     OP31(1014,   ppc_dcbz);
 
-    if (is_601 || include_601) {
+    if (is_601) {
         OP31d(29,   power_maskg);
         OP31od(107, power_mul);
         OP31d(152,  power_slq);
@@ -876,7 +866,7 @@ void initialize_ppc_opcode_tables(bool include_601) {
     }
 }
 
-void ppc_cpu_init(MemCtrlBase* mem_ctrl, uint32_t cpu_version, bool include_601, uint64_t tb_freq)
+void ppc_cpu_init(MemCtrlBase* mem_ctrl, uint32_t cpu_version, uint64_t tb_freq)
 {
     int i;
 
@@ -888,20 +878,14 @@ void ppc_cpu_init(MemCtrlBase* mem_ctrl, uint32_t cpu_version, bool include_601,
     ppc_state.spr[SPR::PVR] = cpu_version;
     is_601 = (cpu_version >> 16) == 1;
 
-    initialize_ppc_opcode_tables(include_601);
+    initialize_ppc_opcode_tables();
 
     // initialize emulator timers
     TimerManager::get_instance()->set_time_now_cb(&get_virt_time_ns);
     TimerManager::get_instance()->set_notify_changes_cb(&force_cycle_counter_reload);
 
     // initialize time base facility
-#ifdef __APPLE__
-    mach_timebase_info(&timebase_info);
-#endif
-    g_nanoseconds_base = cpu_now_ns();
-    g_icycles_base = 0;
-    g_icycles = 0;
-    //icnt_factor      = 6;
+    g_icycles   = 0;
     icnt_factor = 4;
     tbr_wr_timestamp = 0;
     rtc_timestamp = 0;
@@ -910,7 +894,6 @@ void ppc_cpu_init(MemCtrlBase* mem_ctrl, uint32_t cpu_version, bool include_601,
     tbr_period_ns = ((uint64_t)NS_PER_SEC << 32) / tb_freq;
 
     exec_flags = 0;
-    exec_timer = false;
 
     timebase_counter = 0;
     dec_wr_value = 0;
@@ -920,8 +903,8 @@ void ppc_cpu_init(MemCtrlBase* mem_ctrl, uint32_t cpu_version, bool include_601,
         /* MPC601 sets MSR[ME] bit during hard reset / Power-On */
         ppc_state.msr = (MSR::ME + MSR::IP);
     } else {
-        ppc_state.msr             = MSR::IP;
-        ppc_state.spr[SPR::DEC_S] = 0xFFFFFFFFUL;
+        ppc_state.msr           = MSR::IP;
+        ppc_state.spr[SPR::DEC] = 0xFFFFFFFFUL;
     }
 
     ppc_mmu_init();
@@ -941,10 +924,10 @@ void print_fprs() {
 }
 
 static map<string, int> SPRName2Num = {
-    {"XER",    SPR::XER},       {"LR",     SPR::LR},    {"CTR",    SPR::CTR},
-    {"DEC",    SPR::DEC_S},     {"PVR",    SPR::PVR},   {"SPRG0",  SPR::SPRG0},
-    {"SPRG1",  SPR::SPRG1},     {"SPRG2",  SPR::SPRG2}, {"SPRG3",  SPR::SPRG3},
-    {"SRR0",   SPR::SRR0},      {"SRR1",   SPR::SRR1},  {"IBAT0U", 528},
+    {"XER", SPR::XER},          {"LR",     SPR::LR},    {"CTR",    SPR::CTR},
+    {"DEC", SPR::DEC},          {"PVR",    SPR::PVR},   {"SPRG0",  SPR::SPRG0},
+    {"SPRG1", SPR::SPRG1},      {"SPRG2",  SPR::SPRG2}, {"SPRG3",  SPR::SPRG3},
+    {"SRR0", SPR::SRR0},        {"SRR1",   SPR::SRR1},  {"IBAT0U", 528},
     {"IBAT0L", 529},            {"IBAT1U", 530},        {"IBAT1L", 531},
     {"IBAT2U", 532},            {"IBAT2L", 533},        {"IBAT3U", 534},
     {"IBAT3L", 535},            {"DBAT0U", 536},        {"DBAT0L", 537},
@@ -953,9 +936,9 @@ static map<string, int> SPRName2Num = {
     {"HID0",   SPR::HID0},      {"HID1",   SPR::HID1},  {"IABR",   1010},
     {"DABR",   1013},           {"L2CR",   1017},       {"ICTC",   1019},
     {"THRM1",  1020},           {"THRM2",  1021},       {"THRM3",  1022},
-    {"PIR",    1023},           {"TBL",    SPR::TBL_S}, {"TBU",    SPR::TBU_S},
-    {"SDR1",   SPR::SDR1},      {"MQ",     SPR::MQ},    {"RTCU",   SPR::RTCU_S},
-    {"RTCL",   SPR::RTCL_S},    {"DSISR",  SPR::DSISR}, {"DAR",    SPR::DAR},
+    {"PIR",    1023},           {"TBL",    SPR::TBL_U}, {"TBU",    SPR::TBU_U},
+    {"SDR1",   SPR::SDR1},      {"MQ",     SPR::MQ},    {"RTCU",   SPR::RTCU_U},
+    {"RTCL",   SPR::RTCL_U},    {"DSISR",  SPR::DSISR}, {"DAR",    SPR::DAR},
     {"MMCR0",  SPR::MMCR0},     {"PMC1",   SPR::PMC1},  {"PMC2",   SPR::PMC2},
     {"SDA",    SPR::SDA},       {"SIA",    SPR::SIA},   {"MMCR1",  SPR::MMCR1}
 };
@@ -1030,13 +1013,6 @@ uint64_t reg_op(string& reg_name, uint64_t val, bool is_write) {
             reg_num_str = reg_name_u.substr(3);
             reg_num     = (unsigned)stoul(reg_num_str, NULL, 0);
             if (reg_num < 1024) {
-                switch (reg_num) {
-                case SPR::DEC_U  : reg_num = SPR::DEC_S  ; break;
-                case SPR::RTCL_U : reg_num = SPR::RTCL_S ; break;
-                case SPR::RTCU_U : reg_num = SPR::RTCU_S ; break;
-                case SPR::TBL_U  : reg_num = SPR::TBL_S  ; break;
-                case SPR::TBU_U  : reg_num = SPR::TBU_S  ; break;
-                }
                 if (is_write)
                     ppc_state.spr[reg_num] = (uint32_t)val;
                 return ppc_state.spr[reg_num];

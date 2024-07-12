@@ -30,18 +30,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <memory>
 #include <string>
 
-//#define ABSOLUTE
-
 class MouseEvent;
 
 class AdbMouse : public AdbDevice {
-
-enum DeviceClass {
-    TABLET      = 0,
-    MOUSE       = 1,
-    TRACKBALL   = 2,
-};
-
 public:
     AdbMouse(std::string name);
     ~AdbMouse() = default;
@@ -58,23 +49,10 @@ public:
     void set_register_3() override;
 
 private:
-    int32_t  x_rel = 0;
-    int32_t  y_rel = 0;
-    int32_t  x_abs = 0;
-    int32_t  y_abs = 0;
-    uint8_t  buttons_state = 0;
-    bool     changed = false;
-#ifdef ABSOLUTE
-    uint8_t  device_class = TABLET;
-    int      num_buttons = 3;
-    int      num_bits = 16;
-    uint16_t resolution = 72;
-#else
-    uint8_t  device_class = MOUSE;
-    int      num_buttons = 3;
-    int      num_bits = 10;
-    uint16_t resolution = 300;
-#endif
+    int32_t x_rel = 0;
+    int32_t y_rel = 0;
+    uint8_t buttons_state = 0;
+    bool    changed = false;
 };
 
 #endif // ADB_MOUSE_H

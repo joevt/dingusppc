@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 
 #include <cinttypes>
+#include <core/timermanager.h>
 
 using namespace ata_interface;
 
@@ -67,11 +68,13 @@ uint16_t AtaBaseDevice::read(const uint8_t reg_addr) {
             this->chunk_cnt -= 2;
             if (this->chunk_cnt <= 0) {
                 this->xfer_cnt -= this->chunk_size;
-                if (this->xfer_cnt <= 0)
+                if (this->xfer_cnt <= 0) {
+                    //if (this->name.length() != 6) LOG_F(INFO, "%s: Read completed (%d)", this->name.c_str(), this->xfer_cnt);
                     this->r_status &= ~DRQ;
-                else {
+                } else {
                     this->chunk_cnt = this->chunk_size;
-                    this->update_intrq(1);
+                    TimerManager::get_instance()->add_oneshot_timer(
+                        USECS_TO_NSECS(100), [this]() { this->update_intrq(1); });
                 }
             }
             return ret_data;
@@ -104,7 +107,7 @@ uint16_t AtaBaseDevice::read(const uint8_t reg_addr) {
 void AtaBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
     switch (reg_addr) {
     case ATA_Reg::DATA:
-        if (this->has_data()) {
+        if (is_selected() && this->has_data()) {
             *this->cur_data_ptr++ = BYTESWAP_16(value);
             this->chunk_cnt -= 2;
             if (this->chunk_cnt <= 0) {
@@ -112,12 +115,18 @@ void AtaBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
                 this->xfer_cnt -= this->chunk_size;
                 if (this->xfer_cnt <= 0) { // transfer complete?
                     this->r_status &= ~DRQ;
-                    this->r_status &= ~BSY;
-                    this->update_intrq(1);
+                    //LOG_F(INFO, "%s: write complete", name.c_str());
+                    TimerManager::get_instance()->add_oneshot_timer(USECS_TO_NSECS(100), [this]() {
+                        this->r_status &= ~BSY;
+                        this->update_intrq(1);
+                    });
                 } else {
                     this->cur_data_ptr = this->data_ptr;
-                    this->chunk_cnt = this->chunk_size;
-                    this->signal_data_ready();
+                    this->chunk_cnt    = this->chunk_size;
+                    //LOG_F(INFO, "%s: write needs more data (left: 0x%x)", name.c_str(), xfer_cnt);
+                    TimerManager::get_instance()->add_oneshot_timer(USECS_TO_NSECS(100), [this]() {
+                        this->signal_data_ready();
+                    });
                 }
             }
         }
@@ -141,6 +150,10 @@ void AtaBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
         this->r_dev_head = value;
         break;
     case ATA_Reg::COMMAND:
+        if ((this->r_status & BSY) != 0) {
+            LOG_F(ERROR, "%s: tried to perform command %x when busy", name.c_str(), value);
+            break;
+        }
         this->r_command = value;
         if (is_selected() || this->r_command == DIAGNOSTICS) {
             perform_command();
@@ -178,6 +191,7 @@ void AtaBaseDevice::update_intrq(uint8_t new_intrq_state) {
     if (!this->is_selected() || (this->r_dev_ctrl & IEN))
         return;
 
+    //if (name.length() == sizeof("ATA-HD") - 1) LOG_F(INFO, "%s: %sasserting interrupt", name.c_str(), new_intrq_state ? "" : "de");
     this->intrq_state = new_intrq_state;
     this->host_obj->report_intrq(new_intrq_state);
 }

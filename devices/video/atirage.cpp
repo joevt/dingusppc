@@ -89,7 +89,7 @@ static const std::map<uint16_t, std::string> mach64_reg_names = {
 };
 
 ATIRage::ATIRage(uint16_t dev_id)
-    : PCIDevice("ati-rage"), VideoCtrlBase()
+    : PCIDevice("ati-rage"), VideoCtrlBase(640, 480)
 {
     uint8_t asic_id;
 
@@ -133,6 +133,8 @@ ATIRage::ATIRage(uint16_t dev_id)
         this->notify_bar_change(bar_num);
     };
 
+    //this->attach_exp_rom_image(std::string("ati_oem_rage128pro_136_agp_full.rom"));
+
     // stuff default values into chip registers
     this->regs[ATI_CONFIG_CHIP_ID] = (asic_id << ATI_CFG_CHIP_MAJOR) | (dev_id << ATI_CFG_CHIP_TYPE);
 
@@ -146,19 +148,16 @@ ATIRage::ATIRage(uint16_t dev_id)
     set_bit(regs[ATI_CRTC_GEN_CNTL], ATI_CRTC_DISPLAY_DIS); // because blank_on is true
 }
 
-void ATIRage::change_one_bar(uint32_t &aperture, uint32_t aperture_size,
-                             uint32_t aperture_new, int bar_num) {
+void ATIRage::change_one_bar(uint32_t &aperture, uint32_t aperture_size, uint32_t aperture_new, int bar_num) {
     if (aperture != aperture_new) {
         if (aperture)
-            this->host_instance->pci_unregister_mmio_region(aperture,
-                                                            aperture_size, this);
+            this->host_instance->pci_unregister_mmio_region(aperture, aperture_size, this);
 
         aperture = aperture_new;
         if (aperture)
             this->host_instance->pci_register_mmio_region(aperture, aperture_size, this);
 
-        LOG_F(INFO, "%s: aperture[%d] set to 0x%08X", this->name.c_str(),
-              bar_num, aperture);
+        LOG_F(INFO, "%s: aperture[%d] set to 0x%08X", this->name.c_str(), bar_num, aperture);
     }
 }
 
@@ -166,19 +165,14 @@ void ATIRage::notify_bar_change(int bar_num)
 {
     switch (bar_num) {
     case 0:
-        change_one_bar(this->aperture_base[bar_num],
-                       this->aperture_size[bar_num] - this->vram_size,
-                       this->bars[bar_num] & ~15, bar_num);
+        change_one_bar(this->aperture_base[bar_num], this->aperture_size[bar_num] - this->vram_size, this->bars[bar_num] & ~15, bar_num);
         break;
     case 2:
-        change_one_bar(this->aperture_base[bar_num],
-                       this->aperture_size[bar_num],
-                       this->bars[bar_num] & ~15, bar_num);
+        change_one_bar(this->aperture_base[bar_num], this->aperture_size[bar_num], this->bars[bar_num] & ~15, bar_num);
         break;
     case 1:
         this->aperture_base[1] = this->bars[bar_num] & ~3;
-        LOG_F(INFO, "%s: I/O space address set to 0x%08X", this->name.c_str(),
-              this->aperture_base[1]);
+        LOG_F(INFO, "%s: I/O space address set to 0x%08X", this->name.c_str(), this->aperture_base[1]);
         break;
     }
 }
@@ -275,17 +269,6 @@ uint32_t ATIRage::read_reg(uint32_t reg_offset, uint32_t size) {
     return static_cast<uint32_t>(result);
 }
 
-#define WRITE_VALUE_AND_LOG(level) \
-    do { \
-        this->regs[reg_num] = new_value; \
-        if (reg_num != ATI_CRTC_INT_CNTL) { \
-            LOG_F(level, "%s: write %s %04x.%c = %0*x = %08x", this->name.c_str(), \
-                get_reg_name(reg_num), reg_offset, SIZE_ARG(size), size * 2, \
-                (uint32_t)extract_bits<uint64_t>(value, offset * 8, size * 8), new_value \
-            ); \
-        } \
-    } while (0)
-
 void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
     uint32_t reg_num = reg_offset >> 2;
     uint32_t offset = reg_offset & 3;
@@ -312,9 +295,11 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         break;
     case ATI_CRTC_OFF_PITCH:
         new_value = value;
-        WRITE_VALUE_AND_LOG(9);
-        this->crtc_update();
-        return;
+        if (old_value != new_value) {
+            this->regs[reg_num] = new_value;
+            this->crtc_update();
+        }
+        break;
     case ATI_CRTC_INT_CNTL: {
         uint32_t bits_read_only =
             (1 << ATI_CRTC_VBLANK) |
@@ -395,7 +380,7 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         }
 
         this->regs[reg_num] = new_value;
-        if (bit_changed(old_value, new_value, ATI_CRTC_ENABLE)) {
+        if (bit_changed(old_value, new_value, ATI_CRTC_ENABLE) || extract_bits(old_value, ATI_CRTC_PIX_WIDTH, ATI_CRTC_PIX_WIDTH_size) != extract_bits(new_value, ATI_CRTC_PIX_WIDTH, ATI_CRTC_PIX_WIDTH_size)) {
             if (bit_set(new_value, ATI_CRTC_ENABLE) &&
                 !bit_set(new_value, ATI_CRTC_DISPLAY_DIS)) {
                 this->crtc_update();
@@ -404,29 +389,11 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         break;
     case ATI_CUR_CLR0:
     case ATI_CUR_CLR1:
-        new_value = value;
-        this->cursor_dirty = true;
-        draw_fb = true;
-        WRITE_VALUE_AND_LOG(9);
-        return;
+        this->setup_hw_cursor();
+        // fallthrough
     case ATI_CUR_OFFSET:
-        new_value = value;
-        if (old_value != new_value)
-            this->cursor_dirty = true;
-        draw_fb = true;
-        WRITE_VALUE_AND_LOG(9);
-        return;
-    case ATI_CUR_HORZ_VERT_OFF:
-        new_value = value;
-        if (
-            extract_bits<uint32_t>(new_value, ATI_CUR_VERT_OFF, ATI_CUR_VERT_OFF_size) !=
-            extract_bits<uint32_t>(old_value, ATI_CUR_VERT_OFF, ATI_CUR_VERT_OFF_size)
-        )
-            this->cursor_dirty = true;
-        draw_fb = true;
-        WRITE_VALUE_AND_LOG(9);
-        return;
     case ATI_CUR_HORZ_VERT_POSN:
+    case ATI_CUR_HORZ_VERT_OFF:
         new_value = value;
         draw_fb = true;
         break;
@@ -442,23 +409,21 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
                                 ((gpio_levels & 6) << 3) | (gpio_levels & 1), 8, 8);
         }
         break;
-    case ATI_CLOCK_CNTL: {
+    case ATI_CLOCK_CNTL:
+    {
         uint32_t bits_write_only =
             (1 << ATI_CLOCK_STROBE);
 
         new_value = value & ~bits_write_only; // clear the write only bits
 
-        uint8_t pll_addr = extract_bits<uint32_t>(new_value, ATI_PLL_ADDR,
-                                                  ATI_PLL_ADDR_size);
+        uint8_t pll_addr = extract_bits<uint32_t>(new_value, ATI_PLL_ADDR, ATI_PLL_ADDR_size);
         if (offset <= 2 && offset + size > 2 && bit_set(new_value, ATI_PLL_WR_EN)) {
-            uint8_t pll_data = extract_bits<uint32_t>(new_value, ATI_PLL_DATA,
-                                                      ATI_PLL_DATA_size);
+            uint8_t pll_data = extract_bits<uint32_t>(new_value, ATI_PLL_DATA, ATI_PLL_DATA_size);
             this->plls[pll_addr] = pll_data;
             LOG_F(9, "%s: PLL #%d set to 0x%02X", this->name.c_str(), pll_addr, pll_data);
         }
         else {
-            insert_bits<uint32_t>(new_value, this->plls[pll_addr], ATI_PLL_DATA,
-                                  ATI_PLL_DATA_size);
+            insert_bits<uint32_t>(new_value, this->plls[pll_addr], ATI_PLL_DATA, ATI_PLL_DATA_size);
         }
         break;
     }
@@ -483,7 +448,6 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
                                         color_buf[1], color_buf[2], 0xFF);
                 this->dac_wr_index++; // auto-increment color index
                 this->comp_index = 0; // reset color component index
-                draw_fb = true;
             }
         }
         break;
@@ -491,7 +455,7 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         new_value = value;
         if (bit_changed(old_value, new_value, ATI_GEN_CUR_ENABLE)) {
             if (bit_set(new_value, ATI_GEN_CUR_ENABLE))
-                this->cursor_on = true;
+                this->setup_hw_cursor();
             else
                 this->cursor_on = false;
             draw_fb = true;
@@ -531,7 +495,7 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         break;
     }
 
-    WRITE_VALUE_AND_LOG(9);
+    this->regs[reg_num] = new_value;
 }
 
 bool ATIRage::io_access_allowed(uint32_t offset) {
@@ -550,6 +514,15 @@ bool ATIRage::pci_io_read(uint32_t offset, uint32_t size, uint32_t* res) {
     }
 
     *res = BYTESWAP_SIZED(this->read_reg(offset - this->aperture_base[1], size), size);
+    if ((offset - this->aperture_base[1]) < (ATI_GP_IO * 4) ||
+        (offset - this->aperture_base[1]) > (ATI_GP_IO * 4) + 4) {
+        LOG_F(
+            INFO,
+            "ATIRage Read: offset=%x, value=%x, size=%x",
+            offset - this->aperture_base[1],
+            *res,
+            size);
+    }
     return true;
 }
 
@@ -558,6 +531,15 @@ bool ATIRage::pci_io_write(uint32_t offset, uint32_t value, uint32_t size) {
         return false;
     }
 
+    if ((offset - this->aperture_base[1]) < (ATI_GP_IO * 4) ||
+        (offset - this->aperture_base[1]) > (ATI_GP_IO * 4) + 4) {
+        LOG_F(
+            INFO,
+            "ATIRage Write: offset=%x, value=%x, size=%x",
+            offset - this->aperture_base[1],
+            BYTESWAP_SIZED(value, size),
+            size);
+    }
     this->write_reg(offset - this->aperture_base[1], BYTESWAP_SIZED(value, size), size);
     return true;
 }
@@ -573,36 +555,49 @@ uint32_t ATIRage::read(uint32_t rgn_start, uint32_t offset, int size)
         }
         //if (!bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_APER_REG_DIS)) {
             if (offset >= MM_REGS_0_OFF) { // memory-mapped registers, block 0
-                return BYTESWAP_SIZED(this->read_reg(offset & 0x3FF, size), size);
+                uint32_t value = BYTESWAP_SIZED(this->read_reg(offset & 0x3FF, size), size);
+
+                if ((offset & 0x3ff) < (ATI_GP_IO * 4) || (offset & 0x3ff) > (ATI_GP_IO * 4) + 4) {
+                    LOG_F(INFO, "ATIRage Read: offset=%x, value=%x, size=%x", offset & 0x3FF, value, size);
+                }
+                return value;
             }
             if (offset >= MM_REGS_1_OFF
                 //&& bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_EXT_REG_EN)
             ) { // memory-mapped registers, block 1
-                return BYTESWAP_SIZED(this->read_reg((offset & 0x3FF) + 0x400, size), size);
+                uint32_t value = BYTESWAP_SIZED(this->read_reg((offset & 0x3FF) + 0x400, size), size);
+
+                if (((offset & 0x3ff) + 0x400) < (ATI_GP_IO * 4) || ((offset & 0x3ff) + 0x400) > (ATI_GP_IO * 4) + 4) {
+                    LOG_F(
+                        INFO,
+                        "ATIRage Read: offset=%x, value=%x, size=%x",
+                        (offset & 0x3FF) + 0x400,
+                        value,
+                        size);
+                }
+
+                return value;
             }
         //}
-        LOG_F(WARNING, "%s: read  unmapped aperture[0] region %08x.%c",
-              this->name.c_str(), offset, SIZE_ARG(size));
+        LOG_F(WARNING, "%s: read  unmapped aperture[0] region %08x.%c", this->name.c_str(), offset, SIZE_ARG(size));
         return 0;
     }
 
     if (rgn_start == this->aperture_base[2] && offset < this->aperture_size[2]) {
-        LOG_F(WARNING, "%s: read  unmapped aperture[2] region %08x.%c",
-              this->name.c_str(), offset, SIZE_ARG(size));
+        LOG_F(WARNING, "%s: read  unmapped aperture[2] region %08x.%c", this->name.c_str(), offset, SIZE_ARG(size));
         return 0;
     }
 
     // memory mapped expansion ROM region
     if (rgn_start == this->exp_rom_addr) {
-        if (offset < this->exp_rom_size)
-            return read_mem(&this->exp_rom_data[offset], size);
-        LOG_F(WARNING, "%s: read  unmapped ROM region %08x.%c",
-            this->name.c_str(), offset, SIZE_ARG(size));
+        if (offset < this->exp_rom_size) {
+                LOG_F(INFO, "ATIRage: read opROM %08x.%c", offset, SIZE_ARG(size));
+                return read_mem(&this->exp_rom_data[offset], size);
+        }
         return 0;
     }
 
-    LOG_F(WARNING, "%s: read  unmapped aperture region %08x.%c",
-          this->name.c_str(), offset, SIZE_ARG(size));
+    LOG_F(WARNING, "%s: read  unmapped aperture region %08x.%c", this->name.c_str(), offset, SIZE_ARG(size));
     return 0;
 }
 
@@ -619,28 +614,43 @@ void ATIRage::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int siz
         }
         //if (!bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_APER_REG_DIS)) {
             if (offset >= MM_REGS_0_OFF) { // memory-mapped registers, block 0
+
+                if ((offset & 0x3ff) < (ATI_GP_IO * 4) || (offset & 0x3ff) > (ATI_GP_IO * 4) + 4) {
+                    LOG_F(
+                        INFO,
+                        "ATIRage Write: offset=%x, value=%x, size=%x",
+                        offset & 0x3FF,
+                        BYTESWAP_SIZED(value, size),
+                        size);
+                }
                 return this->write_reg(offset & 0x3FF, BYTESWAP_SIZED(value, size), size);
             }
             if (offset >= MM_REGS_1_OFF
                 //&& bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_EXT_REG_EN)
             ) { // memory-mapped registers, block 1
-                return this->write_reg((offset & 0x3FF) + 0x400,
-                                        BYTESWAP_SIZED(value, size), size);
+
+                if (((offset & 0x3ff) + 0x400) < (ATI_GP_IO * 4) ||
+                    ((offset & 0x3ff) + 0x400) > (ATI_GP_IO * 4) + 4) {
+                    LOG_F(
+                        INFO,
+                        "ATIRage Write: offset=%x, value=%x, size=%x",
+                        (offset & 0x3FF) + 0x400,
+                        BYTESWAP_SIZED(value, size),
+                        size);
+                }
+                return this->write_reg((offset & 0x3FF) + 0x400, BYTESWAP_SIZED(value, size), size);
             }
         //}
-        LOG_F(WARNING, "%s: write unmapped aperture[0] region %08x.%c = %0*x",
-              this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
+        LOG_F(WARNING, "%s: write unmapped aperture[0] region %08x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         return;
     }
 
     if (rgn_start == this->aperture_base[2] && offset < this->aperture_size[2]) {
-        LOG_F(WARNING, "%s: write unmapped aperture[2] region %08x.%c = %0*x",
-              this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
+        LOG_F(WARNING, "%s: write unmapped aperture[2] region %08x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         return;
     }
 
-    LOG_F(WARNING, "%s: write unmapped aperture region %08x.%c = %0*x",
-          this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
+    LOG_F(WARNING, "%s: write unmapped aperture region %08x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
 }
 
 float ATIRage::calc_pll_freq(int scale, int fb_div) {
@@ -653,8 +663,7 @@ void ATIRage::verbose_pixel_format(int crtc_index) {
         return;
     }
 
-    uint32_t pix_fmt = extract_bits<uint32_t>(this->regs[ATI_CRTC_GEN_CNTL],
-                                              ATI_CRTC_PIX_WIDTH, ATI_CRTC_PIX_WIDTH_size);
+    uint32_t pix_fmt = extract_bits<uint32_t>(this->regs[ATI_CRTC_GEN_CNTL], ATI_CRTC_PIX_WIDTH, ATI_CRTC_PIX_WIDTH_size);
 
     const char* what = "Pixel format:";
 
@@ -699,22 +708,16 @@ void ATIRage::crtc_update() {
 
     bool need_recalc = false;
 
-    new_width  = (extract_bits<uint32_t>(this->regs[ATI_CRTC_H_TOTAL_DISP],
-                                         ATI_CRTC_H_DISP,
-                                         ATI_CRTC_H_DISP_size) + 1) * 8;
-    new_height = extract_bits<uint32_t>(this->regs[ATI_CRTC_V_TOTAL_DISP],
-                                        ATI_CRTC_V_DISP, ATI_CRTC_V_DISP_size) + 1;
+    new_width  = (extract_bits<uint32_t>(this->regs[ATI_CRTC_H_TOTAL_DISP], ATI_CRTC_H_DISP, ATI_CRTC_H_DISP_size) + 1) * 8;
+    new_height = extract_bits<uint32_t>(this->regs[ATI_CRTC_V_TOTAL_DISP], ATI_CRTC_V_DISP, ATI_CRTC_V_DISP_size) + 1;
 
     if (new_width != this->active_width || new_height != this->active_height) {
         this->create_display_window(new_width, new_height);
         need_recalc = true;
     }
 
-    new_htotal = (extract_bits<uint32_t>(this->regs[ATI_CRTC_H_TOTAL_DISP],
-                                         ATI_CRTC_H_TOTAL,
-                                         ATI_CRTC_H_TOTAL_size) + 1) * 8;
-    new_vtotal = extract_bits<uint32_t>(this->regs[ATI_CRTC_V_TOTAL_DISP],
-                                        ATI_CRTC_V_TOTAL, ATI_CRTC_V_TOTAL_size) + 1;
+    new_htotal = (extract_bits<uint32_t>(this->regs[ATI_CRTC_H_TOTAL_DISP], ATI_CRTC_H_TOTAL, ATI_CRTC_H_TOTAL_size) + 1) * 8;
+    new_vtotal = extract_bits<uint32_t>(this->regs[ATI_CRTC_V_TOTAL_DISP], ATI_CRTC_V_TOTAL, ATI_CRTC_V_TOTAL_size) + 1;
 
     if (new_htotal != this->hori_total || new_vtotal != this->vert_total) {
         this->hori_total = new_htotal;
@@ -724,36 +727,18 @@ void ATIRage::crtc_update() {
 
     uint32_t new_vert_blank = new_vtotal - new_height;
     if (new_vert_blank != this->vert_blank) {
-        this->vert_blank = new_vert_blank;
+        this->vert_blank = vert_blank;
         need_recalc = true;
     }
 
-    int new_pixel_format = extract_bits<uint32_t>(this->regs[ATI_CRTC_GEN_CNTL],
-                                                  ATI_CRTC_PIX_WIDTH,
-                                                  ATI_CRTC_PIX_WIDTH_size);
+    int new_pixel_format = extract_bits<uint32_t>(this->regs[ATI_CRTC_GEN_CNTL], ATI_CRTC_PIX_WIDTH, ATI_CRTC_PIX_WIDTH_size);
     if (new_pixel_format != this->pixel_format) {
         this->pixel_format = new_pixel_format;
         need_recalc = true;
     }
 
-    static uint8_t bits_per_pixel[8] = {0, 4, 8, 16, 16, 24, 32, 0};
-
-    int new_fb_pitch = extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH],
-        ATI_CRTC_PITCH, ATI_CRTC_PITCH_size) * bits_per_pixel[this->pixel_format];
-    if (new_fb_pitch != this->fb_pitch) {
-        this->fb_pitch = new_fb_pitch;
-        need_recalc = true;
-    }
-    uint8_t* new_fb_ptr = &this->vram_ptr[extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH],
-        ATI_CRTC_OFFSET, ATI_CRTC_OFFSET_size) * 8];
-    if (new_fb_ptr != this->fb_ptr) {
-        this->fb_ptr = new_fb_ptr;
-        need_recalc = true;
-    }
-
     // look up which VPLL ouput is requested
-    int clock_sel = extract_bits<uint32_t>(this->regs[ATI_CLOCK_CNTL], ATI_CLOCK_SEL,
-                                           ATI_CLOCK_SEL_size);
+    int clock_sel = extract_bits<uint32_t>(this->regs[ATI_CLOCK_CNTL], ATI_CLOCK_SEL, ATI_CLOCK_SEL_size);
 
     // calculate VPLL output frequency
     float vpll_freq = calc_pll_freq(2, this->plls[VCLK0_FB_DIV + clock_sel]);
@@ -773,8 +758,6 @@ void ATIRage::crtc_update() {
 
     if (!need_recalc)
         return;
-
-    this->draw_fb = true;
 
     // calculate display refresh rate
     this->refresh_rate = pixel_clock / this->hori_total / this->vert_total;
@@ -835,6 +818,13 @@ void ATIRage::crtc_update() {
         LOG_F(ERROR, "%s: unsupported pixel format %d", this->name.c_str(), this->pixel_format);
     }
 
+    static uint8_t bits_per_pixel[8] = {0, 4, 8, 16, 16, 24, 32, 0};
+
+    this->fb_pitch = extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH], ATI_CRTC_PITCH, ATI_CRTC_PITCH_size) *
+        (bits_per_pixel[this->pixel_format & 7] * 8) >> 3;
+
+    this->fb_ptr = &this->vram_ptr[extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH], ATI_CRTC_OFFSET, ATI_CRTC_OFFSET_size) * 8];
+
     LOG_F(INFO, "%s: primary CRT controller enabled:", this->name.c_str());
     LOG_F(INFO, "Video mode: %s",
          bit_set(this->regs[ATI_CRTC_GEN_CNTL], ATI_CRTC_EXT_DISP_EN) ? "extended" : "VGA");
@@ -844,6 +834,17 @@ void ATIRage::crtc_update() {
     LOG_F(INFO, "VPLL frequency: %f MHz", vpll_freq * 1e-6);
     LOG_F(INFO, "Pixel (dot) clock: %f MHz", this->pixel_clock * 1e-6);
     LOG_F(INFO, "Refresh rate: %f Hz", this->refresh_rate);
+
+    LOG_F(
+        INFO,
+        "Framebuffer offset: %x",
+        extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH], ATI_CRTC_OFFSET, ATI_CRTC_OFFSET_size) *
+            8);
+    LOG_F(
+        INFO,
+        "Framebuffer pitch: %x (%x)",
+        extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH], ATI_CRTC_PITCH, ATI_CRTC_PITCH_size),
+        fb_pitch);
 
     this->stop_refresh_task();
     this->start_refresh_task();
@@ -895,7 +896,7 @@ void ATIRage::get_cursor_position(int& x, int& y) {
 int ATIRage::device_postinit()
 {
     this->vbl_cb = [this](uint8_t irq_line_state) {
-        insert_bits<uint32_t>(this->regs[ATI_CRTC_INT_CNTL], irq_line_state, ATI_CRTC_VBLANK, irq_line_state);
+        insert_bits<uint32_t>(this->regs[ATI_CRTC_INT_CNTL], irq_line_state, ATI_CRTC_VBLANK, 1);
         if (irq_line_state) {
             set_bit(this->regs[ATI_CRTC_INT_CNTL], ATI_CRTC_VBLANK_INT);
             set_bit(this->regs[ATI_CRTC_INT_CNTL], ATI_CRTC_VLINE_INT);

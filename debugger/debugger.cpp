@@ -338,8 +338,13 @@ static uint32_t disasm(uint32_t count, uint32_t address) {
     ctx.instr_addr = address;
     ctx.simplified = true;
 
+    bool needs_swap = false;
+    if (mem_ctrl_instance != nullptr)
+        needs_swap = mem_ctrl_instance->needs_swap_endian(false);
+
     for (int i = 0; power_on && i < count; i++) {
-        ctx.instr_code = READ_DWORD_BE_A(mmu_translate_imem(ctx.instr_addr));
+        uint8_t* real_addr = mmu_translate_imem(ctx.instr_addr);
+        ctx.instr_code = needs_swap ? READ_DWORD_LE_A(real_addr) : READ_DWORD_BE_A(real_addr);
         cout << setfill('0') << setw(8) << right << uppercase << hex << ctx.instr_addr;
         cout << ": " << setfill('0') << setw(8) << right << uppercase << hex << ctx.instr_code;
         cout << "    " << disassemble_single(&ctx) << setfill(' ') << left << endl;
@@ -364,10 +369,10 @@ static void print_gprs() {
         }
     }
 
-    array<string,6> sprs = {"PC", "LR", "CR", "CTR", "XER", "MSR"};
+    array<string, 8> sprs = {"PC", "LR", "CR", "CTR", "XER", "MSR", "SRR0", "SRR1"};
 
     for (auto &spr : sprs) {
-        cout << right << std::setw(3) << setfill(' ') << spr << " : " <<
+        cout << right << std::setw(4) << setfill(' ') << spr << " : " <<
             setw(8) << setfill('0') << uppercase << hex << get_reg(spr) << setfill(' ');
 
         if (i & 1) {
@@ -447,9 +452,7 @@ void enter_debugger() {
     size_t separator_pos;
     bool did_message = false;
     uint32_t next_addr_ppc;
-#ifdef ENABLE_68K_DEBUGGER
     uint32_t next_addr_68k;
-#endif
     bool cmd_repeat;
 
     unique_ptr<OfConfigUtils> ofnvram = unique_ptr<OfConfigUtils>(new OfConfigUtils);
@@ -530,11 +533,6 @@ void enter_debugger() {
             // ignore command if interrupt happens because the input line is probably incomplete.
             last_cmd = "";
             continue;
-        }
-
-        if (feof(stdin)) {
-            printf("eof -> quit\n");
-            cmd = "quit";
         }
 
         cmd_repeat = cmd.empty() && !last_cmd.empty();

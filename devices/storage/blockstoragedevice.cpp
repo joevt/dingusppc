@@ -58,7 +58,7 @@ int BlockStorageDevice::set_host_file(std::string file_path) {
 }
 
 int BlockStorageDevice::set_fpos(const uint32_t lba) {
-    this->cur_fpos = lba * this->block_size;
+    this->cur_fpos = (uint64_t)lba * (uint64_t)this->block_size;
     return 0;
 }
 

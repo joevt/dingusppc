@@ -47,13 +47,13 @@ enum ControlRegs : int {
     VBPEQ           = 0x05, // vertical back porch with EQ      (rw) 12 bits
     VSYNC           = 0x06, // vertical sync starting point     (rw) 12 bits
     VHLINE          = 0x07, // vertical half line               (rw) 12 bits
-    PIPE_DELAY      = 0x08, // controls pixel pipe delay        (rw) ndrv says 12 bits but only 10 are writable
+    PIPE_DELAY      = 0x08, // controls pixel pipe delay        (rw) 12 bits
     HPIX            = 0x09, // horizontal pixel count           (rw) 12 bits
     HFP             = 0x0A, // horizontal front porch           (rw) 12 bits
     HAL             = 0x0B, // horizontal active line           (rw) 12 bits
     HBWAY           = 0x0C, // horizontal breezeway             (rw) 12 bits
     HSP             = 0x0D, // horizontal sync starting point   (rw) 12 bits
-    HEQ             = 0x0E, // horizontal equalization          (rw) ndrv says 12 bits but only 8 are writable
+    HEQ             = 0x0E, // horizontal equalization          (rw) 12 bits
     HLFLN           = 0x0F, // horizontal half line             (rw) 12 bits
     HSERR           = 0x10, // horizontal serration             (rw) 12 bits
     CNTTST          = 0x11, // Swatch counter test value        (rw) 12 bits
@@ -72,33 +72,17 @@ enum ControlRegs : int {
 
 // Bit definitions for the video timing generator (Swatch) control register.
 enum {
-    VSYNC_CNT_LOAD  = 1 <<  0, //
-    VSYNC_CNT_STOP  = 1 <<  1, //
-    VSYNC_POLARITY  = 1 <<  2, // 0 - negative, 1 - positive
     RESET_TIMING    = 1 <<  3, // toggle this bit to change timing parameters
-    HSYNC_CNT_LOAD  = 1 <<  4, //
-    HSYNC_CNT_STOP  = 1 <<  5, //
-    HSYNC_POLARITY  = 1 <<  6, // 0 - negative, 1 - positive
-    ADJ_FIELD_ONE   = 1 <<  7, // 1- field  I parameters are increased by 1
-    ADJ_FIELD_TWO   = 1 <<  8, // 1- field II parameters are increased by 1
-    TEST_ENABLE     = 1 <<  9, // counter test enable, probably unimplemented in Control
     DISABLE_TIMING  = 1 << 10, // 1 - disable video timing, 0 - enable it
 };
 
 // Bit definitions for MISC_ENABLES register.
 enum {
     SCAN_CONTROL        = 1 <<  0, // 0 - interlaced, 1 - progressive
-    FB_ENDIAN_LITTLE    = 1 <<  1, // framebuffer endianness: 0 - big, 1 - little,
-                                   // 1 also makes ControlRegs big endian
-    DOUBLE_BUFFERING    = 1 <<  2, // 1 - enables double buffering
-    STD_BANK_DISABLE    = 1 <<  3, // 0 - standard VRAM bank enabled, 1 - disabled
-    PAGE_DETECT_ENABLE  = 1 <<  4, // always enabled (set to 1) in the driver
-    REFRESH_TIMING      = 1 <<  5, // ?
+    FB_ENDIAN_LITTLE    = 1 <<  1, // framebuffer endianness: 0 - big, 1 - little
+//  ?                   = 1 <<  4,
+//  ?                   = 1 <<  5,
     VRAM_WIDE_MODE      = 1 <<  6, // VRAM bus width: 1 - 128bit, 0 - 64bit
-    TRISTATE_OUTPUTS    = 1 <<  7, // 1 - causes outputs to be tristated
-    VSYNC_DISABLE       = 1 <<  8, // 0 - enable vertical sync, 1 - disable it
-    HSYNC_DISABLE       = 1 <<  9, // 0 - enable horizontal sync, 1 - disable it
-    CSYNC_DISABLE       = 1 << 10, // 0 - enable composite sync, 1 - disable it
     BLANK_DISABLE       = 1 << 11, // 0 - enable blanking, 1 - disable it
 };
 
@@ -108,6 +92,24 @@ enum {
     VBL_IRQ_EN   = 1 << 2, // VBL interrupt enable bit (INT_ENABLE)
     VBL_IRQ_STAT = 1 << 2, // VBL interrupt status bit (INT_STATUS)
 };
+
+namespace RadacalRegs {
+
+enum RadacalRegs : uint8_t {
+    ADDRESS         = 0, // address register
+    CURSOR_CLUT     = 1, // cursor palette data
+    MULTI           = 2, // multipurpose section
+    CLUT_DATA       = 3, // color palette data
+
+    // multipurpose section registers
+    CURSOR_POS_HI   = 0x10, // cursor position, high-order byte
+    CURSOR_POS_LO   = 0x11, // cursor position, low-order byte
+    MISC_CTRL       = 0x20, // miscellaneus control bits
+    DBL_BUF_CTRL    = 0x21, // double buffer control bits
+    TEST_CTRL       = 0x22, // enable/disable DAC tests
+};
+
+}; // namespace RadacalRegs
 
 class ControlVideo : public PCIDevice, public VideoCtrlBase {
 public:
@@ -125,8 +127,6 @@ public:
     void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size);
 
 protected:
-    void change_one_bar(uint32_t &aperture, uint32_t aperture_size, uint32_t aperture_new,
-                        int bar_num);
     void notify_bar_change(int bar_num);
 
     void enable_display();
@@ -152,11 +152,9 @@ private:
     uint32_t    row_words = 0;
     uint32_t    fb_base = 0;
     uint16_t    swatch_params[16];
-    uint16_t    cnt_tst = 0;
     int         strobe_counter = 0;
-    uint8_t     vram_banks = 0;
+    uint8_t     num_banks = 0;
     uint8_t     cur_mon_id = 0;
-    uint8_t     mon_sense = 0;
     uint16_t    enables = 0;
     uint8_t     int_enable = 0;
     uint8_t     int_status = 0;

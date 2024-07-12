@@ -63,5 +63,6 @@ size_t ImgFile::write(const void* buf, off_t offset, size_t length)
 {
     impl->stream.seekg(offset, std::ios::beg);
     impl->stream.write((const char *)buf, length);
+    impl->stream.flush();
     return impl->stream.gcount();
 }
