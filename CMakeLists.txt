@@ -39,6 +39,7 @@ elseif (WIN32) # Windows build relies on vcpkg
     endif()
 
     set(CMAKE_TOOLCHAIN_FILE ${vcpkg_toolchain_file})
+    include(${vcpkg_toolchain_file})
     find_package(SDL2 CONFIG REQUIRED)
     add_compile_definitions(SDL_MAIN_HANDLED)
 endif()
