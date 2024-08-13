@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-22 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <devices/deviceregistry.h>
 #include <devices/common/hwcomponent.h>
+#include <loguru.hpp>
 
 #include <string>
 
@@ -62,7 +63,5 @@ DeviceDescription& DeviceRegistry::get_descriptor(const std::string& name)
         return it->second;
     }
 
-    static DeviceDescription empty_descriptor = {};
-
-    return empty_descriptor;
+    ABORT_F("Device \"%s\" is not registered!", name.c_str());
 }
