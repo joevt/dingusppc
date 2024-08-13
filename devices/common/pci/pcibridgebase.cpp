@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+//#include <debugger/backtrace.h>
 #include <devices/common/pci/pcibridgebase.h>
 #include <memaccess.h>
 
@@ -78,6 +79,8 @@ void PCIBridgeBase::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetai
         this->pci_wr_primary_bus(value & 0xFFU);
         break;
     case PCI_CFG_DWORD_15:
+        //LOG_WRITE_NAMED_CONFIG_REGISTER("PCI_CFG_DWORD_15");
+        //dump_backtrace();
         this->irq_line = value >> 24;
         this->pci_wr_bridge_control(value >> 16);
         break;
