@@ -88,7 +88,7 @@ static const PropMap Pippin_Settings = {
 };
 
 static vector<string> Pippin_Devices = {
-    "Aspen", "AspenPci1", "ScsiMesh", "MeshTnt", "GrandCentral", "TaosVideo"
+    "Aspen", "AspenPci1", "MeshTnt", "GrandCentral", "TaosVideo"
 };
 
 static const MachineDescription Pippin_Descriptor = {

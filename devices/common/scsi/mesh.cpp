@@ -307,12 +307,16 @@ static const PropMap Mesh_properties = {
     {"cdr_img2", new StrProperty("")},
 };
 
+static const vector<string> Mesh_Subdevices = {
+    "ScsiMesh"
+};
+
 static const DeviceDescription Mesh_Tnt_Descriptor = {
-    MeshController::create_for_tnt, {}, Mesh_properties
+    MeshController::create_for_tnt, Mesh_Subdevices, Mesh_properties
 };
 
 static const DeviceDescription Mesh_Heathrow_Descriptor = {
-    MeshController::create_for_heathrow, {}, Mesh_properties
+    MeshController::create_for_heathrow, Mesh_Subdevices, Mesh_properties
 };
 
 REGISTER_DEVICE(MeshTnt,      Mesh_Tnt_Descriptor);
