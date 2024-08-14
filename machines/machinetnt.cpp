@@ -191,13 +191,12 @@ static const PropMap pm7500_settings = {
 };
 
 static std::vector<std::string> pm7500_devices = {
-    "Hammerhead", "Bandit1", "Chaos", "ScsiMesh", "MeshTnt", "GrandCentral",
-    "ControlVideo"
+    "Hammerhead", "Bandit1", "ScsiMesh", "MeshTnt", "GrandCentral", "Chaos"
 };
 
 static std::vector<std::string> pm8500_devices = {
-    "Hammerhead", "Bandit1", "Chaos", "ScsiMesh", "MeshTnt", "GrandCentral",
-    "ControlVideo", "Sixty6Video"
+    "Hammerhead", "Bandit1", "ScsiMesh", "MeshTnt", "GrandCentral", "Chaos",
+    "Sixty6Video"
 };
 
 static std::vector<std::string> pm9500_devices = {
