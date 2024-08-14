@@ -179,8 +179,10 @@ void AtaBaseDevice::device_control(const uint8_t new_ctrl) {
             this->r_status |= BSY;
             this->device_reset(true);
         } else { // SRST cleared -> phase 1 aka signature and error report
-            if (!this->my_dev_id && this->host_obj->is_device1_present())
+            if (!this->my_dev_id && this->host_obj->is_device1_present()) {
+                LOG_F(ERROR, "%s: changing error from 0x%02x to 0x%02x", this->name.c_str(), this->r_error, this->r_error | 0x80);
                 this->r_error |= 0x80;
+            }
             this->device_set_signature();
             this->r_status &= ~BSY;
 
