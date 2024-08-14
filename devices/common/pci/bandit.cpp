@@ -392,6 +392,10 @@ static const PropMap PsxPci1_Properties = {
         new StrProperty("")},
 };
 
+static const std::vector<std::string> Chaos_Subdevices = {
+    "ControlVideo"
+};
+
 static const DeviceDescription Bandit1_Descriptor = {
     Bandit::create_first, {}, Bandit1_Properties
 };
@@ -405,7 +409,7 @@ static const DeviceDescription PsxPci1_Descriptor = {
 };
 
 static const DeviceDescription Chaos_Descriptor = {
-    Chaos::create, {}, Chaos_Properties
+    Chaos::create, Chaos_Subdevices, Chaos_Properties
 };
 
 static const DeviceDescription AspenPci1_Descriptor = {
