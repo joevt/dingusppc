@@ -82,7 +82,7 @@ protected:
     IdeChannel* host_obj = nullptr;
 
     // IDE aka task file registers
-    uint8_t r_error;
+    uint8_t r_error = 0;
     uint8_t r_features;
     uint8_t r_sect_count;
     uint8_t r_sect_num;
