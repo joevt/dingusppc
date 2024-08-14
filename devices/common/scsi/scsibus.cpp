@@ -60,6 +60,7 @@ void ScsiBus::register_device(int id, ScsiDevice* dev_obj)
     if (this->devices[id] != nullptr) {
         ABORT_F("%s: device with ID %d already registered", this->get_name().c_str(), id);
     }
+    LOG_F(INFO, "%s: Added SCSI device %s ID:%d", this->get_name().c_str(), dev_obj->get_name().c_str(), id);
 
     this->devices[id] = dev_obj;
 
