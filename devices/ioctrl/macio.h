@@ -219,10 +219,12 @@ public:
 
 protected:
     void notify_bar_change(int bar_num);
-    uint32_t read_ctrl(uint32_t offset, int size);
-    void write_ctrl(uint32_t offset, uint32_t value, int size);
+    uint32_t mio_ctrl_read(uint32_t offset, int size);
+    void mio_ctrl_write(uint32_t offset, uint32_t value, int size);
     uint32_t dma_read(uint32_t offset, int size);
     void dma_write(uint32_t offset, uint32_t value, int size);
+
+    void feature_control(const uint32_t value);
 
     void signal_cpu_int();
     void clear_cpu_int();
@@ -235,13 +237,22 @@ private:
     std::atomic<uint32_t>    int_levels{0};
     std::atomic<uint32_t>    int_events{0};
     bool        cpu_int_latch = false;
+    uint32_t    feat_ctrl     = 0;    // features control register
 
-    std::unique_ptr<AwacsScreamer>  awacs; // AWACS audio codec instance
+    // subdevice objects
+    MacioSndCodec*      snd_codec; // audio codec instance
+
+    NVram*              nvram;    // NVRAM
+    ViaCuda*            viacuda;  // VIA cell with Cuda MCU attached to it
+    MeshController*     mesh;     // MESH SCSI cell instance
+    EsccController*     escc;     // ESCC serial controller
+    IdeChannel*         ide_0;    // Internal ATA
+    Swim3::Swim3Ctrl*   swim3;    // floppy disk controller
+
+    // DMA channels
+    std::unique_ptr<DMAChannel>     mesh_dma;
+    std::unique_ptr<DMAChannel>     floppy_dma;
     std::unique_ptr<DMAChannel>     snd_out_dma;
-
-    NVram*              nvram;   // NVRAM module
-    ViaCuda*            viacuda; // VIA cell with Cuda MCU attached to it
-    EsccController*     escc;    // ESCC serial controller
 
     uint16_t unsupported_dma_channel_read = 0;
     uint16_t unsupported_dma_channel_write = 0;
