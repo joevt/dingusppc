@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/pci/pcihost.h>
 #include <devices/common/pci/pcidevice.h>
 #include <devices/common/scsi/scsihd.h>
+#include <devices/deviceregistry.h>
 #include <devices/ioctrl/macio.h>
 #include <devices/memctrl/hammerhead.h>
 #include <loguru.hpp>
@@ -56,7 +57,20 @@ static std::vector<PciIrqMap> chaos_irq_map = {
     {"vci_E",  DEV_FUN(0x0E,0), IntSrc::VCI  },
 };
 
-int initialize_tnt(std::string& id)
+class MachineTnt : public HWComponent {
+
+public:
+
+static std::unique_ptr<HWComponent> create() {
+    MachineTnt *machine = new MachineTnt();
+    if (machine && 0 == machine->initialize_tnt())
+        return std::unique_ptr<MachineTnt>(machine);
+    if (machine)
+        delete machine;
+    return nullptr;
+}
+
+int initialize_tnt()
 {
     LOG_F(INFO, "Building machine TNT...");
 
@@ -150,6 +164,8 @@ int initialize_tnt(std::string& id)
     return 0;
 }
 
+};
+
 template <uint32_t cpu>
 static const PropMap pm7500_settings = {
     {"rambank0_size",
@@ -203,60 +219,82 @@ static vector<string> pm9500_devices = {
     "Hammerhead", "Bandit1", "GrandCentralTnt", "Bandit2",
 };
 
+static const DeviceDescription MachineTnt7300_descriptor = {
+    MachineTnt::create, pm7500_devices, pm7500_settings<PPC_VER::MPC604E>
+};
+
+static const DeviceDescription MachineTnt7500_descriptor = {
+    MachineTnt::create, pm7500_devices, pm7500_settings<PPC_VER::MPC601>
+};
+
+static const DeviceDescription MachineTnt8500_descriptor = {
+    MachineTnt::create, pm8500_devices, pm7500_settings<PPC_VER::MPC604>
+};
+
+static const DeviceDescription MachineTnt9500_descriptor = {
+    MachineTnt::create, pm9500_devices, pm7500_settings<PPC_VER::MPC604>
+};
+
+static const DeviceDescription MachineTnt7600_descriptor = {
+    MachineTnt::create, pm7500_devices, pm7500_settings<PPC_VER::MPC604E>
+};
+
+static const DeviceDescription MachineTnt8600_descriptor = {
+    MachineTnt::create, pm8500_devices, pm7500_settings<PPC_VER::MPC604E>
+};
+
+static const DeviceDescription MachineTnt9600_descriptor = {
+    MachineTnt::create, pm9500_devices, pm7500_settings<PPC_VER::MPC604E>
+};
+
+REGISTER_DEVICE(MachineTnt7300, MachineTnt7300_descriptor);
+REGISTER_DEVICE(MachineTnt7500, MachineTnt7500_descriptor);
+REGISTER_DEVICE(MachineTnt8500, MachineTnt8500_descriptor);
+REGISTER_DEVICE(MachineTnt9500, MachineTnt9500_descriptor);
+REGISTER_DEVICE(MachineTnt7600, MachineTnt7600_descriptor);
+REGISTER_DEVICE(MachineTnt8600, MachineTnt8600_descriptor);
+REGISTER_DEVICE(MachineTnt9600, MachineTnt9600_descriptor);
+
 static const MachineDescription pm7300_descriptor = {
     .name = "pm7300",
     .description = "Power Macintosh 7300",
-    .devices = pm7500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC604E>,
-    .init_func = &initialize_tnt
+    .machine_root = "MachineTnt7300",
 };
 
 static const MachineDescription pm7500_descriptor = {
     .name = "pm7500",
     .description = "Power Macintosh 7500",
-    .devices = pm7500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC601>,
-    .init_func = &initialize_tnt
+    .machine_root = "MachineTnt7500",
 };
 
 static const MachineDescription pm8500_descriptor = {
     .name = "pm8500",
     .description = "Power Macintosh 8500",
-    .devices = pm8500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC604>,
-    .init_func = &initialize_tnt
+    .machine_root = "MachineTnt8500",
 };
 
 static const MachineDescription pm9500_descriptor = {
     .name = "pm9500",
     .description = "Power Macintosh 9500",
-    .devices = pm9500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC604>,
-    .init_func = &initialize_tnt
+    .machine_root = "MachineTnt9500",
 };
 
 static const MachineDescription pm7600_descriptor = {
     .name = "pm7600",
     .description = "Power Macintosh 7600",
-    .devices = pm7500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC604E>,
-    .init_func = &initialize_tnt
+    .machine_root = "MachineTnt7600",
 };
 
 static const MachineDescription pm8600_descriptor = {
     .name = "pm8600",
     .description = "Power Macintosh 8600",
-    .devices = pm8500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC604E>,
-    .init_func = &initialize_tnt
+    .machine_root = "MachineTnt8600",
 };
 
 static const MachineDescription pm9600_descriptor = {
     .name = "pm9600",
     .description = "Power Macintosh 9600",
-    .devices = pm9500_devices,
-    .settings = pm7500_settings<PPC_VER::MPC604E>,
-    .init_func = &initialize_tnt
+    .machine_root = "MachineTnt9600",
 };
 
 REGISTER_MACHINE(pm7300, pm7300_descriptor);

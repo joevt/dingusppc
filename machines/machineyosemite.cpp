@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cpu/ppc/ppcemu.h>
 #include <devices/common/pci/dec21154.h>
+#include <devices/deviceregistry.h>
 #include <devices/memctrl/mpc106.h>
 #include <devices/memctrl/spdram.h>
 #include <machines/machinebase.h>
@@ -59,7 +60,20 @@ static void setup_ram_slot(std::string name, int i2c_addr, int capacity_megs) {
     i2c_bus->register_device(i2c_addr, ram_dimm);
 }
 
-int initialize_yosemite(std::string& id)
+class MachineYosemite : public HWComponent {
+
+public:
+
+static std::unique_ptr<HWComponent> create() {
+    MachineYosemite *machine = new MachineYosemite();
+    if (machine && 0 == machine->initialize_yosemite())
+        return std::unique_ptr<MachineYosemite>(machine);
+    if (machine)
+        delete machine;
+    return nullptr;
+}
+
+int initialize_yosemite()
 {
     LOG_F(INFO, "Building machine Yosemite...");
 
@@ -132,6 +146,8 @@ int initialize_yosemite(std::string& id)
     return 0;
 }
 
+};
+
 static const PropMap yosemite_settings = {
     {"rambank1_size",
         new IntProperty(256, vector<uint32_t>({8, 16, 32, 64, 128, 256}))},
@@ -162,12 +178,16 @@ static vector<string> yosemite_devices = {
 #endif
 };
 
+static const DeviceDescription MachineYosemite_descriptor = {
+    MachineYosemite::create, yosemite_devices, yosemite_settings
+};
+
+REGISTER_DEVICE(MachineYosemite, MachineYosemite_descriptor);
+
 static const MachineDescription yosemite_descriptor = {
     .name = "pmg3nw",
     .description = "Power Macintosh G3 Blue and White",
-    .devices = yosemite_devices,
-    .settings = yosemite_settings,
-    .init_func = &initialize_yosemite
+    .machine_root = "MachineYosemite",
 };
 
 REGISTER_MACHINE(pmg3nw, yosemite_descriptor);

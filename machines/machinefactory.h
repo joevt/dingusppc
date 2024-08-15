@@ -40,9 +40,7 @@ struct DeviceDescription;
 struct MachineDescription {
     string                  name;
     string                  description;
-    vector<string>          devices;
-    PropMap                 settings;
-    function<int(string&)>  init_func;
+    string                  machine_root;
 };
 
 extern map<string, string> gMachineFactorySettings;

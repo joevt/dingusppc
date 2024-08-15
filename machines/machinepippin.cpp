@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cpu/ppc/ppcemu.h>
 #include <devices/common/pci/pcihost.h>
+#include <devices/deviceregistry.h>
 #include <devices/ioctrl/macio.h>
 #include <devices/memctrl/aspen.h>
 #include <machines/machinebase.h>
@@ -41,7 +42,20 @@ static std::vector<PciIrqMap> aspen_irq_map = {
     {nullptr , DEV_FUN(0x10,0),              }, // GrandCentral
 };
 
-int initialize_pippin(std::string& id) {
+class MachinePippin : public HWComponent {
+
+public:
+
+static std::unique_ptr<HWComponent> create() {
+    MachinePippin *machine = new MachinePippin();
+    if (machine && 0 == machine->initialize_pippin())
+        return std::unique_ptr<MachinePippin>(machine);
+    if (machine)
+        delete machine;
+    return nullptr;
+}
+
+int initialize_pippin() {
     LOG_F(INFO, "Building machine Pippin...");
 
     PCIHost *pci_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name("AspenPci1"));
@@ -72,7 +86,9 @@ int initialize_pippin(std::string& id) {
     return 0;
 }
 
-static const PropMap Pippin_Settings = {
+};
+
+static const PropMap Pippin_settings = {
     {"rambank1_size",
         new IntProperty(4, vector<uint32_t>({4}))}, // fixed size
     {"rambank2_size",
@@ -91,12 +107,16 @@ static vector<string> Pippin_devices = {
     "Aspen", "AspenPci1", "GrandCentralTnt", "TaosVideo"
 };
 
+static const DeviceDescription MachinePippin_descriptor = {
+    MachinePippin::create, Pippin_devices, Pippin_settings
+};
+
+REGISTER_DEVICE(MachinePippin, MachinePippin_descriptor);
+
 static const MachineDescription Pippin_Descriptor = {
     .name = "pippin",
     .description = "Bandai Pippin",
-    .devices = Pippin_devices,
-    .settings = Pippin_Settings,
-    .init_func = &initialize_pippin
+    .machine_root = "MachinePippin",
 };
 
 REGISTER_MACHINE(pippin, Pippin_Descriptor);

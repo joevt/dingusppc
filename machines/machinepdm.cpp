@@ -31,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/scsi/scsi.h>
 #include <devices/common/scsi/scsicdrom.h>
 #include <devices/common/scsi/scsihd.h>
+#include <devices/deviceregistry.h>
 #include <devices/memctrl/hmc.h>
 #include <loguru.hpp>
 #include <machines/machinebase.h>
@@ -39,6 +40,31 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <string>
 #include <vector>
+
+class MachinePdm : public HWComponent {
+
+public:
+
+static std::unique_ptr<HWComponent> create(std::string id) {
+    MachinePdm *machine = new MachinePdm();
+    if (machine && 0 == machine->initialize_pdm(id))
+        return std::unique_ptr<MachinePdm>(machine);
+    if (machine)
+        delete machine;
+    return nullptr;
+}
+
+static std::unique_ptr<HWComponent> create6100() {
+    return create("pm6100");
+}
+
+static std::unique_ptr<HWComponent> create7100() {
+    return create("pm7100");
+}
+
+static std::unique_ptr<HWComponent> create8100() {
+    return create("pm8100");
+}
 
 int initialize_pdm(std::string& id)
 {
@@ -95,6 +121,8 @@ int initialize_pdm(std::string& id)
     return 0;
 }
 
+};
+
 // Monitors supported by the PDM on-board video.
 // see displayid.cpp for the full list of supported monitor IDs.
 static const vector<string> PDMBuiltinMonitorIDs = {
@@ -118,13 +146,41 @@ static vector<string> pm6100_devices = {
     "HMC", "Amic"
 };
 
+static const DeviceDescription MachinePdm6100_descriptor = {
+    MachinePdm::create6100, pm6100_devices, pm6100_settings
+};
+
+static const DeviceDescription MachinePdm7100_descriptor = {
+    MachinePdm::create7100, pm6100_devices, pm6100_settings
+};
+
+static const DeviceDescription MachinePdm8100_descriptor = {
+    MachinePdm::create8100, pm6100_devices, pm6100_settings
+};
+
+REGISTER_DEVICE(MachinePdm6100, MachinePdm6100_descriptor);
+REGISTER_DEVICE(MachinePdm7100, MachinePdm7100_descriptor);
+REGISTER_DEVICE(MachinePdm8100, MachinePdm8100_descriptor);
+
 static const MachineDescription pm6100_descriptor = {
     .name = "pm6100",
     .description = "Power Macintosh 6100",
-    .devices = pm6100_devices,
-    .settings = pm6100_settings,
-    .init_func = initialize_pdm
+    .machine_root = "MachinePdm6100",
+};
+
+static const MachineDescription pm7100_descriptor = {
+    .name = "pm7100",
+    .description = "Power Macintosh 7100",
+    .machine_root = "MachinePdm7100",
+};
+
+static const MachineDescription pm8100_descriptor = {
+    .name = "pm8100",
+    .description = "Power Macintosh 8100",
+    .machine_root = "MachinePdm8100",
 };
 
 // self-registration with the MachineFactory
 REGISTER_MACHINE(pm6100, pm6100_descriptor);
+REGISTER_MACHINE(pm7100, pm7100_descriptor);
+REGISTER_MACHINE(pm8100, pm8100_descriptor);

@@ -28,6 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/psx.h>
 #include <devices/common/pci/pcidevice.h>
 #include <devices/common/pci/pcihost.h>
+#include <devices/deviceregistry.h>
 #include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
@@ -58,7 +59,20 @@ int get_cpu_pll_value(const uint64_t cpu_freq_hz) {
     }
 }
 
-int initialize_gazelle(std::string& id)
+class MachineGazelle : public HWComponent {
+
+public:
+
+static std::unique_ptr<HWComponent> create() {
+    MachineGazelle *machine = new MachineGazelle();
+    if (machine && 0 == machine->initialize_gazelle())
+        return std::unique_ptr<MachineGazelle>(machine);
+    if (machine)
+        delete machine;
+    return nullptr;
+}
+
+int initialize_gazelle()
 {
     LOG_F(INFO, "Building machine Gazelle...");
 
@@ -103,6 +117,8 @@ int initialize_gazelle(std::string& id)
     return 0;
 }
 
+};
+
 static const PropMap pm6500_settings = {
     {"rambank1_size",
         new IntProperty(32, vector<uint32_t>({   4, 8, 16, 32, 64, 128}))},
@@ -124,12 +140,16 @@ static vector<string> pm6500_devices = {
     "Psx", "PsxPci1", "ScreamerSnd", "OHare", "AtaHardDisk" /*, "AtapiCdrom" */
 };
 
+static const DeviceDescription MachineGazelle_descriptor = {
+    MachineGazelle::create, pm6500_devices, pm6500_settings
+};
+
+REGISTER_DEVICE(MachineGazelle, MachineGazelle_descriptor);
+
 static const MachineDescription pm6500_descriptor = {
     .name = "pm6500",
     .description = "Power Macintosh 6500",
-    .devices = pm6500_devices,
-    .settings = pm6500_settings,
-    .init_func = &initialize_gazelle
+    .machine_root = "MachineGazelle",
 };
 
 REGISTER_MACHINE(pm6500, pm6500_descriptor);

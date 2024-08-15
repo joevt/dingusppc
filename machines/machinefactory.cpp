@@ -169,11 +169,9 @@ int MachineFactory::create(string& mach_id)
     gMachineObj->add_device("SoundServer", std::unique_ptr<SoundServer>(new SoundServer()));
 
     // recursively create device objects
-    for (auto& dev_name : it->second.devices) {
-        create_device(dev_name, DeviceRegistry::get_descriptor(dev_name));
-    }
+    create_device(it->second.machine_root, DeviceRegistry::get_descriptor(it->second.machine_root));
 
-    if (it->second.init_func(mach_id)) {
+    if (!gMachineObj->get_comp_by_name(it->second.machine_root)) {
         LOG_F(ERROR, "Machine initialization function failed!");
         return -1;
     }
@@ -196,11 +194,7 @@ void MachineFactory::list_properties()
     for (auto& mach : get_registry()) {
         cout << mach.second.description << " supported properties:" << endl << endl;
 
-        print_settings(mach.second.settings);
-
-        for (auto& d : mach.second.devices) {
-            list_device_settings(DeviceRegistry::get_descriptor(d));
-        }
+        list_device_settings(DeviceRegistry::get_descriptor(mach.second.machine_root));
     }
 
     cout << endl;
@@ -274,22 +268,9 @@ int MachineFactory::get_machine_settings(const string& id, map<string, string> &
 {
     auto it = get_registry().find(id);
     if (it != get_registry().end()) {
-        auto props = it->second.settings;
-
         gMachineSettings.clear();
         settings.clear();
-
-        for (auto& p : props) {
-            settings[p.first] = p.second->get_string();
-            LOG_F(INFO, "Adding setting \"%s\" = \"%s\" from %s.", p.first.c_str(), p.second->get_string().c_str(), id.c_str());
-
-            // populate dynamic machine settings from presets
-            gMachineSettings[p.first] = unique_ptr<BasicProperty>(p.second->clone());
-        }
-
-        for (auto& dev : it->second.devices) {
-            get_device_settings(dev, DeviceRegistry::get_descriptor(dev), settings);
-        }
+        get_device_settings(it->second.machine_root, DeviceRegistry::get_descriptor(it->second.machine_root), settings);
     } else {
         LOG_F(ERROR, "Unknown machine id %s", id.c_str());
         return -1;
