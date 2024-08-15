@@ -345,12 +345,17 @@ uint32_t OHare::dma_read(uint32_t offset, int size)
         }
         value = 0;
     }
+    LOG_F(DBDMA, "read  %s @%02x.%c = %0*x", get_name_dma(dma_channel),
+          offset & 0xFF, SIZE_ARG(size), size * 2, value);
     return value;
 }
 
 void OHare::dma_write(uint32_t offset, uint32_t value, int size)
 {
     int dma_channel = offset >> 8;
+
+    LOG_F(DBDMA, "write %s @%02x.%c = %0*x", get_name_dma(dma_channel),
+          offset & 0xFF, SIZE_ARG(size), size * 2, value);
 
     switch (dma_channel) {
     case MIO_OHARE_DMA_MESH:
