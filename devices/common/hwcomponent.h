@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -53,6 +53,7 @@ enum HWCompType : uint64_t {
     FLOPPY_CTRL = 1ULL << 32, // floppy disk controller
     FLOPPY_DRV  = 1ULL << 33, // floppy disk drive
     ETHER_MAC   = 1ULL << 40, // Ethernet media access controller
+    MACHINE     = 1ULL << 41, // machine root
 };
 
 /** Base class for HW components. */
