@@ -38,11 +38,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 struct DeviceDescription;
 
 struct MachineDescription {
-    std::string                       name;
-    std::string                       description;
-    std::vector<std::string>          devices;
-    PropMap                           settings;
-    std::function<int(std::string&)>  init_func;
+    std::string                  name;
+    std::string                  description;
+    std::string                  machine_root;
 };
 
 typedef std::function<std::optional<std::string>(const std::string&)> GetSettingValueFunc;
