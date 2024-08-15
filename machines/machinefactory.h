@@ -52,10 +52,11 @@ public:
 
     static bool add(const string& machine_id, MachineDescription desc);
 
-    static string machine_name_from_rom(string& rom_filepath);
+    static size_t read_boot_rom(string& rom_filepath, char *rom_data);
+    static string machine_name_from_rom(char *rom_data, size_t rom_size);
 
     static int create(string& mach_id);
-    static int create_machine_for_id(string& id, string& rom_filepath);
+    static int create_machine_for_id(string& id, char *rom_data, size_t rom_size);
 
     static void get_device_settings(const string &dev_name, DeviceDescription& dev, map<string, string> &settings = gMachineFactorySettings);
     static int get_machine_settings(const string& id, map<string, string> &settings = gMachineFactorySettings);
@@ -68,7 +69,7 @@ private:
     static void create_device(string& dev_name, DeviceDescription& dev);
     static void print_settings(PropMap& p);
     static void list_device_settings(DeviceDescription& dev);
-    static int  load_boot_rom(string& rom_filepath);
+    static int  load_boot_rom(char *rom_data, size_t rom_size);
 
     static map<string, MachineDescription> & get_registry() {
         static map<string, MachineDescription> machine_registry;
