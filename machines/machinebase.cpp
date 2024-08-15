@@ -106,11 +106,15 @@ int MachineBase::postinit_devices()
     while (initialized_devices.size() < this->device_map.size()) {
         for (auto it = this->device_map.begin(); it != this->device_map.end(); it++) {
             if (initialized_devices.find(it->first) == initialized_devices.end()) {
-                if (it->second->device_postinit()) {
+                int postinit_result = it->second->device_postinit();
+                if (postinit_result < 0) {
                     LOG_F(ERROR, "Could not initialize device %s", it->first.c_str());
                     return -1;
                 }
-                initialized_devices.insert(it->first);
+                if (postinit_result > 0) {
+                } else {
+                    initialized_devices.insert(it->first);
+                }
             }
         }
     }
