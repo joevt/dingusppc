@@ -27,8 +27,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/pci/pcihost.h>
 #include <devices/common/scsi/scsicdrom.h>
 #include <devices/common/scsi/scsihd.h>
+#include <devices/deviceregistry.h>
 #include <devices/memctrl/platinum.h>
 #include <loguru.hpp>
+#include <machines/machine.h>
 #include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
@@ -44,7 +46,11 @@ static std::vector<PciIrqMap> bandit1_irq_map = {
     {nullptr , DEV_FUN(0x10,0),              }, // GrandCentral
 };
 
-int initialize_catalyst(std::string& id)
+class MachineCatalyst : public Machine {
+
+public:
+
+int initialize(const std::string &id)
 {
     LOG_F(INFO, "Building machine Catalyst...");
 
@@ -108,6 +114,8 @@ int initialize_catalyst(std::string& id)
     return 0;
 }
 
+};
+
 static const PropMap pm7200_settings = {
     {"rambank1_size",
         new IntProperty( 8, std::vector<uint32_t>({   4, 8, 16, 32, 64, 128}))},
@@ -127,12 +135,16 @@ static std::vector<std::string> pm7200_devices = {
     "Platinum", "Bandit1", "GrandCentralCatalyst"
 };
 
+static const DeviceDescription MachineCatalyst_descriptor = {
+    Machine::create<MachineCatalyst>, pm7200_devices, pm7200_settings
+};
+
+REGISTER_DEVICE(MachineCatalyst, MachineCatalyst_descriptor);
+
 static const MachineDescription pm7200_descriptor = {
     .name = "pm7200",
     .description = "Power Macintosh 7200",
-    .devices = pm7200_devices,
-    .settings = pm7200_settings,
-    .init_func = &initialize_catalyst
+    .machine_root = "MachineCatalyst",
 };
 
 REGISTER_MACHINE(pm7200, pm7200_descriptor);
