@@ -50,33 +50,48 @@ static bool debug_scsi_log = true;
 #define SCSI_LOG_IF_F(verbosity_name, ...) \
     do { if (debug_scsi_log) { VLOG_F(loguru::Verbosity_ ## verbosity_name, __VA_ARGS__); last_log_message = LastLog::Misc; } } while (0)
 
+#define SCSIDEV_LOG_IF_F(verbosity_name, ...) \
+    do { if (debug_scsi_log) { VLOG_F(loguru::Verbosity_ ## verbosity_name, __VA_ARGS__); ctrl_obj->last_log_message = LastLog::Misc; } } while (0)
+
 #define SCSI_LOG_F(verbosity_name, ...) \
     do { VLOG_F(loguru::Verbosity_ ## verbosity_name, __VA_ARGS__); last_log_message = LastLog::Misc; } while (0)
+
+#define SCSIDEV_LOG_F(verbosity_name, ...) \
+    do { VLOG_F(loguru::Verbosity_ ## verbosity_name, __VA_ARGS__); ctrl_obj->last_log_message = LastLog::Misc; } while (0)
 
 #define SCSI_LOG_SCOPE_F(verbosity_name, ...) \
     VLOG_SCOPE_F(loguru::Verbosity_ ## verbosity_name, __VA_ARGS__); last_log_message = LastLog::Misc;
 
 Sc53C94::Sc53C94(uint8_t chip_id, uint8_t my_id)
-    : ScsiDevice("Sc53C94", my_id), HWComponent("Sc53C94")
+    : HWComponent("Sc53C94")
 {
-    this->chip_id   = chip_id;
-    this->my_bus_id = my_id;
-    supports_types(HWCompType::SCSI_HOST | HWCompType::SCSI_DEV);
+    this->chip_id = chip_id;
+    supports_types(HWCompType::SCSI_HOST);
     reset_device();
+}
+
+Sc53C94Dev::Sc53C94Dev()
+    : ScsiDevice("Sc53C94Dev"), HWComponent("Sc53C94Dev")
+{
+    supports_types(HWCompType::SCSI_DEV);
 }
 
 PostInitResultType Sc53C94::device_postinit()
 {
-    ScsiBus* bus = dynamic_cast<ScsiBus*>(gMachineObj->get_comp_by_name("ScsiCurio"));
-    if (bus) {
-        bus->register_device(7, static_cast<ScsiDevice*>(this));
-        bus->attach_scsi_devices("");
-    }
+    this->bus_obj = dynamic_cast<ScsiBus*>(gMachineObj->get_comp_by_name("ScsiCurio"));
+    this->dev_obj = dynamic_cast<ScsiDevice*>(gMachineObj->get_comp_by_name("Sc53C94Dev"));
+    this->my_bus_id = dev_obj->get_scsi_id();
 
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::SCSI_CURIO);
 
+    return PI_SUCCESS;
+}
+
+PostInitResultType Sc53C94Dev::device_postinit()
+{
+    this->ctrl_obj = dynamic_cast<Sc53C94*>(gMachineObj->get_comp_by_name("Sc53C94"));
     return PI_SUCCESS;
 }
 
@@ -807,60 +822,62 @@ void Sc53C94::update_irq()
     }
 }
 
-void Sc53C94::notify(ScsiMsg msg_type, int param)
+void Sc53C94Dev::notify(ScsiMsg msg_type, int param)
 {
     switch (msg_type) {
     case ScsiMsg::CONFIRM_SEL:
-        SCSI_LOG_F(CURIO, "%s: CONFIRM_SEL", this->name.c_str());
-        if (this->target_id == param) {
+        SCSIDEV_LOG_F(CURIO, "%s: CONFIRM_SEL", this->name.c_str());
+        if (this->ctrl_obj->target_id == param) {
             // cancel selection timeout timer
-            TimerManager::get_instance()->cancel_timer(this->seq_timer_id);
-            this->seq_timer_id = 0;
-            this->cur_state = SeqState::SEL_END;
-            SCSI_LOG_F(CURIO, "%s: state changed to %s in %s CONFIRM_SEL", this->name.c_str(), get_name_sequence(this->cur_state), __func__);
-            this->sequencer();
+            TimerManager::get_instance()->cancel_timer(this->ctrl_obj->seq_timer_id);
+            this->ctrl_obj->seq_timer_id = 0;
+            this->ctrl_obj->cur_state = SeqState::SEL_END;
+            SCSIDEV_LOG_F(CURIO, "%s: state changed to %s in %s CONFIRM_SEL", this->name.c_str(), get_name_sequence(this->ctrl_obj->cur_state), __func__);
+            this->ctrl_obj->sequencer();
         } else {
-            SCSI_LOG_F(WARNING, "%s: ignore invalid selection confirmation message",
+            SCSIDEV_LOG_F(WARNING, "%s: ignore invalid selection confirmation message",
                   this->name.c_str());
         }
         break;
     case ScsiMsg::BUS_PHASE_CHANGE:
-        SCSI_LOG_F(CURIO, "%s: BUS_PHASE_CHANGE", this->name.c_str());
-        this->cur_bus_phase = param;
-        if (param != ScsiPhase::BUS_FREE && this->cmd_steps != nullptr) {
-            this->cmd_steps++;
-            this->cur_state = this->cmd_steps->next_step;
-            SCSI_LOG_F(CURIO, "%s: state changed to %s (from %x) in %s BUS_PHASE_CHANGE", this->name.c_str(), get_name_sequence(this->cur_state), this->cmd_steps->seq_id, __func__);
-            this->sequencer();
+        SCSIDEV_LOG_F(CURIO, "%s: BUS_PHASE_CHANGE", this->name.c_str());
+        this->ctrl_obj->cur_bus_phase = param;
+        if (param != ScsiPhase::BUS_FREE && this->ctrl_obj->cmd_steps != nullptr) {
+            this->ctrl_obj->cmd_steps++;
+            this->ctrl_obj->cur_state = this->ctrl_obj->cmd_steps->next_step;
+            SCSIDEV_LOG_F(CURIO, "%s: state changed to %s (from %x) in %s BUS_PHASE_CHANGE", this->name.c_str(), get_name_sequence(this->ctrl_obj->cur_state), this->ctrl_obj->cmd_steps->seq_id, __func__);
+            this->ctrl_obj->sequencer();
         }
         break;
     default:
-        SCSI_LOG_F(WARNING, "%s: ignore notification message, type: %d", this->name.c_str(),
+        SCSIDEV_LOG_F(WARNING, "%s: ignore notification message, type: %d", this->name.c_str(),
               msg_type);
     }
 }
 
-int Sc53C94::send_data(uint8_t* dst_ptr, int count)
+int Sc53C94Dev::send_data(uint8_t* dst_ptr, int count)
 {
     if (dst_ptr == nullptr || !count) {
         return 0;
     }
 
-    int actual_count = std::min(this->data_fifo_pos, count);
+    int actual_count = std::min(this->ctrl_obj->data_fifo_pos, count);
 
     // move data out of the data FIFO
-    std::memcpy(dst_ptr, this->data_fifo, actual_count);
+    std::memcpy(dst_ptr, this->ctrl_obj->data_fifo, actual_count);
 
     // remove the just readed data from the data FIFO
-    SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (popped data:%s)", this->data_fifo_pos, this->data_fifo_pos - actual_count, __func__, hex_string(this->data_fifo, actual_count).c_str());
-    this->data_fifo_pos -= actual_count;
-    if (this->data_fifo_pos > 0) {
-        std::memmove(this->data_fifo, &this->data_fifo[actual_count], this->data_fifo_pos);
-    } else if (this->cur_bus_phase == ScsiPhase::DATA_OUT) {
-        this->cmd_steps++;
-        this->cur_state = this->cmd_steps->next_step;
-        SCSI_LOG_F(CURIO, "%s: state changed to %s (from %x) in %s", this->name.c_str(), get_name_sequence(this->cur_state), this->cmd_steps->seq_id, __func__);
-        this->sequencer();
+    SCSIDEV_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (popped data:%s)", this->ctrl_obj->data_fifo_pos,
+        this->ctrl_obj->data_fifo_pos - actual_count, __func__, hex_string(this->ctrl_obj->data_fifo, actual_count).c_str());
+    this->ctrl_obj->data_fifo_pos -= actual_count;
+    if (this->ctrl_obj->data_fifo_pos > 0) {
+        std::memmove(this->ctrl_obj->data_fifo, &this->ctrl_obj->data_fifo[actual_count], this->ctrl_obj->data_fifo_pos);
+    } else if (this->ctrl_obj->cur_bus_phase == ScsiPhase::DATA_OUT) {
+        this->ctrl_obj->cmd_steps++;
+        this->ctrl_obj->cur_state = this->ctrl_obj->cmd_steps->next_step;
+        SCSIDEV_LOG_F(CURIO, "%s: state changed to %s (from %x) in %s", this->name.c_str(),
+            get_name_sequence(this->ctrl_obj->cur_state), this->ctrl_obj->cmd_steps->seq_id, __func__);
+        this->ctrl_obj->sequencer();
     }
 
     return actual_count;
@@ -1100,17 +1117,18 @@ int Sc53C94::xfer_to(uint8_t *buf, int len) {
     return len;
 }
 
-static const PropMap Sc53C94_properties = {
-    {"hdd_img", new StrProperty("")},
-    {"cdr_img", new StrProperty("")},
-};
-
 static const std::vector<std::string> Sc53C94_Subdevices = {
     "ScsiCurio"
 };
 
 static const DeviceDescription Sc53C94_Descriptor = {
-    Sc53C94::create, Sc53C94_Subdevices, Sc53C94_properties, HWCompType::SCSI_HOST | HWCompType::SCSI_DEV
+    Sc53C94::create, Sc53C94_Subdevices, {}, HWCompType::SCSI_HOST
 };
 
 REGISTER_DEVICE(Sc53C94, Sc53C94_Descriptor);
+
+static const DeviceDescription Sc53C94Dev_Descriptor = {
+    Sc53C94Dev::create, {}, {}, HWCompType::SCSI_DEV
+};
+
+REGISTER_DEVICE(Sc53C94Dev, Sc53C94Dev_Descriptor);

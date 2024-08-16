@@ -44,15 +44,16 @@ using namespace MeshScsi;
 
 PostInitResultType MeshController::device_postinit() {
     this->bus_obj = dynamic_cast<ScsiBus*>(gMachineObj->get_comp_by_name("ScsiMesh"));
-    if (bus_obj) {
-        bus_obj->register_device(7, static_cast<ScsiDevice*>(this));
-        bus_obj->attach_scsi_devices("2");
-    }
-
+    this->dev_obj = dynamic_cast<ScsiBusControllerDev*>(gMachineObj->get_comp_by_name("MeshDev"));
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::SCSI_MESH);
 
+    return PI_SUCCESS;
+}
+
+PostInitResultType MeshControllerDev::device_postinit() {
+    this->ctrl_obj = dynamic_cast<ScsiBusController*>(this->get_parent()->get_parent());
     return PI_SUCCESS;
 }
 
@@ -301,22 +302,23 @@ void MeshController::report_error(const int error) {
     update_irq();
 }
 
-static const PropMap Mesh_properties = {
-    {"hdd_img2", new StrProperty("")},
-    {"cdr_img2", new StrProperty("")},
-};
-
 static const std::vector<std::string> Mesh_Subdevices = {
     "ScsiMesh"
 };
 
 static const DeviceDescription Mesh_Tnt_Descriptor = {
-    MeshController::create_for_tnt, Mesh_Subdevices, Mesh_properties, HWCompType::SCSI_HOST | HWCompType::SCSI_DEV
+    MeshController::create_for_tnt, Mesh_Subdevices, {}, HWCompType::SCSI_HOST
 };
 
 static const DeviceDescription Mesh_Heathrow_Descriptor = {
-    MeshController::create_for_heathrow, Mesh_Subdevices, Mesh_properties, HWCompType::SCSI_HOST | HWCompType::SCSI_DEV
+    MeshController::create_for_heathrow, Mesh_Subdevices, {}, HWCompType::SCSI_HOST
 };
 
 REGISTER_DEVICE(MeshTnt,      Mesh_Tnt_Descriptor);
 REGISTER_DEVICE(MeshHeathrow, Mesh_Heathrow_Descriptor);
+
+static const DeviceDescription MeshDev_Descriptor = {
+    MeshControllerDev::create, {}, {}, HWCompType::SCSI_DEV
+};
+
+REGISTER_DEVICE(MeshDev, MeshDev_Descriptor);

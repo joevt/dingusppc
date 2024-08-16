@@ -174,6 +174,9 @@ static const PropMap pm7500_settings_ ## cpu = { \
     {"rambank12_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
     {"emmo", new BinProperty(0)}, \
     {"cpu", new StrProperty(# cpu, std::vector<std::string>({"601", "604", "604e", "750"}))}, \
+    {"hdd_config", new StrProperty("ScsiMesh/@0")}, \
+    {"cdr_config", new StrProperty("ScsiMesh/@3")}, \
+    {"pci_dev_max", new IntProperty(0xF, 0, 0x1F)}, \
 };
 
 static_const_pm7500_settings(601)
