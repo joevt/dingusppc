@@ -134,9 +134,10 @@ protected:
 
     // HWComponent methods
     PostInitResultType device_postinit() override;
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
 
 private:
-    std::unique_ptr<DisplayID>      disp_id;
+    DisplayID*                      disp_id = nullptr;
     AthensClocks*                   clk_gen;
     AppleRamdac*                    radacal = nullptr;
 

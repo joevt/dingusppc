@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/serial/escc.h>
 #include <devices/serial/z85c30.h>
 #include <loguru.hpp>
+#include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
 #include <cinttypes>
@@ -45,28 +46,9 @@ EsccController::EsccController(const std::string &dev_name)
     : HWComponent(dev_name)
 {
     // allocate channels
-    this->ch_a = new EsccChannel("ESCC_A");
-    this->ch_b = new EsccChannel("ESCC_B");
-    if (dev_name == "EsccPdm") {
-        add_device(0x4002, this->ch_a);
-        add_device(0x4000, this->ch_b);
-    } else {
-        add_device(0x13020, this->ch_a);
-        add_device(0x13000, this->ch_b);
-    }
-
-    // attach backends
-    std::string backend_name = GET_STR_PROP("serial_backend");
-
-    this->ch_a->attach_backend(
-        (backend_name == "stdio") ? CHARIO_BE_STDIO :
-#ifdef _WIN32
-#else
-        (backend_name == "socket") ? CHARIO_BE_SOCKET :
-#endif
-        CHARIO_BE_NULL
-    );
-    this->ch_b->attach_backend(CHARIO_BE_NULL);
+    // ch_a should have a lower unit address than ch_b so that it will get the default socket_backend value
+    this->ch_a = dynamic_cast<EsccChannel*>(MachineFactory::create_device(this, "EsccChannel@A"));
+    this->ch_b = dynamic_cast<EsccChannel*>(MachineFactory::create_device(this, "EsccChannel@B"));
 
     this->master_int_cntrl = 0;
     this->reset();
@@ -196,6 +178,28 @@ void EsccController::write_internal(EsccChannel *ch, uint8_t value)
 }
 
 // ======================== ESCC Channel methods ==============================
+
+HWComponent* EsccChannel::set_property(const std::string &property, const std::string &value, int32_t unit_address)
+{
+    if (!this->override_property(property, value))
+        return nullptr;
+
+    if (property == "serial_backend") {
+        this->attach_backend(
+            (value == "stdio") ? CHARIO_BE_STDIO :
+#ifdef _WIN32
+#else
+            (value == "socket") ? CHARIO_BE_SOCKET :
+#endif
+            CHARIO_BE_NULL
+        );
+
+        return this;
+    }
+
+    return nullptr;
+}
+
 void EsccChannel::attach_backend(int id)
 {
     switch(id) {
@@ -208,7 +212,8 @@ void EsccChannel::attach_backend(int id)
 #ifdef _WIN32
 #else
     case CHARIO_BE_SOCKET:
-        this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoSocket(this->get_name() + "_CharIoSocket"));
+        this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoSocket(this->get_name() + "_CharIoSocket",
+            std::string("dingussocket") + ((this->unit_address == 0xA) ? "" : "b")));
         break;
 #endif
     default:
@@ -523,12 +528,18 @@ void EsccChannel::dma_flush_rx()
 
 static const std::vector<std::string> CharIoBackends = {"null", "stdio", "socket"};
 
-static const PropMap Escc_Properties = {
+static const PropMap EsccChannel_Properties = {
     {"serial_backend", new StrProperty("null", CharIoBackends)},
 };
 
+static const DeviceDescription EsccChannel_Descriptor = {
+    EsccChannel::create, {}, EsccChannel_Properties, HWCompType::MMIO_DEV
+};
+
+REGISTER_DEVICE(EsccChannel, EsccChannel_Descriptor);
+
 static const DeviceDescription Escc_Descriptor = {
-    EsccController::create, {}, Escc_Properties, HWCompType::MMIO_DEV
+    EsccController::create, {}, {}, HWCompType::MMIO_DEV
 };
 
 REGISTER_DEVICE(Escc, Escc_Descriptor);
