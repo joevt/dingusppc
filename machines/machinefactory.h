@@ -35,6 +35,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 #include <set>
+#include <regex>
 
 struct DeviceDescription;
 
@@ -51,7 +52,28 @@ typedef struct {
 } PropHelpItem;
 
 extern const std::map<std::string, PropHelpItem> gPropHelp;
-extern std::map<std::string, std::string> gMachineFactorySettings;
+
+class ConfigStackItem {
+public:
+    enum ConfigStackItemType {
+        HWC,
+        HWC_WITH_UNIT_ADDRESS,
+        BLOCK_BEGIN
+    };
+
+    ConfigStackItem(ConfigStackItemType dsi)
+        : stack_item_type(dsi) {}
+    ConfigStackItem(HWComponent* hwc)
+        : stack_item_type(HWC), hwc(hwc) {}
+    ConfigStackItem(HWComponent* hwc, int32_t unit_address)
+        : stack_item_type(HWC_WITH_UNIT_ADDRESS), hwc(hwc), unit_address(unit_address) {}
+
+    ~ConfigStackItem() = default;
+
+    ConfigStackItemType stack_item_type;
+    HWComponent*        hwc = nullptr;
+    int32_t             unit_address = 0;
+};
 
 class MachineFactory
 {
@@ -61,25 +83,36 @@ public:
     static size_t read_boot_rom(std::string& rom_filepath, char *rom_data);
     static std::string machine_name_from_rom(char *rom_data, size_t rom_size);
 
-    static int create(std::string& mach_id);
-    static int create_machine_for_id(std::string& id, char *rom_data, size_t rom_size);
+    static int create(std::string& mach_id, std::vector<std::string> &app_args);
+    static int create_machine_for_id(std::string& id, char *rom_data, size_t rom_size, std::vector<std::string> &app_args);
+    static HWComponent* create_device(HWComponent *parent, std::string dev_name,
+        HWCompType supported_types = HWCompType::UNKNOWN);
 
     static void register_device_settings(const std::string &name);
-    static int  register_machine_settings(const std::string& id);
+    static void summarize_machine_settings();
+    static void summarize_device_settings();
 
     static void list_machines();
     static void list_properties(std::vector<std::string> machine_list);
 
     static GetSettingValueFunc get_setting_value;
 
+    static std::regex path_re;
+
 private:
-    static HWComponent* create_device(HWComponent *parent, std::string dev_name, DeviceDescription& dev);
     static void print_settings(const PropMap& p, PropScope scope, int indent,
         std::string path, std::string device, std::set<std::string> *properties);
     static void list_device_settings(DeviceDescription& dev, PropScope scope, int indent,
         std::string path, std::string device, std::set<std::string> *properties);
     static int  load_boot_rom(char *rom_data, size_t rom_size);
-    static void register_settings(const PropMap& p);
+    static void register_settings(const std::string& dev_name, const PropMap& p);
+    static HWComponent* set_property(const std::string &property, const std::string &value);
+    static bool find_path(std::string path, HWComponent *&hwc, int32_t &unit_address, bool &is_leaf_match);
+    static void apply_configs();
+
+protected:
+    static std::vector<ConfigStackItem> config_stack;
+    static bool config_stack_ready;
 };
 
 #endif /* MACHINE_FACTORY_H */

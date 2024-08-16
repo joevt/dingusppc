@@ -21,7 +21,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /** @file Macintosh Superdrive emulation. */
 
+#include <devices/deviceregistry.h>
 #include <devices/floppy/superdrive.h>
+#include <machines/machineproperties.h>
 #include <loguru.hpp>
 
 #include <cinttypes>
@@ -33,9 +35,7 @@ namespace loguru {
     };
 }
 
-using namespace MacSuperdrive;
-
-std::string MacSuperdrive::get_command_name(uint8_t addr)
+std::string MacSuperDrive::get_command_name(uint8_t addr)
 {
     switch (addr) {
     #define one_command(x) case CommandAddr::x: return #x;
@@ -49,7 +49,7 @@ std::string MacSuperdrive::get_command_name(uint8_t addr)
     }
 }
 
-std::string MacSuperdrive::get_status_name(uint8_t addr)
+std::string MacSuperDrive::get_status_name(uint8_t addr)
 {
     switch (addr) {
     #define one_status(x) case StatusAddr::x: return #x;
@@ -218,7 +218,7 @@ int MacSuperDrive::insert_disk(const std::string& img_path, int write_flag)
 {
     if (img_path.empty()) {
         if (this->has_disk)
-            this->command(MacSuperdrive::CommandAddr::Eject_Disk, 1);
+            this->command(MacSuperDrive::CommandAddr::Eject_Disk, 1);
         return 0;
     }
 
@@ -227,7 +227,7 @@ int MacSuperDrive::insert_disk(const std::string& img_path, int write_flag)
         return -1;
     }
 
-    FloppyImgConverter* img_conv = open_floppy_image(img_path);
+    FloppyImgConverter* img_conv = open_floppy_image(this, img_path);
     if (img_conv != nullptr) {
         this->img_conv = std::unique_ptr<FloppyImgConverter>(img_conv);
         set_disk_phys_params();
@@ -419,7 +419,7 @@ uint64_t MacSuperDrive::sector_data_delay()
     return MFM_SECT_DATA_DELAY;
 }
 
-SectorHdr MacSuperDrive::current_sector_header()
+MacSuperDrive::SectorHdr MacSuperDrive::current_sector_header()
 {
     this->cur_sector = this->next_sector;
 
@@ -444,3 +444,46 @@ char* MacSuperDrive::get_sector_data_ptr(int sector_num)
           sector_num - 1) * 512
     );
 }
+
+HWComponent* MacSuperDrive::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    if (property == "fdd_img") {
+        if (!value.empty() && !this->has_disk && this->override_property(property, value)) {
+            this->insert_disk(value, this->wr_protect);
+            return this;
+        }
+    }
+    else if (property == "fdd_wr_prot") {
+        if (this->override_property(property, value)) {
+            this->wr_protect = get_property_bin(property);
+            return this;
+        }
+    }
+    else if (property == "fdd_fmt") {
+        if (!this->has_disk && this->override_property(property, value)) {
+            return this;
+        }
+    }
+    return nullptr;
+}
+
+// floppy disk formats properties for the cases
+// where disk format needs to be specified manually
+static const std::vector<std::string> FloppyFormats = {
+    "",
+    "GCR_400K",
+    "GCR_800K",
+    "MFM_720K",
+    "MFM_1440K"
+};
+
+static const PropMap MacSuperDrive_Properties = {
+    {"fdd_img"    , new StrProperty("")},
+    {"fdd_wr_prot", new BinProperty(1)},
+    {"fdd_fmt"    , new StrProperty("", FloppyFormats)},
+};
+
+static const DeviceDescription MacSuperDrive_Descriptor = {
+    MacSuperDrive::create, {}, MacSuperDrive_Properties, HWCompType::FLOPPY_DRV
+};
+
+REGISTER_DEVICE(MacSuperDrive, MacSuperDrive_Descriptor);

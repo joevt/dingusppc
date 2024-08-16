@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cpu/ppc/ppcmmu.h>
 #include <devices/memctrl/hmc.h>
+#include <devices/video/displayid.h>
 #include <devices/video/pdmonboard.h>
 #include <devices/video/videoctrl.h>
 #include <memaccess.h>
@@ -31,8 +32,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 
 PdmOnboardVideo::PdmOnboardVideo(const std::string &dev_name)
-    : VideoCtrlBase()
+    : VideoCtrlBase(), HWComponent(dev_name)
 {
+    supports_types(HWCompType::VIDEO_CTRL);
+
     this->video_mode  = PDM_VMODE_OFF;
     this->blanking    = 0x80;
     this->crtc_on     = false;
@@ -349,3 +352,35 @@ void PdmOnboardVideo::pdm_convert_frame_4bpp_indexed(uint8_t *dst_buf, int dst_p
         dst_row += dst_pitch;
     }
 }
+
+static std::vector<std::string> PdmOnboardVideo_Subdevices = {
+    "PdmDisplay@0",
+};
+
+static const DeviceDescription PdmOnboardVideo_Descriptor = {
+    PdmOnboardVideo::create, PdmOnboardVideo_Subdevices, {}, HWCompType::VIDEO_CTRL
+};
+
+REGISTER_DEVICE(PdmOnboardVideo, PdmOnboardVideo_Descriptor);
+
+static std::unique_ptr<HWComponent> PdmDisplay_create(const std::string &dev_name) {
+    return std::unique_ptr<DisplayID>(new DisplayID(dev_name));
+}
+
+// Monitors supported by the PDM on-board video.
+// see displayid.cpp for the full list of supported monitor IDs.
+static const std::vector<std::string> PDMBuiltinMonitorIDs = {
+    "PortraitGS", "MacRGB12in", "MacRGB15in", "HiRes12-14in", "VGA-SVGA",
+    "MacRGB16in", "Multiscan15in", "Multiscan17in", "Multiscan20in",
+    "NotConnected"
+};
+
+static const PropMap PdmDisplay_Properties = {
+    {"mon_id", new StrProperty("HiRes12-14in", PDMBuiltinMonitorIDs)},
+};
+
+static const DeviceDescription PdmDisplay_Descriptor = {
+    PdmDisplay_create, {}, PdmDisplay_Properties, HWCompType::DISPLAY
+};
+
+REGISTER_DEVICE(PdmDisplay, PdmDisplay_Descriptor);

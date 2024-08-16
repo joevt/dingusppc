@@ -33,10 +33,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/timermanager.h>
 #include <devices/common/ata/atabasedevice.h>
 #include <devices/common/ata/atadefs.h>
+#include <devices/common/ata/atahd.h>
+#include <devices/common/ata/atapicdrom.h>
 #include <devices/common/ata/idechannel.h>
 #include <devices/common/hwcomponent.h>
 #include <devices/common/mmiodevice.h>
 #include <devices/deviceregistry.h>
+#include <machines/machinefactory.h>
 #include <loguru.hpp>
 
 #include <cinttypes>
@@ -59,6 +62,55 @@ IdeChannel::IdeChannel(const std::string name) : HWComponent(name)
 
     this->devices[0] = this->device_stub.get();
     this->devices[1] = this->device_stub.get();
+}
+
+template <class T>
+HWComponent* IdeChannel::set_property(const std::string &value, int32_t unit_address) {
+    int ata_id;
+    T *ata_device;
+    HWComponent* result;
+    
+    if (unit_address == -1) {
+        // look for existing device with no image
+        for (ata_id = 0; ata_id < 2; ata_id++) {
+            ata_device = dynamic_cast<T *>(this->devices[ata_id]);
+            if (ata_device) {
+                result = ata_device->set_property(
+                    std::is_same<T,AtaHardDisk>::value ? "hdd_img" : "cdr_img", value, unit_address);
+                if (result)
+                    return result;
+            }
+        }
+
+        // look for unused ID
+        for (ata_id = 0; ata_id < 2 && this->devices[ata_id] &&
+             dynamic_cast<AtaNullDevice*>(this->devices[ata_id]) == nullptr; ata_id++) {}
+        if (ata_id == 2)
+            return nullptr;
+    }
+    else {
+        if (unit_address < 0 || unit_address >= 2)
+            return nullptr;
+        ata_id = unit_address;
+    }
+
+    if (this->devices[ata_id] && dynamic_cast<AtaNullDevice*>(this->devices[ata_id]) == nullptr)
+        ata_device = dynamic_cast<T *>(this->devices[ata_id]);
+    else
+        ata_device = dynamic_cast<T *>(MachineFactory::create_device(
+            this, (std::is_same<T,AtaHardDisk>::value ? "AtaHardDisk@" : "AtapiCdrom@") + std::to_string(ata_id)));
+    if (ata_device)
+        return ata_device->set_property(std::is_same<T,AtaHardDisk>::value ? "cdr_img" : "hdd_img", value, unit_address);
+    return nullptr;
+}
+
+HWComponent* IdeChannel::set_property(const std::string &property, const std::string &value, int32_t unit_address)
+{
+    if (property == "hdd_img")
+        return this->set_property<AtaHardDisk>(value, unit_address);
+    if (property == "cdr_img")
+        return this->set_property<AtapiCdrom>(value, unit_address);
+    return nullptr;
 }
 
 HWComponent* IdeChannel::add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name) {
