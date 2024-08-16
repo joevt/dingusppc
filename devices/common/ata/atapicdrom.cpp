@@ -35,35 +35,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace ata_interface;
 
+HWComponent* AtapiCdrom::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    if (property == "cdr_img" && !value.empty() && !this->medium_present() && this->override_property(property, value)) {
+        this->insert_image(value);
+        if (this->medium_present()) {
+            LOG_F(INFO, "%s: path:\"%s\"", this->get_path().c_str(), value.c_str());
+            return this;
+        } else
+            return nullptr;
+    }
+    return nullptr;
+}
+
 AtapiCdrom::AtapiCdrom(const std::string name) : AtapiBaseDevice(name), HWComponent(name) {
     this->set_error_callback(
         [this](uint8_t sense_key, uint8_t asc) {
             this->status_error(sense_key, asc);
         }
     );
-}
-
-PostInitResultType AtapiCdrom::device_postinit() {
-    std::string cdr_config = GET_STR_PROP("cdr_config");
-    if (cdr_config.empty()) {
-        LOG_F(ERROR, "%s: cdr_config property is empty", this->name.c_str());
-        return PI_FAIL;
-    }
-
-    std::string bus_id;
-    uint32_t    dev_num;
-
-    parse_device_path(cdr_config, bus_id, dev_num);
-
-    auto bus_obj = dynamic_cast<IdeChannel*>(gMachineObj->get_comp_by_name(bus_id));
-    bus_obj->add_device(dev_num, this);
-
-    std::string cdr_image_path = GET_STR_PROP("cdr_img");
-    if (!cdr_image_path.empty()) {
-        this->insert_image(cdr_image_path);
-    }
-
-    return PI_SUCCESS;
 }
 
 void AtapiCdrom::perform_packet_command() {

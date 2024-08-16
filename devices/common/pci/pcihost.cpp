@@ -112,33 +112,8 @@ bool PCIHost::pci_unregister_mmio_region(uint32_t start_addr, uint32_t size, PCI
 
 PCIBase *PCIHost::attach_pci_device(const std::string& dev_name, int slot_id)
 {
-    if (!DeviceRegistry::device_registered(dev_name)) {
-        LOG_F(
-            WARNING, "%s: specified PCI device %s doesn't exist",
-            this->get_name().c_str(), dev_name.c_str()
-        );
-        return NULL;
-    }
-
-    // attempt to create device object
-    MachineFactory::register_device_settings(dev_name);
-    auto desc = DeviceRegistry::get_descriptor(dev_name);
-    auto dev_obj = desc.m_create_func(dev_name);
-
-    if (!dev_obj->supports_type(HWCompType::PCI_DEV)) {
-        LOG_F(
-            WARNING, "%s: cannot attach non-PCI device %s",
-            this->get_name().c_str(), dev_name.c_str()
-        );
-
-        return NULL;
-    }
-
-    // add device to the machine object
-    PCIBase *dev = dynamic_cast<PCIBase*>(dev_obj.release());
-    this->add_device(slot_id, dev, dev_name);
-
-    return dev;
+    return dynamic_cast<PCIBase*>(MachineFactory::create_device(
+        this, dev_name + this->get_child_unit_address_string(slot_id), HWCompType::PCI_DEV));
 }
 
 HWComponent* PCIHost::add_device(int32_t unit_address, HWComponent *dev_obj, const std::string &name)
@@ -287,4 +262,37 @@ std::string PCIHost::get_child_unit_address_string(int32_t unit_address) {
 
 int32_t PCIHost::parse_child_unit_address_string(const std::string unit_address_string) {
     return PCIBase::parse_unit_address_string(unit_address_string);
+}
+
+HWComponent* PCIHost::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    if (property == "pci") {
+        int dev_fun;
+        int max_dev = GET_INT_PROP("pci_dev_max");
+
+        if (unit_address == -1) {
+            // look for unused ID
+            for (dev_fun = 0; dev_fun <= DEV_FUN(0x1F,7); dev_fun += DEV_FUN(1,0)) {
+                if (
+                    !this->dev_map.count(dev_fun) && ( // is not used
+                        (this->my_irq_map.size() > 0 && this->my_irq_map.count(dev_fun)) || // is a valid slot
+                        (this->my_irq_map.size() == 0 && dev_fun <= DEV_FUN(max_dev,7)) // or is a valid device number
+                    )
+                )
+                    break;
+            }
+            if (dev_fun > DEV_FUN(0x1F,7))
+                return nullptr;
+        }
+        else {
+            if (unit_address < 0 || unit_address > DEV_FUN(0x1F,7))
+                return nullptr;
+            dev_fun = unit_address;
+            if (this->dev_map.count(dev_fun))
+                return nullptr;
+        }
+
+        PCIBase *dev_instance = this->attach_pci_device(value, dev_fun);
+        return dev_instance;
+    }
+    return nullptr;
 }
