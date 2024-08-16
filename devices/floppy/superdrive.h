@@ -102,6 +102,12 @@ public:
     MacSuperDrive(const std::string name);
     ~MacSuperDrive() = default;
 
+    // HWComponent methods
+
+    int set_property(const std::string &property, const std::string &value, uint32_t unit_address);
+
+    // MacSuperDrive methods
+    
     void command(uint8_t addr, uint8_t value);
     uint8_t status(uint8_t addr);
     int insert_disk(const std::string& img_path, int write_flag = 0);

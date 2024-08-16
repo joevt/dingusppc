@@ -126,17 +126,6 @@ int Swim3Ctrl::device_postinit()
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::SWIM3);
-
-    // if a floppy image was given "insert" it into the virtual superdrive
-    std::string fd_image_path = GET_STR_PROP("fdd_img");
-    int fd_write_prot = GET_BIN_PROP("fdd_wr_prot");
-    this->insert_disk(1, fd_image_path, fd_write_prot);
-
-    // if a 2nd floppy image was given "insert" it into the 2nd virtual superdrive
-    std::string fd_image_path2 = GET_STR_PROP("fdd_img2");
-    int fd_write_prot2 = GET_BIN_PROP("fdd_wr_prot2");
-    this->insert_disk(2, fd_image_path2, fd_write_prot2);
-
     return 0;
 };
 
@@ -596,11 +585,7 @@ static const std::vector<std::string> FloppyFormats = {
 static const PropMap Swim3_Properties = {
     {"fdd_img",
         new StrProperty("")},
-    {"fdd_img2",
-        new StrProperty("")},
     {"fdd_wr_prot",
-        new BinProperty(1)},
-    {"fdd_wr_prot2",
         new BinProperty(1)},
     {"fdd_fmt",
         new StrProperty("", FloppyFormats)},

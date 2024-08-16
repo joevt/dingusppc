@@ -354,7 +354,7 @@ void ScsiBus::attach_scsi_devices(const std::string bus_suffix)
     int scsi_id;
     std::string image_path;
 
-    image_path = GET_STR_PROP("hdd_img" + bus_suffix);
+    image_path = GET_STR_PROP("hdd_img");
     if (!image_path.empty()) {
         std::istringstream image_stream(image_path);
         while (std::getline(image_stream, path, ':')) {
@@ -377,7 +377,7 @@ void ScsiBus::attach_scsi_devices(const std::string bus_suffix)
         }
     }
 
-    image_path = GET_STR_PROP("cdr_img" + bus_suffix);
+    image_path = GET_STR_PROP("cdr_img");
     if (!image_path.empty()) {
         std::istringstream image_stream(image_path);
         while (std::getline(image_stream, path, ':')) {

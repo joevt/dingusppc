@@ -213,19 +213,24 @@ int main(int argc, char** argv) {
         load_symbols(symbols_path);
     }
 
+#if 1
     /* handle overriding of machine settings from command line */
     LOG_F(INFO, "Getting machine settings:");
     if (MachineFactory::get_machine_settings(machine_str) < 0) {
         return 1;
     }
+#endif
 
     CLI::App sa;
     sa.allow_extras();
 
+#if 1
     for (auto& s : gMachineFactorySettings) {
         sa.add_option("--" + s.first, s.second);
     }
+#endif
 
+#if 0
     /* handle overriding of machine settings from command line for
        devices that may be added during create_machine_for_id below */
     LOG_F(INFO, "Getting other settings:");
@@ -239,6 +244,7 @@ int main(int argc, char** argv) {
             }
         }
     }
+#endif
 
     sa.parse(app.remaining_for_passthrough()); /* TODO: handle exceptions! */
 
