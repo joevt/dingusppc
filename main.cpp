@@ -128,6 +128,7 @@ int main(int argc, char** argv) {
     string bootrom_path("bootrom.bin");
     string working_directory_path(".");
     string symbols_path;
+    vector<string> machine_list;
 
     auto execution_mode_group = app.add_option_group("execution mode")
         ->require_option(-1);
@@ -172,23 +173,20 @@ int main(int argc, char** argv) {
         ->check(CLI::ExistingFile);
 
     auto list_cmd = app.add_subcommand("list",
-        "Display available machine configurations and exit");
+        "Display available machine configurations and exit")
+        ->require_subcommand();
 
-    string sub_arg;
-
-    list_cmd->add_option("machines", sub_arg, "List supported machines");
-    list_cmd->add_option("properties", sub_arg, "List available properties");
+    auto machines = list_cmd->add_subcommand("machines", "List supported machines");
+    auto properties = list_cmd->add_subcommand("properties", "List available properties");
+    properties->add_option("device", machine_list, "machine or device to list");
 
     CLI11_PARSE(app, argc, argv);
 
     if (*list_cmd) {
-        if (sub_arg == "machines") {
+        if (*machines)
             MachineFactory::list_machines();
-        } else if (sub_arg == "properties") {
-            MachineFactory::list_properties();
-        } else {
-            cout << "Unknown list subcommand " << sub_arg << endl;
-        }
+        if (*properties)
+            MachineFactory::list_properties(machine_list);
         return 0;
     }
 
