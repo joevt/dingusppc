@@ -30,8 +30,8 @@ static char my_vendor_id[]   = "SONY    ";
 static char my_product_id[]  = "CD-ROM CDU-8003A";
 static char my_revision_id[] = "1.9a";
 
-ScsiCdrom::ScsiCdrom(const std::string name, int my_id) :
-    ScsiPhysDevice(name, my_id), HWComponent(name)
+ScsiCdrom::ScsiCdrom(const std::string name) :
+    ScsiPhysDevice(name), HWComponent(name)
 {
     this->set_phys_dev(this);
     this->set_cdb_ptr(this->cmd_buf);
@@ -50,6 +50,18 @@ ScsiCdrom::ScsiCdrom(const std::string name, int my_id) :
     this->set_revision_id(my_revision_id);
 
     this->add_page_getter(this, 49, &ScsiCdrom::get_apple_page_49);
+}
+
+HWComponent* ScsiCdrom::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    if (property == "cdr_img" && !value.empty() && !this->medium_present() && this->override_property(property, value)) {
+        this->insert_image(value);
+        if (this->medium_present()) {
+            LOG_F(INFO, "%s: path:\"%s\"", this->get_path().c_str(), value.c_str());
+            return this;
+        } else
+            return nullptr;
+    }
+    return nullptr;
 }
 
 void ScsiCdrom::process_command() {
@@ -125,3 +137,13 @@ void ScsiCdrom::mode_select_6(uint8_t param_len)
 
     this->switch_phase(ScsiPhase::DATA_OUT);
 }
+
+static const PropMap ScsiCdrom_Properties = {
+    {"cdr_img", new StrProperty("")},
+};
+
+static const DeviceDescription ScsiCdrom_Descriptor = {
+    ScsiCdrom::create, {}, ScsiCdrom_Properties, HWCompType::SCSI_DEV
+};
+
+REGISTER_DEVICE(ScsiCdrom, ScsiCdrom_Descriptor);

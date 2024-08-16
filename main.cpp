@@ -99,9 +99,9 @@ public:
 const WorkingDirectoryValidator WorkingDirectory;
 
 void run_machine(
-    std::string machine_str, char *rom_data, size_t rom_size, uint32_t execution_mode
-    ,const std::vector<std::string> &env_vars
-    ,uint32_t profiling_interval_ms
+    uint32_t execution_mode,
+    const std::vector<std::string> &env_vars,
+    uint32_t profiling_interval_ms
 );
 
 int main(int argc, char** argv) {
@@ -247,6 +247,8 @@ int main(int argc, char** argv) {
         load_symbols(symbols_path);
     }
 
+    std::vector<std::string> app_args;
+
     // Hook to allow properties to be read from the command-line, regardless
     // of when they are registered.
     MachineFactory::get_setting_value = [&](const std::string& name) -> std::optional<std::string> {
@@ -257,10 +259,11 @@ int main(int argc, char** argv) {
         std::string value;
         sa.add_option("--" + name, value)->expected(0,1);
         try {
-            sa.parse(app.remaining_for_passthrough());
+            sa.parse(app_args);
         } catch (const CLI::Error& e) {
             ABORT_F("Cannot parse CLI: %s", e.get_name().c_str());
         }
+        app_args = sa.remaining_for_passthrough();
 
         if (sa.count("--" + name) > 0) {
             return value;
@@ -269,10 +272,7 @@ int main(int argc, char** argv) {
         }
     };
 
-    if (MachineFactory::register_machine_settings(machine_str) < 0) {
-        return 1;
-    }
-
+    cout << endl << "DingusPPC settings:" << endl;
     cout << "BootROM path: " << bootrom_path << endl;
     cout << "Execution mode: " << execution_mode << endl;
     if (is_deterministic) {
@@ -308,13 +308,16 @@ int main(int argc, char** argv) {
     keyboard_id = kbd_map.at(keyboard_string);
 
     while (true) {
-        run_machine(
-            machine_str,
-            &rom_data[0],
-            rom_size,
-            execution_mode,
-            env_vars,
-            profiling_interval_ms);
+        {
+            app_args = app.remaining_for_passthrough();
+            if (MachineFactory::create_machine_for_id(machine_str, &rom_data[0], rom_size, app_args) < 0) {
+                break;
+            }
+        }
+        MachineFactory::summarize_machine_settings();
+        MachineFactory::summarize_device_settings();
+
+        run_machine(execution_mode, env_vars, profiling_interval_ms);
         if (power_off_reason == po_restarting) {
             LOG_F(INFO, "Restarting...");
             power_on = true;
@@ -340,19 +343,14 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-void run_machine(std::string machine_str, char* rom_data,
-    size_t rom_size,
+void run_machine(
     uint32_t execution_mode,
     const std::vector<std::string> &env_vars,
     uint32_t
 #ifdef CPU_PROFILING
-     profiling_interval_ms
+    profiling_interval_ms
 #endif
 ) {
-    if (MachineFactory::create_machine_for_id(machine_str, rom_data, rom_size) < 0) {
-        return;
-    }
-
     if (!env_vars.empty()) {
         OfConfigUtils ofnvram;
         if (!ofnvram.init()) {
