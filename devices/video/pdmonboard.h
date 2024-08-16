@@ -50,6 +50,10 @@ public:
     PdmOnboardVideo();
     ~PdmOnboardVideo() = default;
 
+    static std::unique_ptr<HWComponent> create() {
+        return std::unique_ptr<PdmOnboardVideo>(new PdmOnboardVideo());
+    }
+
     uint8_t get_video_mode() {
         return ((this->video_mode & 0x1F) | this->blanking);
     };
