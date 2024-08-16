@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-21 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -49,6 +49,10 @@ class PdmOnboardVideo : public VideoCtrlBase {
 public:
     PdmOnboardVideo();
     ~PdmOnboardVideo() = default;
+
+    static std::unique_ptr<HWComponent> create() {
+        return std::unique_ptr<PdmOnboardVideo>(new PdmOnboardVideo());
+    }
 
     uint8_t get_video_mode() {
         return ((this->video_mode & 0x1F) | this->blanking);
