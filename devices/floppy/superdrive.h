@@ -45,8 +45,8 @@ constexpr   uint32_t MFM_HD_SECTOR_DELAY = MFM_BYTES_TO_DISK_TIME(675);
 constexpr   uint32_t MFM_DD_EOT_DELAY    = MFM_BYTES_TO_DISK_TIME( 6250 - 182);
 constexpr   uint32_t MFM_HD_EOT_DELAY    = MFM_BYTES_TO_DISK_TIME(12500 - 204);
 
-namespace MacSuperdrive {
-
+class MacSuperDrive : virtual public HWComponent {
+public:
 /** Apple Drive status request addresses. */
 enum StatusAddr : uint8_t {
     Step_Status   = 1,
@@ -94,14 +94,22 @@ typedef struct SectorHdr {
     int     format;
 } SectorHdr;
 
-std::string get_command_name(uint8_t addr);
-std::string get_status_name(uint8_t addr);
+static std::string get_command_name(uint8_t addr);
+static std::string get_status_name(uint8_t addr);
 
-class MacSuperDrive : virtual public HWComponent {
-public:
     MacSuperDrive(const std::string name);
     ~MacSuperDrive() = default;
 
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<MacSuperDrive>(new MacSuperDrive(dev_name));
+    }
+
+    // HWComponent methods
+
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
+
+    // MacSuperDrive methods
+    
     void command(uint8_t addr, uint8_t value);
     uint8_t status(uint8_t addr);
     int insert_disk(const std::string& img_path, int write_flag = 0);
@@ -140,7 +148,7 @@ private:
 
     // physical parameters of the currently inserted disk
     uint8_t     media_kind;
-    uint8_t     wr_protect;
+    uint8_t     wr_protect = 0;
     uint8_t     format_byte;
     int         rec_method;
     int         num_tracks;
@@ -159,7 +167,5 @@ private:
 
     std::unique_ptr<char[]> disk_data;
 };
-
-} // namespace MacSuperdrive
 
 #endif // MAC_SUPERDRIVE_H

@@ -92,10 +92,16 @@ static const PropMap Pippin_settings = {
         new BinProperty(0)},
     {"adb_devices",
         new StrProperty("AdbAppleJack,AdbKeyboard")},
+    {"hdd_config",
+        new StrProperty("")},
+    {"cdr_config",
+        new StrProperty("ScsiMesh/@3")},
+    {"pci_dev_max",
+        new IntProperty(0xF, 0, 0x1F)},
 };
 
 static std::vector<std::string> Pippin_devices = {
-    "Aspen@F8000000", "AspenPci1@F2000000", "GrandCentralTnt@10", "TaosVideo@F0000000"
+    "Aspen@F8000000", "AspenPci1@F2000000", "GrandCentralTnt@10", "TaosVideo@F0800000"
 };
 
 static const DeviceDescription MachinePippin_descriptor = {

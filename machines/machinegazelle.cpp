@@ -111,13 +111,17 @@ static const PropMap pm6500_settings = {
     {"emmo",
         new BinProperty(0)},
     {"hdd_config",
-        new StrProperty("Ide0:0")},
+        new StrProperty("Ide0/@0")},
+    {"cdr_config",
+        new StrProperty("ScsiMesh/@3")},
     {"pci_F1",
         new StrProperty("AtiRageGT")},
+    {"pci_dev_max",
+        new IntProperty(0xF, 0, 0x1F)},
 };
 
 static std::vector<std::string> pm6500_devices = {
-    "Psx@F8000000", "PsxPci1@F2000000", "ScreamerSnd@14000", "OHare@10", "AtaHardDisk"
+    "Psx@F8000000", "PsxPci1@F2000000", "ScreamerSnd@14000", "OHare@10"
 };
 
 static const DeviceDescription MachineGazelle_descriptor = {

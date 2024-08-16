@@ -60,10 +60,13 @@ enum : int {
 
 constexpr auto DATA_FIFO_DEPTH = 16;
 
-class ScsiBusController : public ScsiDevice, public DmaDevice {
+class ScsiBusControllerDev;
+
+class ScsiBusController : public DmaDevice, virtual public HWComponent {
+friend class ScsiBusControllerDev;
 public:
-    ScsiBusController(const std::string name, uint8_t my_bus_id=7) : ScsiDevice(name, my_bus_id) {
-        supports_types(HWCompType::SCSI_HOST | HWCompType::SCSI_DEV);
+    ScsiBusController(const std::string name) : HWComponent(name) {
+        supports_types(HWCompType::SCSI_HOST);
     }
     ~ScsiBusController() = default;
 
@@ -72,15 +75,6 @@ public:
 
     virtual void step_completed() = 0;
     virtual void report_error(const int error) = 0;
-
-    // ScsiDevice methods
-    void notify(ScsiNotification notif_type, int param) override;
-    bool prepare_data() override { return false; }
-    bool get_more_data() override { return false; }
-    bool has_data() override { return false; }
-    bool rcv_data();
-    int  send_data(uint8_t* dst_ptr, int count) override;
-    void process_command() override {}
 
     // DmaDevice methods
     int xfer_from(uint8_t *buf, int len) override;
@@ -92,6 +86,7 @@ protected:
     uint8_t fifo_pop();
 
     ScsiBus*    bus_obj = nullptr;
+    ScsiBusControllerDev* dev_obj = nullptr;
     uint8_t     src_id;
     uint8_t     dst_id;
     bool        is_dma_cmd   = false;
@@ -117,6 +112,26 @@ protected:
     uint8_t         irq      = 0;
     uint8_t         int_mask = 0;
     uint8_t         int_stat = 0;
+};
+
+class ScsiBusControllerDev : public ScsiDevice {
+public:
+    ScsiBusControllerDev(const std::string name) : ScsiDevice(name), HWComponent(name) {
+        supports_types(HWCompType::SCSI_DEV);
+    }
+    ~ScsiBusControllerDev() = default;
+
+    // ScsiDevice methods
+    void notify(ScsiNotification notif_type, int param) override;
+    bool prepare_data() override { return false; }
+    bool get_more_data() override { return false; }
+    bool has_data() override { return false; }
+    bool rcv_data();
+    int  send_data(uint8_t* dst_ptr, int count) override;
+    void process_command() override {}
+
+protected:
+    ScsiBusController* ctrl_obj = nullptr;
 };
 
 #endif // SCSI_BUS_CTRL_H
