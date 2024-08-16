@@ -42,20 +42,21 @@ public:
     }
 
     // PCI device methods
-    bool supports_io_space(void) {
+    bool supports_io_space(void) override {
         return true;
     };
 
     // I/O space access methods
-    bool pci_io_read(uint32_t offset, uint32_t size, uint32_t* res);
-    bool pci_io_write(uint32_t offset, uint32_t value, uint32_t size);
+    bool pci_io_read(uint32_t offset, uint32_t size, uint32_t* res) override;
+    bool pci_io_write(uint32_t offset, uint32_t value, uint32_t size) override;
 
     // HWComponent methods
-    PostInitResultType device_postinit();
+    PostInitResultType device_postinit() override;
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
 
     // MMIODevice methods
-    uint32_t read(uint32_t rgn_start, uint32_t offset, int size);
-    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size);
+    uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
+    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
 protected:
     void notify_bar_change(int bar_num);
@@ -71,8 +72,8 @@ protected:
     uint8_t rgb514_read_ind_reg(uint8_t reg_addr);
     void rgb514_write_ind_reg(uint8_t reg_addr, uint8_t value);
     void verbose_pixel_format(int crtc_index);
-    void draw_hw_cursor(uint8_t *dst_buf, int dst_pitch);
-    void get_cursor_position(int& x, int& y);
+    void draw_hw_cursor(uint8_t *dst_buf, int dst_pitch) override;
+    void get_cursor_position(int& x, int& y) override;
 
 private:
     void change_one_bar(uint32_t &aperture, uint32_t aperture_size, uint32_t aperture_new, int bar_num);
@@ -104,7 +105,7 @@ private:
 
     uint8_t     dac_regs[256] = {0};
 
-    std::unique_ptr<DisplayID>  disp_id;
+    DisplayID*                  disp_id = nullptr;
     std::unique_ptr<uint8_t[]>  vram_ptr;
 };
 
