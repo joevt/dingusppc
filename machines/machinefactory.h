@@ -43,6 +43,7 @@ struct MachineDescription {
     string                  machine_root;
 };
 
+extern const map<string, tuple<int, string>> gPropHelp;
 extern map<string, string> gMachineFactorySettings;
 
 class MachineFactory
@@ -63,12 +64,12 @@ public:
     static void set_machine_settings(map<string, string> &settings = gMachineFactorySettings);
 
     static void list_machines();
-    static void list_properties();
+    static void list_properties(vector<string> machine_list);
 
 private:
     static void create_device(string& dev_name, DeviceDescription& dev);
-    static void print_settings(PropMap& p);
-    static void list_device_settings(DeviceDescription& dev);
+    static void print_settings(PropMap& p, int type, int indent, string path);
+    static void list_device_settings(DeviceDescription& dev, int type, int indent, string path);
     static int  load_boot_rom(char *rom_data, size_t rom_size);
 
     static map<string, MachineDescription> & get_registry() {
