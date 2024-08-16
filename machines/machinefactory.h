@@ -45,6 +45,19 @@ struct MachineDescription {
 
 typedef std::function<std::optional<std::string>(const std::string&)> GetSettingValueFunc;
 
+typedef enum {
+    PropertyDevice,
+    PropertyMachine,
+} PropScope;
+
+typedef struct {
+    PropScope property_scope;
+    const std::string property_description;
+} PropHelpItem;
+
+extern const std::map<std::string, PropHelpItem> gPropHelp;
+extern std::map<std::string, std::string> gMachineFactorySettings;
+
 class MachineFactory
 {
 public:
@@ -62,14 +75,14 @@ public:
     static int  register_machine_settings(const std::string& id);
 
     static void list_machines();
-    static void list_properties();
+    static void list_properties(std::vector<std::string> machine_list);
 
     static GetSettingValueFunc get_setting_value;
 
 private:
     static void create_device(std::string& dev_name, DeviceDescription& dev);
-    static void print_settings(const PropMap& p);
-    static void list_device_settings(DeviceDescription& dev);
+    static void print_settings(const PropMap& p, PropScope scope, int indent, std::string path);
+    static void list_device_settings(DeviceDescription& dev, PropScope scope, int indent, std::string path);
     static int  load_boot_rom(char *rom_data, size_t rom_size);
     static void register_settings(const PropMap& p);
 
