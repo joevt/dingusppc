@@ -354,6 +354,13 @@ Chaos::Chaos(const std::string name) : BanditHost(0, name), HWComponent(name)
     mem_ctrl->add_mmio_region(0xF0000000UL, 0x01000000, this);
 }
 
+HWComponent* Chaos::set_property(const std::string &property, const std::string &value, int32_t unit_address)
+{
+    if (property == "vci")
+        return BanditHost::set_property("pci", value, unit_address);
+    return nullptr;
+}
+
 AspenPci::AspenPci(const std::string name) : BanditHost(1, name), HWComponent(name) {
     supports_types(HWCompType::PCI_HOST);
 

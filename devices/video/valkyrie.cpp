@@ -33,7 +33,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ValkyrieVideo::ValkyrieVideo(const std::string &dev_name, const uint32_t base_addr)
     : VideoCtrlBase(), HWComponent(dev_name)
 {
-    supports_types(HWCompType::MMIO_DEV);
+    supports_types(HWCompType::MMIO_DEV | HWCompType::VIDEO_CTRL);
 
     this->reg_shift = (base_addr == Valkyrie::REGBASE_CORDYCEPS) ? 2 : 3;
 
@@ -50,8 +50,6 @@ ValkyrieVideo::ValkyrieVideo(const std::string &dev_name, const uint32_t base_ad
     // add MMIO region for the CLUT
     mem_ctrl->add_mmio_region(base_addr + Valkyrie::CLUT_OFFSET, 0x1000, this);
 
-    this->disp_id = std::unique_ptr<DisplayID> (new DisplayID());
-
     // initialize the video clock generator
     this->clk_gen = new AthensClocks(0x28);
 
@@ -62,6 +60,8 @@ ValkyrieVideo::ValkyrieVideo(const std::string &dev_name, const uint32_t base_ad
 }
 
 PostInitResultType ValkyrieVideo::device_postinit() {
+    this->disp_id = dynamic_cast<DisplayID*>(this->get_comp_by_type(HWCompType::DISPLAY));
+
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::VALKYRIE);
@@ -288,14 +288,23 @@ void ValkyrieVideo::enable_video_internal() {
 }
 
 // ========================== Device registry stuff ==========================
-static const PropMap Valkyrie_Properties = {
-    {"mon_id",
-        new StrProperty("HiRes12-14in")},
-};
-
 static const DeviceDescription Valkyrie_Descriptor = {
-    ValkyrieVideo::create, {}, Valkyrie_Properties, HWCompType::MMIO_DEV
+    ValkyrieVideo::create, {"ValkyrieDisplay@0"}, {}, HWCompType::MMIO_DEV | HWCompType::VIDEO_CTRL
 };
 
 REGISTER_DEVICE(ValkyrieCordyceps, Valkyrie_Descriptor);
 REGISTER_DEVICE(ValkyrieAlchemy,   Valkyrie_Descriptor);
+
+static std::unique_ptr<HWComponent> ValkyrieDisplay_create(const std::string &dev_name) {
+    return std::unique_ptr<DisplayID>(new DisplayID(dev_name));
+}
+
+static const PropMap ValkyrieDisplay_Properties = {
+    {"mon_id", new StrProperty("HiRes12-14in")},
+};
+
+static const DeviceDescription ValkyrieDisplay_Descriptor = {
+    ValkyrieDisplay_create, {}, ValkyrieDisplay_Properties, HWCompType::DISPLAY
+};
+
+REGISTER_DEVICE(ValkyrieDisplay, ValkyrieDisplay_Descriptor);

@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef HW_COMPONENT_H
 #define HW_COMPONENT_H
 
+#include <devices/deviceregistry.h>
 #include <cinttypes>
 #include <string>
 #include <map>
@@ -57,6 +58,8 @@ enum HWCompType : uint64_t {
     FLOPPY_DRV  = 1ULL << 33, // floppy disk drive
     ETHER_MAC   = 1ULL << 40, // Ethernet media access controller
     MACHINE     = 1ULL << 41, // machine root
+    VIDEO_CTRL  = 1ULL << 42, // video controller
+    DISPLAY     = 1ULL << 43, // display
 };
 
 enum PostInitResultType : int {
@@ -91,6 +94,10 @@ public:
         return PI_SUCCESS;
     }
 
+    virtual bool is_ready_for_machine() {
+        return true;
+    }
+
     virtual void change_unit_address(int32_t unit_address);
     virtual void set_unit_address(int32_t unit_address) {
         this->unit_address = unit_address;
@@ -116,6 +123,10 @@ public:
     PostInitResultType postinit_devices();
 
     std::string get_path();
+    HWComponent *find_path(
+        std::string path, int match_types = 1, bool allow_partial_match = true,
+        bool *is_leaf_match = nullptr, int32_t *unit_address = nullptr
+    );
     std::string get_name_and_unit_address();
     virtual int32_t parse_self_unit_address_string(const std::string unit_address_string);
     virtual int32_t parse_child_unit_address_string(const std::string unit_address_string);
@@ -125,7 +136,19 @@ public:
     static std::string extract_device_name(const std::string name);
     static std::string extract_unit_address(const std::string name);
 
+    virtual HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) {
+        return nullptr;
+    }
+    bool override_property(const std::string &property, const std::string &value);
+    bool can_property_be_overriden(const std::string &property);
+    std::string get_property_str(const std::string &property);
+    int         get_property_int(const std::string &property);
+    bool        get_property_bin(const std::string &property);
+
     void dump_devices(int indent = 0);
+    void dump_paths();
+    bool path_match(std::string path, bool allow_partial_match);
+
     bool iterate(const std::function<bool(HWComponent *it, int depth)> &func, int depth = 0);
 
 protected:
@@ -140,7 +163,10 @@ private:
     void move_children(HWComponent* dst);
     PostInitResultType postinit_devices(int &devices_inited, int &devices_skipped);
     PostInitResultType postinit_device(int &devices_inited, int &devices_skipped);
+    void init_device_settings(const DeviceDescription &dev);
     bool postinitialized = false;
+    const DeviceDescription* device_description = nullptr;
+    std::map<std::string, std::unique_ptr<Setting>> device_settings;
 };
 
 extern std::unique_ptr<HWComponent> gMachineObj;

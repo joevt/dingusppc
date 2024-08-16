@@ -38,10 +38,14 @@ public:
         return std::unique_ptr<AtapiCdrom>(new AtapiCdrom(dev_name));
     }
 
+    // HWComponent methods
+
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
+
+    // AtapiCdrom methods
+
     bool is_device_ready() override { return this->is_ready; }
     uint8_t not_ready_reason() override { return ScsiError::MEDIUM_NOT_PRESENT; }
-
-    PostInitResultType device_postinit() override;
 
     void perform_packet_command() override;
 
