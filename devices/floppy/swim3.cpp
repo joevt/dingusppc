@@ -28,6 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/floppy/superdrive.h>
 #include <devices/floppy/swim3.h>
 #include <loguru.hpp>
+#include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
 #include <cinttypes>
@@ -76,14 +77,10 @@ Swim3Ctrl::Swim3Ctrl(const std::string &dev_name)
 
     // Attach virtual Superdrive(s) to the internal drive connector
     int num_drives = GET_INT_PROP("fdd_drives");
-    if (num_drives > 0) {
-        this->drive_1 = new MacSuperdrive::MacSuperDrive("Superdrive1");
-        this->add_device(0, this->drive_1);
-    }
-    if (num_drives >= 2) {
-        this->drive_2 = new MacSuperdrive::MacSuperDrive("Superdrive2");
-        this->add_device(1, this->drive_2);
-    }
+    if (num_drives > 0)
+        this->drive_1 = dynamic_cast<MacSuperDrive*>(MachineFactory::create_device(this, "MacSuperDrive@0"));
+    if (num_drives >= 2)
+        this->drive_2 = dynamic_cast<MacSuperDrive*>(MachineFactory::create_device(this, "MacSuperDrive@1"));
 }
 
 void Swim3Ctrl::reset()
@@ -127,23 +124,12 @@ PostInitResultType Swim3Ctrl::device_postinit()
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::SWIM3);
-
-    // if a floppy image was given "insert" it into the virtual superdrive
-    std::string fd_image_path = GET_STR_PROP("fdd_img");
-    int fd_write_prot = GET_BIN_PROP("fdd_wr_prot");
-    this->insert_disk(1, fd_image_path, fd_write_prot);
-
-    // if a 2nd floppy image was given "insert" it into the 2nd virtual superdrive
-    std::string fd_image_path2 = GET_STR_PROP("fdd_img2");
-    int fd_write_prot2 = GET_BIN_PROP("fdd_wr_prot2");
-    this->insert_disk(2, fd_image_path2, fd_write_prot2);
-
     return PI_SUCCESS;
 }
 
 void Swim3Ctrl::insert_disk(int drive, const std::string& img_path, int write_flag)
 {
-    MacSuperdrive::MacSuperDrive *the_drive = nullptr;
+    MacSuperDrive *the_drive = nullptr;
     switch (drive) {
     case 1:
         if (this->drive_1)
@@ -256,7 +242,7 @@ void Swim3Ctrl::write(uint8_t reg_offset, uint8_t value)
                 this->selected_drive->command(command_addr, val);
             } else
                 LOG_F(ERROR, "SWIM3: command %-17s addr=0x%X, value=%d; no drive selected yet",
-                    MacSuperdrive::get_command_name(command_addr).c_str(), command_addr, val);
+                    MacSuperDrive::get_command_name(command_addr).c_str(), command_addr, val);
         } else if (this->phase_lines == 4) {
             // Select_Head_0 or Select_Head_1
             uint8_t status_addr = ((this->mode_reg & SWIM3_HEAD_SELECT) >> 2) | (this->phase_lines & 7);
@@ -264,7 +250,7 @@ void Swim3Ctrl::write(uint8_t reg_offset, uint8_t value)
                 this->rd_line = this->selected_drive->status(status_addr) & 1;
             else
                 LOG_F(ERROR, "SWIM3: status %-13s 0x%X; no drive selected yet",
-                    MacSuperdrive::get_status_name(status_addr).c_str(), status_addr);
+                    MacSuperDrive::get_status_name(status_addr).c_str(), status_addr);
         }
         break;
     case Swim3Reg::Setup:
@@ -312,7 +298,7 @@ void Swim3Ctrl::do_step()
     if (this->mode_reg & SWIM3_GO_STEP && this->step_count) { // are we still stepping?
         // instruct the drive to perform single step in current direction
         if (this->selected_drive)
-            this->selected_drive->command(MacSuperdrive::CommandAddr::Do_Step, 0);
+            this->selected_drive->command(MacSuperDrive::CommandAddr::Do_Step, 0);
         else
             LOG_F(ERROR, "SWIM3: do_step; no drive selected yet");
         if (--this->step_count == 0) {
@@ -343,7 +329,7 @@ void Swim3Ctrl::start_stepping()
     }
 
     if ((((this->mode_reg & SWIM3_HEAD_SELECT) >> 3) | (this->phase_lines & 3))
-        != MacSuperdrive::CommandAddr::Do_Step) {
+        != MacSuperDrive::CommandAddr::Do_Step) {
         LOG_F(WARNING, "SWIM3: invalid command address on the phase lines!");
         return;
     }
@@ -412,7 +398,7 @@ void Swim3Ctrl::start_disk_access()
 
 void Swim3Ctrl::disk_access()
 {
-    MacSuperdrive::SectorHdr hdr;
+    MacSuperDrive::SectorHdr hdr;
     uint64_t delay;
 
     if (!this->selected_drive) {
@@ -591,23 +577,7 @@ void Swim3Ctrl::mode_change(uint8_t new_mode)
     this->mode_reg = new_mode;
 }
 
-// floppy disk formats properties for the cases
-// where disk format needs to be specified manually
-static const std::vector<std::string> FloppyFormats = {
-    "", "GCR_400K", "GCR_800K", "MFM_720K", "MFM_1440K"
-};
-
 static const PropMap Swim3_Properties = {
-    {"fdd_img",
-        new StrProperty("")},
-    {"fdd_img2",
-        new StrProperty("")},
-    {"fdd_wr_prot",
-        new BinProperty(1)},
-    {"fdd_wr_prot2",
-        new BinProperty(1)},
-    {"fdd_fmt",
-        new StrProperty("", FloppyFormats)},
     {"fdd_drives",
         new IntProperty(1, std::vector<uint32_t>({0, 1, 2}))},
 };
