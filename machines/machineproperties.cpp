@@ -161,20 +161,6 @@ std::string BinProperty::get_valid_values_as_str() {
         + ", 0 | off | OFF" + (this->bin_val ? "" : " (default)");
 }
 
-void parse_device_path(std::string dev_path, std::string& bus_id, uint32_t& dev_num) {
-    bus_id  = "";
-    dev_num = -1;
-
-    size_t delimiter_pos = dev_path.find(":");
-    if (delimiter_pos == std::string::npos)
-        ABORT_F("Invalid device path %s", dev_path.c_str());
-
-    bus_id = dev_path.substr(0, delimiter_pos);
-
-    try {
-        dev_num = (uint32_t)strtoul(dev_path.substr(delimiter_pos+1).c_str(), 0, 0);
-    } catch (std::string bad_string) {
-        ABORT_F("Invalid device number %s in device path %s", bad_string.c_str(),
-            dev_path.c_str());
-    }
-}
+const char *Setting::value_not_inited = "\x01\x02\x03\x04";
+const char *Setting::value_defaulted = "\x05\x06\x07\x08";
+std::set<BasicProperty*> Setting::loaded_properties;

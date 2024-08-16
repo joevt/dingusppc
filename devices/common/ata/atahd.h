@@ -49,7 +49,12 @@ public:
         return std::unique_ptr<AtaHardDisk>(new AtaHardDisk(dev_name));
     }
 
-    PostInitResultType device_postinit() override;
+    // HWComponent methods
+
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
+    bool is_ready_for_machine() override;
+
+    // AtaHardDisk methods
 
     void insert_image(std::string filename);
     int perform_command() override;
