@@ -335,18 +335,18 @@ static const PropMap GrackleGossamer_Properties = {
     {"pci_A1"   , new StrProperty("")},
     {"pci_B1"   , new StrProperty("")},
     {"pci_C1"   , new StrProperty("")},
-//  {"pci_GPU"  , new StrProperty("")},
+    {"pci_GPU"  , new StrProperty("")},
 };
 
 static const PropMap GrackleYosemite_Properties = {
-//  {"pci_J12", new StrProperty("")},
+    {"pci_J12", new StrProperty("")},
 };
 
 static const PropMap GrackleBondi_Properties = {
     {"pci_A1"   , new StrProperty("")},
     {"pci_B1"   , new StrProperty("")},
     {"pci_C1"   , new StrProperty("")},
-//  {"pci_GPU"  , new StrProperty("")},
+    {"pci_GPU"  , new StrProperty("")},
     {"pci_PERCH", new StrProperty("")},
 };
 
