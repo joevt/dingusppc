@@ -32,8 +32,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class ScsiHardDisk : public ScsiPhysDevice, public ScsiBlockCmds {
 public:
-    ScsiHardDisk(const std::string name, int my_id);
+    ScsiHardDisk(const std::string name);
     ~ScsiHardDisk() = default;
+
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<ScsiHardDisk>(new ScsiHardDisk(dev_name));
+    }
+
+    // HWComponent methods
+
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
+    bool is_ready_for_machine() override;
+
+    // ScsiHardDisk methods
 
     void insert_image(std::string filename);
     void process_command() override;
