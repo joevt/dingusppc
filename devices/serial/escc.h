@@ -72,8 +72,20 @@ enum DpllMode : uint8_t {
 /** ESCC Channel class. */
 class EsccChannel : virtual public HWComponent {
 public:
-    EsccChannel(const std::string name) : HWComponent(name) {}
+    EsccChannel(const std::string name) : HWComponent(name) {
+        this->attach_backend(CHARIO_BE_NULL);
+    }
     ~EsccChannel() = default;
+
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<EsccChannel>(new EsccChannel(dev_name));
+    }
+
+    // HWComponent methods
+    
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
+
+    // EsccChannel methods
 
     void attach_backend(int id);
     void reset(bool hw_reset);
