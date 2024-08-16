@@ -114,7 +114,7 @@ public:
 class MeshController : public ScsiBusController, public MeshBase {
 public:
     MeshController(uint8_t mesh_id, const std::string name)
-        : ScsiBusController(name, 7), HWComponent(name)
+        : ScsiBusController(name), HWComponent(name)
     {
         this->chip_id = mesh_id;
         this->reset(true);
@@ -153,6 +153,20 @@ private:
     uint8_t     exception  = 0;
     uint16_t    bus_stat;
     bool        check_parity = true;
+};
+
+class MeshControllerDev : public ScsiBusControllerDev {
+public:
+    MeshControllerDev(const std::string name)
+        : ScsiBusControllerDev(name), HWComponent(name) {}
+    ~MeshControllerDev() = default;
+
+    static std::unique_ptr<HWComponent> create() {
+        return std::unique_ptr<MeshControllerDev>(new MeshControllerDev("MeshDev"));
+    }
+
+    // HWComponent methods
+    PostInitResultType device_postinit() override;
 };
 
 #endif // MESH_H
