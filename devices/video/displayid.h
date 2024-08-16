@@ -33,7 +33,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef DISPLAY_ID_H
 #define DISPLAY_ID_H
 
-#include <cinttypes>
+#include <devices/common/hwcomponent.h>
+#include <devices/video/videoctrl.h>
 
 /* Supported diplay ID methods. */
 enum class Disp_Id_Kind {
@@ -53,12 +54,24 @@ enum I2CState : uint8_t {
 };
 
 
-class DisplayID {
+class DisplayID : virtual public HWComponent {
 public:
-    DisplayID();
-    DisplayID(uint8_t std_code, uint8_t ext_code);
+    DisplayID(const std::string name);
     ~DisplayID() = default;
 
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<DisplayID>(new DisplayID(dev_name));
+    }
+
+    // HWComponent methods
+
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
+
+    // DisplayID methods
+
+    void set_video_ctrl(VideoCtrlBase* video_ctrl) {
+        this->video_ctrl = video_ctrl;
+    }
     uint8_t read_monitor_sense(uint8_t levels, uint8_t dirs);
 
 protected:
@@ -66,6 +79,7 @@ protected:
     uint8_t update_ddc_i2c(uint8_t sda, uint8_t scl);
 
 private:
+    VideoCtrlBase*  video_ctrl = nullptr;
     Disp_Id_Kind    id_kind;
 
     uint8_t std_sense_code;
