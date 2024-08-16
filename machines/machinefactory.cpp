@@ -49,56 +49,57 @@ using namespace std;
 
 map<string, unique_ptr<BasicProperty>> gMachineSettings;
 
-static const map<string, string> PropHelp = {
-    {"rambank1_size",   "specifies RAM bank 1 size in MB"},
-    {"rambank2_size",   "specifies RAM bank 2 size in MB"},
-    {"rambank3_size",   "specifies RAM bank 3 size in MB"},
-    {"rambank4_size",   "specifies RAM bank 4 size in MB"},
-    {"rambank5_size",   "specifies RAM bank 5 size in MB"},
-    {"rambank6_size",   "specifies RAM bank 6 size in MB"},
-    {"rambank7_size",   "specifies RAM bank 7 size in MB"},
-    {"rambank8_size",   "specifies RAM bank 8 size in MB"},
-    {"rambank9_size",   "specifies RAM bank 9 size in MB"},
-    {"rambank10_size",   "specifies RAM bank 10 size in MB"},
-    {"rambank11_size",   "specifies RAM bank 11 size in MB"},
-    {"rambank12_size",   "specifies RAM bank 12 size in MB"},
-    {"rambank0_size",   "specifies onboard RAM bank size in MB"},
-    {"gfxmem_size",     "specifies video memory size in MB"},
-    {"fdd_img",         "specifies path to floppy disk image"},
-    {"fdd_img2",        "specifies path to 2nd floppy disk image"},
-    {"fdd_fmt",         "specifies floppy disk format"},
-    {"fdd_wr_prot",     "toggles floppy disk's write protection"},
-    {"fdd_wr_prot2",    "toggles 2nd floppy disk's write protection"},
-    {"hdd_img",         "specifies path(s) to hard disk image(s)"},
-    {"hdd_img2",        "specifies path(s) to secondary hard disk image(s)"},
-    {"cdr_config",      "CD-ROM device path in [bus]:[device#] format"},
-    {"cdr_img",         "specifies path(s) to CD-ROM image(s)"},
-    {"cdr_img2",        "specifies path(s) to secondary CD-ROM image(s)"},
-    {"mon_id",          "specifies which monitor to emulate"},
-    {"pci_GPU",         "specifies PCI device for Beige G3 grackle device @12"},
-    {"pci_J12",         "insert a PCI device into 32-bit 66MHz slot J12"},
-    {"pci_J11",         "insert a PCI device into 64-bit 33MHz slot J11"},
-    {"pci_J10",         "insert a PCI device into 64-bit 33MHz slot J10"},
-    {"pci_J9",          "insert a PCI device into 64-bit 33MHz slot J9"},
-    {"pci_FireWire",    "insert a PCI device into PCI slot reserved for Yosemite FireWire"},
-    {"pci_UltraATA",    "insert a PCI device into PCI slot reserved for Yosemite Ultra ATA"},
-    {"pci_USB",         "insert a PCI device into PCI slot reserved for Yosemite USB"},
-    {"pci_PERCH",       "insert a PCI device into PERCH slot"},
-    {"pci_A1",          "insert a PCI device into A1 slot"},
-    {"pci_B1",          "insert a PCI device into B1 slot"},
-    {"pci_C1",          "insert a PCI device into C1 slot"},
-    {"pci_E1",          "insert a PCI device into E1 slot"},
-    {"pci_F1",          "insert a PCI device into F1 slot"},
-    {"pci_D2",          "insert a PCI device into D2 slot"},
-    {"pci_E2",          "insert a PCI device into E2 slot"},
-    {"pci_F2",          "insert a PCI device into F2 slot"},
-    {"vci_D",           "insert a VCI device 0x0D"},
-    {"vci_E",           "insert a VCI device 0x0E"},
-    {"serial_backend",  "specifies the backend for the serial port"},
-    {"emmo",            "enables/disables factory HW tests during startup"},
-    {"cpu",             "specifies CPU"},
-    {"adb_devices",     "specifies which ADB device(s) to attach"},
-    {"pds",             "specify device for the processsor direct slot"},
+const map<string, PropHelpItem> gPropHelp = {
+    {"rambank1_size",   {PropertyMachine, "specifies RAM bank 1 size in MB"}},
+    {"rambank2_size",   {PropertyMachine, "specifies RAM bank 2 size in MB"}},
+    {"rambank3_size",   {PropertyMachine, "specifies RAM bank 3 size in MB"}},
+    {"rambank4_size",   {PropertyMachine, "specifies RAM bank 4 size in MB"}},
+    {"rambank5_size",   {PropertyMachine, "specifies RAM bank 5 size in MB"}},
+    {"rambank6_size",   {PropertyMachine, "specifies RAM bank 6 size in MB"}},
+    {"rambank7_size",   {PropertyMachine, "specifies RAM bank 7 size in MB"}},
+    {"rambank8_size",   {PropertyMachine, "specifies RAM bank 8 size in MB"}},
+    {"rambank9_size",   {PropertyMachine, "specifies RAM bank 9 size in MB"}},
+    {"rambank10_size",  {PropertyMachine, "specifies RAM bank 10 size in MB"}},
+    {"rambank11_size",  {PropertyMachine, "specifies RAM bank 11 size in MB"}},
+    {"rambank12_size",  {PropertyMachine, "specifies RAM bank 12 size in MB"}},
+    {"rambank0_size",   {PropertyMachine, "specifies onboard RAM bank size in MB"}},
+    {"gfxmem_size",     {PropertyDevice , "specifies video memory size in MB"}},
+    {"fdd_img",         {PropertyDevice , "specifies path to floppy disk image"}},
+    {"fdd_img2",        {PropertyDevice , "specifies path to 2nd floppy disk image"}},
+    {"fdd_fmt",         {PropertyDevice , "specifies floppy disk format"}},
+    {"fdd_wr_prot",     {PropertyDevice , "specifies floppy disk's write protection setting"}},
+    {"fdd_wr_prot2",    {PropertyDevice , "specifies 2nd floppy disk's write protection setting"}},
+    {"hdd_img",         {PropertyDevice , "specifies path to hard disk image"}},
+    {"hdd_img2",        {PropertyDevice , "specifies path to secondary hard disk image"}},
+    {"cdr_config",      {PropertyMachine, "CD-ROM device path in [bus]:[device#] format"}},
+    {"hdd_config",      {PropertyMachine, "HD device path in [bus]:[device#] format"}},
+    {"cdr_img",         {PropertyDevice , "specifies path to CD-ROM image"}},
+    {"cdr_img2",        {PropertyDevice , "specifies path to secondary CD-ROM image"}},
+    {"mon_id",          {PropertyDevice , "specifies which monitor to emulate"}},
+    {"pci_GPU",         {PropertyMachine, "specifies PCI device for Beige G3 grackle device @12"}},
+    {"pci_J12",         {PropertyMachine, "inserts PCI device into 32-bit 66MHz slot J12"}},
+    {"pci_J11",         {PropertyMachine, "inserts PCI device into 64-bit 33MHz slot J11"}},
+    {"pci_J10",         {PropertyMachine, "inserts PCI device into 64-bit 33MHz slot J10"}},
+    {"pci_J9",          {PropertyMachine, "inserts PCI device into 64-bit 33MHz slot J9"}},
+    {"pci_FireWire",    {PropertyMachine, "inserts PCI device into PCI slot reserved for Yosemite FireWire"}},
+    {"pci_UltraATA",    {PropertyMachine, "inserts PCI device into PCI slot reserved for Yosemite Ultra ATA"}},
+    {"pci_USB",         {PropertyMachine, "inserts PCI device into PCI slot reserved for Yosemite USB"}},
+    {"pci_PERCH",       {PropertyMachine, "inserts PCI device into PERCH slot"}},
+    {"pci_A1",          {PropertyMachine, "inserts PCI device into slot A1"}},
+    {"pci_B1",          {PropertyMachine, "inserts PCI device into slot B1"}},
+    {"pci_C1",          {PropertyMachine, "inserts PCI device into slot C1"}},
+    {"pci_E1",          {PropertyMachine, "inserts PCI device into slot E1"}},
+    {"pci_F1",          {PropertyMachine, "inserts PCI device into slot F1"}},
+    {"pci_D2",          {PropertyMachine, "inserts PCI device into slot D2"}},
+    {"pci_E2",          {PropertyMachine, "inserts PCI device into slot E2"}},
+    {"pci_F2",          {PropertyMachine, "inserts PCI device into slot F2"}},
+    {"vci_D",           {PropertyMachine, "inserts VCI device 0x0D"}},
+    {"vci_E",           {PropertyMachine, "inserts VCI device 0x0E"}},
+    {"serial_backend",  {PropertyDevice , "specifies the backend for the serial port"}},
+    {"emmo",            {PropertyMachine, "enables/disables factory HW tests during startup"}},
+    {"cpu",             {PropertyMachine, "specifies CPU"}},
+    {"adb_devices",     {PropertyMachine, "specifies which ADB device(s) to attach"}},
+    {"pds",             {PropertyMachine, "specify device for the processsor direct slot"}},
 };
 
 static uint32_t adler32(char *buf, size_t len) {
@@ -189,41 +190,70 @@ int MachineFactory::create(string& mach_id)
     return 0;
 }
 
-void MachineFactory::list_properties()
+void MachineFactory::list_properties(vector<string> machine_list)
 {
     cout << endl;
 
+    if (machine_list.empty()) {
     for (auto& mach : get_registry()) {
         cout << mach.second.description << " supported properties:" << endl << endl;
-
-        list_device_settings(DeviceRegistry::get_descriptor(mach.second.machine_root));
+                list_device_settings(DeviceRegistry::get_descriptor(mach.second.machine_root), PropertyMachine, 0, "");
+                list_device_settings(DeviceRegistry::get_descriptor(mach.second.machine_root), PropertyDevice, 0, "");
+        }
+    } else {
+        for (auto& name : machine_list) {
+            auto it = get_registry().find(name);
+            if (it != get_registry().end()) {
+                cout << it->second.description << " supported properties:" << endl << endl;
+                list_device_settings(DeviceRegistry::get_descriptor(it->second.machine_root), PropertyMachine, 0, "");
+                list_device_settings(DeviceRegistry::get_descriptor(it->second.machine_root), PropertyDevice, 0, "");
+            }
+            else {
+                cout << name << " is not a valid machine id." << endl << endl;
+            }
+        }
     }
 
     cout << endl;
 }
 
-void MachineFactory::list_device_settings(DeviceDescription& dev)
+void MachineFactory::list_device_settings(DeviceDescription& dev, PropScope scope, int indent, string path)
 {
     for (auto& d : dev.subdev_list) {
-        list_device_settings(DeviceRegistry::get_descriptor(d));
+        list_device_settings(DeviceRegistry::get_descriptor(d),
+            scope, scope == PropertyMachine ? indent : indent + 4, path + "/" + d
+        );
     }
 
-    print_settings(dev.properties);
+    print_settings(dev.properties, scope, indent, path);
 }
 
-void MachineFactory::print_settings(const PropMap& prop_map)
+void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope, int indent, string path)
 {
     string help;
 
+    bool did_path = scope == PropertyMachine;
+
     for (auto& p : prop_map) {
-        if (PropHelp.find(p.first) != PropHelp.end())
-            help = PropHelp.at(p.first);
-        else
+        auto phelp = gPropHelp.find(p.first);
+        if (phelp != gPropHelp.end()) {
+            if (phelp->second.property_scope != scope)
+                continue;
+            help = phelp->second.property_description;
+        } else {
+            if (scope != PropertyDevice)
+                continue;
             help = "";
+        }
 
-        cout << setw(13) << right << p.first << "\t\t" << help << endl;
+        if (!did_path) {
+            cout << setw(4) << "" << path << endl;
+            did_path = true;
+        }
 
-        cout << setw(13) << "\t\t\t" "Valid values: ";
+        cout << setw(16) << right << p.first << "    " << help << endl;
+
+        cout << setw(16) << "" << "    " << "Valid values: ";
 
         switch(p.second->get_type()) {
         case PROP_TYPE_INTEGER:
