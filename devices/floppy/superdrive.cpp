@@ -443,3 +443,24 @@ char* MacSuperDrive::get_sector_data_ptr(int sector_num)
           sector_num - 1) * 512
     );
 }
+
+int MacSuperDrive::set_property(const std::string &property, const std::string &value, uint32_t unit_address) {
+/*
+    if (property == "fdd_img") {
+        if (!this->has_disk) {
+            this->insert_disk(value);
+            return 0;
+        }
+        return 1;
+    }
+    if (property == "fdd_wr_prot") {
+        this->wr_protect = value;
+    
+    
+    
+    }
+
+
+    return 1;
+*/
+};
