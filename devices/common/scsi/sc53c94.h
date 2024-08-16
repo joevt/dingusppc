@@ -187,7 +187,8 @@ typedef struct {
 
 typedef std::function<void(const uint8_t drq_state)> DrqCb;
 
-class Sc53C94 : public ScsiDevice, public DmaDevice {
+class Sc53C94 : public DmaDevice, virtual public HWComponent {
+friend class Sc53C94Dev;
 public:
     Sc53C94(uint8_t chip_id=12, uint8_t my_id=7);
     ~Sc53C94() = default;
@@ -227,14 +228,6 @@ public:
     void set_drq_callback(DrqCb cb) {
         this->drq_cb = cb;
     }
-
-    // ScsiDevice methods
-    void notify(ScsiMsg msg_type, int param);
-    bool prepare_data() { return false; };
-    bool get_more_data() { return false; };
-    bool has_data() { return this->data_fifo_pos != 0; };
-    int  send_data(uint8_t* dst_ptr, int count);
-    void process_command() {};
 
     // DmaChannel methods
     int xfer_from(uint8_t *buf, int len); // Must be marked override!
@@ -306,6 +299,33 @@ private:
     int      last_log_count = 0;
     uint32_t last_sequence = -1;
     bool     is_dbdma = false;
+
+    ScsiBus* bus_obj = nullptr;
+    ScsiDevice* dev_obj = nullptr;
+};
+
+class Sc53C94Dev : public ScsiDevice {
+public:
+    Sc53C94Dev();
+    ~Sc53C94Dev() = default;
+
+    static std::unique_ptr<HWComponent> create() {
+        return std::unique_ptr<Sc53C94Dev>(new Sc53C94Dev());
+    }
+
+    //HWComponent methods
+    PostInitResultType device_postinit();
+
+    // ScsiDevice methods
+    void notify(ScsiMsg msg_type, int param);
+    bool prepare_data() { return false; };
+    bool get_more_data() { return false; };
+    bool has_data() { return this->ctrl_obj->data_fifo_pos != 0; };
+    int  send_data(uint8_t* dst_ptr, int count);
+    void process_command() {};
+
+protected:
+    Sc53C94 *ctrl_obj = nullptr;
 };
 
 #endif // SC_53C94_H
