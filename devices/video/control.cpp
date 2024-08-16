@@ -56,35 +56,7 @@ namespace loguru {
 ControlVideo::ControlVideo(const std::string &dev_name)
     : PCIDevice(dev_name), VideoCtrlBase(), HWComponent(dev_name)
 {
-    supports_types(HWCompType::PCI_DEV);
-
-    // get VRAM size in MBs and convert it to bytes
-    this->vram_size = GET_INT_PROP("gfxmem_size") << 20;
-
-    // get VRAM banks
-    this->vram_banks = GET_INT_PROP("gfxmem_banks"); // bit 0: standard bank; bit 1: optional bank
-
-    switch(this->vram_banks) {
-        case 0:
-            this->vram_size = 0;
-            break;
-        case 1:
-        case 2:
-            this->vram_size = 2 << 20;
-            break;
-        default:
-            switch (this->vram_size) {
-                case 0:
-                    this->vram_banks = 0;
-                    break;
-                case 2:
-                    this->vram_banks = 1;
-                    break;
-            }
-    }
-
-    // allocate VRAM
-    this->vram_ptr = std::unique_ptr<uint8_t[]> (new uint8_t[this->vram_size]);
+    supports_types(HWCompType::PCI_DEV | HWCompType::VIDEO_CTRL);
 
     // set up PCI configuration space header
     this->vendor_id   = PCI_VENDOR_APPLE;
@@ -132,9 +104,47 @@ ControlVideo::ControlVideo(const std::string &dev_name)
     // attach IOBus Device #2 0xF301B000 ; register RaDACal with the I/O controller
     GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralTnt"));
     gc_obj->add_device(0x1B000, this->radacal);
+}
 
-    // initialize display identification
-    this->disp_id = std::unique_ptr<DisplayID> (new DisplayID());
+HWComponent* ControlVideo::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    if (unit_address == -1) {
+        if (property == "gfxmem_size" || property == "gfxmem_banks") {
+            if (this->override_property(property, value)) {
+                // get VRAM size in MBs and convert it to bytes
+                int vram = this->get_property_int("gfxmem_size");
+                this->vram_size = vram << 20;
+
+                // get VRAM banks
+                this->vram_banks = get_property_int("gfxmem_banks"); // bit 0: standard bank; bit 1: optional bank
+
+                switch(this->vram_banks) {
+                    case 0:
+                        this->vram_size = 0;
+                        break;
+                    case 1:
+                    case 2:
+                        this->vram_size = 2 << 20;
+                        break;
+                    default:
+                        switch (this->vram_size) {
+                            case 0:
+                                this->vram_banks = 0;
+                                break;
+                            case 2:
+                                this->vram_banks = 1;
+                                break;
+                        }
+                }
+
+                LOG_F(INFO, "%s: setting VRAM to %d MB", this->get_name_and_unit_address().c_str(), this->vram_size >> 20);
+                // allocate VRAM
+                this->vram_ptr = std::unique_ptr<uint8_t[]> (new uint8_t[this->vram_size]);
+
+                return this;
+            }
+        }
+    }
+    return nullptr;
 }
 
 void ControlVideo::change_one_bar(uint32_t &aperture, uint32_t aperture_size, uint32_t aperture_new, int bar_num) {
@@ -159,6 +169,9 @@ void ControlVideo::notify_bar_change(int bar_num) {
 }
 
 PostInitResultType ControlVideo::device_postinit() {
+    // initialize display identification
+    this->disp_id = dynamic_cast<DisplayID*>(this->get_comp_by_type(HWCompType::DISPLAY));
+
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::CONTROL);
@@ -773,12 +786,24 @@ static const PropMap Control_Properties = {
         new IntProperty(3, std::vector<uint32_t>({0, 1, 2, 3}))},
     {"gfxmem_size",
         new IntProperty(4, std::vector<uint32_t>({0, 2, 4}))},
-    {"mon_id",
-        new StrProperty("AppleVision1710")},
 };
 
 static const DeviceDescription Control_Descriptor = {
-    ControlVideo::create, {}, Control_Properties, HWCompType::PCI_DEV
+    ControlVideo::create, {"ControlDisplay@0"}, Control_Properties, HWCompType::PCI_DEV | HWCompType::VIDEO_CTRL
 };
 
 REGISTER_DEVICE(ControlVideo, Control_Descriptor);
+
+static std::unique_ptr<HWComponent> ControlDisplay_create(const std::string &dev_name) {
+    return std::unique_ptr<DisplayID>(new DisplayID(dev_name));
+}
+
+static const PropMap ControlDisplay_Properties = {
+    {"mon_id", new StrProperty("AppleVision1710")},
+};
+
+static const DeviceDescription ControlDisplay_Descriptor = {
+    ControlDisplay_create, {}, ControlDisplay_Properties, HWCompType::DISPLAY
+};
+
+REGISTER_DEVICE(ControlDisplay, ControlDisplay_Descriptor);

@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <devices/common/hwcomponent.h>
+#include <machines/machinefactory.h>
 #include <loguru.hpp>
 
 #include <map>
@@ -293,4 +294,141 @@ bool HWComponent::iterate(const std::function<bool(HWComponent *it, int depth)> 
         if (it->second.get()->iterate(func, depth + 1))
             return true;
     return false;
+}
+
+void HWComponent::dump_paths() {
+    this->iterate([&](HWComponent *it, int depth) {
+        printf("    %s", it->get_path().c_str());
+        std::cout << std::endl;
+        return false;
+    });
+}
+
+bool HWComponent::path_match(std::string path, bool allow_partial_match) {
+    std::smatch results;
+    HWComponent *hwc;
+    for (hwc = this; hwc; hwc = hwc->parent) {
+        if (!std::regex_match(path, results, MachineFactory::path_re) || !(results[2].matched || results[3].matched)) {
+            if (!path.empty())
+                LOG_F(ERROR, "Invalid device path \"%s\"", path.c_str());
+            return false;
+        }
+        if (results[2].matched && results[2] != hwc->get_name())
+            return false;
+        if (results[3].matched) {
+            int32_t unit_address = hwc->parse_self_unit_address_string(results[3]);
+            if (unit_address == -1 || unit_address != hwc->unit_address)
+                return false;
+        }
+        path = results[1];
+        if (path.empty())
+            break;
+    }
+    if (!path.empty())
+        return false;
+    return (allow_partial_match || hwc == nullptr);
+}
+
+void HWComponent::init_device_settings(const DeviceDescription &dev) {
+    this->device_description = &dev;
+    for (auto& p : dev.properties) {
+        if (gPropHelp.count(p.first) == 0) {
+            LOG_F(ERROR, "Missing help for setting \"%s\" from %s.", p.first.c_str(), name.c_str());
+            continue;
+        }
+        if (gPropHelp.at(p.first).property_scope != PropertyDevice)
+            continue;
+
+        this->device_settings[p.first] = std::unique_ptr<Setting>(new Setting());
+        auto &s = this->device_settings[p.first];
+        LOG_F(INFO, "Adding device setting \"%s\" = \"%s\" from %s.",
+            p.first.c_str(), p.second->get_string().c_str(), name.c_str());
+        s->set_property_info(p.second);
+    }
+}
+
+HWComponent *HWComponent::find_path(
+        std::string path, int match_types, bool allow_partial_match,
+        bool *is_leaf_match, int32_t *unit_address
+)
+{
+    std::smatch results;
+    if (!std::regex_match(path, results, MachineFactory::path_re) || !(results[2].matched || results[3].matched)) {
+        LOG_F(ERROR, "Invalid device path \"%s\"", path.c_str());
+        return nullptr;
+    }
+
+    HWComponent *result = nullptr;
+
+    if ((match_types & 1) &&
+        this->iterate(
+            [&](HWComponent *it, int depth) {
+                if (it->path_match(path, allow_partial_match)) {
+                    result = it;
+                    if (is_leaf_match)
+                        *is_leaf_match = false;
+                    return true;
+                }
+                return false;
+            }
+        )
+    )
+        return result;
+
+    if ((match_types & 2) && !results[2].matched && results[3].matched &&
+        this->iterate(
+            [&](HWComponent *it, int depth) {
+                if (!results[1].matched || it->path_match(results[1], allow_partial_match)) {
+                    int32_t result_unit_address = it->parse_child_unit_address_string(results[3]);
+                    if (result_unit_address != -1 && it->children.count(result_unit_address) == 0) {
+                        result = it;
+                        if (unit_address)
+                            *unit_address = result_unit_address;
+                        if (is_leaf_match)
+                            *is_leaf_match = true;
+                        return true;
+                    }
+                }
+                return false;
+            }
+        )
+    )
+        return result;
+
+    return result;
+}
+
+bool HWComponent::can_property_be_overriden(const std::string &property) {
+    if (!this->device_settings.count(property))
+        return false;
+    auto &ds = this->device_settings[property];
+    if (ds->value_commandline != ds->value_not_inited)
+        return false;
+    return true;
+}
+
+bool HWComponent::override_property(const std::string &property, const std::string &value) {
+    if (!can_property_be_overriden(property))
+        return false;
+    auto &ds = this->device_settings[property];
+    try {
+        ds->property->set_string(value);
+        ds->value_commandline = value;
+        return true;
+    }
+    catch (...) {
+    }
+    return false;
+}
+
+std::string HWComponent::get_property_str(const std::string &property) {
+    return dynamic_cast<StrProperty*>(this->device_settings.at(property)->property.get())->get_string();
+}
+
+int HWComponent::get_property_int(const std::string &property) {
+    return dynamic_cast<IntProperty*>(this->device_settings.at(property)->property.get())->get_int();
+}
+
+bool HWComponent::get_property_bin(const std::string &property) {
+    return dynamic_cast<BinProperty*>(this->device_settings.at(property)->property.get())->get_val();
 }
