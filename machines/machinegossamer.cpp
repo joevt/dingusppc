@@ -198,11 +198,13 @@ static const PropMap gossamer_desktop_settings = {
     {"emmo",
         new BinProperty(0)},
     {"hdd_config",
-        new StrProperty("Ide0:0")},
+        new StrProperty("Ide0/@0")},
     {"cdr_config",
-        new StrProperty("Ide1:0")},
+        new StrProperty("Ide1/@0")},
     {"pci_GPU",
         new StrProperty("AtiRageGT")},
+    {"pci_dev_max",
+        new IntProperty(0xF, 0, 0x1F)},
 };
 
 static const PropMap gossamer_tower_settings = {
@@ -215,19 +217,21 @@ static const PropMap gossamer_tower_settings = {
     {"emmo",
         new BinProperty(0)},
     {"hdd_config",
-        new StrProperty("Ide0:0")},
+        new StrProperty("Ide0/@0")},
     {"cdr_config",
-        new StrProperty("Ide1:0")},
+        new StrProperty("Ide1/@0")},
     {"pci_GPU",
         new StrProperty("AtiRagePro")},
+    {"pci_dev_max",
+        new IntProperty(0xF, 0, 0x1F)},
 };
 
 static std::vector<std::string> pmg3_devices = {
-    "GrackleGossamer@FE000000", "ScreamerSnd@14000", "Heathrow@10", "AtaHardDisk", "AtapiCdrom"
+    "GrackleGossamer@FE000000", "ScreamerSnd@14000", "Heathrow@10"
 };
 
 static std::vector<std::string> pmg3twr_devices = {
-    "GrackleGossamer@FE000000", "ScreamerSnd@14000", "Heathrow@10", "AtaHardDisk", "AtapiCdrom"
+    "GrackleGossamer@FE000000", "ScreamerSnd@14000", "Heathrow@10"
 };
 
 static const DeviceDescription MachineGossamerDesktop_descriptor = {

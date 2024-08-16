@@ -234,26 +234,9 @@ static const std::map<std::string, std::string> MonitorAliasToId = {
     { "AppleVision1710", "HiRes12-14in" }
 };
 
-DisplayID::DisplayID()
+DisplayID::DisplayID(const std::string name) : HWComponent(name)
 {
-    // assume a DDC monitor is connected by default
-    this->id_kind = Disp_Id_Kind::DDC2B;
-
-    std::string mon_id = GET_STR_PROP("mon_id");
-    if (!mon_id.empty()) {
-        if (MonitorAliasToId.count(mon_id)) {
-            mon_id = MonitorAliasToId.at(mon_id);
-        }
-        if (MonitorIdToCode.count(mon_id)) {
-            auto monitor = MonitorIdToCode.at(mon_id);
-            this->std_sense_code = monitor.std_sense_code;
-            this->ext_sense_code = monitor.ext_sense_code;
-            this->id_kind = Disp_Id_Kind::AppleSense;
-            LOG_F(INFO, "DisplayID mode set to AppleSense");
-            LOG_F(INFO, "Standard sense code: %d", this->std_sense_code);
-            LOG_F(INFO, "Extended sense code: 0x%02X", this->ext_sense_code);
-        }
-    }
+    supports_types(HWCompType::DISPLAY);
 
     /* Initialize DDC I2C bus */
     this->next_state = I2CState::STOP;
@@ -264,12 +247,39 @@ DisplayID::DisplayID()
     this->data_pos   = 0;
 }
 
-DisplayID::DisplayID(uint8_t std_code, uint8_t ext_code)
+HWComponent* DisplayID::set_property(const std::string &property, const std::string &value, int32_t unit_address)
 {
-    this->id_kind = Disp_Id_Kind::AppleSense;
+    if (unit_address == -1 || unit_address == 0) {
+        if (this->override_property(property, value)) {
+            if (property == "mon_id") {
+                // assume a DDC monitor is connected by default
+                this->id_kind = Disp_Id_Kind::DDC2B;
 
-    this->std_sense_code = std_code;
-    this->ext_sense_code = ext_code;
+                std::string mon_id = this->get_property_str("mon_id");
+                if (!mon_id.empty()) {
+                    if (MonitorAliasToId.count(mon_id)) {
+                        mon_id = MonitorAliasToId.at(mon_id);
+                    }
+                    if (MonitorIdToCode.count(mon_id)) {
+                        auto &monitor = MonitorIdToCode.at(mon_id);
+                        this->std_sense_code = monitor.std_sense_code;
+                        this->ext_sense_code = monitor.ext_sense_code;
+                        this->id_kind = Disp_Id_Kind::AppleSense;
+                        this->set_name("Display_" + mon_id);
+                        LOG_F(INFO, "DisplayID mode set to AppleSense");
+                        LOG_F(INFO, "Standard sense code: %d", this->std_sense_code);
+                        LOG_F(INFO, "Extended sense code: 0x%02X", this->ext_sense_code);
+                    }
+                }
+                else {
+                    this->set_name("Display_DDC");
+                }
+                video_ctrl->update_display_connection();
+                return this;
+            }
+        }
+    }
+    return nullptr;
 }
 
 uint8_t DisplayID::read_monitor_sense(uint8_t levels, uint8_t dirs)
@@ -431,3 +441,11 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
 
     return set_result(sda, scl);
 }
+
+static const PropMap Display_Properties = {{"mon_id", new StrProperty("")},};
+
+static const DeviceDescription Display_Descriptor = {
+    DisplayID::create, {}, Display_Properties, HWCompType::DISPLAY
+};
+
+REGISTER_DEVICE(Display, Display_Descriptor);

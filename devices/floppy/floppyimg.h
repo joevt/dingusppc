@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 #include <string>
+#include <devices/common/hwcomponent.h>
 
 constexpr auto BLOCK_SIZE = 512;      // size in bytes of a logical block
 
@@ -43,7 +44,7 @@ enum class FlopImgType {
 /** Interface for floppy image converters. */
 class FloppyImgConverter {
 public:
-    FloppyImgConverter()  = default;
+    FloppyImgConverter(HWComponent *floppy_obj) : floppy_obj(floppy_obj) {}
     virtual ~FloppyImgConverter() = default;
 
     virtual int calc_phys_params(void) = 0;
@@ -89,12 +90,13 @@ protected:
     int         num_sectors;
     int         density;
     uint8_t     format_byte; // GCR format byte from sector header
+    HWComponent *floppy_obj;
 };
 
 /** Converter for raw floppy images. */
 class RawFloppyImg : public FloppyImgConverter {
 public:
-    RawFloppyImg(const std::string& file_path);
+    RawFloppyImg(HWComponent *floppy_obj, const std::string& file_path);
     ~RawFloppyImg() = default;
 
     int calc_phys_params(void);
@@ -105,7 +107,7 @@ public:
 /** Converter for Disk Copy 4.2 images. */
 class DiskCopy42Img : public FloppyImgConverter {
 public:
-    DiskCopy42Img(const std::string& file_path);
+    DiskCopy42Img(HWComponent *floppy_obj, const std::string& file_path);
     ~DiskCopy42Img() = default;
 
     int calc_phys_params(void);
@@ -113,6 +115,6 @@ public:
     int export_data(void);
 };
 
-extern FloppyImgConverter* open_floppy_image(const std::string& img_path);
+extern FloppyImgConverter* open_floppy_image(HWComponent *floppy_obj, const std::string& img_path);
 
 #endif // FLOPPY_IMG_H

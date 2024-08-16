@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/scsi/scsihd.h>
 #include <devices/common/scsi/scsicdrom.h>
 #include <devices/deviceregistry.h>
+#include <machines/machinefactory.h>
 #include <loguru.hpp>
 
 #include <cinttypes>
@@ -54,6 +55,66 @@ ScsiBus::ScsiBus(const std::string name) : HWComponent(name)
     this->target_id     = -1;
 }
 
+template <class T>
+HWComponent* ScsiBus::set_property(const std::string &value, int32_t unit_address) {
+    int scsi_id;
+    T *scsi_device;
+    HWComponent* result;
+    
+    if (unit_address == -1) {
+        // look for existing device with no image
+        for (scsi_id = 0; scsi_id < SCSI_MAX_DEVS; scsi_id++) {
+            scsi_device = dynamic_cast<T *>(this->devices[scsi_id]);
+            if (scsi_device) {
+                result = scsi_device->set_property(
+                    std::is_same<T,ScsiHardDisk>::value ? "hdd_img" : "cdr_img", value, unit_address);
+                if (result)
+                    return result;
+            }
+        }
+
+        // look for unused ID
+        // do two passes because we either skip ID 3 (for hard disks) or start at ID 3 (for CD ROMs)
+        for (scsi_id = (std::is_same<T,ScsiHardDisk>::value ? 0 : 3);
+            scsi_id < SCSI_MAX_DEVS * 2 && ((std::is_same<T,ScsiHardDisk>::value && scsi_id == 3) ||
+                this->devices[scsi_id % SCSI_MAX_DEVS]);
+            scsi_id++
+        ) {}
+        if (scsi_id == SCSI_MAX_DEVS * 2)
+            return nullptr;
+        scsi_id = scsi_id % SCSI_MAX_DEVS;
+    }
+    else {
+        if (unit_address < 0 || unit_address >= SCSI_MAX_DEVS)
+            return nullptr;
+        scsi_id = unit_address;
+    }
+
+    if (this->devices[scsi_id])
+        scsi_device = dynamic_cast<T *>(this->devices[scsi_id]);
+    else
+        scsi_device = dynamic_cast<T *>(MachineFactory::create_device(
+            this, (std::is_same<T,ScsiHardDisk>::value ? "ScsiHardDisk@" : "ScsiCdrom@") + std::to_string(scsi_id)));
+    if (scsi_device)
+        return scsi_device->set_property(std::is_same<T,ScsiHardDisk>::value ? "hdd_img" : "cdr_img", value, unit_address);
+    return nullptr;
+}
+
+HWComponent* ScsiBus::set_property(const std::string &property, const std::string &value, int32_t unit_address)
+{
+    if (property == "hdd_img")
+        return this->set_property<ScsiHardDisk>(value, unit_address);
+    if (property == "cdr_img")
+        return this->set_property<ScsiCdrom>(value, unit_address);
+    return nullptr;
+}
+
+HWComponent* ScsiBus::add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name)
+{
+    this->register_device(unit_address, dynamic_cast<ScsiPhysDevice*>(dev_obj));
+    return HWComponent::add_device(unit_address, dev_obj, name);
+}
+
 int32_t ScsiBus::parse_child_unit_address_string(const std::string unit_address_string) {
     return ScsiPhysDevice::parse_unit_address_string(unit_address_string);
 }
@@ -67,7 +128,7 @@ void ScsiBus::register_device(int id, ScsiPhysDevice* dev_obj)
 
     this->devices[id] = dev_obj;
 
-    dev_obj->set_bus_object_ptr(this);
+    dev_obj->set_bus_object_ptr(this, id);
 }
 
 const char *get_name_bus_phase(int phase) {
@@ -339,95 +400,5 @@ void ScsiBus::disconnect(int dev_id)
     if (!(this->ctrl_lines & SCSI_CTRL_BSY) && !(this->ctrl_lines & SCSI_CTRL_SEL)) {
         this->cur_phase = ScsiPhase::BUS_FREE;
         change_bus_phase(dev_id);
-    }
-}
-
-void ScsiBus::attach_scsi_devices(const std::string bus_suffix)
-{
-    std::string path;
-    int scsi_id;
-    std::string image_path;
-
-    image_path = GET_STR_PROP("hdd_img" + bus_suffix);
-    if (!image_path.empty()) {
-        std::istringstream image_stream(image_path);
-        while (std::getline(image_stream, path, ':')) {
-            // do two passes because we skip ID 3.
-            for (scsi_id = 0; scsi_id < SCSI_MAX_DEVS * 2 && (scsi_id == 3 ||
-                 this->devices[scsi_id % SCSI_MAX_DEVS]); scsi_id++) {}
-
-            if (scsi_id < SCSI_MAX_DEVS * 2) {
-                scsi_id = scsi_id % SCSI_MAX_DEVS;
-                std::string scsi_device_name = "ScsiHD";
-                ScsiHardDisk *scsi_device = new ScsiHardDisk(scsi_device_name, scsi_id);
-                this->add_device(scsi_id, scsi_device);
-                this->register_device(scsi_id, scsi_device);
-                scsi_device->insert_image(path);
-            }
-            else {
-                LOG_F(ERROR, "%s: Too many devices. HDD \"%s\" was not added.",
-                      this->get_name().c_str(), path.c_str());
-            }
-        }
-    }
-
-    int default_cdrom_id = -1;
-    std::string cdr_config = GET_STR_PROP("cdr_config");
-    if (!cdr_config.empty()) {
-        std::string bus_id;
-        uint32_t dev_num;
-        parse_device_path(cdr_config, bus_id, dev_num);
-        // Only consume SCSI paths; other buses handle their own CD-ROM configuration.
-        if (bus_id.starts_with("Scsi")) {
-            auto bus_obj = dynamic_cast<ScsiBus*>(gMachineObj->get_comp_by_name_optional(bus_id));
-            if (!bus_obj)
-                ABORT_F("cdr_config device path %s does not specify a known SCSI bus", cdr_config.c_str());
-            if (dev_num >= SCSI_MAX_DEVS)
-                ABORT_F("Invalid SCSI ID in cdr_config device path %s", cdr_config.c_str());
-            if (bus_obj == this) {
-                if (this->devices[dev_num])
-                    ABORT_F("%s: cdr_config SCSI ID %u is already occupied", bus_id.c_str(), dev_num);
-                default_cdrom_id = dev_num;
-            }
-        }
-    }
-
-    image_path = GET_STR_PROP("cdr_img" + bus_suffix);
-    std::vector<std::string> cdrom_paths;
-    if (!image_path.empty()) {
-        // Keep empty entries, including the last one, as empty CD-ROM drives.
-        size_t start = 0;
-        size_t end;
-        do {
-            end = image_path.find(':', start);
-            cdrom_paths.push_back(image_path.substr(start, end - start));
-            start = end + 1;
-        } while (end != std::string::npos);
-    } else if (default_cdrom_id >= 0) {
-        cdrom_paths.push_back("");
-    }
-    for (const auto& path : cdrom_paths) {
-        if (default_cdrom_id >= 0) {
-            scsi_id = default_cdrom_id;
-            default_cdrom_id = -1;
-        } else {
-            // do two passes because we start at ID 3.
-            for (scsi_id = 3; scsi_id < SCSI_MAX_DEVS * 2 &&
-                 this->devices[scsi_id % SCSI_MAX_DEVS]; scsi_id++) {}
-        }
-
-        if (scsi_id < SCSI_MAX_DEVS * 2) {
-            scsi_id = scsi_id % SCSI_MAX_DEVS;
-            std::string scsi_device_name = "ScsiCdrom";
-            ScsiCdrom *scsi_device = new ScsiCdrom(scsi_device_name, scsi_id);
-            this->add_device(scsi_id, scsi_device);
-            this->register_device(scsi_id, scsi_device);
-            if (!path.empty() && !scsi_device->insert_image(path))
-                ABORT_F("Could not insert CD-ROM image, %s", path.c_str());
-        }
-        else {
-            LOG_F(ERROR, "%s: Too many devices. CD-ROM \"%s\" was not added.",
-                  this->get_name().c_str(), path.c_str());
-        }
     }
 }

@@ -93,16 +93,20 @@ static const PropMap Pippin_settings = {
         new IntProperty(0, std::vector<uint32_t>({0, 1, 4, 8, 16}))},
     {"rambank4_size",
         new IntProperty(0, std::vector<uint32_t>({0, 1, 4, 8, 16}))},
+    {"hdd_config",
+        new StrProperty("")},
     {"cdr_config",
-        new StrProperty("ScsiCurio:3")},
+        new StrProperty("ScsiMesh/@3")},
     {"emmo",
         new BinProperty(0)},
     {"adb_devices",
         new StrProperty("AdbAppleJack,AdbKeyboard")},
+    {"pci_dev_max",
+        new IntProperty(0xF, 0, 0x1F)},
 };
 
 static std::vector<std::string> Pippin_devices = {
-    "Aspen@F8000000", "AspenPci1@F2000000", "GrandCentralTnt@10", "TaosVideo@F0000000"
+    "Aspen@F8000000", "AspenPci1@F2000000", "GrandCentralTnt@10", "TaosVideo@F0800000"
 };
 
 static const DeviceDescription MachinePippin_descriptor = {

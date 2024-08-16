@@ -141,6 +141,9 @@ public:
     static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
         return std::unique_ptr<Chaos>(new Chaos(dev_name));
     }
+
+    // HWComponent methods
+    virtual HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
 };
 
 /**

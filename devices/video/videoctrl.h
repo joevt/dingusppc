@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define VIDEO_CTRL_H
 
 #include <core/timermanager.h>
+#include <devices/common/hwcomponent.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/video/display.h>
 
@@ -33,7 +34,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class WindowEvent;
 
-class VideoCtrlBase {
+class VideoCtrlBase : virtual public HWComponent {
 public:
     typedef enum {
         BE = 0,
@@ -42,6 +43,15 @@ public:
 
     VideoCtrlBase(int width = 640, int height = 480);
     ~VideoCtrlBase();
+
+    // HWComponent methods
+
+    int32_t parse_child_unit_address_string(const std::string unit_address_string) override;
+    HWComponent* add_device(int32_t unit_address, HWComponent *dev_obj, const std::string &name = "") override;
+
+    // VideoCtrlBase methods
+
+    virtual void update_display_connection() {};
 
     void handle_events(const WindowEvent& wnd_event);
     void create_display_window(int width, int height);

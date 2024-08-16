@@ -45,30 +45,6 @@ AtaHardDisk::AtaHardDisk(const std::string name)
     : AtaBaseDevice(name, DEVICE_TYPE_ATA), HWComponent(name) {
 }
 
-PostInitResultType AtaHardDisk::device_postinit() {
-    std::string hdd_config = GET_STR_PROP("hdd_config");
-    if (hdd_config.empty()) {
-        LOG_F(ERROR, "%s: hdd_config property is empty", this->name.c_str());
-        return PI_FAIL;
-    }
-
-    std::string bus_id;
-    uint32_t    dev_num;
-
-    parse_device_path(hdd_config, bus_id, dev_num);
-
-    auto bus_obj = dynamic_cast<IdeChannel*>(gMachineObj->get_comp_by_name(bus_id));
-    bus_obj->add_device(dev_num, this);
-
-    std::string hdd_image_path = GET_STR_PROP("hdd_img");
-    if (hdd_image_path.empty())
-        return PI_SUCCESS;
-
-    this->insert_image(hdd_image_path);
-
-    return PI_SUCCESS;
-}
-
 void AtaHardDisk::insert_image(std::string filename) {
     if (!this->hdd_img.open(filename)) {
         ABORT_F("%s: could not open image file \"%s\"", this->name.c_str(),
@@ -83,6 +59,22 @@ void AtaHardDisk::insert_image(std::string filename) {
                 filename.c_str());
     }
     this->calc_chs_params();
+}
+
+HWComponent* AtaHardDisk::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    if (property == "hdd_img" && !value.empty() && !this->img_size && this->override_property(property, value)) {
+        this->insert_image(value);
+        if (this->img_size) {
+            LOG_F(INFO, "%s: size:%lld path:\"%s\"", this->get_path().c_str(), this->img_size, value.c_str());
+            return this;
+        } else
+            return nullptr;
+    }
+    return nullptr;
+}
+
+bool AtaHardDisk::is_ready_for_machine() {
+    return this->img_size;
 }
 
 int AtaHardDisk::perform_command() {

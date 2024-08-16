@@ -141,12 +141,16 @@ static const PropMap pm7200_settings = {
         new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
     {"rambank4_size",
         new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"hdd_config",
+        new StrProperty("ScsiCurio/@0")},
     {"cdr_config",
-        new StrProperty("ScsiCurio:3")},
+        new StrProperty("ScsiCurio/@3")},
     {"emmo",
         new BinProperty(0)},
     {"cpu",
         new StrProperty("601", std::vector<std::string>({"601", "750"}))},
+    {"pci_dev_max",
+        new IntProperty(0xF, 0, 0x1F)},
 };
 
 static std::vector<std::string> pm7200_devices = {
