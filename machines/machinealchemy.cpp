@@ -115,14 +115,20 @@ static const PropMap pm6400_settings = {
         new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32}))},
     {"rambank5_size",
         new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32}))},
-    {"hdd_config",
-        new StrProperty("Ide0:0")},
     {"emmo",
         new BinProperty(0)},
+    {"hdd_config",
+        new StrProperty("Ide0/@0")},
+    {"cdr_config",
+        new StrProperty("ScsiMesh/@3")},
+    {"pci_F1",
+        new StrProperty("AtiRageGT")},
+    {"pci_dev_max",
+        new IntProperty(0xF, 0, 0x1F)},
 };
 
 static std::vector<std::string> pm6400_devices = {
-    "Psx@F8000000", "PsxPci1@F2000000", "ScreamerSnd@14000", "OHare@10", "ValkyrieAlchemy@F1000000", "AtaHardDisk"
+    "Psx@F8000000", "PsxPci1@F2000000", "ScreamerSnd@14000", "OHare@10", "ValkyrieAlchemy@F1000000"
 };
 
 static const DeviceDescription Machine5400_descriptor = {

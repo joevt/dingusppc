@@ -42,7 +42,7 @@ using namespace Platinum;
 PlatinumCtrl::PlatinumCtrl(const std::string &dev_name)
     : MemCtrlBase(), VideoCtrlBase(), HWComponent(dev_name)
 {
-    supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV);
+    supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV | HWCompType::VIDEO_CTRL);
 
     // add MMIO region for VRAM
     this->add_mmio_region(VRAM_REGION_BASE, 0x01000000, this);
@@ -50,22 +50,9 @@ PlatinumCtrl::PlatinumCtrl(const std::string &dev_name)
     // add MMIO region for the configuration and status registers
     this->add_mmio_region(PLATINUM_IOREG_BASE, 0x500, this);
 
-    // get VRAM size
-    this->vram_megs = GET_INT_PROP("gfxmem_size");
-    this->vram_size = this->vram_megs << 20;
-
-    // enable half bank access if 1MB VRAM + FB_CONFIG_1[CFG1_FULL_BANKS] = 1
-    this->half_bank = !!(this->vram_megs == 1);
-    this->half_access = 0;
-
-    // allocate VRAM
-    this->vram_ptr = std::unique_ptr<uint8_t[]> (new uint8_t[this->vram_size]);
-
     // initialize the CPUID register with the following CPU:
     // PowerPC 601 @ 90 MHz, bus frequency: 45 MHz
     this->cpu_id = (0x3001 << 16) | ClkSrc2 | (CpuSpeed2::CPU_90_BUS_45 << 8);
-
-    this->disp_id = std::unique_ptr<DisplayID> (new DisplayID());
 
     // attach DACula RAMDAC
     this->dacula = new AppleRamdac(DacFlavour::DACULA);
@@ -99,11 +86,37 @@ PostInitResultType PlatinumCtrl::device_postinit() {
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::PLATINUM);
 
+    this->disp_id = dynamic_cast<DisplayID*>(this->get_comp_by_type(HWCompType::DISPLAY));
+
     this->vbl_cb = [this](uint8_t irq_line_state) {
         this->update_irq(irq_line_state, SWATCH_INT_VBL);
     };
 
     return PI_SUCCESS;
+}
+
+HWComponent* PlatinumCtrl::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    if (unit_address == -1) {
+        if (property == "gfxmem_size") {
+            if (this->override_property(property, value)) {
+                // get VRAM size
+                int vram = this->get_property_int("gfxmem_size");
+                LOG_F(INFO, "%s: setting VRAM to %d MB", this->get_name_and_unit_address().c_str(), vram);
+                this->vram_megs = vram;
+                this->vram_size = vram << 20;
+
+                // enable half bank access if 1MB VRAM + FB_CONFIG_1[CFG1_FULL_BANKS] = 1
+                this->half_bank = !!(vram == 1);
+                this->half_access = 0;
+
+                // allocate VRAM
+                this->vram_ptr = std::unique_ptr<uint8_t[]> (new uint8_t[this->vram_size]);
+
+                return this;
+            }
+        }
+    }
+    return nullptr;
 }
 
 uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
@@ -671,12 +684,25 @@ void PlatinumCtrl::update_irq(uint8_t irq_line_state, uint8_t irq_mask) {
 static const PropMap Platinum_Properties = {
     {"gfxmem_size",
         new IntProperty(1, std::vector<uint32_t>({1, 2, 4}))},
-    {"mon_id",
-        new StrProperty("HiRes12-14in")},
 };
 
 static const DeviceDescription Platinum_Descriptor = {
-    PlatinumCtrl::create, {}, Platinum_Properties, HWCompType::MEM_CTRL | HWCompType::MMIO_DEV
+    PlatinumCtrl::create, {"PlatinumDisplay@0"}, Platinum_Properties,
+    HWCompType::MEM_CTRL | HWCompType::MMIO_DEV | HWCompType::VIDEO_CTRL
 };
 
 REGISTER_DEVICE(Platinum, Platinum_Descriptor);
+
+static std::unique_ptr<HWComponent> PlatinumDisplay_create(const std::string &dev_name) {
+    return std::unique_ptr<DisplayID>(new DisplayID(dev_name));
+}
+
+static const PropMap PlatinumDisplay_Properties = {
+    {"mon_id", new StrProperty("HiRes12-14in")},
+};
+
+static const DeviceDescription PlatinumDisplay_Descriptor = {
+    PlatinumDisplay_create, {}, PlatinumDisplay_Properties, HWCompType::DISPLAY
+};
+
+REGISTER_DEVICE(PlatinumDisplay, PlatinumDisplay_Descriptor);

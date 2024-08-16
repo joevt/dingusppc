@@ -420,8 +420,8 @@ private:
     std::unique_ptr<AmicSerialRcvDma>   escc_rcv_a_dma;
 
     // on-board video
-    std::unique_ptr<DisplayID>          disp_id;
-    std::unique_ptr<PdmOnboardVideo>    def_vid;
+    DisplayID*                          disp_id = nullptr;
+    PdmOnboardVideo*                    def_vid = nullptr;
     uint8_t                             mon_id;
     
     // logging
