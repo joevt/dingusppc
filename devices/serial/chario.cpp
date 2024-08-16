@@ -280,16 +280,16 @@ int CharIoStdin::rcv_char(uint8_t *c)
 #include <sys/errno.h>
 
 
-CharIoSocket::CharIoSocket(const std::string &name) : CharIoBackEnd(name)
+CharIoSocket::CharIoSocket(const std::string &name, const std::string &path) : CharIoBackEnd(name)
 {
     int rc;
 
-    path = "dingussocket";
+    this->path = path;
 
     do {
-        rc = unlink(path);
+        rc = unlink(path.c_str());
         if (rc == 0) {
-            LOG_F(INFO, "socket unlinked %s", path);
+            LOG_F(INFO, "socket unlinked %s", path.c_str());
         }
         else if (errno != ENOENT) {
             int err = errno;
@@ -300,7 +300,7 @@ CharIoSocket::CharIoSocket(const std::string &name) : CharIoBackEnd(name)
         sockaddr_un address;
         memset(&address, 0, sizeof(address));
         address.sun_family = AF_UNIX;
-        strcpy(address.sun_path, path);
+        strcpy(address.sun_path, path.c_str());
 
         this->sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
         if (this->sockfd == -1) {
@@ -331,7 +331,7 @@ CharIoSocket::CharIoSocket(const std::string &name) : CharIoBackEnd(name)
 
 
 CharIoSocket::~CharIoSocket() {
-    unlink(path);
+    unlink(path.c_str());
     if (errno != ENOENT) {
         LOG_F(INFO, "socket unlink err: %s", strerror(errno));
     }
