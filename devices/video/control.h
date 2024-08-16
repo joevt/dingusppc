@@ -121,8 +121,8 @@ public:
     uint8_t* GetVram();
 
     // MMIODevice methods
-    uint32_t read(uint32_t rgn_start, uint32_t offset, int size);
-    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size);
+    uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
+    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
 protected:
     void change_one_bar(uint32_t &aperture, uint32_t aperture_size, uint32_t aperture_new,
@@ -133,10 +133,11 @@ protected:
     void disable_display();
 
     // HWComponent methods
-    PostInitResultType device_postinit();
+    PostInitResultType device_postinit() override;
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
 
 private:
-    std::unique_ptr<DisplayID>      disp_id;
+    DisplayID*                      disp_id = nullptr;
     AthensClocks*                   clk_gen;
     AppleRamdac*                    radacal = nullptr;
 

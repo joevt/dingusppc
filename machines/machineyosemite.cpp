@@ -123,9 +123,11 @@ static const PropMap yosemite_settings = {
     {"emmo",
         new BinProperty(0)},
     {"hdd_config",
-        new StrProperty("CmdAta0:0")},
+        new StrProperty("CmdAta0/@0")},
     {"cdr_config",
-        new StrProperty("Ide0:0")},
+        new StrProperty("Ide0/@0")},
+    {"pci_dev_max",
+        new IntProperty(0xF, 0, 0x1F)},
 };
 
 static std::vector<std::string> yosemite_devices = {
@@ -134,8 +136,6 @@ static std::vector<std::string> yosemite_devices = {
     "CmdAta@1",
     "BurgundySnd@14000",
     "Heathrow@5",
-    "AtaHardDisk",
-    "AtapiCdrom",
 };
 
 static const DeviceDescription MachineYosemite_descriptor = {

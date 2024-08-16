@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-22 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -90,7 +90,7 @@ private:
 /** Socket character I/O backend. */
 class CharIoSocket : public CharIoBackEnd  {
 public:
-    CharIoSocket(const std::string &name);
+    CharIoSocket(const std::string &name, const std::string &path);
     ~CharIoSocket();
 
     int rcv_enable();
@@ -104,7 +104,7 @@ private:
     bool    socket_inited = false;
     int     sockfd = -1;
     int     acceptfd = -1;
-    const char* path = 0;
+    std::string path = "";
     int     consecutivechars = 0;
 };
 
