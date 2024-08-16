@@ -35,8 +35,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class ScsiCdrom : public ScsiPhysDevice, public CdromDrive, public ScsiCommonCmds {
 public:
-    ScsiCdrom(const std::string name, int my_id);
+    ScsiCdrom(const std::string name);
     ~ScsiCdrom() = default;
+
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<ScsiCdrom>(new ScsiCdrom(dev_name));
+    }
+
+    // HWComponent methods
+
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
+
+    // ScsiCdrom methods
 
     virtual void process_command() override;
     virtual bool prepare_data() override;

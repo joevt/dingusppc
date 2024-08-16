@@ -240,9 +240,8 @@ typedef std::function<void()> action_callback;
 
 class ScsiPhysDevice : public ScsiPhysInterface, virtual public HWComponent {
 public:
-    ScsiPhysDevice(std::string name, int my_id) : ScsiPhysInterface(PHY_ID_SCSI), HWComponent(name) {
+    ScsiPhysDevice(const std::string name) : ScsiPhysInterface(PHY_ID_SCSI), HWComponent(name) {
         supports_types(HWCompType::SCSI_DEV);
-        this->scsi_id = my_id;
         this->lun = 0,
         this->cur_phase = ScsiPhase::BUS_FREE;
     }
@@ -286,14 +285,17 @@ public:
     virtual void process_command() = 0;
     virtual void process_message();
 
-    void set_bus_object_ptr(ScsiBus *bus_obj_ptr) {
+    void set_bus_object_ptr(ScsiBus *bus_obj_ptr, int id) {
         this->bus_obj = bus_obj_ptr;
+        this->scsi_id = id;
     }
+
+    int get_scsi_id() { return scsi_id; }
 
 protected:
     uint8_t     cmd_buf[16] = {};
     uint8_t     msg_buf[16] = {}; // TODO: clarify how big this one should be
-    int         scsi_id;
+    int         scsi_id = 0;
     int         lun;
     int         initiator_id;
     int         cur_phase;
@@ -324,13 +326,14 @@ public:
 
     // HWComponent methods
 
+    HWComponent* add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name) override;
+    virtual HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
     int32_t parse_child_unit_address_string(const std::string unit_address_string) override;
 
     // ScsiBus methods
 
     template <class T>
     HWComponent* set_property(const std::string &value, int32_t unit_address);
-    void attach_scsi_devices(const std::string bus_suffix);
 
     // low-level state management
     void    register_device(int id, ScsiPhysDevice* dev_obj);

@@ -56,14 +56,18 @@ public:
 
     // HWComponent methods
     PostInitResultType device_postinit() override;
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
 
     // MMIODevice methods
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
     void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
-    // PCI device methods
+    // PCIDevice methods
     uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details) override;
     void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details) override;
+
+    // VideoCtrlBase methods
+    void update_display_connection() override;
 
     // I/O space access methods
     bool pci_io_read(uint32_t offset, uint32_t size, uint32_t* res) override;
@@ -110,7 +114,7 @@ private:
     uint32_t aperture_size[3] = { 0x1000000, 0x100, 0x1000 };
     uint32_t aperture_flag[3] = { 0, 1, 0 };
 
-    std::unique_ptr<DisplayID>  disp_id;
+    DisplayID*  disp_id = nullptr;
 
     // DAC interface state
     uint8_t     dac_wr_index = 0;  // current DAC color index for writing

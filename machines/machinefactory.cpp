@@ -44,10 +44,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 #include <set>
+#include <regex>
 
 using namespace std;
 
-map<string, unique_ptr<BasicProperty>> gMachineSettings;
+map<string, unique_ptr<Setting>> gMachineSettings;
 
 const map<string, PropHelpItem> gPropHelp = {
     {"rambank1_size",   {PropertyMachine, "specifies RAM bank 1 size in MB"}},
@@ -67,17 +68,16 @@ const map<string, PropHelpItem> gPropHelp = {
     {"gfxmem_size",     {PropertyDevice , "specifies video memory size in MB"}},
     {"fdd_drives",      {PropertyMachine, "specifies the number of floppy drives"}},
     {"fdd_img",         {PropertyDevice , "specifies path to floppy disk image"}},
-    {"fdd_img2",        {PropertyDevice , "specifies path to 2nd floppy disk image"}},
-    {"fdd_fmt",         {PropertyDevice , "specifies floppy disk format"}},
+    {"fdd_fmt",         {PropertyDevice , "specifies floppy disk format (use before fdd_img)"}},
     {"fdd_wr_prot",     {PropertyDevice , "specifies floppy disk's write protection setting"}},
-    {"fdd_wr_prot2",    {PropertyDevice , "specifies 2nd floppy disk's write protection setting"}},
     {"hdd_img",         {PropertyDevice , "specifies path to hard disk image"}},
-    {"hdd_img2",        {PropertyDevice , "specifies path to secondary hard disk image"}},
     {"cdr_config",      {PropertyMachine, "CD-ROM device path in [bus]:[device#] format"}},
     {"hdd_config",      {PropertyMachine, "HD device path in [bus]:[device#] format"}},
     {"cdr_img",         {PropertyDevice , "specifies path to CD-ROM image"}},
-    {"cdr_img2",        {PropertyDevice , "specifies path to secondary CD-ROM image"}},
     {"mon_id",          {PropertyDevice , "specifies which monitor to emulate"}},
+    {"pci",             {PropertyDevice,  "inserts PCI device into a free slot"}},
+    {"vci",             {PropertyDevice,  "inserts PCI device into a free slot of VCI"}},
+    {"pci_dev_max",     {PropertyMachine, "specifies the maximum PCI device number for PCI bridges"}},
     {"pci_GPU",         {PropertyMachine, "specifies PCI device for Beige G3 grackle device @12"}},
     {"pci_J12",         {PropertyMachine, "inserts PCI device into 32-bit 66MHz slot J12"}},
     {"pci_J11",         {PropertyMachine, "inserts PCI device into 64-bit 33MHz slot J11"}},
@@ -139,31 +139,51 @@ void MachineFactory::list_machines()
     cout << endl;
 }
 
-HWComponent* MachineFactory::create_device(HWComponent *parent, string dev_name, DeviceDescription& dev)
+HWComponent* MachineFactory::create_device(HWComponent *parent, string dev_name, HWCompType supported_types)
 {
     VLOG_SCOPE_F(loguru::Verbosity_INFO, "Creating device %s", dev_name.c_str());
 
-    int32_t unit_address;
     std::string unit_address_string = HWComponent::extract_unit_address(dev_name);
-    for (unit_address = -999; parent->children.count(unit_address); unit_address += 1) {}
     dev_name = HWComponent::extract_device_name(dev_name);
 
+    DeviceDescription* dev = &DeviceRegistry::get_descriptor(dev_name);
+    if (!dev) {
+        LOG_F(ERROR, "%s is not a registered device", dev_name.c_str());
+        return nullptr;
+    }
+
+    if (!dev->description.empty())
+        LOG_F(INFO, "Description: %s", dev->description.c_str());
+
+    if (supported_types != HWCompType::UNKNOWN && !(supported_types & dev->supports_types)) {
+        LOG_F(ERROR, "Device %s is not a supported type", dev_name.c_str());
+        return nullptr;
+    }
+
+    MachineFactory::register_device_settings(dev_name);
+
+    int32_t unit_address;
+    for (unit_address = -999; parent->children.count(unit_address); unit_address += 1) {}
+
     HWComponent *temp_obj = nullptr;
-    if (dev.subdev_list.size()) {
+    if (dev->subdev_list.size()) {
         temp_obj = new HWComponent(dev_name + " (temporary)");
     }
 
     if (temp_obj) {
-        temp_obj->supports_types(dev.supports_types);
+        temp_obj->supports_types(dev->supports_types);
         parent->add_device(unit_address, temp_obj);
 
-    for (auto& subdev_name : dev.subdev_list) {
-            create_device(temp_obj, subdev_name, DeviceRegistry::get_descriptor(HWComponent::extract_device_name(subdev_name)));
+        for (auto& subdev_name : dev->subdev_list) {
+            create_device(temp_obj, subdev_name);
         }
     }
 
-    std::unique_ptr<HWComponent> dev_obj = dev.m_create_func(dev_name);
+    std::unique_ptr<HWComponent> dev_obj = dev->m_create_func(dev_name);
     HWComponent *hwc = dev_obj.get();
+
+    hwc->init_device_settings(*dev);
+
     if (hwc->get_name() != dev_name) {
         if (hwc->get_name().empty()) {
             LOG_F(INFO, "Set name to \"%s\"", dev_name.c_str());
@@ -184,20 +204,37 @@ HWComponent* MachineFactory::create_device(HWComponent *parent, string dev_name,
 
     parent->add_device(unit_address, dev_obj.release(), dev_name);
 
+    if (config_stack_ready) {
+        if (
+            config_stack.empty() ||
+            config_stack.back().stack_item_type != ConfigStackItem::HWC ||
+            config_stack.back().hwc != hwc
+        ) {
+            if (
+                !config_stack.empty() &&
+                config_stack.back().stack_item_type == ConfigStackItem::HWC_WITH_UNIT_ADDRESS &&
+                config_stack.back().hwc == hwc->get_parent() &&
+                config_stack.back().unit_address == hwc->get_unit_address()
+            )
+                config_stack.pop_back();
+            config_stack.push_back(ConfigStackItem(hwc));
+        }
+    }
+
     return hwc;
 }
 
-int MachineFactory::create(string& mach_id)
-{
-    auto it = DeviceRegistry::get_registry().find(mach_id);
-    if (it == DeviceRegistry::get_registry().end() ||
-        !(it->second.supports_types & HWCompType::MACHINE)
-    ) {
-        LOG_F(ERROR, "Unknown machine id %s", mach_id.c_str());
-        return -1;
-    }
+vector<ConfigStackItem> MachineFactory::config_stack;
+bool MachineFactory::config_stack_ready;
 
-    LOG_F(INFO, "Initializing %s hardware...", it->second.description.c_str());
+int MachineFactory::create(string& mach_id, vector<std::string> &app_args)
+{
+    LOG_F(INFO, "Initializing hardware...");
+
+    config_stack.clear();
+    config_stack_ready = false;
+    gMachineSettings.clear();
+    Setting::loaded_properties.clear();
 
     // initialize global machine object
     gMachineObj.reset(new HWComponent("DingusPPC"));
@@ -206,28 +243,332 @@ int MachineFactory::create(string& mach_id)
     gMachineObj->add_device(-1000, new SoundServer());
 
     // recursively create device objects
-    create_device(gMachineObj.get(), mach_id, it->second);
-
-    if (!gMachineObj->get_comp_by_name(mach_id)) {
-        LOG_F(ERROR, "Machine initialization function failed!");
+    if (!create_device(gMachineObj.get(), mach_id, HWCompType::MACHINE)) {
+        LOG_F(ERROR, "Machine initialization failed!");
         gMachineObj->clear_devices();
         return -1;
     }
 
-    printf("Machine so far:\n");
-    gMachineObj->dump_devices(4);
-
-    // post-initialize all devices
-    if (gMachineObj->postinit_devices()) {
+    if (gMachineObj->postinit_devices() == PI_FAIL) {
         LOG_F(ERROR, "Could not post-initialize devices!");
         return -1;
     }
 
+    config_stack.push_back(ConfigStackItem(gMachineObj.get()));
+    config_stack_ready = true;
+
+    {
+        VLOG_SCOPE_F(loguru::Verbosity_INFO, "Applying configs");
+        MachineFactory::apply_configs();
+    }
+
+    if (gMachineObj->postinit_devices() == PI_FAIL) {
+        LOG_F(ERROR, "Could not post-initialize devices!");
+        return -1;
+    }
+
+    {
+        std::regex argument_re("--([^=]+)(?:=(.*))?");
+
+        VLOG_SCOPE_F(loguru::Verbosity_INFO, "Parsing remaining command line arguments");
+        std::reverse(app_args.begin(), app_args.end());
+        int arg_index = 0;
+        while (arg_index < app_args.size()) {
+            std::smatch results;
+            HWComponent *matched_hwc;
+            int32_t matched_unit_address;
+            bool is_leaf_match;
+
+            VLOG_SCOPE_F(loguru::Verbosity_INFO, "checking arg: %s", app_args[arg_index].c_str());
+
+            if (app_args[arg_index] == "(") {
+                config_stack.push_back(ConfigStackItem(ConfigStackItem::BLOCK_BEGIN));
+                app_args.erase(app_args.begin() + arg_index);
+            }
+            else if (app_args[arg_index] == ")") {
+                bool did_erase = false;
+                for (int i = int(config_stack.size()) - 1; i >= 0; i--) {
+                    if (config_stack[i].stack_item_type == ConfigStackItem::BLOCK_BEGIN) {
+                        config_stack.erase(config_stack.begin() + i, config_stack.end());
+                        did_erase = true;
+                        app_args.erase(app_args.begin() + arg_index);
+                    }
+                }
+                if (!did_erase) {
+                    LOG_F(ERROR, "Missing matching open parenthesis \"(\".");
+                    arg_index++;
+                }
+            }
+            else if (app_args[arg_index] == ";") {
+                if (config_stack.size() > 0) {
+                    config_stack.pop_back();
+                    app_args.erase(app_args.begin() + arg_index);
+                } else {
+                    LOG_F(ERROR, "Empty config stack.");
+                    arg_index++;
+                }
+            }
+            else if (app_args[arg_index] == "dump_stack") {
+                app_args.erase(app_args.begin() + arg_index);
+                cout << endl << "    Config stack:" << endl;
+                if (config_stack.empty())
+                    cout << "        Empty!" << endl;
+                for (auto &cs : config_stack) {
+                    switch (cs.stack_item_type) {
+                        case ConfigStackItem::HWC:
+                            cout << "        " << cs.hwc->get_path() << endl;
+                            break;
+                        case ConfigStackItem::HWC_WITH_UNIT_ADDRESS:
+                            cout << "        " << cs.hwc->get_path() << "/" <<
+                                cs.hwc->get_child_unit_address_string(cs.unit_address) << endl;
+                            break;
+                        case ConfigStackItem::BLOCK_BEGIN:
+                            cout << "        (" << endl;
+                            break;
+                    }
+                }
+            }
+            else if (app_args[arg_index] == "dump_devices") {
+                app_args.erase(app_args.begin() + arg_index);
+                cout << endl << "    Devices:" << endl;
+                gMachineObj->dump_devices(8);
+            }
+            else if (std::regex_match(app_args[arg_index], results, argument_re)) {
+                std::string property = results[1];
+                std::string value;
+                if (results[2].matched) {
+                    value = results[2];
+                } else {
+                    if (arg_index + 1 < app_args.size()) {
+                        value = app_args[arg_index + 1];
+                        app_args[arg_index] += "=" + value;
+                        LOG_F(INFO, "with value: %s", app_args[arg_index].c_str());
+                        app_args.erase(app_args.begin() + arg_index + 1);
+                    } else {
+                        LOG_F(ERROR, "Missing value for property \"%s\".", property.c_str());
+                        arg_index++;
+                        continue;
+                    }
+                }
+
+                matched_hwc = MachineFactory::set_property(property, value);
+
+                if (matched_hwc) {
+                    if (
+                        config_stack.empty() ||
+                        config_stack.back().stack_item_type != ConfigStackItem::HWC ||
+                        config_stack.back().hwc != matched_hwc
+                    ) {
+                        config_stack.push_back(ConfigStackItem(matched_hwc));
+                    }
+                    app_args.erase(app_args.begin() + arg_index);
+                    if (gMachineObj->postinit_devices() == PI_FAIL) {
+                        LOG_F(ERROR, "Could not post-initialize devices!");
+                        return -1;
+                    }
+                } else {
+                    cout << "    Unused setting: " << property << " = " << value << endl;
+                    arg_index++;
+                }
+            }
+            else if (MachineFactory::find_path(app_args[arg_index], matched_hwc, matched_unit_address, is_leaf_match)) {
+                if (is_leaf_match) {
+                    if (
+                        config_stack.empty() ||
+                        config_stack.back().stack_item_type != ConfigStackItem::HWC_WITH_UNIT_ADDRESS ||
+                        config_stack.back().hwc != matched_hwc ||
+                        config_stack.back().unit_address != matched_unit_address
+                    ) {
+                        config_stack.push_back(ConfigStackItem(matched_hwc, matched_unit_address));
+                    }
+                } else {
+                    if (
+                        config_stack.empty() ||
+                        config_stack.back().stack_item_type != ConfigStackItem::HWC ||
+                        config_stack.back().hwc != matched_hwc
+                    ) {
+                        if (
+                            !config_stack.empty() &&
+                            config_stack.back().stack_item_type == ConfigStackItem::HWC_WITH_UNIT_ADDRESS &&
+                            config_stack.back().hwc == matched_hwc->get_parent() &&
+                            config_stack.back().unit_address == matched_hwc->get_unit_address()
+                        )
+                            config_stack.pop_back();
+                        config_stack.push_back(ConfigStackItem(matched_hwc));
+                    }
+                }
+                app_args.erase(app_args.begin() + arg_index);
+            }
+            else {
+                arg_index++;
+            }
+        } // while app_args
+
+    }
+    config_stack.clear();
+
+    if (!app_args.empty()) {
+        cout << endl << "Unused command line arguments:" << endl;
+        for (auto& arg : app_args)
+            cout << "    " << arg << endl;
+        cout << endl;
+        LOG_F(ERROR, "Unused command line arguments!");
+    }
+
+    if (gMachineObj->postinit_devices() == PI_FAIL) {
+        LOG_F(ERROR, "Could not post-initialize devices!");
+        return -1;
+    }
+
+    {
+        VLOG_SCOPE_F(loguru::Verbosity_INFO, "Applying defaulted device settings");
+        gMachineObj->iterate(
+            [&](HWComponent *it, int depth) {
+                if (it->device_settings.empty())
+                    return false;
+                for (auto& s : it->device_settings) {
+                    if (s.second->value_commandline == s.second->value_not_inited) {
+                        LOG_F(INFO, "Defaulting %s property \"%s\"", it->get_path().c_str(), s.first.c_str());
+                        it->set_property(s.first, s.second->value_default);
+                        s.second->value_commandline = s.second->value_defaulted;
+                    }
+                }
+                return false;
+            }
+        );
+    }
+
+    if (gMachineObj->postinit_devices() != PI_SUCCESS) {
+        LOG_F(ERROR, "Could not post-initialize devices!");
+        return -1;
+    }
+
+    {
+        VLOG_SCOPE_F(loguru::Verbosity_INFO, "Checking for non-ready devices");
+        if (
+            gMachineObj->iterate(
+                [&](HWComponent *it, int depth) {
+                    if (!it->is_ready_for_machine()) {
+                        LOG_F(ERROR, "Unready device %s", it->get_name_and_unit_address().c_str());
+                        return true;
+                    }
+                    return false;
+                }
+            )
+        ) {
+            return -1;
+        }
+    }
+
     LOG_F(INFO, "Initialization completed.");
-    printf("Machine after init:\n");
+    printf("\nMachine after init:\n");
     gMachineObj->dump_devices(4);
 
     return 0;
+}
+
+HWComponent* MachineFactory::set_property(const std::string &property, const std::string &value)
+{
+    HWComponent *hwc = nullptr;
+    // VLOG_SCOPE_F(loguru::Verbosity_INFO, "set_property %s = %s", property.c_str(), value.c_str());
+
+    for (int i = int(config_stack.size()) - 1; i >= 0; i--) {
+        // VLOG_SCOPE_F(loguru::Verbosity_INFO, "config stack %d", i);
+        ConfigStackItem *cs = &config_stack[i];
+        if (cs->stack_item_type == ConfigStackItem::HWC) {
+            if (cs->hwc->iterate(
+                [&](HWComponent *it, int depth) {
+                    // VLOG_SCOPE_F(loguru::Verbosity_INFO, "checking type 1 %s", it->get_path().c_str());
+                    hwc = it->set_property(property, value, -1);
+                    if (hwc) {
+                        // LOG_F(INFO, "found at %s", hwc->get_path().c_str());
+                        return true;
+                    }
+                    return false;
+                }
+            ))
+                return hwc;
+        }
+        else if (cs->stack_item_type == ConfigStackItem::HWC_WITH_UNIT_ADDRESS) {
+            #if 0
+                VLOG_SCOPE_F(loguru::Verbosity_INFO, "checking type 2 %s%s",
+                    cs->hwc->get_path().c_str(), cs->hwc->get_child_unit_address_string(cs->unit_address).c_str());
+            #endif
+            hwc = cs->hwc->set_property(property, value, cs->unit_address);
+            if (hwc)
+                return hwc;
+        }
+    }
+    return nullptr;
+}
+
+std::regex MachineFactory::path_re("(?:([^\\s]*)/)?([^\\s@]+)?(?:@([\\dA-F,]+))?", std::regex_constants::icase);
+
+bool MachineFactory::find_path(std::string path, HWComponent *&hwc, int32_t &unit_address, bool &is_leaf_match)
+{
+    std::smatch results;
+    if (!std::regex_match(path, results, MachineFactory::path_re) || !(results[2].matched || results[3].matched)) {
+        LOG_F(ERROR, "Invalid device path \"%s\"", path.c_str());
+        return false;
+    }
+
+    bool leaf_search = !results[2].matched && results[3].matched;
+
+    for (int search_type = 0; search_type < 1 + leaf_search; search_type++) {
+        for (int i = int(config_stack.size()) - 1; i >= 0; i--) {
+            ConfigStackItem *cs = &config_stack[i];
+            if (cs->stack_item_type == ConfigStackItem::BLOCK_BEGIN) {
+                /*
+                    All items on the stack are useable, so continue looking.
+                    If the user didn't want previous items outside the block
+                    to be usable, then the user would pop them off the stack
+                    using \) or \;
+                */
+            } else if (cs->stack_item_type == ConfigStackItem::HWC) {
+                hwc = cs->hwc->find_path(path, 1 << search_type, true, &is_leaf_match, &unit_address);
+                if (hwc)
+                    return true;
+            } else if (search_type == 1 && cs->stack_item_type == ConfigStackItem::HWC_WITH_UNIT_ADDRESS) {
+                if (cs->hwc->path_match(results[1], true)) {
+                    if (cs->hwc->parse_child_unit_address_string(results[3]) == cs->unit_address) {
+                        hwc = cs->hwc;
+                        unit_address = cs->unit_address;
+                        is_leaf_match = true;
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    LOG_F(ERROR, "Device path \"%s\" not found!", path.c_str());
+    return false;
+}
+
+void MachineFactory::apply_configs()
+{
+    std::map<std::string, std::map<HWCompType, std::string>> configs = {
+        {"hdd_config", {{HWCompType::IDE_BUS, "AtaHardDisk"}, {HWCompType::SCSI_BUS, "ScsiHardDisk"}}},
+        {"cdr_config", {{HWCompType::IDE_BUS, "AtapiCdrom" }, {HWCompType::SCSI_BUS, "ScsiCdrom"   }}},
+    };
+    for (auto& config : configs) {
+        std::string the_config;
+        try {
+            the_config = GET_STR_PROP(config.first);
+        } catch (...) {
+            continue;
+        }
+        if (the_config.empty())
+            continue;
+        int32_t unit_address;
+        HWComponent* bus_obj = gMachineObj->find_path(the_config, 2, true, nullptr, &unit_address);
+        if (!bus_obj)
+            continue;
+        for (auto& bus_type : config.second) {
+            if (bus_obj->supports_type(bus_type.first)) {
+                MachineFactory::create_device(bus_obj, bus_type.second + bus_obj->get_child_unit_address_string(unit_address));
+            }
+        }
+    }
 }
 
 void MachineFactory::list_properties(vector<string> machine_list)
@@ -332,53 +673,99 @@ void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope,
 
 void MachineFactory::register_device_settings(const std::string& name)
 {
-    auto dev = DeviceRegistry::get_descriptor(name);
+    auto dev = DeviceRegistry::get_descriptor(HWComponent::extract_device_name(name));
+    MachineFactory::register_settings(name, dev.properties);
     for (auto& d : dev.subdev_list) {
-        register_device_settings(HWComponent::extract_device_name(d));
-    }
-
-    register_settings(dev.properties);
-    if (!dev.properties.empty()) {
-        std::cout << "Device " << name << " Settings" << endl
-                  << std::string(36, '-') << endl;
-        for (auto& p : dev.properties) {
-            std::cout << std::setw(24) << std::right << p.first << " : "
-                      << gMachineSettings[p.first]->get_string() << endl;
-        }
+        MachineFactory::register_device_settings(d);
     }
 }
 
-int MachineFactory::register_machine_settings(const std::string& id)
-{
-    auto it = DeviceRegistry::get_registry().find(id);
-    if (it != DeviceRegistry::get_registry().end() && (it->second.supports_types & HWCompType::MACHINE)) {
-        gMachineSettings.clear();
-
-        register_device_settings(id);
-    } else {
-        LOG_F(ERROR, "Unknown machine id %s", id.c_str());
-        return -1;
-    }
-
-    return 0;
-}
-
-void MachineFactory::register_settings(const PropMap& props) {
+void MachineFactory::register_settings(const std::string& dev_name, const PropMap& props) {
     for (auto& p : props) {
-        if (gMachineSettings.count(p.first)) {
-            // This is a hack. Need to implement hierarchical paths and per device properties.
-            LOG_F(ERROR, "Duplicate setting \"%s\".", p.first.c_str());
+
+        if (gPropHelp.count(p.first) == 0) {
+            LOG_F(ERROR, "Missing help for setting \"%s\" from %s.", p.first.c_str(), dev_name.c_str());
+            continue;
+        }
+
+        auto& phelp = gPropHelp.at(p.first);
+        if (phelp.property_scope != PropertyMachine)
+            continue;
+
+        if (gMachineSettings.count(p.first) == 0) {
+            gMachineSettings[p.first] = unique_ptr<Setting>(new Setting());
+
+            auto override_value = get_setting_value(p.first);
+            if (override_value)
+                gMachineSettings[p.first]->value_commandline = *override_value;
+        }
+
+        auto &s = gMachineSettings[p.first];
+        if (s->property) {
+            if (Setting::loaded_properties.count(p.second) == 0) {
+                /*
+                    We might iterate this same device multiple times.
+                    If we haven't loaded this property yet, then report that we are
+                    ignoring this setting that was overridden by an ancestor device.
+                */
+                LOG_F(INFO, "Ignoring setting \"%s\" from %s.", p.first.c_str(), dev_name.c_str());
+                Setting::loaded_properties.insert(p.second);
+            }
         }
         else {
-            auto clone = p.second->clone();
-            auto override_value = get_setting_value(p.first);
-            if (override_value) {
-                clone->set_string(*override_value);
-            }
-            gMachineSettings[p.first] = std::unique_ptr<BasicProperty>(clone);
+            LOG_F(INFO, "Adding setting \"%s\" = \"%s\" from %s.",
+                p.first.c_str(), p.second->get_string().c_str(), dev_name.c_str());
+            s->set_property_info(p.second);
+            Setting::loaded_properties.insert(p.second);
         }
     }
+}
 
+void MachineFactory::summarize_machine_settings() {
+    cout << endl << "Machine settings summary: " << endl;
+
+    for (auto& s : gMachineSettings) {
+        if (s.second->property) {
+            cout << "    " << s.first <<
+                (
+                    s.second->value_commandline == s.second->value_not_inited ?
+                        " (default)"
+                    :
+                        ""
+                )
+                << " : " << s.second->property->get_string()
+                << endl
+            ;
+        }
+    }
+}
+
+void MachineFactory::summarize_device_settings() {
+    cout << endl << "Device settings summary: " << endl;
+    gMachineObj->iterate(
+        [&](HWComponent *it, int depth) {
+            if (it->device_settings.empty())
+                return false;
+            cout << "    " << it->get_path() << endl;
+            for (auto& s : it->device_settings) {
+                if (s.second->property) {
+                    cout << "        " << s.first <<
+                        (
+                            s.second->value_commandline == s.second->value_not_inited ?
+                                " (default)"
+                            : s.second->value_commandline == s.second->value_defaulted ?
+                                " (defaulted)"
+                            :
+                                ""
+                        )
+                        << " : " << s.second->property->get_string()
+                        << endl
+                    ;
+                }
+            }
+            return false;
+        }
+    );
 }
 
 size_t MachineFactory::read_boot_rom(string& rom_filepath, char *rom_data)
@@ -692,8 +1079,8 @@ int MachineFactory::load_boot_rom(char *rom_data, size_t rom_size) {
     return result;
 }
 
-int MachineFactory::create_machine_for_id(string& id, char *rom_data, size_t rom_size) {
-    if (MachineFactory::create(id) < 0) {
+int MachineFactory::create_machine_for_id(string& id, char *rom_data, size_t rom_size, vector<std::string> &app_args) {
+    if (MachineFactory::create(id, app_args) < 0) {
         return -1;
     }
     if (load_boot_rom(rom_data, rom_size) < 0) {

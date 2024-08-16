@@ -308,6 +308,7 @@ public:
 
     // HWComponent methods
     PostInitResultType device_postinit() override;
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address) override;
 
     // MMIODevice methods
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
@@ -366,7 +367,7 @@ private:
     uint32_t    cursor_task_id      = 0;
 
     std::unique_ptr<uint8_t[]>      vram_ptr = nullptr;
-    std::unique_ptr<DisplayID>      disp_id = nullptr;
+    DisplayID*                      disp_id = nullptr;
     AppleRamdac*                    dacula = nullptr;
     std::unique_ptr<uint8_t[]>      dram_ptr = nullptr;
     std::vector<AddressMapEntry*>   ram_map;

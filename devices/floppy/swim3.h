@@ -119,9 +119,9 @@ protected:
     void    mode_change(uint8_t new_mode);
 
 private:
-    MacSuperdrive::MacSuperDrive *drive_1 = nullptr;
-    MacSuperdrive::MacSuperDrive *drive_2 = nullptr;
-    MacSuperdrive::MacSuperDrive *selected_drive = nullptr;
+    MacSuperDrive *drive_1 = nullptr;
+    MacSuperDrive *drive_2 = nullptr;
+    MacSuperDrive *selected_drive = nullptr;
 
     DmaBidirChannel*    dma_ch;
 

@@ -43,8 +43,8 @@ static char my_vendor_id[]   = "QUANTUM ";
 static char my_product_id[]  = "Emulated Disk   ";
 static char my_revision_id[] = "di01";
 
-ScsiHardDisk::ScsiHardDisk(const std::string name, int my_id)
-    : ScsiPhysDevice(name, my_id), HWComponent(name)
+ScsiHardDisk::ScsiHardDisk(const std::string name)
+    : ScsiPhysDevice(name), HWComponent(name)
 {
     this->data_buf_size = 1 << 22;
     this->data_buf_obj = std::unique_ptr<uint8_t[]>(new uint8_t[this->data_buf_size]);
@@ -62,6 +62,23 @@ ScsiHardDisk::ScsiHardDisk(const std::string name, int my_id)
     this->set_vendor_id(my_vendor_id);
     this->set_product_id(my_product_id);
     this->set_revision_id(my_revision_id);
+}
+
+HWComponent* ScsiHardDisk::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    if (property == "hdd_img") {
+        if (!value.empty() && !this->img_size && this->override_property(property, value)) {
+            this->insert_image(value);
+            if (this->img_size) {
+                LOG_F(INFO, "%s: size:%lld path:\"%s\"", this->get_path().c_str(), this->img_size, value.c_str());
+                return this;
+            }
+        }
+    }
+    return nullptr;
+}
+
+bool ScsiHardDisk::is_ready_for_machine() {
+    return this->img_size;
 }
 
 void ScsiHardDisk::insert_image(std::string filename) {
@@ -465,3 +482,13 @@ void ScsiHardDisk::read_buffer() {
 
     this->switch_phase(ScsiPhase::DATA_IN);
 }
+
+static const PropMap ScsiHardDisk_Properties = {
+    {"hdd_img", new StrProperty("")},
+};
+
+static const DeviceDescription ScsiHardDisk_Descriptor = {
+    ScsiHardDisk::create, {}, ScsiHardDisk_Properties, HWCompType::SCSI_DEV
+};
+
+REGISTER_DEVICE(ScsiHardDisk, ScsiHardDisk_Descriptor);
