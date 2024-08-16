@@ -38,7 +38,11 @@ public:
         return std::unique_ptr<AtapiCdrom>(new AtapiCdrom(dev_name));
     }
 
-    PostInitResultType device_postinit() override;
+    // HWComponent methods
+
+    HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
+
+    // AtapiCdrom methods
 
     void perform_packet_command() override;
 

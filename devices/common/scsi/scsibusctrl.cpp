@@ -115,7 +115,7 @@ void ScsiBusController::sequencer() {
         case ScsiPhase::DATA_IN:
             this->bus_obj->negotiate_xfer(this->fifo_pos, this->bytes_out);
             this->cur_state = SeqState::RCV_DATA;
-            this->rcv_data();
+            this->dev_obj->rcv_data();
         }
         break;
     case SeqState::XFER_END:
@@ -138,7 +138,7 @@ void ScsiBusController::sequencer() {
         if (this->bus_obj->current_phase() != this->cur_bus_phase) {
             LOG_F(WARNING, "%s: phase mismatch!", this->name.c_str());
         } else {
-            if (!this->rcv_data()) {
+            if (!this->dev_obj->rcv_data()) {
                 this->cur_state = SeqState::XFER_END;
                 this->sequencer();
             }
@@ -147,7 +147,7 @@ void ScsiBusController::sequencer() {
     case SeqState::RCV_STATUS:
     case SeqState::RCV_MESSAGE:
         this->bus_obj->negotiate_xfer(this->fifo_pos, this->bytes_out);
-        this->rcv_data();
+        this->dev_obj->rcv_data();
         if (this->is_initiator) {
             if (this->cur_state == SeqState::RCV_STATUS) {
                 this->bus_obj->target_next_step();
@@ -165,22 +165,22 @@ void ScsiBusController::sequencer() {
     }
 }
 
-void ScsiBusController::notify(ScsiNotification notif_type, int param) {
+void ScsiBusControllerDev::notify(ScsiNotification notif_type, int param) {
     switch (notif_type) {
     case ScsiNotification::CONFIRM_SEL:
-        if (this->dst_id == param) {
+        if (this->ctrl_obj->dst_id == param) {
             // cancel selection timeout timer
-            TimerManager::get_instance()->cancel_timer(this->seq_timer_id);
-            seq_timer_id = 0;
-            this->cur_state = SeqState::SEL_END;
-            this->sequencer();
+            TimerManager::get_instance()->cancel_timer(this->ctrl_obj->seq_timer_id);
+            this->ctrl_obj->seq_timer_id = 0;
+            this->ctrl_obj->cur_state = SeqState::SEL_END;
+            this->ctrl_obj->sequencer();
         } else {
             LOG_F(WARNING, "%s: ignore invalid selection confirmation message",
                   this->name.c_str());
         }
         break;
     case ScsiNotification::BUS_PHASE_CHANGE:
-        this->cur_bus_phase = param;
+        this->ctrl_obj->cur_bus_phase = param;
 #if 0
         if (param != ScsiPhase::BUS_FREE && this->cmd_steps != nullptr) {
             this->cmd_steps++;
@@ -195,7 +195,7 @@ void ScsiBusController::notify(ScsiNotification notif_type, int param) {
     }
 }
 
-bool ScsiBusController::rcv_data() {
+bool ScsiBusControllerDev::rcv_data() {
     int req_count;
 
     // return if REQ line is negated
@@ -203,31 +203,31 @@ bool ScsiBusController::rcv_data() {
         return false;
     }
 
-    if (!this->to_xfer)
+    if (!this->ctrl_obj->to_xfer)
         return false;
 
-    req_count = std::min(this->to_xfer, DATA_FIFO_DEPTH - this->fifo_pos);
+    req_count = std::min(this->ctrl_obj->to_xfer, DATA_FIFO_DEPTH - this->ctrl_obj->fifo_pos);
 
-    this->bus_obj->pull_data(this->dst_id, &this->data_fifo[this->fifo_pos], req_count);
-    this->fifo_pos += req_count;
-    this->to_xfer  -= req_count;
+    this->bus_obj->pull_data(this->ctrl_obj->dst_id, &this->ctrl_obj->data_fifo[this->ctrl_obj->fifo_pos], req_count);
+    this->ctrl_obj->fifo_pos += req_count;
+    this->ctrl_obj->to_xfer  -= req_count;
     return true;
 }
 
-int ScsiBusController::send_data(uint8_t* dst_ptr, int count) {
+int ScsiBusControllerDev::send_data(uint8_t* dst_ptr, int count) {
     if (dst_ptr == nullptr || !count)
         return 0;
 
-    int actual_count = std::min(this->fifo_pos, count);
+    int actual_count = std::min(this->ctrl_obj->fifo_pos, count);
 
     // move data out of the data FIFO
-    std::memcpy(dst_ptr, this->data_fifo, actual_count);
+    std::memcpy(dst_ptr, this->ctrl_obj->data_fifo, actual_count);
 
     // remove the just readed data from the data FIFO
-    this->fifo_pos -= actual_count;
-    this->to_xfer  -= actual_count;
-    if (this->fifo_pos > 0)
-        std::memmove(this->data_fifo, &this->data_fifo[actual_count], this->fifo_pos);
+    this->ctrl_obj->fifo_pos -= actual_count;
+    this->ctrl_obj->to_xfer  -= actual_count;
+    if (this->ctrl_obj->fifo_pos > 0)
+        std::memmove(this->ctrl_obj->data_fifo, &this->ctrl_obj->data_fifo[actual_count], this->ctrl_obj->fifo_pos);
 
     return actual_count;
 }
