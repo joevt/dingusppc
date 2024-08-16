@@ -101,13 +101,7 @@ ATIRage::ATIRage(const std::string &dev_name, uint16_t dev_id) : VideoCtrlBase()
 {
     uint8_t asic_id;
 
-    supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV);
-
-    this->vram_size = GET_INT_PROP("gfxmem_size") << 20; // convert MBs to bytes
-    this->framebuffer_size = std::min(this->vram_size, ((uint32_t)8 << 20) - 0x800);
-
-    // allocate video RAM
-    this->vram_ptr = std::unique_ptr<uint8_t[]> (new uint8_t[this->vram_size]);
+    supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::VIDEO_CTRL);
 
     // ATI Rage driver needs to know ASIC ID (manufacturer's internal chip code)
     // to operate properly
@@ -145,16 +139,27 @@ ATIRage::ATIRage(const std::string &dev_name, uint16_t dev_id) : VideoCtrlBase()
     // stuff default values into chip registers
     this->regs[ATI_CONFIG_CHIP_ID] = (asic_id << ATI_CFG_CHIP_MAJOR) | (dev_id << ATI_CFG_CHIP_TYPE);
 
-    // initialize display identification
-    this->disp_id = std::unique_ptr<DisplayID> (new DisplayID());
-
-    uint8_t mon_code = this->disp_id->read_monitor_sense(0, 0);
-
-    this->regs[ATI_GP_IO] = ((mon_code & 6) << 11) | ((mon_code & 1) << 8);
     insert_bits<uint32_t>(this->regs[ATI_GUI_STAT], 32, ATI_FIFO_CNT, ATI_FIFO_CNT_size);
     set_bit(regs[ATI_CRTC_GEN_CNTL], ATI_CRTC_DISPLAY_DIS); // because blank_on is true
 
     this->draw_fb_is_dynamic = true;
+}
+
+HWComponent* ATIRage::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    if (unit_address == -1) {
+        if (property == "gfxmem_size") {
+            if (this->override_property(property, value)) {
+                // allocate video RAM
+                int vram = this->get_property_int("gfxmem_size");
+                LOG_F(INFO, "%s: setting VRAM to %d MB", this->get_name_and_unit_address().c_str(), vram);
+                this->vram_size = vram << 20; // convert MBs to bytes
+                this->framebuffer_size = std::min(this->vram_size, ((uint32_t)8 << 20) - 0x800);
+                this->vram_ptr = std::unique_ptr<uint8_t[]> (new uint8_t[this->vram_size]);
+                return this;
+            }
+        }
+    }
+    return nullptr;
 }
 
 void ATIRage::change_one_bar(uint32_t &aperture, uint32_t aperture_size,
@@ -1060,6 +1065,9 @@ void ATIRage::get_cursor_position(int& x, int& y) {
 
 PostInitResultType ATIRage::device_postinit()
 {
+    // initialize display identification
+    this->disp_id = dynamic_cast<DisplayID*>(this->get_comp_by_type(HWCompType::DISPLAY));
+
     this->vbl_cb = [this](uint8_t irq_line_state) {
         insert_bits<uint32_t>(this->regs[ATI_CRTC_INT_CNTL], irq_line_state, ATI_CRTC_VBLANK, irq_line_state);
         if (irq_line_state) {
@@ -1088,6 +1096,12 @@ PostInitResultType ATIRage::device_postinit()
         }
     };
     return PI_SUCCESS;
+}
+
+void ATIRage::update_display_connection()
+{
+    uint8_t mon_code = this->disp_id->read_monitor_sense(0, 0);
+    this->regs[ATI_GP_IO] = ((mon_code & 6) << 11) | ((mon_code & 1) << 8);
 }
 
 // =================================== Draw Engine =====================================
@@ -1177,12 +1191,10 @@ void ATIRage::fill_rect(uint32_t dst_width, uint32_t dst_height) {
 static const PropMap AtiRage_Properties = {
     {"gfxmem_size",
         new IntProperty(2, std::vector<uint32_t>({2, 4, 6, 8}))},
-    {"mon_id",
-        new StrProperty("")},
 };
 
 static const DeviceDescription AtiRage_Descriptor = {
-    ATIRage::create, {}, AtiRage_Properties, HWCompType::MMIO_DEV | HWCompType::PCI_DEV
+    ATIRage::create, {"Display@0"}, AtiRage_Properties, HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::VIDEO_CTRL
 };
 
 REGISTER_DEVICE(AtiRageGT, AtiRage_Descriptor);
