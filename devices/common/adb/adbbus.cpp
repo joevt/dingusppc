@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/adb/adbbus.h>
 #include <devices/common/adb/adbdevice.h>
 #include <devices/deviceregistry.h>
+#include <machines/machinefactory.h>
 #include <loguru.hpp>
 #include <sstream>
 
@@ -40,18 +41,8 @@ PostInitResultType AdbBus::device_postinit() {
     std::string adb_device;
     std::istringstream adb_device_stream(adb_device_list);
 
-    while (getline(adb_device_stream, adb_device, ',')) {
-        std::string dev_name = adb_device;
-
-        if (dev_name == this->name)
-            continue; // don't register a second ADB bus
-
-        if (DeviceRegistry::device_registered(dev_name)) {
-            this->add_device(0, DeviceRegistry::get_descriptor(dev_name).m_create_func(dev_name).release(), dev_name);
-        } else {
-            LOG_F(WARNING, "Unknown specified ADB device \"%s\"", adb_device.c_str());
-        }
-    }
+    while (getline(adb_device_stream, adb_device, ','))
+        MachineFactory::create_device(this, adb_device, HWCompType::ADB_DEV);
 
     return PI_SUCCESS;
 }
