@@ -98,13 +98,15 @@ int initialize(const std::string &id)
 static const PropMap bondi_settings = {
     {"rambank1_size", new IntProperty(128, std::vector<uint32_t>({32, 64, 128, 256, 512, 1024}))},
     {"emmo", new BinProperty(0)},
-    {"hdd_config", new StrProperty("Ide0:0")},
-    {"cdr_config", new StrProperty("Ide1:0")},
+    {"hdd_config", new StrProperty("Ide0/@0")},
+    {"cdr_config", new StrProperty("Ide1/@0")},
     {"pci_GPU", new StrProperty("AtiRagePro")},
+    {"pci_dev_max", new IntProperty(0xF, 0, 0x1F)},
 };
 
 static std::vector<std::string> bondi_devices = {
-    "GrackleBondi@80000000", "BurgundySnd@14000", "Heathrow@10", "AtaHardDisk", "AtapiCdrom"};
+    "GrackleBondi@80000000", "BurgundySnd@14000", "Heathrow@10"
+};
 
 static const DeviceDescription MachineBondi_descriptor = {
     Machine::create<MachineBondi>, bondi_devices, bondi_settings, HWCompType::MACHINE,

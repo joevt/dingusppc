@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -23,13 +23,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <core/timermanager.h>
 #include <devices/common/hwinterrupt.h>
+#include <devices/video/displayid.h>
 #include <devices/video/videoctrl.h>
 #include <devices/memctrl/memctrlbase.h>
 #include <memaccess.h>
 
 #include <cinttypes>
+#include <regex>
 
-VideoCtrlBase::VideoCtrlBase(int width, int height)
+VideoCtrlBase::VideoCtrlBase(int width, int height) : HWComponent("VideoCtrlBase")
 {
     EventManager::get_instance()->add_window_handler(this, &VideoCtrlBase::handle_events);
 
@@ -443,3 +445,23 @@ void VideoCtrlBase::convert_frame_32bpp(uint8_t *dst_buf, int dst_pitch)
 }
 template void VideoCtrlBase::convert_frame_32bpp<VideoCtrlBase::BE>(uint8_t *dst_buf, int dst_pitch);
 template void VideoCtrlBase::convert_frame_32bpp<VideoCtrlBase::LE>(uint8_t *dst_buf, int dst_pitch);
+
+int32_t VideoCtrlBase::parse_child_unit_address_string(const std::string unit_address_string)
+{
+    std::regex unit_address_re("0*(0)", std::regex_constants::icase);
+    std::smatch results;
+    if (std::regex_match(unit_address_string, results, unit_address_re)) {
+        return (int32_t)std::stol(results[1], nullptr, 10);
+    } else {
+        return -1;
+    }
+}
+
+HWComponent* VideoCtrlBase::add_device(int32_t unit_address, HWComponent *dev_obj, const std::string &name)
+{
+    HWComponent *result = HWComponent::add_device(unit_address, dev_obj, name);
+    DisplayID * disp_id = dynamic_cast<DisplayID*>(dev_obj);
+    if (disp_id)
+        disp_id->set_video_ctrl(this);
+    return result;
+}
