@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 #include <memory>
+#include <set>
 
 #ifndef MACHINE_PROPERTIES_H
 #define MACHINE_PROPERTIES_H
@@ -183,22 +184,43 @@ private:
     int     bin_val;
 };
 
-void parse_device_path(std::string dev_path, std::string& bus_id, uint32_t& dev_num);
-
 /** Special map type for specifying machine presets. */
 typedef std::map<std::string, BasicProperty*> PropMap;
 
 /** Global map that holds settings for the running machine. */
-extern std::map<std::string, std::unique_ptr<BasicProperty>> gMachineSettings;
+
+class Setting {
+public:
+    Setting() = default;
+    ~Setting() = default;
+    void set_property_info(BasicProperty *p) {
+        this->value_default = p->get_string();
+        this->property = std::unique_ptr<BasicProperty>(p->clone());
+        this->property->set_string(
+            this->value_commandline == this->value_not_inited ?
+                this->value_default
+            :
+                this->value_commandline
+        );
+    }
+    std::string value_default = this->value_not_inited;
+    std::string value_commandline = this->value_not_inited;
+    std::unique_ptr<BasicProperty> property = nullptr;
+    static const char *value_not_inited;
+    static const char *value_defaulted;
+    static std::set<BasicProperty*> loaded_properties;
+};
+
+extern std::map<std::string, std::unique_ptr<Setting>> gMachineSettings;
 
 /** Conveniency macros to hide complex casts. */
 #define GET_STR_PROP(name) \
-    dynamic_cast<StrProperty*>(gMachineSettings.at(name).get())->get_string()
+    dynamic_cast<StrProperty*>(gMachineSettings.at(name)->property.get())->get_string()
 
 #define GET_INT_PROP(name) \
-    dynamic_cast<IntProperty*>(gMachineSettings.at(name).get())->get_int()
+    dynamic_cast<IntProperty*>(gMachineSettings.at(name)->property.get())->get_int()
 
 #define GET_BIN_PROP(name) \
-    dynamic_cast<BinProperty*>(gMachineSettings.at(name).get())->get_val()
+    dynamic_cast<BinProperty*>(gMachineSettings.at(name)->property.get())->get_val()
 
 #endif // MACHINE_PROPERTIES_H

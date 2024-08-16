@@ -53,30 +53,6 @@ AtapiCdrom::AtapiCdrom(const std::string name) : AtapiBaseDevice(name), HWCompon
     this->set_revision_id(cdrom_revision_id);
 }
 
-PostInitResultType AtapiCdrom::device_postinit() {
-    std::string cdr_config = GET_STR_PROP("cdr_config");
-    if (cdr_config.empty()) {
-        LOG_F(ERROR, "%s: cdr_config property is empty", this->name.c_str());
-        return PI_FAIL;
-    }
-
-    std::string bus_id;
-    uint32_t    dev_num;
-
-    parse_device_path(cdr_config, bus_id, dev_num);
-
-    auto bus_obj = dynamic_cast<IdeChannel*>(gMachineObj->get_comp_by_name(bus_id));
-    bus_obj->add_device(dev_num, this);
-
-    std::string cdr_image_path = GET_STR_PROP("cdr_img");
-    if (!cdr_image_path.empty()) {
-        if (!this->insert_image(cdr_image_path))
-            return PI_FAIL;
-    }
-
-    return PI_SUCCESS;
-}
-
 void AtapiCdrom::perform_packet_command() {
     VLOG_SCOPE_F(loguru::Verbosity_INFO, "%s: perform_packet_command %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
         this->name.c_str(),
@@ -337,6 +313,17 @@ void AtapiCdrom::status_error(uint8_t sense_key, uint8_t asc) {
     this->sense_key = sense_key;
     this->asc = asc;
     this->set_status(ScsiStatus::CHECK_CONDITION, this->sense_key);
+}
+
+HWComponent* AtapiCdrom::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    if (property == "cdr_img" && !value.empty() && !this->medium_present() && this->override_property(property, value)) {
+        if (this->insert_image(value)) {
+            LOG_F(INFO, "%s: path:\"%s\"", this->get_path().c_str(), value.c_str());
+            return this;
+        } else
+            return nullptr;
+    }
+    return nullptr;
 }
 
 static const PropMap AtapiCdrom_Properties = {

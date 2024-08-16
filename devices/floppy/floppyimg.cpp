@@ -70,7 +70,7 @@ static FlopImgType identify_image(ImgFile& img_file)
 }
 
 //======================= RAW IMAGE CONVERTER ============================
-RawFloppyImg::RawFloppyImg(const std::string& file_path) : FloppyImgConverter()
+RawFloppyImg::RawFloppyImg(HWComponent *floppy_obj, const std::string& file_path) : FloppyImgConverter(floppy_obj)
 {
     this->img_path = file_path;
 }
@@ -112,7 +112,7 @@ int RawFloppyImg::calc_phys_params()
     this->data_size = this->img_size;
 
     // see if user has specified disk format manually
-    std::string fmt = GET_STR_PROP("fdd_fmt");
+    std::string fmt = this->floppy_obj->get_property_str("fdd_fmt");
     if (!fmt.empty()) {
         if (fmt == "GCR_400K") {
             this->img_size = 409600;
@@ -195,7 +195,7 @@ int RawFloppyImg::export_data()
 }
 
 // ====================== DISK COPY 4.2 IMAGE CONVERTER ======================
-DiskCopy42Img::DiskCopy42Img(const std::string& file_path) : FloppyImgConverter()
+DiskCopy42Img::DiskCopy42Img(HWComponent *floppy_obj, const std::string& file_path) : FloppyImgConverter(floppy_obj)
 {
     this->img_path = file_path;
 }
@@ -280,7 +280,7 @@ int DiskCopy42Img::export_data(void) {
     return 0;
 }
 
-FloppyImgConverter* open_floppy_image(const std::string& img_path)
+FloppyImgConverter* open_floppy_image(HWComponent *floppy_obj, const std::string& img_path)
 {
     FloppyImgConverter *fconv =  nullptr;
 
@@ -299,11 +299,11 @@ FloppyImgConverter* open_floppy_image(const std::string& img_path)
     switch(itype) {
     case FlopImgType::RAW:
         LOG_F(INFO, "Raw floppy image (\"%s\")", img_path.c_str());
-        fconv = new RawFloppyImg(img_path);
+        fconv = new RawFloppyImg(floppy_obj, img_path);
         break;
     case FlopImgType::DC42:
         LOG_F(INFO, "Disk Copy 4.2 image (\"%s\")", img_path.c_str());
-        fconv = new DiskCopy42Img(img_path);
+        fconv = new DiskCopy42Img(floppy_obj, img_path);
         break;
     case FlopImgType::WOZ1:
     case FlopImgType::WOZ2:
@@ -311,7 +311,7 @@ FloppyImgConverter* open_floppy_image(const std::string& img_path)
         break;
     default:
         LOG_F(WARNING, "Unknown image format - assume RAW (\"%s\")", img_path.c_str());
-        fconv = new RawFloppyImg(img_path);
+        fconv = new RawFloppyImg(floppy_obj, img_path);
     }
 
     if (fconv && fconv->calc_phys_params()) {

@@ -107,7 +107,7 @@ private:
     void enable_video_internal();
     void schedule_mode_switch();
 
-    std::unique_ptr<DisplayID>      disp_id;
+    DisplayID*                      disp_id = nullptr;
     AthensClocks*                   clk_gen = nullptr;
 };
 
