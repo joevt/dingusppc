@@ -146,7 +146,7 @@ static const std::map<uint16_t, std::string> rgb514_ind_reg_names = {
 AtiMach64Gx::AtiMach64Gx(const std::string &dev_name)
     : PCIDevice(dev_name), VideoCtrlBase(), HWComponent(dev_name)
 {
-    supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV);
+    supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::VIDEO_CTRL);
 
     // set up PCI configuration space header
     this->vendor_id   = PCI_VENDOR_ATI;
@@ -168,13 +168,6 @@ AtiMach64Gx::AtiMach64Gx(const std::string &dev_name)
               this->name.c_str());
     }
 
-    // initialize display identification
-    this->disp_id = std::unique_ptr<DisplayID> (new DisplayID());
-
-    // allocate video RAM
-    this->vram_size = GET_INT_PROP("gfxmem_size") << 20; // convert MBs to bytes
-    this->vram_ptr = std::unique_ptr<uint8_t[]> (new uint8_t[this->vram_size]);
-
     // set up RAMDAC identification
     this->regs[ATI_CONFIG_STAT0] = 1 << 9;
 
@@ -187,6 +180,22 @@ AtiMach64Gx::AtiMach64Gx(const std::string &dev_name)
     set_bit(regs[ATI_CRTC_GEN_CNTL], ATI_CRTC_DISPLAY_DIS); // because blank_on is true
 
     this->draw_fb_is_dynamic = true;
+}
+
+HWComponent* AtiMach64Gx::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    if (unit_address == -1) {
+        if (property == "gfxmem_size") {
+            if (this->override_property(property, value)) {
+                // allocate video RAM
+                int vram = this->get_property_int("gfxmem_size");
+                LOG_F(INFO, "%s: setting VRAM to %d MB", this->get_name_and_unit_address().c_str(), vram);
+                this->vram_size = vram << 20; // convert MBs to bytes
+                this->vram_ptr = std::unique_ptr<uint8_t[]> (new uint8_t[this->vram_size]);
+                return this;
+            }
+        }
+    }
+    return nullptr;
 }
 
 void AtiMach64Gx::change_one_bar(uint32_t &aperture, uint32_t aperture_size,
@@ -907,6 +916,9 @@ void AtiMach64Gx::get_cursor_position(int& x, int& y) {
 
 PostInitResultType AtiMach64Gx::device_postinit()
 {
+    // initialize display identification
+    this->disp_id = dynamic_cast<DisplayID*>(this->get_comp_by_type(HWCompType::DISPLAY));
+
     this->vbl_cb = [this](uint8_t irq_line_state) {
         insert_bits<uint32_t>(this->regs[ATI_CRTC_INT_CNTL], irq_line_state, ATI_CRTC_VBLANK, irq_line_state);
         if (irq_line_state) {
@@ -1089,12 +1101,11 @@ void AtiMach64Gx::rgb514_write_ind_reg(uint8_t reg_addr, uint8_t value)
 static const PropMap AtiMach64gx_Properties = {
     {"gfxmem_size",
         new IntProperty(  2, std::vector<uint32_t>({2, 4, 6}))},
-    {"mon_id",
-        new StrProperty("")},
 };
 
 static const DeviceDescription AtiMach64Gx_Descriptor = {
-    AtiMach64Gx::create, {}, AtiMach64gx_Properties, HWCompType::MMIO_DEV | HWCompType::PCI_DEV
+    AtiMach64Gx::create, {"Display@0"}, AtiMach64gx_Properties,
+    HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::VIDEO_CTRL
 };
 
 REGISTER_DEVICE(AtiMach64Gx, AtiMach64Gx_Descriptor);
