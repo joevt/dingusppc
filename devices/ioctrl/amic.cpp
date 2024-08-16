@@ -80,11 +80,6 @@ AMIC::AMIC(const std::string &dev_name)
     this->add_device(0x14000, this->awacs);
     this->awacs->set_dma_out(this->snd_out_dma.get());
 
-    // initialize on-board video
-    this->disp_id = std::unique_ptr<DisplayID> (new DisplayID());
-    this->def_vid = std::unique_ptr<PdmOnboardVideo> (new PdmOnboardVideo("PdmOnboardVideo"));
-    this->def_vid->init_interrupts(this, SLOT_INT_VBL << 16);
-
     // initialize floppy disk HW
     this->swim3 = dynamic_cast<Swim3::Swim3Ctrl*>(gMachineObj->get_comp_by_name("Swim3"));
     this->floppy_dma = std::unique_ptr<AmicFloppyDma> (new AmicFloppyDma());
@@ -118,6 +113,11 @@ PostInitResultType AMIC::device_postinit()
 
     // set EMMO pin status (active low)
     this->emmo_pin = GET_BIN_PROP("emmo") ^ 1;
+
+    // initialize on-board video
+    this->disp_id = dynamic_cast<DisplayID*>(this->get_comp_by_type(HWCompType::DISPLAY));
+    this->def_vid = dynamic_cast<PdmOnboardVideo*>(this->get_comp_by_name("PdmOnboardVideo"));
+    this->def_vid->init_interrupts(this, SLOT_INT_VBL << SLOT_INT_SHIFT);
 
     return PI_SUCCESS;
 }
@@ -867,29 +867,17 @@ DmaPullResult AmicSerialXmitDma::pull_data(uint32_t /*req_len*/, uint32_t */*ava
     return DmaPullResult::NoMoreData;
 }
 
-// Monitors supported by the PDM on-board video.
-// see displayid.cpp for the full list of supported monitor IDs.
-static const std::vector<std::string> PDMBuiltinMonitorIDs = {
-    "PortraitGS", "MacRGB12in", "MacRGB15in", "HiRes12-14in", "VGA-SVGA",
-    "MacRGB16in", "Multiscan15in", "Multiscan17in", "Multiscan20in",
-    "NotConnected"
-};
-
-static const PropMap Amic_Properties = {
-    {"mon_id",
-        new StrProperty("HiRes12-14in", PDMBuiltinMonitorIDs)},
-};
-
 static std::vector<std::string> Amic_Subdevices = {
     "Sc53C94@10000",
     "EsccPdm@4000",
     "Mace@A000",
     "ViaCuda@0",
-    "Swim3@16000"
+    "Swim3@16000",
+    "PdmOnboardVideo@28000",
 };
 
 static const DeviceDescription Amic_Descriptor = {
-    AMIC::create, Amic_Subdevices, Amic_Properties, HWCompType::MMIO_DEV | HWCompType::INT_CTRL
+    AMIC::create, Amic_Subdevices, {}, HWCompType::MMIO_DEV | HWCompType::INT_CTRL
 };
 
 REGISTER_DEVICE(Amic, Amic_Descriptor);
