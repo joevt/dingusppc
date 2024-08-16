@@ -169,11 +169,14 @@ int MachineTnt::initialize(const std::string &id) {
     {"rambank11_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
     {"rambank12_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
     {"emmo", new BinProperty(0)}, \
-    {"cpu", new StrProperty(# cpu, std::vector<std::string>({"601", "604", "604e", "750"}))},
+    {"cpu", new StrProperty(# cpu, std::vector<std::string>({"601", "604", "604e", "750"}))}, \
+    {"pci_dev_max", new IntProperty(0xF, 0, 0x1F)},
 
 #define static_const_tnt_settings(cpu) \
 static const PropMap tnt_settings_ ## cpu = { \
     static_const_tnt_common_settings(cpu) \
+    {"hdd_config", new StrProperty("ScsiMesh/@0")}, \
+    {"cdr_config", new StrProperty("ScsiMesh/@3")}, \
 };
 
 static_const_tnt_settings(601)

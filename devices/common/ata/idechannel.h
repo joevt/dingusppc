@@ -44,6 +44,12 @@ public:
 
     virtual HWComponent* add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name = "") override;
     int32_t parse_child_unit_address_string(const std::string unit_address_string) override;
+    virtual HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
+
+    // IdeChannel methods
+
+    template <class T>
+    HWComponent* set_property(const std::string &value, int32_t unit_address);
 
     virtual uint32_t read(const uint8_t reg_addr, const int size);
     virtual void write(const uint8_t reg_addr, const uint32_t val, const int size);
