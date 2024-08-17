@@ -758,10 +758,10 @@ void dppc_interpreter::ppc_mtsr() {
     }
     int reg_s             = (ppc_cur_instruction >> 21) & 0x1F;
     uint32_t grab_sr      = (ppc_cur_instruction >> 16) & 0x0F;
-   if (ppc_state.sr[grab_sr] != ppc_state.gpr[reg_s]) {
+    if (ppc_state.sr[grab_sr] != ppc_state.gpr[reg_s]) {
         ppc_state.sr[grab_sr] = ppc_state.gpr[reg_s];
         mmu_pat_ctx_changed();
-   }
+    }
 }
 
 void dppc_interpreter::ppc_mtsrin() {
