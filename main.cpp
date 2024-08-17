@@ -227,9 +227,9 @@ int main(int argc, char** argv) {
     } else {
         machine_str = machine_str_from_rom;
     }
-        if (machine_str.empty()) {
+    if (machine_str.empty()) {
         LOG_F(ERROR, "Must specificy a machine or provide a supported ROM.");
-            return 1;
+        return 1;
     }
 
     if (symbols_path.length()) {
