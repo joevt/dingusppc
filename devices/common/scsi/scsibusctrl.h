@@ -62,7 +62,7 @@ constexpr auto DATA_FIFO_DEPTH = 16;
 
 class ScsiBusController : public ScsiDevice, public DmaDevice {
 public:
-    ScsiBusController(std::string name, uint8_t my_bus_id=7) : ScsiDevice(name, my_bus_id) {
+    ScsiBusController(const std::string name, uint8_t my_bus_id=7) : ScsiDevice(name, my_bus_id) {
         supports_types(HWCompType::SCSI_HOST | HWCompType::SCSI_DEV);
     }
     ~ScsiBusController() = default;

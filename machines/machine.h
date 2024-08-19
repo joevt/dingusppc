@@ -32,19 +32,14 @@ public:
 
     // Machine methods
 
-    virtual int initialize(const std::string &id) = 0;
+    virtual int initialize(const std::string &dev_name) = 0;
 
     template <class T>
-    static std::unique_ptr<HWComponent> create_with_id(const std::string &id) {
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
         std::unique_ptr<T> machine = std::unique_ptr<T>(new T());
-        if (machine && 0 == machine->initialize(id))
+        if (machine && 0 == machine->initialize(dev_name))
             return machine;
         return nullptr;
-    }
-
-    template <class T>
-    static std::unique_ptr<HWComponent> create() {
-        return Machine::create_with_id<T>("");
     }
 };
 

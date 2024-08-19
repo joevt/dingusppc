@@ -50,7 +50,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 
 #ifdef DEBUG_CPU_INT
-#include <machines/machinebase.h>
 #include <devices/common/viacuda.h>
 #endif
 
@@ -1362,6 +1361,9 @@ void DppcDebugger::enter_debugger() {
             cmd = "";
             if (mem_ctrl_instance)
                 mem_ctrl_instance->dump_regions();
+        } else if (cmd == "devices") {
+            cmd = "";
+            gMachineObj->dump_devices(4);
         } else if (cmd == "fdd") {
             cmd = "";
             std::istream::sentry se(ss); // skip white space

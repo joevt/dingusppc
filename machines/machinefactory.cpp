@@ -29,7 +29,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/memctrlbase.h>
 #include <devices/sound/soundserver.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 #include <machines/romidentity.h>
@@ -122,42 +121,72 @@ static uint32_t oldworldchecksum(char *buf, size_t len) {
     return ck;
 }
 
-bool MachineFactory::add(const string& machine_id, MachineDescription desc)
-{
-    if (get_registry().find(machine_id) != get_registry().end()) {
-        return false;
-    }
-
-    get_registry()[machine_id] = desc;
-    return true;
-}
-
 void MachineFactory::list_machines()
 {
     cout << endl << "Supported machines:" << endl << endl;
 
-    for (auto& m : get_registry()) {
-        cout << setw(13) << right << m.first << "\t\t" << m.second.description << endl;
+    for (auto& m : DeviceRegistry::get_registry()) {
+        if (m.second.supports_types & HWCompType::MACHINE)
+            cout << setw(13) << right << m.first << "\t\t" << m.second.description << endl;
     }
 
     cout << endl;
 }
 
-void MachineFactory::create_device(string& dev_name, DeviceDescription& dev)
+HWComponent* MachineFactory::create_device(HWComponent *parent, string dev_name, DeviceDescription& dev)
 {
-    LOG_F(INFO, "%*s[ Creating device %s", gMachineObj->indent(), "", dev_name.c_str());
-    for (auto& subdev_name : dev.subdev_list) {
-        create_device(subdev_name, DeviceRegistry::get_descriptor(subdev_name));
+    VLOG_SCOPE_F(loguru::Verbosity_INFO, "Creating device %s", dev_name.c_str());
+
+    int32_t unit_address;
+    std::string unit_address_string = HWComponent::extract_unit_address(dev_name);
+    for (unit_address = -999; parent->children.count(unit_address); unit_address += 1) {}
+    dev_name = HWComponent::extract_device_name(dev_name);
+
+    HWComponent *temp_obj = nullptr;
+    if (dev.subdev_list.size()) {
+        temp_obj = new HWComponent(dev_name + " (temporary)");
     }
 
-    gMachineObj->add_device(dev_name, dev.m_create_func());
-    LOG_F(INFO, "%*s]", gMachineObj->outdent(), "");
+    if (temp_obj) {
+        temp_obj->supports_types(dev.supports_types);
+        parent->add_device(unit_address, temp_obj);
+
+    for (auto& subdev_name : dev.subdev_list) {
+            create_device(temp_obj, subdev_name, DeviceRegistry::get_descriptor(HWComponent::extract_device_name(subdev_name)));
+        }
+    }
+
+    std::unique_ptr<HWComponent> dev_obj = dev.m_create_func(dev_name);
+    HWComponent *hwc = dev_obj.get();
+    if (hwc->get_name() != dev_name) {
+        if (hwc->get_name().empty()) {
+            LOG_F(INFO, "Set name to \"%s\"", dev_name.c_str());
+        } else {
+            LOG_F(INFO, "Changed name from \"%s\" to \"%s\"", hwc->get_name().c_str(), dev_name.c_str());
+        }
+        hwc->set_name(dev_name);
+    }
+
+    if (temp_obj) {
+        temp_obj->move_children(hwc);
+        parent->remove_device(unit_address); // delete temp_obj
+    }
+
+    if (!unit_address_string.empty()) {
+        unit_address = dev_obj->parse_self_unit_address_string(unit_address_string);
+    }
+
+    parent->add_device(unit_address, dev_obj.release(), dev_name);
+
+    return hwc;
 }
 
 int MachineFactory::create(string& mach_id)
 {
-    auto it = get_registry().find(mach_id);
-    if (it == get_registry().end()) {
+    auto it = DeviceRegistry::get_registry().find(mach_id);
+    if (it == DeviceRegistry::get_registry().end() ||
+        !(it->second.supports_types & HWCompType::MACHINE)
+    ) {
         LOG_F(ERROR, "Unknown machine id %s", mach_id.c_str());
         return -1;
     }
@@ -165,19 +194,22 @@ int MachineFactory::create(string& mach_id)
     LOG_F(INFO, "Initializing %s hardware...", it->second.description.c_str());
 
     // initialize global machine object
-    gMachineObj.reset(new MachineBase(it->second.name));
+    gMachineObj.reset(new HWComponent("DingusPPC"));
 
     // create and register sound server
-    gMachineObj->add_device("SoundServer", std::unique_ptr<SoundServer>(new SoundServer()));
+    gMachineObj->add_device(-1000, new SoundServer());
 
     // recursively create device objects
-    create_device(it->second.machine_root, DeviceRegistry::get_descriptor(it->second.machine_root));
+    create_device(gMachineObj.get(), mach_id, it->second);
 
-    if (!gMachineObj->get_comp_by_name(it->second.machine_root)) {
+    if (!gMachineObj->get_comp_by_name(mach_id)) {
         LOG_F(ERROR, "Machine initialization function failed!");
         gMachineObj->clear_devices();
         return -1;
     }
+
+    printf("Machine so far:\n");
+    gMachineObj->dump_devices(4);
 
     // post-initialize all devices
     if (gMachineObj->postinit_devices()) {
@@ -186,6 +218,8 @@ int MachineFactory::create(string& mach_id)
     }
 
     LOG_F(INFO, "Initialization completed.");
+    printf("Machine after init:\n");
+    gMachineObj->dump_devices(4);
 
     return 0;
 }
@@ -195,21 +229,24 @@ void MachineFactory::list_properties(vector<string> machine_list)
     cout << endl;
 
     if (machine_list.empty()) {
-    for (auto& mach : get_registry()) {
-        cout << mach.second.description << " supported properties:" << endl << endl;
-                list_device_settings(DeviceRegistry::get_descriptor(mach.second.machine_root), PropertyMachine, 0, "");
-                list_device_settings(DeviceRegistry::get_descriptor(mach.second.machine_root), PropertyDevice, 0, "");
+        for (auto& mach : DeviceRegistry::get_registry()) {
+            if (mach.second.supports_types & HWCompType::MACHINE) {
+                cout << mach.second.description << " supported properties:" << endl << endl;
+                list_device_settings(mach.second, PropertyMachine, 0, "", "");
+                list_device_settings(mach.second, PropertyDevice, 0, "", "");
+            }
         }
     } else {
         for (auto& name : machine_list) {
-            auto it = get_registry().find(name);
-            if (it != get_registry().end()) {
-                cout << it->second.description << " supported properties:" << endl << endl;
-                list_device_settings(DeviceRegistry::get_descriptor(it->second.machine_root), PropertyMachine, 0, "");
-                list_device_settings(DeviceRegistry::get_descriptor(it->second.machine_root), PropertyDevice, 0, "");
+            auto it = DeviceRegistry::get_registry().find(name);
+            if (it != DeviceRegistry::get_registry().end()) {
+                cout << (it->second.description.empty() ? name : it->second.description)
+                    << " supported properties:" << endl << endl;
+                list_device_settings(it->second, PropertyMachine, 0, "", "");
+                list_device_settings(it->second, PropertyDevice, 0, "", "");
             }
             else {
-                cout << name << " is not a valid machine id." << endl << endl;
+                cout << name << " is not a valid machine or device." << endl << endl;
             }
         }
     }
@@ -217,18 +254,18 @@ void MachineFactory::list_properties(vector<string> machine_list)
     cout << endl;
 }
 
-void MachineFactory::list_device_settings(DeviceDescription& dev, PropScope scope, int indent, string path)
+void MachineFactory::list_device_settings(DeviceDescription& dev, PropScope scope, int indent, string path, string device)
 {
     for (auto& d : dev.subdev_list) {
-        list_device_settings(DeviceRegistry::get_descriptor(d),
-            scope, scope == PropertyMachine ? indent : indent + 4, path + "/" + d
+        list_device_settings(DeviceRegistry::get_descriptor(HWComponent::extract_device_name(d)),
+            scope, scope == PropertyMachine ? indent : indent + 4, path + "/" + d, d
         );
     }
 
-    print_settings(dev.properties, scope, indent, path);
+    print_settings(dev.properties, scope, indent, path, device);
 }
 
-void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope, int /*indent*/, string path)
+void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope, int /*indent*/, string path, string device)
 {
     string help;
 
@@ -247,7 +284,8 @@ void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope, in
         }
 
         if (!did_path) {
-            cout << setw(4) << "" << path << endl;
+            // don't print path because registry path is not the same as config path
+            cout << setw(4) << "" << device << endl;
             did_path = true;
         }
 
@@ -279,7 +317,7 @@ void MachineFactory::register_device_settings(const std::string& name)
 {
     auto dev = DeviceRegistry::get_descriptor(name);
     for (auto& d : dev.subdev_list) {
-        register_device_settings(d);
+        register_device_settings(HWComponent::extract_device_name(d));
     }
 
     register_settings(dev.properties);
@@ -295,11 +333,11 @@ void MachineFactory::register_device_settings(const std::string& name)
 
 int MachineFactory::register_machine_settings(const std::string& id)
 {
-    auto it = get_registry().find(id);
-    if (it != get_registry().end()) {
+    auto it = DeviceRegistry::get_registry().find(id);
+    if (it != DeviceRegistry::get_registry().end() && (it->second.supports_types & HWCompType::MACHINE)) {
         gMachineSettings.clear();
 
-        register_device_settings(it->second.machine_root);
+        register_device_settings(id);
     } else {
         LOG_F(ERROR, "Unknown machine id %s", id.c_str());
         return -1;

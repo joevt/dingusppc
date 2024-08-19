@@ -60,7 +60,9 @@ enum RAMType : int { SDRAM = 4 };
 
 class SpdSdram168 : public I2CDevice {
 public:
-    SpdSdram168(uint8_t addr) : I2CDevice() {
+    SpdSdram168(uint8_t addr)
+        : HWComponent("SpdSdram168")
+    {
         this->dev_addr = addr;
         this->pos      = 0;
         supports_types(HWCompType::I2C_DEV | HWCompType::RAM);

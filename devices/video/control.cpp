@@ -42,7 +42,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/video/control.h>
 #include <endianswap.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 #include <machines/machineproperties.h>
 #include <memaccess.h>
 
@@ -54,8 +53,8 @@ namespace loguru {
     };
 }
 
-ControlVideo::ControlVideo()
-    : PCIDevice("Control-Video"), VideoCtrlBase()
+ControlVideo::ControlVideo(const std::string &dev_name)
+    : PCIDevice(dev_name), VideoCtrlBase(), HWComponent(dev_name)
 {
     supports_types(HWCompType::PCI_DEV);
 
@@ -103,14 +102,14 @@ ControlVideo::ControlVideo()
     };
 
     // initialize the video clock generator
-    this->clk_gen = std::unique_ptr<AthensClocks> (new AthensClocks(0x28));
+    this->clk_gen = new AthensClocks(0x28);
 
     // register the video clock generator with the I2C host
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
-    i2c_bus->register_device(0x28, this->clk_gen.get());
+    i2c_bus->add_device(0x28, this->clk_gen);
 
     // attach RAMDAC
-    this->radacal = std::unique_ptr<AppleRamdac>(new AppleRamdac(DacFlavour::RADACAL));
+    this->radacal = new AppleRamdac(DacFlavour::RADACAL);
     this->radacal->get_clut_entry_cb = [this](uint8_t index, uint8_t *colors) {
         uint8_t a;
         this->get_palette_color(index, colors[0], colors[1], colors[2], a);
@@ -132,7 +131,7 @@ ControlVideo::ControlVideo()
 
     // attach IOBus Device #2 0xF301B000 ; register RaDACal with the I/O controller
     GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralTnt"));
-    gc_obj->attach_iodevice(1, this->radacal.get());
+    gc_obj->add_device(0x1B000, this->radacal);
 
     // initialize display identification
     this->disp_id = std::unique_ptr<DisplayID> (new DisplayID());

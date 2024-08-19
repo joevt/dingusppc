@@ -24,17 +24,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/pci/pcihost.h>
 #include <devices/deviceregistry.h>
 #include <machines/machinefactory.h>
-#include <machines/machinebase.h>
 #include <endianswap.h>
 #include <loguru.hpp>
 
 #include <cinttypes>
+#include <regex>
 #include <cpu/ppc/ppcemu.h>
 
-bool PCIHost::pci_register_device(int dev_fun_num, PCIBase* dev_instance)
+void PCIHost::pci_register_device(int dev_fun_num, PCIBase* dev_instance)
 {
-    // return false if dev_fun_num already registered
     if (this->dev_map.count(dev_fun_num)) {
+        if (this->dev_map[dev_fun_num] == dev_instance)
+            return;
         pci_unregister_device(dev_fun_num);
     }
 
@@ -67,7 +68,7 @@ bool PCIHost::pci_register_device(int dev_fun_num, PCIBase* dev_instance)
         this->bridge_devs.push_back(bridge);
     }
 
-    return true;
+    LOG_F(INFO, "Registered %s.", dev_instance->get_name_and_unit_address().c_str());
 }
 
 void PCIHost::pci_unregister_device(int dev_fun_num)
@@ -77,16 +78,15 @@ void PCIHost::pci_unregister_device(int dev_fun_num)
     }
     auto dev_instance = this->dev_map[dev_fun_num];
 
-    HWComponent *hwc = dynamic_cast<HWComponent*>(this);
     LOG_F(
         // FIXME: need destructors to remove memory regions and downstream devices.
         ERROR, "%s: pci_unregister_device(%s) not supported yet (every PCI device needs "
             "a working destructor to unregister memory and downstream devices etc.)",
-        hwc ? hwc->get_name().c_str() : "PCIHost", dev_instance->get_name().c_str()
+        this->get_name().c_str(), dev_instance->get_name().c_str()
     );
 
     this->dev_map.erase(dev_fun_num);
-    gMachineObj->remove_device(dev_instance); // calls destructor of dev_instance since it is a unique_ptr in the device_map.
+    gMachineObj->remove_device(dev_instance);
 }
 
 AddressMapEntry* PCIHost::pci_register_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj)
@@ -105,18 +105,12 @@ bool PCIHost::pci_unregister_mmio_region(uint32_t start_addr, uint32_t size, PCI
     return mem_ctrl->remove_mmio_region(start_addr, size, obj);
 }
 
-void PCIHost::attach_pci_device(const std::string& dev_name, int slot_id)
-{
-    this->attach_pci_device(dev_name, slot_id, "");
-}
-
-PCIBase *PCIHost::attach_pci_device(const std::string& dev_name, int slot_id, const std::string& dev_suffix)
+PCIBase *PCIHost::attach_pci_device(const std::string& dev_name, int slot_id)
 {
     if (!DeviceRegistry::device_registered(dev_name)) {
-        HWComponent *hwc = dynamic_cast<HWComponent*>(this);
         LOG_F(
             WARNING, "%s: specified PCI device %s doesn't exist",
-            hwc ? hwc->get_name().c_str() : "PCIHost", dev_name.c_str()
+            this->get_name().c_str(), dev_name.c_str()
         );
         return NULL;
     }
@@ -124,28 +118,36 @@ PCIBase *PCIHost::attach_pci_device(const std::string& dev_name, int slot_id, co
     // attempt to create device object
     MachineFactory::register_device_settings(dev_name);
     auto desc = DeviceRegistry::get_descriptor(dev_name);
-    auto dev_obj = desc.m_create_func();
+    auto dev_obj = desc.m_create_func(dev_name);
 
     if (!dev_obj->supports_type(HWCompType::PCI_DEV)) {
-        HWComponent *hwc = dynamic_cast<HWComponent*>(this);
         LOG_F(
             WARNING, "%s: cannot attach non-PCI device %s",
-            hwc ? hwc->get_name().c_str() : "PCIHost", dev_name.c_str()
+            this->get_name().c_str(), dev_name.c_str()
         );
 
         return NULL;
     }
 
     // add device to the machine object
-    gMachineObj->add_device(dev_name + dev_suffix, std::move(dev_obj));
-
-    PCIBase *dev = dynamic_cast<PCIBase*>(gMachineObj->get_comp_by_name(dev_name + dev_suffix));
-    dev->set_name(dev->get_name() + dev_suffix);
-
-    // register device with the PCI host
-    this->pci_register_device(slot_id, dev);
+    PCIBase *dev = dynamic_cast<PCIBase*>(dev_obj.release());
+    this->add_device(slot_id, dev, dev_name);
 
     return dev;
+}
+
+HWComponent* PCIHost::add_device(int32_t unit_address, HWComponent *dev_obj, const std::string &name)
+{
+    // register device with the PCI host
+    HWComponent *result = HWComponent::add_device(unit_address, dev_obj, name);
+    if (unit_address < 0) {
+        LOG_F(WARNING, "Not registering %s yet.", dev_obj->get_name_and_unit_address().c_str());
+    } else if (unit_address > 0xff) {
+        LOG_F(WARNING, "Not registering %s.", dev_obj->get_name_and_unit_address().c_str());
+    } else {
+        this->pci_register_device(unit_address, dynamic_cast<PCIBase*>(dev_obj));
+    }
+    return result;
 }
 
 InterruptCtrl *PCIHost::get_interrupt_controller() {
@@ -158,19 +160,7 @@ InterruptCtrl *PCIHost::get_interrupt_controller() {
 }
 
 bool PCIHost::register_pci_int(PCIBase* dev_instance) {
-    bool dev_found   = false;
-    int  dev_fun_num = 0;
-
-    for (auto& dev : this->dev_map) {
-        if (dev.second == dev_instance) {
-            dev_fun_num = dev.first;
-            dev_found = true;
-        }
-    }
-
-    if (!dev_found)
-        ABORT_F("register_pci_int: requested device not found");
-
+    int dev_fun_num = dev_instance->unit_address;
     for (auto& irq : this->my_irq_map) {
         if (irq.dev_fun_num == dev_fun_num) {
             IntDetails new_int_detail;
@@ -222,10 +212,9 @@ uint32_t PCIHost::pci_io_read_broadcast(uint32_t offset, int size)
         return res;
 
     // no device has accepted the request -> report error
-    HWComponent *hwc = dynamic_cast<HWComponent*>(this);
     LOG_F(
         ERROR, "%s: Attempt to read from unmapped PCI I/O space @%08x.%c",
-        hwc ? hwc->get_name().c_str() : "PCIHost", offset,
+        this->get_name().c_str(), offset,
         SIZE_ARG(size)
     );
     // machine check exception (DEFAULT CATCH!, code=FFF00200)
@@ -241,10 +230,9 @@ void PCIHost::pci_io_write_broadcast(uint32_t offset, int size, uint32_t value)
         return;
 
     // no device has accepted the request -> report error
-    HWComponent *hwc = dynamic_cast<HWComponent*>(this);
     LOG_F(
         ERROR, "%s: Attempt to write to unmapped PCI I/O space @%08x.%c = %0*x",
-        hwc ? hwc->get_name().c_str() : "PCIHost", offset,
+        this->get_name().c_str(), offset,
         SIZE_ARG(size),
         size * 2, BYTESWAP_SIZED(value, size)
     );
@@ -281,10 +269,18 @@ int PCIHost::pcihost_device_postinit()
         if (slot.slot_name) {
             pci_dev_name = GET_STR_PROP(slot.slot_name);
             if (!pci_dev_name.empty()) {
-                this->attach_pci_device(pci_dev_name, slot.dev_fun_num, std::string("@") + slot.slot_name);
+                this->attach_pci_device(pci_dev_name, slot.dev_fun_num);
             }
         }
     }
 
     return 0;
+}
+
+std::string PCIHost::get_child_unit_address_string(int32_t unit_address) {
+    return PCIBase::get_unit_address_string(unit_address);
+}
+
+int32_t PCIHost::parse_child_unit_address_string(const std::string unit_address_string) {
+    return PCIBase::parse_unit_address_string(unit_address_string);
 }

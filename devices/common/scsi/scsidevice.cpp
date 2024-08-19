@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 #include <cstring>
+#include <regex>
 
 namespace loguru {
     enum : Verbosity {
@@ -327,5 +328,22 @@ void ScsiDevice::process_message() {
     } else if ((this->msg_buf[0] >> 4) == 2) { // two-byte messages
         if (!this->bus_obj->pull_data(this->initiator_id, &this->msg_buf[1], 1))
             ABORT_F("%s: incomplete message received", this->name.c_str());
+    }
+}
+
+int32_t ScsiDevice::parse_self_unit_address_string(const std::string unit_address_string) {
+    return ScsiDevice::parse_unit_address_string(unit_address_string);
+}
+
+int32_t ScsiDevice::parse_unit_address_string(const std::string unit_address_string) {
+    std::regex unit_address_re("0*(1?[0-9])", std::regex_constants::icase);
+    std::smatch results;
+    if (std::regex_match(unit_address_string, results, unit_address_re)) {
+        int result = (int32_t)std::stol(results[1], nullptr, 10);
+        if (result >= SCSI_MAX_DEVS)
+            return -1;
+        return result;
+    } else {
+        return -1;
     }
 }
