@@ -312,11 +312,11 @@ static const vector<string> Mesh_Subdevices = {
 };
 
 static const DeviceDescription Mesh_Tnt_Descriptor = {
-    MeshController::create_for_tnt, Mesh_Subdevices, Mesh_properties
+    MeshController::create_for_tnt, Mesh_Subdevices, Mesh_properties, HWCompType::SCSI_HOST | HWCompType::SCSI_DEV
 };
 
 static const DeviceDescription Mesh_Heathrow_Descriptor = {
-    MeshController::create_for_heathrow, Mesh_Subdevices, Mesh_properties
+    MeshController::create_for_heathrow, Mesh_Subdevices, Mesh_properties, HWCompType::SCSI_HOST | HWCompType::SCSI_DEV
 };
 
 REGISTER_DEVICE(MeshTnt,      Mesh_Tnt_Descriptor);

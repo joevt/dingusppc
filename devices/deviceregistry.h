@@ -40,6 +40,8 @@ struct DeviceDescription {
     CreateFunc      m_create_func;
     vector<string>  subdev_list;
     PropMap         properties;
+    uint64_t        supports_types;
+    std::string     description;
 };
 
 class DeviceRegistry

@@ -379,7 +379,8 @@ static const PropMap AtapiCdromProperties = {
     {"cdr_img", new StrProperty("")},
 };
 
-static const DeviceDescription AtapiCdromDescriptor =
-    {AtapiCdrom::create, {}, AtapiCdromProperties};
+static const DeviceDescription AtapiCdromDescriptor = {
+    AtapiCdrom::create, {}, AtapiCdromProperties, HWCompType::IDE_DEV
+};
 
 REGISTER_DEVICE(AtapiCdrom, AtapiCdromDescriptor);

@@ -94,7 +94,7 @@ void NVram::save() {
 }
 
 static const DeviceDescription Nvram_Descriptor = {
-    NVram::create, {}, {}
+    NVram::create, {}, {}, HWCompType::NVRAM
 };
 
 REGISTER_DEVICE(NVRAM, Nvram_Descriptor);

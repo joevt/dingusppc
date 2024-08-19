@@ -673,11 +673,13 @@ static const vector<string> GrandCentralTnt_Subdevices = {
 };
 
 static const DeviceDescription GrandCentralCatalyst_Descriptor = {
-    GrandCentral::create, GrandCentralCatalyst_Subdevices, {}
+    GrandCentral::create, GrandCentralCatalyst_Subdevices, {},
+    HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL
 };
 
 static const DeviceDescription GrandCentralTnt_Descriptor = {
-    GrandCentral::create, GrandCentralTnt_Subdevices, {}
+    GrandCentral::create, GrandCentralTnt_Subdevices, {},
+    HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL
 };
 
 REGISTER_DEVICE(GrandCentralCatalyst, GrandCentralCatalyst_Descriptor);

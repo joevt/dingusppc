@@ -348,7 +348,8 @@ static const PropMap AtaHardDiskProperties = {
     {"hdd_img", new StrProperty("")},
 };
 
-static const DeviceDescription AtaHardDiskDescriptor =
-    {AtaHardDisk::create, {}, AtaHardDiskProperties};
+static const DeviceDescription AtaHardDiskDescriptor = {
+    AtaHardDisk::create, {}, AtaHardDiskProperties, HWCompType::IDE_DEV
+};
 
 REGISTER_DEVICE(AtaHardDisk, AtaHardDiskDescriptor);
