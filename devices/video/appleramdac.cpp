@@ -33,12 +33,11 @@ namespace loguru {
     };
 }
 
-AppleRamdac::AppleRamdac(DacFlavour flavour) {
-    this->flavour =  flavour;
-
+AppleRamdac::AppleRamdac(DacFlavour flavour)
+    : HWComponent(flavour == DacFlavour::DACULA ? "DACula" : "RaDACal")
+{
+    this->flavour = flavour;
     supports_types(HWCompType::IOBUS_DEV);
-
-    set_name(this->flavour == DacFlavour::DACULA ? "DACula" : "RaDACal");
 }
 
 uint16_t AppleRamdac::iodev_read(uint32_t address) {

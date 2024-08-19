@@ -59,11 +59,11 @@ enum {
 
 class PsxCtrl : public MemCtrlBase, public MMIODevice {
 public:
-    PsxCtrl(int bridge_num, std::string name);
+    PsxCtrl(const int bridge_num, const std::string name);
     ~PsxCtrl() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<PsxCtrl>(new PsxCtrl(1, "PSX-PCI1"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<PsxCtrl>(new PsxCtrl(1, dev_name));
     }
 
     // MMIODevice methods

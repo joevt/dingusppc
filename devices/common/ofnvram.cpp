@@ -24,7 +24,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/ofnvram.h>
 #include <devices/common/nvram.h>
 #include <endianswap.h>
-#include <machines/machinebase.h>
 #include <memaccess.h>
 
 #include <cinttypes>

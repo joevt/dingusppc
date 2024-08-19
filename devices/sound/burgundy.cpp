@@ -29,7 +29,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <endianswap.h>
 #include <loguru.hpp>
 
-BurgundyCodec::BurgundyCodec(std::string name) : MacioSndCodec(name)
+BurgundyCodec::BurgundyCodec(const std::string name)
+     : MacioSndCodec(name), HWComponent(name)
 {
     supports_types(HWCompType::SND_CODEC);
 

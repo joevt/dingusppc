@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     loguru::g_stderr_verbosity = 0;
     loguru::init(argc, argv);
 
-    MPC106* grackle_obj = new MPC106;
+    MPC106* grackle_obj = new MPC106("GrackleGossamer");
 
     /* we need some RAM */
     if (!grackle_obj->add_ram_region(0, 0x1000 + test_size)) {

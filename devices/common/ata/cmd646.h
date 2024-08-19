@@ -64,11 +64,11 @@ enum {
 
 class CmdIdeCtrl : public PCIDevice {
 public:
-    CmdIdeCtrl();
+    CmdIdeCtrl(const std::string &dev_name);
     ~CmdIdeCtrl() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<CmdIdeCtrl>(new CmdIdeCtrl());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<CmdIdeCtrl>(new CmdIdeCtrl(dev_name));
     }
 
     // PCIDevice methods
