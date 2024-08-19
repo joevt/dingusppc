@@ -25,11 +25,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/adb/adbdevice.h>
 #include <devices/deviceregistry.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 #include <sstream>
 
-AdbBus::AdbBus(std::string name) {
-    this->set_name(name);
+AdbBus::AdbBus(const std::string name) : HWComponent(name) {
     supports_types(HWCompType::ADB_HOST);
     this->devices.clear();
 }
@@ -49,7 +47,7 @@ int AdbBus::device_postinit() {
             continue; // don't register a second ADB bus
 
         if (DeviceRegistry::device_registered(dev_name)) {
-            gMachineObj->add_device(dev_name, DeviceRegistry::get_descriptor(dev_name).m_create_func());
+            this->add_device(0, DeviceRegistry::get_descriptor(dev_name).m_create_func(dev_name).release(), dev_name);
         } else {
             LOG_F(WARNING, "Unknown specified ADB device \"%s\"", adb_device.c_str());
         }
@@ -58,8 +56,49 @@ int AdbBus::device_postinit() {
     return 0;
 }
 
+HWComponent* AdbBus::add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name) {
+    unit_address = int32_t(this->devices.size());
+    this->register_device(dynamic_cast<AdbDevice*>(dev_obj));
+    return HWComponent::add_device(unit_address, dev_obj, name);
+}
+
+bool AdbBus::remove_device(int32_t unit_address) {
+    HWComponent* hwc = this->children[unit_address].get();
+    AdbDevice* dev_obj = dynamic_cast<AdbDevice*>(hwc);
+    this->unregister_device(dev_obj);
+    bool result = HWComponent::remove_device(unit_address);
+    int i = 0;
+    for (auto dev : this->devices)
+        dev->change_unit_address(i++);
+    return result;
+}
+
+std::string AdbBus::get_child_unit_address_string(int32_t unit_address) {
+    char buf[20];
+    if (unit_address < 0)
+        return "";
+    if (unit_address >= 0 && unit_address < devices.size())
+        snprintf(buf, sizeof(buf), "@%d,%X", unit_address, this->devices[unit_address]->get_address());
+    else
+        snprintf(buf, sizeof(buf), "@%d", unit_address);
+    return buf;
+}
+
+int32_t AdbBus::parse_child_unit_address_string(const std::string unit_address_string) {
+    return AdbDevice::parse_unit_address_string(unit_address_string);
+}
+
 void AdbBus::register_device(AdbDevice* dev_obj) {
     this->devices.push_back(dev_obj);
+}
+
+void AdbBus::unregister_device(AdbDevice* dev_obj) {
+    auto it = std::find(this->devices.begin(), this->devices.end(), dev_obj);
+    if (it != this->devices.end()) {
+        this->devices.erase(it);
+    } else {
+        LOG_F(ERROR, "%s: Could not unregister %s", this->name.c_str(), dev_obj->get_name_and_unit_address().c_str());
+    }
 }
 
 uint8_t AdbBus::poll() {

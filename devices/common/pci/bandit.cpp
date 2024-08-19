@@ -27,7 +27,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/memctrlbase.h>
 #include <endianswap.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 
 #include <cinttypes>
 
@@ -40,8 +39,8 @@ const int MultiplyDeBruijnBitPosition2[] =
 /** finds the position of the bit that is set */
 #define WHAT_BIT_SET(val) (MultiplyDeBruijnBitPosition2[(uint32_t)(val * 0x077CB531U) >> 27])
 
-BanditPciDevice::BanditPciDevice(int bridge_num, std::string name, int dev_id, int rev)
-    : PCIDevice(name)
+BanditPciDevice::BanditPciDevice(int bridge_num, const std::string name, int dev_id, int rev)
+    : PCIDevice(name), HWComponent(name)
 {
     supports_types(HWCompType::PCI_DEV);
 
@@ -317,11 +316,9 @@ int BanditHost::device_postinit() {
     return this->pcihost_device_postinit();
 }
 
-Bandit::Bandit(int bridge_num, std::string name, int dev_id, int rev)
-    : BanditHost(bridge_num)
+Bandit::Bandit(int bridge_num, const std::string name, int dev_id, int rev)
+    : BanditHost(bridge_num, name), HWComponent(name)
 {
-    this->name = name;
-
     supports_types(HWCompType::PCI_HOST);
 
     this->base_addr = 0xF0000000 + ((bridge_num & 3) << 25);
@@ -339,16 +336,12 @@ Bandit::Bandit(int bridge_num, std::string name, int dev_id, int rev)
     mem_ctrl->add_mmio_region(base_addr, bridge_num == 1 ? 0x01000000 : 0x02000000, this);
 
     // connnect Bandit PCI device
-    this->my_pci_device = std::unique_ptr<BanditPciDevice>(
-        new BanditPciDevice(bridge_num, name, dev_id, rev)
-    );
-    this->pci_register_device(DEV_FUN(BANDIT_DEV,0), this->my_pci_device.get());
+    BanditPciDevice *my_pci_device = new BanditPciDevice(bridge_num, name + "PCI", dev_id, rev);
+    this->add_device(DEV_FUN(BANDIT_DEV,0), my_pci_device);
 }
 
-Chaos::Chaos(std::string name) : BanditHost(0)
+Chaos::Chaos(const std::string name) : BanditHost(0, name), HWComponent(name)
 {
-    this->name = name;
-
     supports_types(HWCompType::PCI_HOST);
 
     MemCtrlBase *mem_ctrl = dynamic_cast<MemCtrlBase *>
@@ -361,9 +354,7 @@ Chaos::Chaos(std::string name) : BanditHost(0)
     mem_ctrl->add_mmio_region(0xF0000000UL, 0x01000000, this);
 }
 
-AspenPci::AspenPci(std::string name) : BanditHost(1) {
-    this->name = name;
-
+AspenPci::AspenPci(const std::string name) : BanditHost(1, name), HWComponent(name) {
     supports_types(HWCompType::PCI_HOST);
 
     this->is_aspen = true;
@@ -417,19 +408,19 @@ static const PropMap PsxPci1_Properties = {
 };
 
 static const std::vector<std::string> Chaos_Subdevices = {
-    "ControlVideo"
+    "ControlVideo@B"
 };
 
 static const DeviceDescription Bandit1_Descriptor = {
-    Bandit::create_first, {}, Bandit1_Properties, HWCompType::PCI_HOST
+    Bandit::create, {}, Bandit1_Properties, HWCompType::PCI_HOST
 };
 
 static const DeviceDescription Bandit2_Descriptor = {
-    Bandit::create_second, {}, Bandit2_Properties, HWCompType::PCI_HOST
+    Bandit::create, {}, Bandit2_Properties, HWCompType::PCI_HOST
 };
 
 static const DeviceDescription PsxPci1_Descriptor = {
-    Bandit::create_psx_first, {}, PsxPci1_Properties, HWCompType::PCI_HOST
+    Bandit::create, {}, PsxPci1_Properties, HWCompType::PCI_HOST
 };
 
 static const DeviceDescription Chaos_Descriptor = {

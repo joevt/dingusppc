@@ -31,11 +31,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class AtapiCdrom : public CdromDrive, public AtapiBaseDevice {
 public:
-    AtapiCdrom(std::string name);
+    AtapiCdrom(const std::string name);
     ~AtapiCdrom() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AtapiCdrom>(new AtapiCdrom("ATAPI-CDROM"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<AtapiCdrom>(new AtapiCdrom(dev_name));
     }
 
     int device_postinit() override;

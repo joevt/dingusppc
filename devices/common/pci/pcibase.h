@@ -81,7 +81,7 @@ typedef struct {
 class PCIBase : public MMIODevice {
 friend class PCIHost;
 public:
-    PCIBase(std::string name, PCIHeaderType hdr_type, int num_bars);
+    PCIBase(const std::string name, PCIHeaderType hdr_type, int num_bars);
     virtual ~PCIBase() = default;
 
     virtual bool supports_io_space() {
@@ -136,8 +136,16 @@ public:
     virtual void pci_interrupt(uint8_t irq_line_state);
 
     // MMIODevice methods
-    virtual uint32_t read(uint32_t /*rgn_start*/, uint32_t /*offset*/, int /*size*/) { return 0; }
-    virtual void write(uint32_t /*rgn_start*/, uint32_t /*offset*/, uint32_t /*value*/, int /*size*/) { }
+
+    virtual uint32_t read(uint32_t /*rgn_start*/, uint32_t /*offset*/, int /*size*/) override { return 0; }
+    virtual void write(uint32_t /*rgn_start*/, uint32_t /*offset*/, uint32_t /*value*/, int /*size*/) override {}
+
+    // HWComponent methods
+
+    int32_t parse_self_unit_address_string(const std::string unit_address_string) override;
+    static int32_t parse_unit_address_string(const std::string unit_address_string);
+    std::string get_self_unit_address_string(int32_t unit_address) override;
+    static std::string get_unit_address_string(int32_t unit_address);
 
 protected:
     void set_bar_value(int bar_num, uint32_t value);

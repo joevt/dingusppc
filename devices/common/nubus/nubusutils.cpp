@@ -22,7 +22,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/hwcomponent.h>
 #include <devices/common/nubus/nubusutils.h>
 #include <devices/memctrl/memctrlbase.h>
-#include <machines/machinebase.h>
 #include <loguru.hpp>
 #include <memaccess.h>
 
