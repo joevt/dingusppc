@@ -293,3 +293,7 @@ uint8_t ScsiBusController::fifo_pop() {
 
     return data;
 }
+
+int32_t ScsiBusController::parse_self_unit_address_string(const std::string unit_address_string) {
+    return HWComponent::parse_self_unit_address_string(unit_address_string);
+}

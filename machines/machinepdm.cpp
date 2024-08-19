@@ -35,14 +35,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/hmc.h>
 #include <loguru.hpp>
 #include <machines/machine.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
 #include <string>
 #include <vector>
 
-void setup_pds() {
+void setup_pds(HWComponent *pds_host) {
     std::string dev_name = GET_STR_PROP("pds");
     if (!dev_name.empty()) {
         if (!DeviceRegistry::device_registered(dev_name)) {
@@ -51,7 +50,7 @@ void setup_pds() {
         }
 
         // attempt to create device object
-        auto dev_obj = DeviceRegistry::get_descriptor(dev_name).m_create_func();
+        auto dev_obj = DeviceRegistry::get_descriptor(dev_name).m_create_func(dev_name);
 
         // safety check
         if (!dev_obj->supports_type(HWCompType::NUBUS_DEV)) {
@@ -60,7 +59,7 @@ void setup_pds() {
         }
 
         // add device to the machine object
-        gMachineObj->add_device(dev_name, std::move(dev_obj));
+        pds_host->add_device(-1, dev_obj.release());
 
         LOG_F(INFO, "Plugged %s into the PDS/VDS slot", dev_name.c_str());
     }
@@ -68,18 +67,7 @@ void setup_pds() {
 
 class MachinePdm : public Machine {
 public:
-    static std::unique_ptr<HWComponent> create6100() {
-        return Machine::create_with_id<MachinePdm>("pm6100");
-    }
-
-    static std::unique_ptr<HWComponent> create7100() {
-        return Machine::create_with_id<MachinePdm>("pm7100");
-    }
-
-    static std::unique_ptr<HWComponent> create8100() {
-        return Machine::create_with_id<MachinePdm>("pm8100");
-    }
-
+    MachinePdm() : HWComponent("MachinePdm") {}
     int initialize(const std::string &id);
 };
 
@@ -103,9 +91,9 @@ int MachinePdm::initialize(const std::string &id) {
     }
 
     // create machine ID register
-    gMachineObj->add_device("MachineID", std::unique_ptr<NubusMacID>(new NubusMacID(machine_id)));
-    hmc_obj->add_mmio_region(0x5FFFFFFC, 4,
-        dynamic_cast<MMIODevice*>(gMachineObj->get_comp_by_name("MachineID")));
+    NubusMacID *nubus_macid = new NubusMacID(machine_id);
+    hmc_obj->add_mmio_region(0x5FFFFFFC, 4, nubus_macid);
+    this->add_device(0x5FFFFFFC, nubus_macid);
 
     // allocate ROM region
     if (!hmc_obj->add_rom_region(0x40000000, 0x400000)) {
@@ -133,7 +121,7 @@ int MachinePdm::initialize(const std::string &id) {
 
     // find and attach devices to the processor direct slot (PDS)
     // aka video direct slot (VDS)
-    setup_pds();
+    setup_pds(this);
 
     // Init virtual CPU and request MPC601
     ppc_cpu_init(hmc_obj, PPC_VER::MPC601, true, 7833600ULL);
@@ -163,44 +151,24 @@ static const PropMap pm6100_settings = {
 };
 
 static std::vector<std::string> pm6100_devices = {
-    "HMC", "Amic"
+    "HMC@50F40000", "Amic@50F00000"
 };
 
 static const DeviceDescription MachinePdm6100_descriptor = {
-    MachinePdm::create6100, pm6100_devices, pm6100_settings
+    Machine::create<MachinePdm>, pm6100_devices, pm6100_settings, HWCompType::MACHINE,
+    "Power Macintosh 6100"
 };
 
 static const DeviceDescription MachinePdm7100_descriptor = {
-    MachinePdm::create7100, pm6100_devices, pm6100_settings
+    Machine::create<MachinePdm>, pm6100_devices, pm6100_settings, HWCompType::MACHINE,
+    "Power Macintosh 7100"
 };
 
 static const DeviceDescription MachinePdm8100_descriptor = {
-    MachinePdm::create8100, pm6100_devices, pm6100_settings
+    Machine::create<MachinePdm>, pm6100_devices, pm6100_settings, HWCompType::MACHINE,
+    "Power Macintosh 8100"
 };
 
-REGISTER_DEVICE(MachinePdm6100, MachinePdm6100_descriptor);
-REGISTER_DEVICE(MachinePdm7100, MachinePdm7100_descriptor);
-REGISTER_DEVICE(MachinePdm8100, MachinePdm8100_descriptor);
-
-static const MachineDescription pm6100_descriptor = {
-    .name = "pm6100",
-    .description = "Power Macintosh 6100",
-    .machine_root = "MachinePdm6100",
-};
-
-static const MachineDescription pm7100_descriptor = {
-    .name = "pm7100",
-    .description = "Power Macintosh 7100",
-    .machine_root = "MachinePdm7100",
-};
-
-static const MachineDescription pm8100_descriptor = {
-    .name = "pm8100",
-    .description = "Power Macintosh 8100",
-    .machine_root = "MachinePdm8100",
-};
-
-// self-registration with the MachineFactory
-REGISTER_MACHINE(pm6100, pm6100_descriptor);
-REGISTER_MACHINE(pm7100, pm7100_descriptor);
-REGISTER_MACHINE(pm8100, pm8100_descriptor);
+REGISTER_DEVICE(pm6100, MachinePdm6100_descriptor);
+REGISTER_DEVICE(pm7100, MachinePdm7100_descriptor);
+REGISTER_DEVICE(pm8100, MachinePdm8100_descriptor);

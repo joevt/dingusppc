@@ -29,7 +29,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/psx.h>
 #include <loguru.hpp>
 #include <machines/machine.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
@@ -37,14 +36,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class MachineAlchemy : public Machine {
 public:
-    static std::unique_ptr<HWComponent> create5400() {
-        return Machine::create_with_id<MachineAlchemy>("pm5400");
-    }
-
-    static std::unique_ptr<HWComponent> create6400() {
-        return Machine::create_with_id<MachineAlchemy>("pm6400");
-    }
-
+    MachineAlchemy() : HWComponent("MachineAlchemy") {}
     int initialize(const std::string &id);
 };
 
@@ -77,8 +69,7 @@ int MachineAlchemy::initialize(const std::string &id) {
     );
 
     // register O'Hare I/O controller with the main PCI bus
-    pci_host->pci_register_device(
-        DEV_FUN(0x10,0), dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("OHare")));
+    pci_host->add_device(DEV_FUN(0x10,0), macio_obj);
 
     PsxCtrl* psx_obj = dynamic_cast<PsxCtrl*>(gMachineObj->get_comp_by_name("Psx"));
 
@@ -131,31 +122,18 @@ static const PropMap pm6400_settings = {
 };
 
 static std::vector<std::string> pm6400_devices = {
-    "Psx", "PsxPci1", "ScreamerSnd", "OHare", "ValkyrieAlchemy", "AtaHardDisk"
+    "Psx@F8000000", "PsxPci1@F2000000", "ScreamerSnd@14000", "OHare@10", "ValkyrieAlchemy@F1000000", "AtaHardDisk"
 };
 
 static const DeviceDescription Machine5400_descriptor = {
-    MachineAlchemy::create5400, pm6400_devices, pm6400_settings
+    Machine::create<MachineAlchemy>, pm6400_devices, pm6400_settings, HWCompType::MACHINE,
+    "Power Macintosh 5400"
 };
 
 static const DeviceDescription Machine6400_descriptor = {
-    MachineAlchemy::create6400, pm6400_devices, pm6400_settings
+    Machine::create<MachineAlchemy>, pm6400_devices, pm6400_settings, HWCompType::MACHINE,
+    "Performa 6400"
 };
 
-REGISTER_DEVICE(MachineAlchemy5400, Machine5400_descriptor);
-REGISTER_DEVICE(MachineAlchemy6400, Machine6400_descriptor);
-
-static const MachineDescription pm5400_descriptor = {
-    .name = "pm5400",
-    .description = "Power Macintosh 5400",
-    .machine_root = "MachineAlchemy5400"
-};
-
-static const MachineDescription pm6400_descriptor = {
-    .name = "pm6400",
-    .description = "Performa 6400",
-    .machine_root = "MachineAlchemy6400"
-};
-
-REGISTER_MACHINE(pm5400, pm5400_descriptor);
-REGISTER_MACHINE(pm6400, pm6400_descriptor);
+REGISTER_DEVICE(pm5400, Machine5400_descriptor);
+REGISTER_DEVICE(pm6400, Machine6400_descriptor);

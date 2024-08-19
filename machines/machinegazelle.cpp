@@ -30,7 +30,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/deviceregistry.h>
 #include <devices/ioctrl/macio.h>
 #include <machines/machine.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 #include <memctrl/memctrlbase.h>
@@ -62,18 +61,7 @@ int get_cpu_pll_value(const uint64_t cpu_freq_hz) {
 
 class MachineGazelle : public Machine {
 public:
-    static std::unique_ptr<HWComponent> create5500() {
-        return Machine::create_with_id<MachineGazelle>("pm5500");
-    }
-
-    static std::unique_ptr<HWComponent> create6500() {
-        return Machine::create_with_id<MachineGazelle>("pm6500");
-    }
-
-    static std::unique_ptr<HWComponent> create_tam() {
-        return Machine::create_with_id<MachineGazelle>("tam");
-    }
-
+    MachineGazelle() : HWComponent("MachineGazelle") {}
     int initialize(const std::string &id);
 };
 
@@ -104,7 +92,7 @@ int MachineGazelle::initialize(const std::string &id) {
     );
 
     // register O'Hare I/O controller with the main PCI bus
-    pci_host->pci_register_device(DEV_FUN(0x10,0), macio_obj);
+    pci_host->add_device(DEV_FUN(0x10,0), macio_obj);
 
     PsxCtrl* psx_obj = dynamic_cast<PsxCtrl*>(gMachineObj->get_comp_by_name("Psx"));
 
@@ -154,43 +142,24 @@ static const PropMap pm6500_settings = {
 };
 
 static std::vector<std::string> pm6500_devices = {
-    "Psx", "PsxPci1", "ScreamerSnd", "OHare", "AtaHardDisk"
+    "Psx@F8000000", "PsxPci1@F2000000", "ScreamerSnd@14000", "OHare@10", "AtaHardDisk"
 };
 
-static const DeviceDescription Machine5500_descriptor = {
-    MachineGazelle::create5500, pm6500_devices, pm6500_settings
+static const DeviceDescription MachineGazelle5500_descriptor = {
+    Machine::create<MachineGazelle>, pm6500_devices, pm6500_settings, HWCompType::MACHINE,
+    "Power Macintosh 5500"
 };
 
-static const DeviceDescription Machine6500_descriptor = {
-    MachineGazelle::create6500, pm6500_devices, pm6500_settings
+static const DeviceDescription MachineGazelle6500_descriptor = {
+    Machine::create<MachineGazelle>, pm6500_devices, pm6500_settings, HWCompType::MACHINE,
+    "Power Macintosh 6500"
 };
 
-static const DeviceDescription MachineTAM_descriptor = {
-    MachineGazelle::create_tam, pm6500_devices, pm6500_settings
+static const DeviceDescription MachineGazelleTAM_descriptor = {
+    Machine::create<MachineGazelle>, pm6500_devices, pm6500_settings, HWCompType::MACHINE,
+    "Twentieth Anniversary Macintosh"
 };
 
-REGISTER_DEVICE(MachineGazelle5500, Machine5500_descriptor);
-REGISTER_DEVICE(MachineGazelle6500, Machine6500_descriptor);
-REGISTER_DEVICE(MachineGazelleTAM,  MachineTAM_descriptor);
-
-static const MachineDescription pm5500_descriptor = {
-    .name = "pm5500",
-    .description  = "Power Macintosh 5500",
-    .machine_root = "MachineGazelle5500",
-};
-
-static const MachineDescription pm6500_descriptor = {
-    .name = "pm6500",
-    .description  = "Power Macintosh 6500",
-    .machine_root = "MachineGazelle6500",
-};
-
-static const MachineDescription TAM_descriptor = {
-    .name = "tam",
-    .description  = "Twentieth Anniversary Macintosh",
-    .machine_root = "MachineGazelleTAM",
-};
-
-REGISTER_MACHINE(pm5500, pm5500_descriptor);
-REGISTER_MACHINE(pm6500, pm6500_descriptor);
-REGISTER_MACHINE(tam,    TAM_descriptor);
+REGISTER_DEVICE(pm5500, MachineGazelle5500_descriptor);
+REGISTER_DEVICE(pm6500, MachineGazelle6500_descriptor);
+REGISTER_DEVICE(tam, MachineGazelleTAM_descriptor);
