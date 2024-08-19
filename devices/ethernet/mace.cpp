@@ -113,7 +113,7 @@ void MaceController::write(uint8_t reg_offset, uint8_t value)
 }
 
 static const DeviceDescription Mace_Descriptor = {
-    MaceController::create, {}, {}
+    MaceController::create, {}, {}, HWCompType::MMIO_DEV | HWCompType::ETHER_MAC
 };
 
 REGISTER_DEVICE(Mace, Mace_Descriptor);
