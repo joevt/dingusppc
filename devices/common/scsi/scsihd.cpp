@@ -32,7 +32,8 @@ static char my_vendor_id[]   = "QUANTUM ";
 static char my_product_id[]  = "Emulated Disk   ";
 static char my_revision_id[] = "di01";
 
-ScsiHardDisk::ScsiHardDisk(std::string name, int my_id) : ScsiPhysDevice(name, my_id)
+ScsiHardDisk::ScsiHardDisk(const std::string name, int my_id)
+    : ScsiPhysDevice(name, my_id), HWComponent(name)
 {
     this->set_phys_dev(this);
     this->set_cdb_ptr(this->cmd_buf);

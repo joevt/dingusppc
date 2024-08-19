@@ -71,7 +71,7 @@ enum {
  */
 class BanditHost : public PCIHost, public MMIODevice {
 public:
-    BanditHost(int bridge_num) { this->bridge_num = bridge_num; }
+    BanditHost(int bridge_num, const std::string name) : HWComponent(name) { this->bridge_num = bridge_num; }
 
     // MMIODevice methods
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
@@ -95,7 +95,7 @@ private:
  */
 class BanditPciDevice : public PCIDevice {
 public:
-    BanditPciDevice(int bridge_num, std::string name, int dev_id, int rev);
+    BanditPciDevice(int bridge_num, const std::string name, int dev_id, int rev);
     ~BanditPciDevice() = default;
 
     // PCIDevice methods
@@ -116,23 +116,17 @@ private:
  */
 class Bandit : public BanditHost {
 public:
-    Bandit(int bridge_num, std::string name, int dev_id=1, int rev=3);
+    Bandit(int bridge_num, const std::string name, int dev_id=1, int rev=3);
     ~Bandit() = default;
 
-    static std::unique_ptr<HWComponent> create_first() {
-        return std::unique_ptr<Bandit>(new Bandit(1, "Bandit-PCI1"));
-    }
-
-    static std::unique_ptr<HWComponent> create_second() {
-        return std::unique_ptr<Bandit>(new Bandit(2, "Bandit-PCI2"));
-    }
-
-    static std::unique_ptr<HWComponent> create_psx_first() {
-        return std::unique_ptr<Bandit>(new Bandit(1, "PSX-PCI1", 8, 0));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        if (dev_name == "Bandit1"   ) return std::unique_ptr<Bandit>(new Bandit(1, dev_name));
+        if (dev_name == "Bandit2"   ) return std::unique_ptr<Bandit>(new Bandit(2, dev_name));
+        if (dev_name == "PsxPci1"   ) return std::unique_ptr<Bandit>(new Bandit(1, dev_name, 8, 0));
+        return nullptr;
     }
 
 private:
-    std::unique_ptr<BanditPciDevice> my_pci_device;
     uint32_t    base_addr;
 };
 
@@ -141,11 +135,11 @@ private:
  */
 class Chaos : public BanditHost {
 public:
-    Chaos(std::string name);
+    Chaos(const std::string name);
     ~Chaos() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<Chaos>(new Chaos("VCI0"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<Chaos>(new Chaos(dev_name));
     }
 };
 
@@ -154,11 +148,11 @@ public:
  */
 class AspenPci : public BanditHost {
 public:
-    AspenPci(std::string name);
+    AspenPci(const std::string name);
     ~AspenPci() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AspenPci>(new AspenPci("Aspen-PCI1"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<AspenPci>(new AspenPci(dev_name));
     }
 };
 

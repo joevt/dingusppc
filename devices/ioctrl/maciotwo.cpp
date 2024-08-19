@@ -24,7 +24,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/deviceregistry.h>
 #include <devices/ioctrl/macio.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 
 namespace loguru {
     enum : Verbosity {
@@ -33,7 +32,9 @@ namespace loguru {
     };
 }
 
-MacIoTwo::MacIoTwo(std::string name, uint16_t dev_id) : MacIoBase(name, dev_id) {
+MacIoTwo::MacIoTwo(std::string name, uint16_t dev_id)
+    : MacIoBase(name, dev_id), HWComponent(name)
+{
     // NVRAM connection
     this->nvram = dynamic_cast<NVram*>(gMachineObj->get_comp_by_name("NVRAM"));
 
@@ -505,31 +506,31 @@ uint64_t MacIoTwo::register_dma_int(IntSrc src_id) {
 
 //===========================================================================
 static const std::vector<std::string> OHare_Subdevices = {
-    "NVRAM", "ViaCuda", "MeshTnt", "Escc", "Swim3", "Ide0", "Ide1"
+    "NVRAM@60000", "ViaCuda@16000", "MeshTnt@10000", "Escc@13000", "Swim3@15000", "Ide0@20000", "Ide1@21000"
 };
 
 static const std::vector<std::string> Heathrow_Subdevices = {
-    "NVRAM", "ViaCuda", "MeshHeathrow", "Escc", "Swim3", "Ide0", "Ide1",
-    "BigMacHeathrow"
+    "NVRAM@60000", "ViaCuda@16000", "MeshHeathrow@10000", "Escc@13000", "Swim3@15000", "Ide0@20000", "Ide1@21000",
+    "BigMacHeathrow@11000"
 };
 
 static const std::vector<std::string> Paddington_Subdevices = {
-    "NVRAM", "ViaCuda", "MeshHeathrow", "Escc", "Swim3", "Ide0", "Ide1",
-    "BigMacPaddington"
+    "NVRAM@60000", "ViaCuda@16000", "MeshHeathrow@10000", "Escc@13000", "Swim3@15000", "Ide0@20000", "Ide1@21000",
+    "BigMacPaddington@11000"
 };
 
 static const DeviceDescription OHare_Descriptor = {
-    MacIoTwo::create_ohare, OHare_Subdevices, {},
+    MacIoTwo::create, OHare_Subdevices, {},
     HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL
 };
 
 static const DeviceDescription Heathrow_Descriptor = {
-    MacIoTwo::create_heathrow, Heathrow_Subdevices, {},
+    MacIoTwo::create, Heathrow_Subdevices, {},
     HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL
 };
 
 static const DeviceDescription Paddington_Descriptor = {
-    MacIoTwo::create_paddington, Paddington_Subdevices, {},
+    MacIoTwo::create, Paddington_Subdevices, {},
     HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL
 };
 

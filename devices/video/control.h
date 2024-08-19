@@ -111,11 +111,11 @@ enum {
 
 class ControlVideo : public PCIDevice, public VideoCtrlBase {
 public:
-    ControlVideo();
+    ControlVideo(const std::string &dev_name);
     ~ControlVideo() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<ControlVideo>(new ControlVideo());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<ControlVideo>(new ControlVideo(dev_name));
     }
 
     uint8_t* GetVram();
@@ -137,8 +137,8 @@ protected:
 
 private:
     std::unique_ptr<DisplayID>      disp_id;
-    std::unique_ptr<AthensClocks>   clk_gen;
-    std::unique_ptr<AppleRamdac>    radacal = nullptr;
+    AthensClocks*                   clk_gen;
+    AppleRamdac*                    radacal = nullptr;
 
     std::unique_ptr<uint8_t[]>  vram_ptr;
 
