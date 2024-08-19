@@ -139,40 +139,17 @@ static std::vector<std::string> pm6100_devices = {
 };
 
 static const DeviceDescription MachinePdm6100_descriptor = {
-    MachinePdm::create6100, pm6100_devices, pm6100_settings
+    MachinePdm::create6100, pm6100_devices, pm6100_settings, HWCompType::MACHINE, "Power Macintosh 6100"
 };
 
 static const DeviceDescription MachinePdm7100_descriptor = {
-    MachinePdm::create7100, pm6100_devices, pm6100_settings
+    MachinePdm::create7100, pm6100_devices, pm6100_settings, HWCompType::MACHINE, "Power Macintosh 7100"
 };
 
 static const DeviceDescription MachinePdm8100_descriptor = {
-    MachinePdm::create8100, pm6100_devices, pm6100_settings
+    MachinePdm::create8100, pm6100_devices, pm6100_settings, HWCompType::MACHINE, "Power Macintosh 8100"
 };
 
-REGISTER_DEVICE(MachinePdm6100, MachinePdm6100_descriptor);
-REGISTER_DEVICE(MachinePdm7100, MachinePdm7100_descriptor);
-REGISTER_DEVICE(MachinePdm8100, MachinePdm8100_descriptor);
-
-static const MachineDescription pm6100_descriptor = {
-    .name = "pm6100",
-    .description = "Power Macintosh 6100",
-    .machine_root = "MachinePdm6100",
-};
-
-static const MachineDescription pm7100_descriptor = {
-    .name = "pm7100",
-    .description = "Power Macintosh 7100",
-    .machine_root = "MachinePdm7100",
-};
-
-static const MachineDescription pm8100_descriptor = {
-    .name = "pm8100",
-    .description = "Power Macintosh 8100",
-    .machine_root = "MachinePdm8100",
-};
-
-// self-registration with the MachineFactory
-REGISTER_MACHINE(pm6100, pm6100_descriptor);
-REGISTER_MACHINE(pm7100, pm7100_descriptor);
-REGISTER_MACHINE(pm8100, pm8100_descriptor);
+REGISTER_DEVICE(pm6100, MachinePdm6100_descriptor);
+REGISTER_DEVICE(pm7100, MachinePdm7100_descriptor);
+REGISTER_DEVICE(pm8100, MachinePdm8100_descriptor);
