@@ -47,7 +47,7 @@ enum PdmVideoMode : uint8_t {
 
 class PdmOnboardVideo : public VideoCtrlBase {
 public:
-    PdmOnboardVideo();
+    PdmOnboardVideo(const std::string &dev_name);
     ~PdmOnboardVideo() = default;
 
     uint8_t get_video_mode() const {

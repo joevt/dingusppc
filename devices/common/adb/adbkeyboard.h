@@ -35,11 +35,11 @@ class KeyboardEvent;
 
 class AdbKeyboard : public AdbDevice {
 public:
-    AdbKeyboard(std::string name);
+    AdbKeyboard(const std::string name);
     ~AdbKeyboard() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AdbKeyboard>(new AdbKeyboard("ADB-KEYBOARD"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<AdbKeyboard>(new AdbKeyboard(dev_name));
     }
 
     void reset() override;

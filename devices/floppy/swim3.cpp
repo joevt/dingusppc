@@ -28,7 +28,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/floppy/superdrive.h>
 #include <devices/floppy/swim3.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 #include <machines/machineproperties.h>
 
 #include <cinttypes>
@@ -68,19 +67,19 @@ static std::string get_reg_name(uint8_t reg_offset)
     }
 }
 
-Swim3Ctrl::Swim3Ctrl()
+Swim3Ctrl::Swim3Ctrl(const std::string &dev_name)
+    : HWComponent(dev_name)
 {
-    this->name = "SWIM3";
     supports_types(HWCompType::FLOPPY_CTRL);
 
     this->reset();
 
     // Attach virtual Superdrive to the internal drive connector
     // TODO: make SWIM3/drive wiring user selectable
-    this->drive_1 = std::unique_ptr<MacSuperdrive::MacSuperDrive>
-        (new MacSuperdrive::MacSuperDrive("Superdrive1"));
-    this->drive_2 = std::unique_ptr<MacSuperdrive::MacSuperDrive>
-        (new MacSuperdrive::MacSuperDrive("Superdrive2"));
+    this->drive_1 = new MacSuperdrive::MacSuperDrive("Superdrive1");
+    this->drive_2 = new MacSuperdrive::MacSuperDrive("Superdrive2");
+    this->add_device(0, this->drive_1);
+    this->add_device(1, this->drive_2);
 }
 
 void Swim3Ctrl::reset()
@@ -144,11 +143,11 @@ void Swim3Ctrl::insert_disk(int drive, std::string& img_path, int write_flag = 0
     switch (drive) {
     case 1:
         if (this->drive_1)
-            the_drive = this->drive_1.get();
+            the_drive = this->drive_1;
         break;
     case 2:
         if (this->drive_2)
-            the_drive = this->drive_2.get();
+            the_drive = this->drive_2;
         break;
     default:
         LOG_F(ERROR, "SWIM3: %d is not a valid drive number", drive);
@@ -545,7 +544,7 @@ void Swim3Ctrl::mode_change(uint8_t new_mode)
                 this->drive_2->set_motor_stat(0);
 #endif
             if (this->drive_1)
-                this->selected_drive = this->drive_1.get();
+                this->selected_drive = this->drive_1;
             break;
         case SWIM3_DRIVE_2:
             LOG_F(SELECTDISK, "SWIM3: selected drive 2");
@@ -554,7 +553,7 @@ void Swim3Ctrl::mode_change(uint8_t new_mode)
                 this->drive_1->set_motor_stat(0);
 #endif
             if (this->drive_2)
-                this->selected_drive = this->drive_2.get();
+                this->selected_drive = this->drive_2;
             break;
         case SWIM3_DRIVE_1 | SWIM3_DRIVE_2:
             LOG_F(ERROR, "SWIM3: both drives selected, selecting drive 1");
@@ -563,7 +562,7 @@ void Swim3Ctrl::mode_change(uint8_t new_mode)
                 this->drive_2->set_motor_stat(0);
 #endif
             if (this->drive_1)
-                this->selected_drive = this->drive_1.get();
+                this->selected_drive = this->drive_1;
             break;
         }
         if (this->xfer_cnt) {

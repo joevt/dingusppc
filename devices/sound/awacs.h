@@ -40,9 +40,9 @@ class DmaInChannel;
 class SoundServer;
 
 /** Base class for the AWACs codecs. */
-class AwacsBase : public HWComponent {
+class AwacsBase : virtual public HWComponent {
 public:
-    AwacsBase(std::string name);
+    AwacsBase(const std::string name);
     ~AwacsBase() = default;
 
     void set_dma_out(DmaOutChannel *dma_out_ch) {
@@ -111,7 +111,7 @@ constexpr auto AWAC_BUSY_BIT  = 0x1000000;
 /** Audio processor chip (TDA7433) emulation. */
 class AudioProcessor : public I2CDevice {
 public:
-    AudioProcessor()  = default;
+    AudioProcessor() : HWComponent("AudioProcessor") {}
     ~AudioProcessor() = default;
 
     void start_transaction() {
@@ -161,7 +161,7 @@ private:
 /** Sound codec interface with the typical MacIO access. */
 class MacioSndCodec : public AwacsBase {
 public:
-    MacioSndCodec(std::string name) : AwacsBase(name) {}
+    MacioSndCodec(const std::string name) : AwacsBase(name) {}
     virtual uint32_t snd_ctrl_read(uint32_t offset, int size) = 0;
     virtual void     snd_ctrl_write(uint32_t offset, uint32_t value, int size) = 0;
 };
@@ -175,7 +175,7 @@ constexpr auto AWAC_REV_SCREAMER  = 3;
 /** Screamer sound codec. */
 class AwacsScreamer : public MacioSndCodec {
 public:
-    AwacsScreamer(std::string name = "Screamer");
+    AwacsScreamer(const std::string name);
     ~AwacsScreamer() = default;
 
     uint32_t    snd_ctrl_read(uint32_t offset, int size);
@@ -183,8 +183,8 @@ public:
 
     int device_postinit();
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AwacsScreamer>(new AwacsScreamer("Screamer"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<AwacsScreamer>(new AwacsScreamer(dev_name));
     }
 
 private:
@@ -196,8 +196,6 @@ private:
     uint32_t clip_count      = 0;
     uint32_t byte_swap       = 0;
     uint32_t frame_count     = 0;
-
-    std::unique_ptr<AudioProcessor> audio_proc;
 };
 
 #endif /* AWAC_H */
