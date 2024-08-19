@@ -37,7 +37,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/hwcomponent.h>
 #include <devices/common/mmiodevice.h>
 #include <devices/deviceregistry.h>
-#include <machines/machinebase.h>
 #include <loguru.hpp>
 
 #include <cinttypes>
@@ -52,15 +51,23 @@ namespace loguru {
     };
 }
 
-IdeChannel::IdeChannel(const std::string name)
+IdeChannel::IdeChannel(const std::string name) : HWComponent(name)
 {
-    this->set_name(name);
     this->supports_types(HWCompType::IDE_BUS);
 
     this->device_stub = std::unique_ptr<AtaNullDevice>(new AtaNullDevice());
 
     this->devices[0] = this->device_stub.get();
     this->devices[1] = this->device_stub.get();
+}
+
+HWComponent* IdeChannel::add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name) {
+    this->register_device(unit_address, dynamic_cast<AtaInterface*>(dev_obj));
+    return HWComponent::add_device(unit_address, dev_obj, name);
+}
+
+int32_t IdeChannel::parse_child_unit_address_string(const std::string unit_address_string) {
+    return AtaBaseDevice::parse_unit_address_string(unit_address_string);
 }
 
 void IdeChannel::register_device(int id, AtaInterface* dev_obj) {
@@ -114,7 +121,7 @@ int MacioIdeChannel::device_postinit() {
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(
-        this->name == "IDE0" ? IntSrc::IDE0 : IntSrc::IDE1);
+        this->name == "Ide0" ? IntSrc::IDE0 : IntSrc::IDE1);
 
     this->irq_callback = [this](const uint8_t intrq_state) {
         this->int_ctrl->ack_int(this->irq_id, intrq_state);
@@ -145,13 +152,9 @@ void MacioIdeChannel::write(const uint8_t reg_addr, const uint32_t val, const in
         IdeChannel::write(reg_addr, val, size);
 }
 
-static const DeviceDescription Ide0_Descriptor = {
-    MacioIdeChannel::create_first, {}, {}, HWCompType::IDE_BUS
+static const DeviceDescription Ide_Descriptor = {
+    MacioIdeChannel::create, {}, {}, HWCompType::IDE_BUS
 };
 
-static const DeviceDescription Ide1_Descriptor = {
-    MacioIdeChannel::create_second, {}, {}, HWCompType::IDE_BUS
-};
-
-REGISTER_DEVICE(Ide0, Ide0_Descriptor);
-REGISTER_DEVICE(Ide1, Ide1_Descriptor);
+REGISTER_DEVICE(Ide0, Ide_Descriptor);
+REGISTER_DEVICE(Ide1, Ide_Descriptor);

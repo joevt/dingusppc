@@ -196,11 +196,11 @@ typedef std::function<void(const uint8_t drq_state)> DrqCb;
 
 class Sc53C94 : public ScsiPhysDevice, public DmaDevice {
 public:
-    Sc53C94(uint8_t chip_id=12, uint8_t my_id=7);
+    Sc53C94(const std::string &dev_name, uint8_t chip_id=12, uint8_t my_id=7);
     ~Sc53C94() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<Sc53C94>(new Sc53C94());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<Sc53C94>(new Sc53C94(dev_name));
     }
 
     // HWComponent methods

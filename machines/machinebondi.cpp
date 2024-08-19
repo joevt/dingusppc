@@ -27,7 +27,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/mpc106.h>
 #include <devices/memctrl/spdram.h>
 #include <machines/machine.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
@@ -41,21 +40,18 @@ static const std::vector<PciIrqMap> grackle_irq_map = {
     {"pci_PERCH", DEV_FUN(0x14,0), IntSrc::PCI_PERCH},
 };
 
-static void setup_ram_slot(std::string name, int i2c_addr, int capacity_megs) {
+static void setup_ram_slot(const std::string name, int i2c_addr, int capacity_megs) {
     if (!capacity_megs)
         return;
-
-    gMachineObj->add_device(name, std::unique_ptr<SpdSdram168>(new SpdSdram168(i2c_addr)));
-    SpdSdram168* ram_dimm = dynamic_cast<SpdSdram168*>(gMachineObj->get_comp_by_name(name));
-    ram_dimm->set_capacity(capacity_megs);
-
-    // register RAM DIMM with the I2C bus
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
-    i2c_bus->register_device(i2c_addr, ram_dimm);
+    SpdSdram168* ram_dimm = new SpdSdram168(i2c_addr);
+    i2c_bus->add_device(i2c_addr, ram_dimm, name);
+    ram_dimm->set_capacity(capacity_megs);
 }
 
 class MachineBondi : public Machine {
 public:
+    MachineBondi() : HWComponent("MachineBondi") {}
     int initialize(const std::string &id);
 };
 
@@ -69,7 +65,7 @@ int MachineBondi::initialize(const std::string &id) {
     MacIoTwo* mio_obj = dynamic_cast<MacIoTwo*>(gMachineObj->get_comp_by_name("Paddington"));
     mio_obj->set_media_bay_id(0x30);
 
-    grackle_obj->pci_register_device(DEV_FUN(0x10,0), mio_obj);
+    grackle_obj->add_device(DEV_FUN(0x10,0), mio_obj);
 
     // allocate ROM region
     if (!grackle_obj->add_rom_region(0xFFF00000, 0x100000)) {
@@ -110,18 +106,11 @@ static const PropMap bondi_settings = {
 };
 
 static std::vector<std::string> bondi_devices = {
-    "Grackle", "BurgundySnd", "Paddington", "AtaHardDisk", "AtapiCdrom"};
+    "Grackle@80000000", "BurgundySnd@14000", "Paddington@10", "AtaHardDisk", "AtapiCdrom"};
 
 static const DeviceDescription MachineBondi_descriptor = {
-    Machine::create<MachineBondi>, bondi_devices, bondi_settings
+    Machine::create<MachineBondi>, bondi_devices, bondi_settings, HWCompType::MACHINE,
+    "iMac G3 Bondi Blue"
 };
 
-REGISTER_DEVICE(MachineBondi, MachineBondi_descriptor);
-
-static const MachineDescription bondi_descriptor = {
-    .name        = "imacg3",
-    .description = "iMac G3 Bondi Blue",
-    .machine_root = "MachineBondi",
-};
-
-REGISTER_MACHINE(imacg3, bondi_descriptor);
+REGISTER_DEVICE(imacg3, MachineBondi_descriptor);

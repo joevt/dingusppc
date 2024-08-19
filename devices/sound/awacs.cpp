@@ -33,14 +33,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/dbdma.h>
 #include <devices/common/mmiodevice.h>
 #include <endianswap.h>
-#include <machines/machinebase.h>
 
 #include <loguru.hpp>
 
-AwacsBase::AwacsBase(std::string name) {
+AwacsBase::AwacsBase(const std::string name) : HWComponent(name) {
     supports_types(HWCompType::SND_CODEC);
-
-    this->name = name;
 
     // connect to SoundServer
     this->snd_server = dynamic_cast<SoundServer *>
@@ -143,7 +140,9 @@ void AwacsBase::dma_in_pause() {
 }
 
 //=========================== PDM-style AWACs =================================
-AwacDevicePdm::AwacDevicePdm() : AwacsBase("AWAC-PDM") {
+AwacDevicePdm::AwacDevicePdm()
+    : AwacsBase("AWAC-PDM"), HWComponent("AWAC-PDM")
+{
     static int pdm_awac_freqs[3] = {22050, 29400, 44100};
 
     // PDM-style AWACs only supports three sample rates
@@ -166,7 +165,9 @@ void AwacDevicePdm::write_ctrl(uint32_t addr, uint16_t value) {
 }
 
 //============================= Screamer AWACs ================================
-AwacsScreamer::AwacsScreamer(std::string name) : MacioSndCodec(name) {
+AwacsScreamer::AwacsScreamer(const std::string name)
+    : MacioSndCodec(name), HWComponent(name)
+{
     static int screamer_freqs[8] = {
         44100, 29400, 22050, 17640, 14700, 11025, 8820, 7350
     };
@@ -176,12 +177,9 @@ AwacsScreamer::AwacsScreamer(std::string name) : MacioSndCodec(name) {
 }
 
 int AwacsScreamer::device_postinit() {
-    this->audio_proc = std::unique_ptr<AudioProcessor> (new AudioProcessor());
-
     /* register audio processor chip with the I2C bus */
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
-    i2c_bus->register_device(0x45, this->audio_proc.get());
-
+    i2c_bus->add_device(0x45, new AudioProcessor());
     return 0;
 }
 

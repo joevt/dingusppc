@@ -34,13 +34,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <memory>
 #include <string>
 
-class IdeChannel : public HWComponent, public DmaDevice
+class IdeChannel : virtual public HWComponent, public DmaDevice
 {
 public:
     IdeChannel(const std::string name);
     ~IdeChannel() = default;
 
-    void register_device(int id, AtaInterface* dev_obj);
+    // HWComponent methods
+
+    virtual HWComponent* add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name = "") override;
+    int32_t parse_child_unit_address_string(const std::string unit_address_string) override;
 
     virtual uint32_t read(const uint8_t reg_addr, const int size);
     virtual void write(const uint8_t reg_addr, const uint32_t val, const int size);
@@ -70,6 +73,8 @@ protected:
     std::function<void(const uint8_t intrq_state)> irq_callback = nullptr;
 
 private:
+    void register_device(int id, AtaInterface* dev_obj);
+
     int             cur_dev = 0;
     AtaInterface*   devices[2];
 
@@ -80,15 +85,11 @@ private:
 class MacioIdeChannel : public IdeChannel
 {
 public:
-    MacioIdeChannel(const std::string name) : IdeChannel(name) {}
+    MacioIdeChannel(const std::string name) : IdeChannel(name), HWComponent(name) {}
     ~MacioIdeChannel() = default;
 
-    static std::unique_ptr<HWComponent> create_first() {
-        return std::unique_ptr<IdeChannel>(new MacioIdeChannel("IDE0"));
-    }
-
-    static std::unique_ptr<HWComponent> create_second() {
-        return std::unique_ptr<IdeChannel>(new MacioIdeChannel("IDE1"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<IdeChannel>(new MacioIdeChannel(dev_name));
     }
 
     int device_postinit() override;

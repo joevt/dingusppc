@@ -35,7 +35,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class ScsiCdrom : public ScsiPhysDevice, public CdromDrive, public ScsiCommonCmds {
 public:
-    ScsiCdrom(std::string name, int my_id);
+    ScsiCdrom(const std::string name, int my_id);
     ~ScsiCdrom() = default;
 
     virtual void process_command() override;

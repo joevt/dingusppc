@@ -35,7 +35,7 @@ enum DmaPullResult : int {
 
 class DmaOutChannel {
 public:
-    DmaOutChannel(std::string name) { this->name = name; }
+    DmaOutChannel(const std::string name) { this->name = name; }
 
     virtual bool            is_out_active() { return true; }
     virtual DmaPullResult   pull_data(uint32_t req_len, uint32_t *avail_len,
@@ -51,7 +51,7 @@ private:
 
 class DmaInChannel {
 public:
-    DmaInChannel(std::string name) { this->name = name; }
+    DmaInChannel(const std::string name) { this->name = name; }
 
     virtual bool            is_in_active() { return true; }
     virtual int             push_data(const char* src_ptr, int len) = 0;
@@ -67,7 +67,7 @@ private:
 // Base class for bidirectional DMA channels.
 class DmaBidirChannel : public DmaOutChannel, public DmaInChannel {
 public:
-    DmaBidirChannel(std::string name) : DmaOutChannel(name + " Out"),
+    DmaBidirChannel(const std::string name) : DmaOutChannel(name + " Out"),
         DmaInChannel(name + std::string(" In")) { this->name = name; }
 
     std::string get_name(void) { return this->name; }

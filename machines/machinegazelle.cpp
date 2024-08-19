@@ -30,7 +30,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/pci/pcihost.h>
 #include <devices/deviceregistry.h>
 #include <machines/machine.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 #include <memctrl/memctrlbase.h>
@@ -62,6 +61,7 @@ int get_cpu_pll_value(const uint64_t cpu_freq_hz) {
 
 class MachineGazelle : public Machine {
 public:
+    MachineGazelle() : HWComponent("MachineGazelle") {}
     int initialize(const std::string &id);
 };
 
@@ -72,8 +72,8 @@ int MachineGazelle::initialize(const std::string &id) {
     pci_host->set_irq_map(psx_irq_map);
 
     // register O'Hare I/O controller with the main PCI bus
-    pci_host->pci_register_device(
-        DEV_FUN(0x10,0), dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("OHare")));
+    pci_host->add_device(DEV_FUN(0x10,0),
+        dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("OHare")));
 
     PsxCtrl* psx_obj = dynamic_cast<PsxCtrl*>(gMachineObj->get_comp_by_name("Psx"));
 
@@ -117,19 +117,12 @@ static const PropMap pm6500_settings = {
 };
 
 static std::vector<std::string> pm6500_devices = {
-    "Psx", "PsxPci1", "ScreamerSnd", "OHare", "AtaHardDisk"
+    "Psx@F8000000", "PsxPci1@F2000000", "ScreamerSnd@14000", "OHare@10", "AtaHardDisk"
 };
 
 static const DeviceDescription MachineGazelle_descriptor = {
-    Machine::create<MachineGazelle>, pm6500_devices, pm6500_settings
+    Machine::create<MachineGazelle>, pm6500_devices, pm6500_settings, HWCompType::MACHINE,
+    "Power Macintosh 6500"
 };
 
-REGISTER_DEVICE(MachineGazelle, MachineGazelle_descriptor);
-
-static const MachineDescription pm6500_descriptor = {
-    .name = "pm6500",
-    .description = "Power Macintosh 6500",
-    .machine_root = "MachineGazelle",
-};
-
-REGISTER_MACHINE(pm6500, pm6500_descriptor);
+REGISTER_DEVICE(pm6500, MachineGazelle_descriptor);

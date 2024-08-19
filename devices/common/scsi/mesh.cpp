@@ -28,7 +28,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/scsi/scsi.h>
 #include <devices/deviceregistry.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 
 #include <cinttypes>
 
@@ -320,17 +319,15 @@ static const PropMap Mesh_properties = {
     {"cdr_img2", new StrProperty("")},
 };
 
-static const std::vector<std::string> Mesh_Subdevices = {
-    "ScsiMesh"
+static const DeviceDescription ScsiMesh_Descriptor = {
+    ScsiBus::create, {}, Mesh_properties, HWCompType::SCSI_BUS
 };
 
-static const DeviceDescription Mesh_Tnt_Descriptor = {
-    MeshController::create_for_tnt, Mesh_Subdevices, Mesh_properties, HWCompType::SCSI_HOST | HWCompType::SCSI_DEV
+REGISTER_DEVICE(ScsiMesh, ScsiMesh_Descriptor);
+
+static const DeviceDescription Mesh_Descriptor = {
+    MeshController::create, {"ScsiMesh"}, {}, HWCompType::SCSI_HOST | HWCompType::SCSI_DEV
 };
 
-static const DeviceDescription Mesh_Heathrow_Descriptor = {
-    MeshController::create_for_heathrow, Mesh_Subdevices, Mesh_properties, HWCompType::SCSI_HOST | HWCompType::SCSI_DEV
-};
-
-REGISTER_DEVICE(MeshTnt,      Mesh_Tnt_Descriptor);
-REGISTER_DEVICE(MeshHeathrow, Mesh_Heathrow_Descriptor);
+REGISTER_DEVICE(MeshTnt,      Mesh_Descriptor);
+REGISTER_DEVICE(MeshHeathrow, Mesh_Descriptor);

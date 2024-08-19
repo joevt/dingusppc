@@ -43,8 +43,8 @@ static char my_vendor_id[]   = "QUANTUM ";
 static char my_product_id[]  = "Emulated Disk   ";
 static char my_revision_id[] = "di01";
 
-ScsiHardDisk::ScsiHardDisk(std::string name, int my_id) : ScsiPhysDevice(name, my_id),
-    ScsiCommonCmds()
+ScsiHardDisk::ScsiHardDisk(const std::string name, int my_id)
+    : ScsiPhysDevice(name, my_id), HWComponent(name)
 {
     this->data_buf_size = 1 << 22;
     this->data_buf_obj = std::unique_ptr<uint8_t[]>(new uint8_t[this->data_buf_size]);

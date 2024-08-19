@@ -28,7 +28,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/scsi/sc53c94.h>
 #include <devices/deviceregistry.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 
 #include <cinttypes>
 #include <cstring>
@@ -58,7 +57,8 @@ static bool debug_scsi_log = true;
 #define SCSI_LOG_SCOPE_F(verbosity_name, ...) \
     VLOG_SCOPE_F(loguru::Verbosity_ ## verbosity_name, __VA_ARGS__); last_log_message = LastLog::Misc;
 
-Sc53C94::Sc53C94(uint8_t chip_id, uint8_t my_id) : ScsiPhysDevice("SC53C94", my_id), DmaDevice()
+Sc53C94::Sc53C94(const std::string &dev_name, uint8_t chip_id, uint8_t my_id)
+    : ScsiPhysDevice(dev_name, my_id), HWComponent(dev_name)
 {
     this->chip_id   = chip_id;
     this->my_bus_id = my_id;
@@ -1267,12 +1267,14 @@ static const PropMap Sc53C94_properties = {
     {"cdr_img", new StrProperty("")},
 };
 
-static const std::vector<std::string> Sc53C94_Subdevices = {
-    "ScsiCurio"
+static const DeviceDescription ScsiCurio_Descriptor = {
+    ScsiBus::create, {}, Sc53C94_properties, HWCompType::SCSI_BUS
 };
 
+REGISTER_DEVICE(ScsiCurio, ScsiCurio_Descriptor);
+
 static const DeviceDescription Sc53C94_Descriptor = {
-    Sc53C94::create, Sc53C94_Subdevices, Sc53C94_properties, HWCompType::SCSI_HOST | HWCompType::SCSI_DEV
+    Sc53C94::create, {"ScsiCurio"}, {}, HWCompType::SCSI_HOST | HWCompType::SCSI_DEV
 };
 
 REGISTER_DEVICE(Sc53C94, Sc53C94_Descriptor);

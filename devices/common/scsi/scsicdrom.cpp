@@ -36,8 +36,8 @@ static char my_vendor_id[]   = "SONY    ";
 static char my_product_id[]  = "CD-ROM CDU-8003A";
 static char my_revision_id[] = "1.9a";
 
-ScsiCdrom::ScsiCdrom(std::string name, int my_id) :
-    CdromDrive(), ScsiPhysDevice(name, my_id), ScsiCommonCmds()
+ScsiCdrom::ScsiCdrom(const std::string name, int my_id) :
+    ScsiPhysDevice(name, my_id), HWComponent(name)
 {
     this->set_phys_dev(this);
     this->set_cdb_ptr(this->cmd_buf);

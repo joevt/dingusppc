@@ -238,10 +238,9 @@ class ScsiBus;
 
 typedef std::function<void()> action_callback;
 
-class ScsiPhysDevice : public ScsiPhysInterface, public HWComponent {
+class ScsiPhysDevice : public ScsiPhysInterface, virtual public HWComponent {
 public:
-    ScsiPhysDevice(std::string name, int my_id) : ScsiPhysInterface(PHY_ID_SCSI) {
-        this->set_name(name);
+    ScsiPhysDevice(std::string name, int my_id) : ScsiPhysInterface(PHY_ID_SCSI), HWComponent(name) {
         supports_types(HWCompType::SCSI_DEV);
         this->scsi_id = my_id;
         this->lun = 0,
@@ -263,6 +262,13 @@ public:
     void set_status(uint8_t status_code) override {
         this->status = status_code;
     }
+
+    // HWComponent methods
+
+    int32_t parse_self_unit_address_string(const std::string unit_address_string) override;
+    static int32_t parse_unit_address_string(const std::string unit_address_string);
+
+    // ScsiDevice methods
 
     virtual void notify(ScsiNotification notif_type, int param);
     virtual void next_step();
@@ -307,19 +313,23 @@ protected:
 };
 
 /** This class provides a higher level abstraction for the SCSI bus. */
-class ScsiBus : public HWComponent {
+class ScsiBus : virtual public HWComponent {
 public:
     ScsiBus(const std::string name);
     ~ScsiBus() = default;
 
-    static std::unique_ptr<HWComponent> create_ScsiMesh() {
-        return std::unique_ptr<ScsiBus>(new ScsiBus("ScsiMesh"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<ScsiBus>(new ScsiBus(dev_name));
     }
 
-    static std::unique_ptr<HWComponent> create_ScsiCurio() {
-        return std::unique_ptr<ScsiBus>(new ScsiBus("ScsiCurio"));
-    }
+    // HWComponent methods
 
+    int32_t parse_child_unit_address_string(const std::string unit_address_string) override;
+
+    // ScsiBus methods
+
+    template <class T>
+    HWComponent* set_property(const std::string &value, int32_t unit_address);
     void attach_scsi_devices(const std::string bus_suffix);
 
     // low-level state management
