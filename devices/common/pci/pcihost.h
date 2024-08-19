@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <core/bitops.h>
 #include <devices/common/hwinterrupt.h>
+#include <devices/common/hwcomponent.h>
 #include <devices/memctrl/memctrlbase.h>
 #include <endianswap.h>
 
@@ -60,23 +61,26 @@ typedef struct {
 class PCIBase;
 class PCIBridgeBase;
 
-class PCIHost {
+class PCIHost : virtual public HWComponent {
 public:
-    PCIHost() {
+    PCIHost() : HWComponent("PCIHost") {
         this->dev_map.clear();
         io_space_devs.clear();
     }
     ~PCIHost() = default;
 
-    virtual bool pci_register_device(int dev_fun_num, PCIBase* dev_instance);
-    virtual void pci_unregister_device(int dev_fun_num);
+    // HWComponent methods
+
+    virtual HWComponent* add_device(int32_t unit_address, HWComponent *dev_obj, const std::string &name = "") override;
+    virtual std::string get_child_unit_address_string(int32_t unit_address) override;
+    int32_t parse_child_unit_address_string(const std::string unit_address_string) override;
+
+    // PCIHost methods
 
     virtual AddressMapEntry* pci_register_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj);
     virtual bool           pci_unregister_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj);
 
-    virtual void attach_pci_device(const std::string& dev_name, int slot_id);
-    PCIBase *attach_pci_device(const std::string& dev_name, int slot_id,
-                               const std::string& dev_suffix);
+    virtual PCIBase *attach_pci_device(const std::string& dev_name, int slot_id);
 
     virtual bool pci_io_read_loop (uint32_t offset, int size, uint32_t &res);
     virtual bool pci_io_write_loop(uint32_t offset, int size, uint32_t value);
@@ -105,6 +109,10 @@ protected:
     std::vector<PciIrqMap>            my_irq_map;
 
     InterruptCtrl   *int_ctrl = nullptr;
+
+private:
+    void pci_register_device(int dev_fun_num, PCIBase* dev_instance);
+    void pci_unregister_device(int dev_fun_num);
 };
 
 // Helpers for data conversion in the PCI Configuration space.
