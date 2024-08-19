@@ -24,14 +24,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/viacuda.h>
 #include <devices/ioctrl/macio.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 
 #include <cinttypes>
 #include <functional>
 #include <memory>
 
 MacIoBase::MacIoBase(std::string name, uint16_t dev_id, uint8_t rev) :
-    PCIDevice("mac-io_" + name), InterruptCtrl()
+    PCIDevice(name), InterruptCtrl()
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL);
 
@@ -54,7 +53,8 @@ MacIoBase::MacIoBase(std::string name, uint16_t dev_id, uint8_t rev) :
     this->viacuda = dynamic_cast<ViaCuda*>(gMachineObj->get_comp_by_name("ViaCuda"));
 
     // find the sound codec, create its DMA channels, then wire everything together
-    this->snd_codec   = dynamic_cast<MacioSndCodec*>(gMachineObj->get_comp_by_type(HWCompType::SND_CODEC));
+    this->snd_codec = dynamic_cast<MacioSndCodec*>(gMachineObj->get_comp_by_type(HWCompType::SND_CODEC));
+    this->add_device(0x14000, this->snd_codec);
     this->snd_out_dma = std::unique_ptr<DMAChannel> (new DMAChannel("snd_out"));
     this->snd_out_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_DAVBUS_Tx));
     this->snd_codec->set_dma_out(this->snd_out_dma.get());
@@ -105,6 +105,13 @@ void MacIoBase::notify_bar_change(int bar_num) {
         this->host_instance->pci_register_mmio_region(this->base_addr, this->iomem_size, this);
         LOG_F(INFO, "%s: base address set to 0x%X", this->name.c_str(), this->base_addr);
     }
+}
+
+HWComponent* MacIoBase::add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name)
+{
+    if (unit_address >= 0x1A000 && unit_address <= 0x1F000)
+        this->attach_iobus_device(((unit_address >> 12) & 0xF) - 10, dynamic_cast<IobusDevice*>(dev_obj));
+    return HWComponent::add_device(unit_address, dev_obj, name);
 }
 
 void MacIoBase::attach_iobus_device(int dev_num, IobusDevice* dev_obj) {

@@ -299,11 +299,11 @@ constexpr auto PLATINUM_IOREG_BASE  = 0xF8000000UL;
 
 class PlatinumCtrl : public MemCtrlBase, public VideoCtrlBase, public MMIODevice {
 public:
-    PlatinumCtrl();
+    PlatinumCtrl(const std::string &dev_name);
     ~PlatinumCtrl() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<PlatinumCtrl>(new PlatinumCtrl());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<PlatinumCtrl>(new PlatinumCtrl(dev_name));
     }
 
     // HWComponent methods
@@ -366,8 +366,8 @@ private:
     uint32_t    cursor_task_id      = 0;
 
     std::unique_ptr<uint8_t[]>      vram_ptr = nullptr;
-    std::unique_ptr<DisplayID>      disp_id = nullptr;
-    std::unique_ptr<AppleRamdac>    dacula = nullptr;
+    std::unique_ptr<DisplayID>      disp_id;
+    AppleRamdac*                    dacula = nullptr;
     std::unique_ptr<uint8_t[]>      dram_ptr = nullptr;
     std::vector<AddressMapEntry*>   ram_map;
 };

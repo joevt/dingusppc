@@ -42,11 +42,11 @@ constexpr auto CHS_LIMIT = 267386880;
 class AtaHardDisk : public AtaBaseDevice
 {
 public:
-    AtaHardDisk(std::string name);
+    AtaHardDisk(const std::string name);
     ~AtaHardDisk() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AtaHardDisk>(new AtaHardDisk("ATA-HD"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<AtaHardDisk>(new AtaHardDisk(dev_name));
     }
 
     int device_postinit() override;

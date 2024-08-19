@@ -92,7 +92,7 @@ typedef std::function<void(uint8_t index, uint8_t *colors)> GetClutEntryCallback
 typedef std::function<void(uint8_t index, uint8_t *colors)> SetClutEntryCallback;
 typedef std::function<void(bool cursor_on)> CursorCtrlCallback;
 
-class AppleRamdac : public HWComponent, public IobusDevice {
+class AppleRamdac : public IobusDevice {
 public:
     AppleRamdac(DacFlavour flavour);
     ~AppleRamdac() = default;
