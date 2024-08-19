@@ -24,6 +24,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 #include <string>
+#include <map>
+#include <loguru.hpp>
 
 /** types of different HW components */
 enum HWCompType : uint64_t {
@@ -59,14 +61,15 @@ enum HWCompType : uint64_t {
 
 /** Base class for HW components. */
 class HWComponent {
+friend class MachineFactory;
 public:
-    HWComponent()          = default;
-    virtual ~HWComponent() = default;
+    HWComponent(const std::string name);
+    virtual ~HWComponent();
 
     virtual std::string get_name(void) {
         return this->name;
     }
-    virtual void set_name(std::string name) {
+    virtual void set_name(const std::string name) {
         this->name = name;
     }
 
@@ -82,9 +85,58 @@ public:
         return 0;
     }
 
+    virtual void change_unit_address(int32_t unit_address);
+    virtual void set_unit_address(int32_t unit_address) {
+        this->unit_address = unit_address;
+    }
+    int32_t get_unit_address() {
+        return this->unit_address;
+    }
+
+    virtual HWComponent* get_parent() {
+        return this->parent;
+    }
+    virtual void set_parent(HWComponent* parent) {
+        this->parent = parent;
+    }
+
+    void clear_devices();
+    virtual HWComponent* add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name = "");
+    virtual void move_device(HWComponent* new_parent);
+    virtual bool remove_device(int32_t unit_address);
+    bool remove_device(HWComponent* dev_obj, int depth = 0);
+    HWComponent* get_comp_by_name(const std::string name, bool optional = false);
+    HWComponent* get_comp_by_name_optional(const std::string name);
+    HWComponent* get_comp_by_type(HWCompType type);
+    int postinit_devices(int &count);
+    int postinit_devices();
+
+    std::string get_path();
+    std::string get_name_and_unit_address();
+    virtual int32_t parse_self_unit_address_string(const std::string unit_address_string);
+    virtual int32_t parse_child_unit_address_string(const std::string unit_address_string);
+    virtual std::string get_child_unit_address_string(int32_t unit_address);
+    virtual std::string get_self_unit_address_string(int32_t unit_address);
+    std::string get_self_unit_address_string();
+    static std::string extract_device_name(const std::string name);
+    static std::string extract_unit_address(const std::string name);
+
+    void dump_devices(int indent = 0);
+    bool iterate(const std::function<bool(HWComponent *it, int depth)> &func, int depth = 0);
+
 protected:
     std::string name;
     uint64_t    supported_types = HWCompType::UNKNOWN;
+
+    int32_t unit_address = -1;
+    std::map<int32_t, std::unique_ptr<HWComponent>> children;
+    HWComponent* parent = nullptr;
+
+private:
+    void move_children(HWComponent* dst);
+    bool postinitialized = false;
 };
+
+extern std::unique_ptr<HWComponent> gMachineObj;
 
 #endif // HW_COMPONENT_H

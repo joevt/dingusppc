@@ -40,7 +40,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class DmaOutChannel;
 
-class SoundServer : public HWComponent {
+class SoundServer : virtual public HWComponent {
 public:
     SoundServer();
     ~SoundServer();

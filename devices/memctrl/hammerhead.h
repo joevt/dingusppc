@@ -105,11 +105,11 @@ namespace Hammerhead {
 
 class HammerheadCtrl : public MemCtrlBase, public MMIODevice {
 public:
-    HammerheadCtrl();
+    HammerheadCtrl(const std::string &dev_name);
     ~HammerheadCtrl() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<HammerheadCtrl>(new HammerheadCtrl());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<HammerheadCtrl>(new HammerheadCtrl(dev_name));
     }
 
     // MMIODevice methods
