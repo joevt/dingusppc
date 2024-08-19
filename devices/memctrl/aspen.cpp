@@ -25,9 +25,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/aspen.h>
 #include <loguru.hpp>
 
-AspenCtrl::AspenCtrl() : MemCtrlBase() {
-    this->name = "Aspen";
-
+AspenCtrl::AspenCtrl(const std::string &dev_name)
+    : MemCtrlBase(), HWComponent(dev_name)
+{
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV);
 
     // add MMIO region for the configuration and status registers

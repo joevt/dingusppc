@@ -37,12 +37,19 @@ enum {
 
 class AdbBus; // forward declaration to prevent compiler errors
 
-class AdbDevice : public HWComponent {
+class AdbDevice : virtual public HWComponent {
 public:
-    AdbDevice(std::string name);
+    AdbDevice(const std::string name);
     ~AdbDevice() = default;
 
+    // HWComponent methods
+
     int device_postinit() override;
+    int32_t parse_self_unit_address_string(const std::string unit_address_string) override;
+    static int32_t parse_unit_address_string(const std::string unit_address_string);
+    std::string get_self_unit_address_string(int32_t unit_address) override;
+
+    // AdbDevice methods
 
     virtual void reset() = 0;
     virtual bool talk(const uint8_t dev_addr, const uint8_t reg_num);

@@ -100,13 +100,13 @@ enum Sixty6Reg : uint32_t {
 class Saa7187VideoEncoder;
 class ControlVideo;
 
-class Sixty6Video: public VideoCtrlBase, public IobusDevice, public HWComponent {
+class Sixty6Video: public VideoCtrlBase, public IobusDevice {
 
 public:
-    Sixty6Video();
+    Sixty6Video(const std::string &dev_name);
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<Sixty6Video>(new Sixty6Video());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<Sixty6Video>(new Sixty6Video(dev_name));
     }
 
 protected:
@@ -145,7 +145,7 @@ protected:
 
     bool        changed = false;
 
-    std::unique_ptr<Saa7187VideoEncoder> saa7187;
+    Saa7187VideoEncoder * saa7187 = nullptr;
     ControlVideo * control_video = nullptr;
 };
 

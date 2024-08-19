@@ -34,13 +34,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     automatically saved to and restored from the dedicated file.
  */
 
-class NVram : public HWComponent {
+class NVram : virtual public HWComponent {
 public:
-    NVram(std::string file_name = "nvram.bin", uint32_t ram_size = 8192);
+    NVram(const std::string &dev_name, std::string file_name, uint32_t ram_size);
     ~NVram();
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<NVram>(new NVram());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        if (dev_name == "NVRAM"       ) return std::unique_ptr<NVram>(new NVram(dev_name, "nvram.bin", 8192));
+        if (dev_name == "PRAM"        ) return std::unique_ptr<NVram>(new NVram(dev_name, "pram.bin", 256));
+        return nullptr;
     }
 
     uint8_t read_byte(uint32_t offset);

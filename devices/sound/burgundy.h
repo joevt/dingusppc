@@ -40,14 +40,14 @@ constexpr auto BURGUNDY_NUM_REGS = 123;
 
 class BurgundyCodec : public MacioSndCodec {
 public:
-    BurgundyCodec(std::string name);
+    BurgundyCodec(const std::string name);
     ~BurgundyCodec() = default;
 
     uint32_t    snd_ctrl_read(uint32_t offset, int size);
     void        snd_ctrl_write(uint32_t offset, uint32_t value, int size);
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<BurgundyCodec>(new BurgundyCodec("Burgundy"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<BurgundyCodec>(new BurgundyCodec(dev_name));
     }
 
 private:

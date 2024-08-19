@@ -24,9 +24,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/ata/cmd646.h>
 #include <devices/deviceregistry.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 
-CmdIdeCtrl::CmdIdeCtrl() : PCIDevice("cmd-ide") {
+CmdIdeCtrl::CmdIdeCtrl(const std::string &dev_name) : PCIDevice(dev_name), HWComponent(dev_name) {
     this->supports_types(HWCompType::PCI_DEV | HWCompType::IDE_HOST);
 
     // set up PCI configuration space header
@@ -49,11 +48,10 @@ CmdIdeCtrl::CmdIdeCtrl() : PCIDevice("cmd-ide") {
         this->notify_bar_change(bar_num);
     };
 
-    gMachineObj->add_device("CmdAta0", std::unique_ptr<IdeChannel>(new IdeChannel("CmdAta0")));
-    gMachineObj->add_device("CmdAta1", std::unique_ptr<IdeChannel>(new IdeChannel("CmdAta1")));
-
-    this->ch0 = dynamic_cast<IdeChannel*>(gMachineObj->get_comp_by_name("CmdAta0"));
-    this->ch1 = dynamic_cast<IdeChannel*>(gMachineObj->get_comp_by_name("CmdAta1"));
+    this->ch0 = new IdeChannel("CmdAta0");
+    this->ch1 = new IdeChannel("CmdAta1");
+    this->add_device(0, this->ch0);
+    this->add_device(1, this->ch1);
 
     this->ch0->set_irq_callback([this](const uint8_t intrq_state) {
         LOG_F(INFO, "CmdAta0 INTRQ updated to %d", intrq_state);
@@ -232,7 +230,7 @@ void CmdIdeCtrl::update_irq(const int ch_num, const uint8_t irq_level) {
 }
 
 static const DeviceDescription CmdIde_Descriptor = {
-    CmdIdeCtrl::create, {}, {}
+    CmdIdeCtrl::create, {}, {}, HWCompType::PCI_DEV | HWCompType::IDE_HOST
 };
 
 REGISTER_DEVICE(CmdAta, CmdIde_Descriptor);

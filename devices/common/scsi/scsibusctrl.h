@@ -62,7 +62,7 @@ constexpr auto DATA_FIFO_DEPTH = 16;
 
 class ScsiBusController : public ScsiPhysDevice, public DmaDevice {
 public:
-    ScsiBusController(std::string name, uint8_t my_bus_id=7) : ScsiPhysDevice(name, my_bus_id) {
+    ScsiBusController(const std::string name, uint8_t my_bus_id=7) : ScsiPhysDevice(name, my_bus_id) {
         supports_types(HWCompType::SCSI_HOST | HWCompType::SCSI_DEV);
     }
     ~ScsiBusController() = default;
@@ -72,6 +72,9 @@ public:
 
     virtual void step_completed() = 0;
     virtual void report_error(const int error) = 0;
+
+    // HWComponent methods
+    int32_t parse_self_unit_address_string(const std::string unit_address_string) override;
 
     // ScsiPhysDevice methods
     void notify(ScsiNotification notif_type, int param) override;

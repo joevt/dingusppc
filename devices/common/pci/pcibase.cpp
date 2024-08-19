@@ -28,10 +28,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <fstream>
 #include <cstring>
 #include <string>
+#include <regex>
 
-PCIBase::PCIBase(std::string name, PCIHeaderType hdr_type, int num_bars)
+PCIBase::PCIBase(const std::string name, PCIHeaderType hdr_type, int num_bars)
+    : HWComponent(name)
 {
-    this->name = name;
     this->hdr_type = hdr_type;
     this->num_bars = num_bars;
 
@@ -340,4 +341,36 @@ void PCIBase::pci_interrupt(uint8_t irq_line_state) {
         */
         //this->status |= 0x0008;
     }
+}
+
+int32_t PCIBase::parse_self_unit_address_string(const std::string unit_address_string) {
+    return PCIBase::parse_unit_address_string(unit_address_string);
+}
+
+int32_t PCIBase::parse_unit_address_string(const std::string unit_address_string) {
+    std::regex unit_address_re("0*(1?[0-9A-F])(?:,(0*[0-7]))?", std::regex_constants::icase);
+    std::smatch results;
+    if (std::regex_match(unit_address_string, results, unit_address_re)) {
+        int32_t result = int32_t(std::stol(results[1], nullptr, 16)) << 3;
+        if (results[2].matched)
+            result |= std::stol(results[2]);
+        return result;
+    } else {
+        return -1;
+    }
+}
+
+std::string PCIBase::get_self_unit_address_string(int32_t unit_address) {
+    return PCIBase::get_unit_address_string(unit_address);
+}
+
+std::string PCIBase::get_unit_address_string(int32_t unit_address) {
+    char buf[20];
+    if (unit_address < 0)
+        return "";
+    if (unit_address & 7)
+        snprintf(buf, sizeof(buf), "@%X,%X", unit_address >> 3, unit_address & 7);
+    else
+        snprintf(buf, sizeof(buf), "@%X", unit_address >> 3);
+    return buf;
 }
