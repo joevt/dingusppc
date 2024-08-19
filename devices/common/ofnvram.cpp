@@ -25,7 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/memaccess.h>
 #include <devices/common/ofnvram.h>
 #include <devices/common/nvram.h>
-#include <machines/machinebase.h>
 
 #include <cinttypes>
 #include <cstring>

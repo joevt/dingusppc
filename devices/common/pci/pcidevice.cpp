@@ -27,7 +27,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cstring>
 #include <string>
 
-PCIDevice::PCIDevice(std::string name) : PCIBase(name, PCI_HEADER_TYPE_0, 6)
+PCIDevice::PCIDevice(const std::string name)
+    : PCIBase(name, PCI_HEADER_TYPE_0, 6), HWComponent(name)
 {
 }
 

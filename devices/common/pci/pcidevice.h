@@ -37,7 +37,7 @@ enum {
 
 class PCIDevice : public PCIBase {
 public:
-    PCIDevice(std::string name);
+    PCIDevice(const std::string name);
     virtual ~PCIDevice() = default;
 
     // configuration space access methods
