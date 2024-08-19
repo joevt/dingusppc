@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -32,19 +32,14 @@ public:
 
     // Machine methods
 
-    virtual int initialize(const std::string &id) = 0;
+    virtual int initialize(const std::string &dev_name) = 0;
 
     template <class T>
-    static std::unique_ptr<HWComponent> create_with_id(const std::string &id) {
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
         std::unique_ptr<T> machine = std::unique_ptr<T>(new T());
-        if (machine && 0 == machine->initialize(id))
+        if (machine && 0 == machine->initialize(dev_name))
             return machine;
         return nullptr;
-    }
-
-    template <class T>
-    static std::unique_ptr<HWComponent> create() {
-        return Machine::create_with_id<T>("");
     }
 };
 

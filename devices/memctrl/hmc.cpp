@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -29,10 +29,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/hmc.h>
 #include <loguru.hpp>
 
-HMC::HMC() : MemCtrlBase()
+HMC::HMC(const std::string &dev_name)
+    : MemCtrlBase(), HWComponent(dev_name)
 {
-    this->name = "Highspeed Memory Controller";
-
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV);
 
     // add memory mapped I/O region for the HMC control register

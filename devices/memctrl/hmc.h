@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -85,11 +85,11 @@ enum {
 
 class HMC : public MemCtrlBase, public MMIODevice {
 public:
-    HMC();
+    HMC(const std::string &dev_name);
     ~HMC() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<HMC>(new HMC());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<HMC>(new HMC(dev_name));
     }
 
     /* MMIODevice methods */

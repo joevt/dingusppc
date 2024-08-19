@@ -141,17 +141,14 @@ enum {
     PHY_ANAR    = 4,
 };
 
-class BigMac : public HWComponent {
+class BigMac : virtual public HWComponent {
 public:
-    BigMac(uint8_t id);
+    BigMac(const std::string &dev_name, uint8_t id);
     ~BigMac() = default;
 
-    static std::unique_ptr<HWComponent> create_for_heathrow() {
-        return std::unique_ptr<BigMac>(new BigMac(EthernetCellId::Heathrow));
-    }
-
-    static std::unique_ptr<HWComponent> create_for_paddington() {
-        return std::unique_ptr<BigMac>(new BigMac(EthernetCellId::Paddington));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        if (dev_name == "BigMacHeathrow"  ) return std::unique_ptr<BigMac>(new BigMac(dev_name, EthernetCellId::Heathrow));
+        if (dev_name == "BigMacPaddington") return std::unique_ptr<BigMac>(new BigMac(dev_name, EthernetCellId::Paddington));
     }
 
     // BigMac register accessors

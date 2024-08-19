@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -38,9 +38,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <vector>
 
-AthensClocks::AthensClocks(uint8_t dev_addr) : I2CDevice() {
-    set_name("Athens");
-
+AthensClocks::AthensClocks(uint8_t dev_addr)
+    : HWComponent("Athens")
+{
     this->my_addr = dev_addr;
 
     // This initialization is not prescribed
