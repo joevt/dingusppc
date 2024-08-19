@@ -220,27 +220,14 @@ static std::vector<std::string> pmg3twr_devices = {
 };
 
 static const DeviceDescription MachineGossamerDesktop_descriptor = {
-    MachineGossamer::create_desktop, pmg3_devices, gossamer_desktop_settings
+    MachineGossamer::create_desktop, pmg3_devices, gossamer_desktop_settings, HWCompType::MACHINE,
+    "Power Macintosh G3 (Beige) Desktop"
 };
 
 static const DeviceDescription MachineGossamerTower_descriptor = {
-    MachineGossamer::create_tower, pmg3twr_devices, gossamer_tower_settings
+    MachineGossamer::create_tower, pmg3twr_devices, gossamer_tower_settings, HWCompType::MACHINE,
+    "Power Macintosh G3 (Beige) Tower"
 };
 
-REGISTER_DEVICE(MachineGossamerDesktop, MachineGossamerDesktop_descriptor);
-REGISTER_DEVICE(MachineGossamerTower, MachineGossamerTower_descriptor);
-
-static const MachineDescription pmg3dt_descriptor = {
-    .name = "pmg3dt",
-    .description = "Power Macintosh G3 (Beige) Desktop",
-    .machine_root = "MachineGossamerDesktop",
-};
-
-static const MachineDescription pmg3twr_descriptor = {
-    .name = "pmg3twr",
-    .description = "Power Macintosh G3 (Beige) Tower",
-    .machine_root = "MachineGossamerTower",
-};
-
-REGISTER_MACHINE(pmg3dt, pmg3dt_descriptor);
-REGISTER_MACHINE(pmg3twr, pmg3twr_descriptor);
+REGISTER_DEVICE(pmg3dt, MachineGossamerDesktop_descriptor);
+REGISTER_DEVICE(pmg3twr, MachineGossamerTower_descriptor);
