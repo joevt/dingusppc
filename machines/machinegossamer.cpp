@@ -36,7 +36,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/spdram.h>
 #include <loguru.hpp>
 #include <machines/machine.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
@@ -89,29 +88,18 @@ const uint8_t WhisperID[16] = {
     0x00, 0x00, 0x00, 0x02
 };
 
-static void setup_ram_slot(std::string name, int i2c_addr, int capacity_megs) {
+static void setup_ram_slot(const std::string name, int i2c_addr, int capacity_megs) {
     if (!capacity_megs)
         return;
-
-    gMachineObj->add_device(name, std::unique_ptr<SpdSdram168>(new SpdSdram168(i2c_addr)));
-    SpdSdram168* ram_dimm = dynamic_cast<SpdSdram168*>(gMachineObj->get_comp_by_name(name));
-    ram_dimm->set_capacity(capacity_megs);
-
-    // register RAM DIMM with the I2C bus
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
-    i2c_bus->register_device(i2c_addr, ram_dimm);
+    SpdSdram168* ram_dimm = new SpdSdram168(i2c_addr);
+    i2c_bus->add_device(i2c_addr, ram_dimm, name);
+    ram_dimm->set_capacity(capacity_megs);
 }
 
 class MachineGossamer : public Machine {
 public:
-    static std::unique_ptr<HWComponent> create_desktop() {
-        return Machine::create_with_id<MachineGossamer>("pmg3dt");
-    }
-
-    static std::unique_ptr<HWComponent> create_tower() {
-        return Machine::create_with_id<MachineGossamer>("pmg3twr");
-    }
-
+    MachineGossamer() : HWComponent("MachineGossamer") {}
     int initialize(const std::string &id);
 };
 
@@ -130,9 +118,9 @@ int MachineGossamer::initialize(const std::string &id) {
                         | (BUS_FREQ_66P82 << BUS_SPEED_POS) // set bus frequency
                         | UNKNOWN_BIT_0; // pull up bit 0
 
-    gMachineObj->add_device("MachineID", std::unique_ptr<GossamerID>(new GossamerID(sys_reg)));
-    grackle_obj->add_mmio_region(
-        0xFF000000, 4096, dynamic_cast<MMIODevice*>(gMachineObj->get_comp_by_name("MachineID")));
+    GossamerID* machine_id = new GossamerID(sys_reg);
+    grackle_obj->get_parent()->add_device(0xFF000000, machine_id);
+    grackle_obj->add_mmio_region(0xFF000000, 4096, machine_id);
 
     // allocate ROM region
     if (!grackle_obj->add_rom_region(0xFFC00000, 0x400000)) {
@@ -146,21 +134,19 @@ int MachineGossamer::initialize(const std::string &id) {
     setup_ram_slot("RAM_DIMM_3", 0x55, GET_INT_PROP("rambank3_size"));
 
     // add pci devices
-    grackle_obj->pci_register_device(
-        DEV_FUN(0x10,0), dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("Heathrow")));
+    grackle_obj->add_device(DEV_FUN(0x10,0),
+        dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("Heathrow")));
 
     // add Athens clock generator device and register it with the I2C host
-    gMachineObj->add_device("Athens", std::unique_ptr<AthensClocks>(new AthensClocks(0x28)));
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
-    i2c_bus->register_device(0x28, dynamic_cast<I2CDevice*>(gMachineObj->get_comp_by_name("Athens")));
+    i2c_bus->add_device(0x28, new AthensClocks(0x28));
 
     // create ID EEPROM for the Whisper personality card and register it with the I2C host
-    gMachineObj->add_device("Perch", std::unique_ptr<I2CProm>(new I2CProm(0x53, 256)));
-    I2CProm* perch_id = dynamic_cast<I2CProm*>(gMachineObj->get_comp_by_name("Perch"));
+    I2CProm* perch_id = new I2CProm(0x53, 256);
+    i2c_bus->add_device(0x53, perch_id);
     perch_id->fill_memory(0, 256, 0);
     perch_id->fill_memory(32, 223, 0xFF);
     perch_id->set_memory(0, WhisperID, sizeof(WhisperID));
-    i2c_bus->register_device(0x53, perch_id);
 
     // configure CPU clocks
     uint64_t bus_freq      = 66820000ULL;
@@ -210,35 +196,22 @@ static const PropMap gossamer_tower_settings = {
 };
 
 static std::vector<std::string> pmg3_devices = {
-    "Grackle", "ScreamerSnd", "Heathrow", "AtaHardDisk", "AtapiCdrom"
+    "Grackle@80000000", "ScreamerSnd@14000", "Heathrow@10", "AtaHardDisk", "AtapiCdrom"
 };
 
 static std::vector<std::string> pmg3twr_devices = {
-    "Grackle", "ScreamerSnd", "Heathrow", "AtaHardDisk", "AtapiCdrom"
+    "Grackle@80000000", "ScreamerSnd@14000", "Heathrow@10", "AtaHardDisk", "AtapiCdrom"
 };
 
 static const DeviceDescription MachineGossamerDesktop_descriptor = {
-    MachineGossamer::create_desktop, pmg3_devices, gossamer_desktop_settings
+    Machine::create<MachineGossamer>, pmg3_devices, gossamer_desktop_settings, HWCompType::MACHINE,
+    "Power Macintosh G3 (Beige) Desktop"
 };
 
 static const DeviceDescription MachineGossamerTower_descriptor = {
-    MachineGossamer::create_tower, pmg3twr_devices, gossamer_tower_settings
+    Machine::create<MachineGossamer>, pmg3twr_devices, gossamer_tower_settings, HWCompType::MACHINE,
+    "Power Macintosh G3 (Beige) Tower"
 };
 
-REGISTER_DEVICE(MachineGossamerDesktop, MachineGossamerDesktop_descriptor);
-REGISTER_DEVICE(MachineGossamerTower, MachineGossamerTower_descriptor);
-
-static const MachineDescription pmg3dt_descriptor = {
-    .name = "pmg3dt",
-    .description = "Power Macintosh G3 (Beige) Desktop",
-    .machine_root = "MachineGossamerDesktop",
-};
-
-static const MachineDescription pmg3twr_descriptor = {
-    .name = "pmg3twr",
-    .description = "Power Macintosh G3 (Beige) Tower",
-    .machine_root = "MachineGossamerTower",
-};
-
-REGISTER_MACHINE(pmg3dt, pmg3dt_descriptor);
-REGISTER_MACHINE(pmg3twr, pmg3twr_descriptor);
+REGISTER_DEVICE(pmg3dt, MachineGossamerDesktop_descriptor);
+REGISTER_DEVICE(pmg3twr, MachineGossamerTower_descriptor);
