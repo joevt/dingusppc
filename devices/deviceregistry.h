@@ -34,7 +34,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class HWComponent;
 
-typedef std::function<std::unique_ptr<HWComponent> ()> CreateFunc;
+typedef std::function<std::unique_ptr<HWComponent> (const std::string &dev_name)> CreateFunc;
 
 struct DeviceDescription {
     CreateFunc                m_create_func;
@@ -57,7 +57,6 @@ public:
 
     static DeviceDescription& get_descriptor(const std::string& name);
 
-private:
     static std::map<std::string, DeviceDescription> & get_registry() {
         static std::map<std::string, DeviceDescription> device_registry;
         return device_registry;

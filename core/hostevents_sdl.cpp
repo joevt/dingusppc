@@ -25,7 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/adb/adbkeyboard.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/common/viacuda.h>
-#include <machines/machinebase.h>
 #include <loguru.hpp>
 #include <SDL3/SDL.h>
 
