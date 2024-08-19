@@ -25,7 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/deviceregistry.h>
 #include <devices/common/ata/idechannel.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 #include <memaccess.h>
 
 #include <bitset>
@@ -42,7 +41,8 @@ namespace loguru {
 
 using namespace ata_interface;
 
-AtaHardDisk::AtaHardDisk(std::string name) : AtaBaseDevice(name, DEVICE_TYPE_ATA) {
+AtaHardDisk::AtaHardDisk(const std::string name)
+    : AtaBaseDevice(name, DEVICE_TYPE_ATA), HWComponent(name) {
 }
 
 int AtaHardDisk::device_postinit() {
@@ -52,17 +52,17 @@ int AtaHardDisk::device_postinit() {
         return -1;
     }
 
-    std::string hdd_image_path = GET_STR_PROP("hdd_img");
-    if (hdd_image_path.empty())
-        return 0;
-
     std::string bus_id;
     uint32_t    dev_num;
 
     parse_device_path(hdd_config, bus_id, dev_num);
 
     auto bus_obj = dynamic_cast<IdeChannel*>(gMachineObj->get_comp_by_name(bus_id));
-    bus_obj->register_device(dev_num, this);
+    bus_obj->add_device(dev_num, this);
+
+    std::string hdd_image_path = GET_STR_PROP("hdd_img");
+    if (hdd_image_path.empty())
+        return 0;
 
     this->insert_image(hdd_image_path);
 

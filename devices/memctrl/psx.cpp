@@ -29,10 +29,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <algorithm>
 
-PsxCtrl::PsxCtrl(int /*bridge_num*/, std::string name)
+PsxCtrl::PsxCtrl(int /*bridge_num*/, const std::string name) : HWComponent(name)
 {
-    this->name = name;
-
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV);
 
     // add MMIO region for the PSX control registers

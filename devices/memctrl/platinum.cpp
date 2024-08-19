@@ -27,7 +27,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/platinum.h>
 #include <devices/video/displayid.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 #include <memaccess.h>
 
 #include <cinttypes>
@@ -40,9 +39,9 @@ namespace loguru {
 
 using namespace Platinum;
 
-PlatinumCtrl::PlatinumCtrl() : MemCtrlBase(), VideoCtrlBase() {
-    set_name("Platinum");
-
+PlatinumCtrl::PlatinumCtrl(const std::string &dev_name)
+    : MemCtrlBase(), VideoCtrlBase(), HWComponent(dev_name)
+{
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV);
 
     // add MMIO region for VRAM
@@ -69,7 +68,8 @@ PlatinumCtrl::PlatinumCtrl() : MemCtrlBase(), VideoCtrlBase() {
     this->disp_id = std::unique_ptr<DisplayID> (new DisplayID());
 
     // attach DACula RAMDAC
-    this->dacula = std::unique_ptr<AppleRamdac>(new AppleRamdac(DacFlavour::DACULA));
+    this->dacula = new AppleRamdac(DacFlavour::DACULA);
+    this->add_device(0x1B000, this->dacula);
     this->dacula->get_clut_entry_cb = [this](uint8_t index, uint8_t *colors) {
         uint8_t a;
         this->get_palette_color(index, colors[0], colors[1], colors[2], a);
@@ -93,7 +93,7 @@ PlatinumCtrl::PlatinumCtrl() : MemCtrlBase(), VideoCtrlBase() {
 int PlatinumCtrl::device_postinit() {
     // attach IOBus Device #2 0xF301B000 ; register DACula with the I/O controller
     GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralCatalyst"));
-    gc_obj->attach_iodevice(1, this->dacula.get());
+    this->dacula->move_device(gc_obj);
 
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
