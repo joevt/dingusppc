@@ -32,7 +32,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/viacuda.h>
 #include <devices/deviceregistry.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 #include <memaccess.h>
 
 #include <cinttypes>
@@ -52,11 +51,9 @@ namespace loguru {
     };
 }
 
-ViaCuda::ViaCuda() : I2CBus() {
-    this->name = "ViaCuda";
-
-    supports_types(HWCompType::I2C_HOST);
-
+ViaCuda::ViaCuda(const std::string &dev_name)
+    : HWComponent(dev_name)
+{
     // VIA reset clears all internal registers to logic 0
     // except timers/counters and the shift register
     // as stated in the 6522 datasheet
@@ -83,10 +80,13 @@ ViaCuda::ViaCuda() : I2CBus() {
     this->via_clk_dur = 1.0f / VIA_CLOCK_HZ * NS_PER_SEC;
 
     // PRAM is part of Cuda
-    this->pram_obj = std::unique_ptr<NVram> (new NVram("pram.bin", 256));
+    this->pram_obj = dynamic_cast<NVram*>(gMachineObj->get_comp_by_name("PRAM"));
 
     // establish ADB bus connection
     this->adb_bus_obj = dynamic_cast<AdbBus*>(gMachineObj->get_comp_by_type(HWCompType::ADB_HOST));
+
+    // establish I2C bus connection
+    this->i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
 
     // autopoll handler will be called during post-processing of the host events
     EventManager::get_instance()->add_post_handler(this, &ViaCuda::autopoll_handler);
@@ -957,7 +957,7 @@ uint32_t ViaCuda::calc_real_time() {
 
 /* sends data from the current I2C to host ad infinitum */
 void ViaCuda::i2c_handler() {
-    this->receive_byte(this->curr_i2c_addr, &this->via_sr);
+    i2c_bus->receive_byte(this->curr_i2c_addr, &this->via_sr);
 }
 
 void ViaCuda::i2c_simple_transaction(uint8_t dev_addr, const uint8_t* in_buf, int in_bytes) {
@@ -965,7 +965,7 @@ void ViaCuda::i2c_simple_transaction(uint8_t dev_addr, const uint8_t* in_buf, in
 
     dev_addr >>= 1; /* strip RD/WR bit */
 
-    if (!this->start_transaction(dev_addr)) {
+    if (!i2c_bus->start_transaction(dev_addr)) {
         if (op_type)
             LOG_F(WARNING, "Unsupported I2C device 0x%X read  size:%d", dev_addr, in_bytes);
         else
@@ -978,7 +978,7 @@ void ViaCuda::i2c_simple_transaction(uint8_t dev_addr, const uint8_t* in_buf, in
     /* send data to the target I2C device until there is no more data to send
        or the target device doesn't acknowledge that indicates an error */
     for (int i = 0; i < in_bytes; i++) {
-        if (!this->send_byte(dev_addr, in_buf[i])) {
+        if (!i2c_bus->send_byte(dev_addr, in_buf[i])) {
             LOG_F(WARNING, "NO_ACK during sending, device 0x%X", dev_addr);
             error_response(CUDA_ERR_I2C);
             return;
@@ -1005,7 +1005,7 @@ void ViaCuda::i2c_comb_transaction(
 
     dev_addr >>= 1; /* strip RD/WR bit */
 
-    if (!this->start_transaction(dev_addr)) {
+    if (!i2c_bus->start_transaction(dev_addr)) {
         if (op_type)
             LOG_F(WARNING, "Unsupported I2C device 0x%X read  sub_addr:0x%X size:%d", dev_addr, sub_addr, in_bytes);
         else
@@ -1016,7 +1016,7 @@ void ViaCuda::i2c_comb_transaction(
         return;
     }
 
-    if (!this->send_subaddress(dev_addr, sub_addr)) {
+    if (!i2c_bus->send_subaddress(dev_addr, sub_addr)) {
         LOG_F(WARNING, "NO_ACK while sending subaddress, device 0x%X", dev_addr);
         error_response(CUDA_ERR_I2C);
         return;
@@ -1025,7 +1025,7 @@ void ViaCuda::i2c_comb_transaction(
     /* send data to the target I2C device until there is no more data to send
        or the target device doesn't acknowledge that indicates an error */
     for (int i = 0; i < in_bytes; i++) {
-        if (!this->send_byte(dev_addr, in_buf[i])) {
+        if (!i2c_bus->send_byte(dev_addr, in_buf[i])) {
             LOG_F(WARNING, "NO_ACK during sending, device 0x%X", dev_addr);
             error_response(CUDA_ERR_I2C);
             return;
@@ -1043,11 +1043,16 @@ void ViaCuda::i2c_comb_transaction(
 }
 
 static const vector<string> Cuda_Subdevices = {
-    "AdbBus"
+    "PRAM", "AdbBus", "ViaCudaI2C"
 };
 
 static const DeviceDescription ViaCuda_Descriptor = {
-    ViaCuda::create, Cuda_Subdevices, {}, HWCompType::I2C_HOST
+    ViaCuda::create, Cuda_Subdevices, {}
+};
+
+static const DeviceDescription ViaCudaI2C_Descriptor = {
+    ViaCudaI2C::create
 };
 
 REGISTER_DEVICE(ViaCuda, ViaCuda_Descriptor);
+REGISTER_DEVICE(ViaCudaI2C, ViaCudaI2C_Descriptor);

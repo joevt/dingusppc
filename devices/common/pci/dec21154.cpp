@@ -28,7 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 
-DecPciBridge::DecPciBridge(std::string name) : PCIBridge(name)
+DecPciBridge::DecPciBridge(const std::string name) : PCIBridge(name), HWComponent(name)
 {
     supports_types(HWCompType::PCI_HOST | HWCompType::PCI_DEV);
 
@@ -106,7 +106,7 @@ static const DeviceDescription Dec21154_Descriptor = {
 };
 
 static const DeviceDescription Dec21154Yosemite_Descriptor = {
-    DecPciBridge::create_yosemite, {}, Dec21154Yosemite_Properties, HWCompType::PCI_HOST | HWCompType::PCI_DEV
+    DecPciBridge::create, {}, Dec21154Yosemite_Properties, HWCompType::PCI_HOST | HWCompType::PCI_DEV
 };
 
 REGISTER_DEVICE(Dec21154, Dec21154_Descriptor);

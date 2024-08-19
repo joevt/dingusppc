@@ -42,18 +42,26 @@ enum {
 
 class AdbDevice; // forward declaration to prevent compiler errors
 
-class AdbBus : public HWComponent {
+class AdbBus : virtual public HWComponent {
+friend class AdbDevice;
 public:
-    AdbBus(std::string name);
+    AdbBus(const std::string name);
     ~AdbBus() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AdbBus>(new AdbBus("ADB-BUS"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<AdbBus>(new AdbBus(dev_name));
     }
 
-    int device_postinit() override;
+    // HWComponent methods
 
-    void register_device(AdbDevice* dev_obj);
+    int device_postinit() override;
+    virtual HWComponent* add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name = "") override;
+    virtual bool remove_device(int32_t unit_address) override;
+    virtual std::string get_child_unit_address_string(int32_t unit_address) override;
+    int32_t parse_child_unit_address_string(const std::string unit_address_string) override;
+
+    // AdbBus methods
+
     uint8_t process_command(const uint8_t* in_data, int data_size);
     uint8_t get_output_count() { return this->output_count; }
 
@@ -70,6 +78,8 @@ public:
     bool            already_answered() { return this->got_answer; }
 
 private:
+    void register_device(AdbDevice* dev_obj);
+    void unregister_device(AdbDevice* dev_obj);
     std::vector<AdbDevice*> devices;
 
     bool            got_answer = false;

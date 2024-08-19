@@ -25,31 +25,30 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/deviceregistry.h>
 #include <devices/memctrl/memctrlbase.h>
 #include <devices/video/taos.h>
-#include <machines/machinebase.h>
 #include <machines/machineproperties.h>
 #include <loguru.hpp>
 #include <memaccess.h>
 
 #include <string>
 
-TaosVideo::TaosVideo() : VideoCtrlBase() {
-    set_name("Taos");
-
+TaosVideo::TaosVideo(const std::string &dev_name)
+    : VideoCtrlBase(), HWComponent(dev_name)
+{
     supports_types(HWCompType::MMIO_DEV);
 
     // initialize the video clock generator
-    this->clk_gen = std::unique_ptr<AthensClocks>(new AthensClocks(0x29, 20000000.0f));
+    this->clk_gen = new AthensClocks(0x29, 20000000.0f);
 
     // register the video clock generator with the I2C host
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(
         HWCompType::I2C_HOST));
-    i2c_bus->register_device(0x29, this->clk_gen.get());
+    i2c_bus->add_device(0x29, this->clk_gen);
 
     // initialize video encoder
-    this->vid_enc = std::unique_ptr<Bt856>(new Bt856(0x44));
+    this->vid_enc = new Bt856(0x44);
 
     // register the video encoder with the I2C host
-    i2c_bus->register_device(0x44, this->vid_enc.get());
+    i2c_bus->add_device(0x44, this->vid_enc);
 
     MemCtrlBase* mem_ctrl = dynamic_cast<MemCtrlBase*>(
         gMachineObj->get_comp_by_type(HWCompType::MEM_CTRL));

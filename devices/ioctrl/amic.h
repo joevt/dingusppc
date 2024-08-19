@@ -159,7 +159,7 @@ private:
 /** AMIC specific Serial Transmit DMA channel. */
 class AmicSerialXmitDma : public DmaOutChannel {
 public:
-    AmicSerialXmitDma(std::string name) : DmaOutChannel(name) {}
+    AmicSerialXmitDma(const std::string name) : DmaOutChannel(name) {}
     ~AmicSerialXmitDma() = default;
 
     void            write_ctrl(const uint8_t value);
@@ -300,11 +300,11 @@ enum AMICReg : uint32_t {
 /** Apple Memory-mapped I/O controller device. */
 class AMIC : public MMIODevice, public InterruptCtrl {
 public:
-    AMIC();
+    AMIC(const std::string &dev_name);
     ~AMIC();
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AMIC>(new AMIC());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<AMIC>(new AMIC(dev_name));
     }
 
     // HWComponent methods
@@ -371,7 +371,7 @@ private:
     ViaCuda*            viacuda;
     Swim3::Swim3Ctrl*   swim3;
 
-    std::unique_ptr<AwacDevicePdm>      awacs;
+    AwacDevicePdm*      awacs;
     std::unique_ptr<AmicSndOutDma>      snd_out_dma;
     std::unique_ptr<AmicFloppyDma>      floppy_dma;
     std::unique_ptr<AmicScsiDma>        curio_dma;
