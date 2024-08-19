@@ -115,15 +115,8 @@ static std::vector<std::string> bondi_devices = {
     "Grackle", "BurgundySnd", "Heathrow", "AtaHardDisk", "AtapiCdrom"};
 
 static const DeviceDescription MachineBondi_descriptor = {
-    Machine::create<MachineBondi>, bondi_devices, bondi_settings
+    Machine::create<MachineBondi>, bondi_devices, bondi_settings, HWCompType::MACHINE,
+    "iMac G3 Bondi Blue"
 };
 
-REGISTER_DEVICE(MachineBondi, MachineBondi_descriptor);
-
-static const MachineDescription bondi_descriptor = {
-    .name        = "imacg3",
-    .description = "iMac G3 Bondi Blue",
-    .machine_root = "MachineBondi",
-};
-
-REGISTER_MACHINE(imacg3, bondi_descriptor);
+REGISTER_DEVICE(imacg3, MachineBondi_descriptor);
