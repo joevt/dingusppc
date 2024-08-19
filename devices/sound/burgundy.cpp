@@ -28,7 +28,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/sound/burgundy.h>
 #include <loguru.hpp>
 
-BurgundyCodec::BurgundyCodec(std::string name) : MacioSndCodec(name) {
+BurgundyCodec::BurgundyCodec(const std::string name)
+     : MacioSndCodec(name), HWComponent(name)
+{
     supports_types(HWCompType::SND_CODEC);
 
     static int burgundy_sample_rates[1] = { 44100 };

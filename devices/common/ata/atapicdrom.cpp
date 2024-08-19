@@ -26,7 +26,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/ata/atapicdrom.h>
 #include <devices/common/ata/idechannel.h>
 #include <devices/deviceregistry.h>
-#include <machines/machinebase.h>
 #include <machines/machineproperties.h>
 
 #include <cstring>
@@ -39,7 +38,7 @@ static char cdrom_vendor_id[] = "DINGUS  ";
 static char cdrom_product_id[]  = "DINGUS CD-ROM   ";
 static char cdrom_revision_id[] = "1.0 ";
 
-AtapiCdrom::AtapiCdrom(std::string name) : AtapiBaseDevice(name) {
+AtapiCdrom::AtapiCdrom(const std::string name) : AtapiBaseDevice(name), HWComponent(name) {
     this->set_phys_dev(this);
     this->set_cdb_ptr(this->cmd_pkt);
     this->set_buf_ptr(this->data_buf);
@@ -67,7 +66,7 @@ int AtapiCdrom::device_postinit() {
     parse_device_path(cdr_config, bus_id, dev_num);
 
     auto bus_obj = dynamic_cast<IdeChannel*>(gMachineObj->get_comp_by_name(bus_id));
-    bus_obj->register_device(dev_num, this);
+    bus_obj->add_device(dev_num, this);
 
     std::string cdr_image_path = GET_STR_PROP("cdr_img");
     if (!cdr_image_path.empty()) {

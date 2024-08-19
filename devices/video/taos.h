@@ -122,7 +122,9 @@ enum {
 /** Broktree Bt856 digital video encoder. */
 class Bt856 : public I2CDevice {
 public:
-    Bt856(uint8_t dev_addr) : I2CDevice() {
+    Bt856(uint8_t dev_addr)
+        : HWComponent("Bt856")
+    {
         this->my_addr = dev_addr;
     }
 
@@ -167,11 +169,11 @@ private:
 
 class TaosVideo : public VideoCtrlBase, public MMIODevice {
 public:
-    TaosVideo();
+    TaosVideo(const std::string &dev_name);
     ~TaosVideo() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<TaosVideo>(new TaosVideo());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<TaosVideo>(new TaosVideo(dev_name));
     }
 
     // MMIODevice methods
@@ -183,8 +185,8 @@ private:
     void disable_display();
     void convert_frame_15bpp_indexed(uint8_t *dst_buf, int dst_pitch);
 
-    std::unique_ptr<AthensClocks>   clk_gen = nullptr;
-    std::unique_ptr<Bt856>          vid_enc = nullptr;
+    AthensClocks *clk_gen = nullptr;
+    Bt856        *vid_enc = nullptr;
 
     uint8_t     gpio_cfg        = 0;
     uint8_t     mon_id          = MON_ID_NTSC;

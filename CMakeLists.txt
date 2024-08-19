@@ -49,6 +49,7 @@ if (EMSCRIPTEN)
     # loguru tries to include excinfo.h, which is not available under Emscripten.
     add_compile_definitions(LOGURU_STACKTRACES=0)
 endif()
+add_compile_definitions(LOGURU_VERBOSE_SCOPE_ENDINGS=0)
 
 option(DPPC_BUILD_PPC_TESTS  "Build PowerPC tests" OFF)
 option(DPPC_BUILD_BENCHMARKS "Build benchmarking programs" OFF)

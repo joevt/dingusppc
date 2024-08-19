@@ -27,7 +27,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/hostevents.h>
 #include <loguru.hpp>
 
-AdbKeyboard::AdbKeyboard(std::string name) : AdbDevice(name) {
+AdbKeyboard::AdbKeyboard(const std::string name)
+    : AdbDevice(name), HWComponent(name)
+{
     EventManager::get_instance()->add_keyboard_handler(this, &AdbKeyboard::event_handler);
 
     this->reset();
