@@ -77,7 +77,7 @@ uint32_t necohci::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
 }
 
 static const DeviceDescription necohci_Descriptor = {
-    necohci::create, {}, {}
+    necohci::create, {}, {}, HWCompType::MMIO_DEV | HWCompType::PCI_DEV
 };
 
 REGISTER_DEVICE(NecOhci, necohci_Descriptor);

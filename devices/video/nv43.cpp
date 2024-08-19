@@ -332,7 +332,7 @@ static const PropMap Nv43_Properties = {
 };
 
 static const DeviceDescription Nv43_Descriptor = {
-    NV43::create, {}, Nv43_Properties
+    NV43::create, {}, Nv43_Properties, HWCompType::MMIO_DEV | HWCompType::PCI_DEV
 };
 
 REGISTER_DEVICE(Nv43, Nv43_Descriptor);

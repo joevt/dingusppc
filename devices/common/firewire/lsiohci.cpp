@@ -157,7 +157,7 @@ void lsiohci::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int siz
 }
 
 static const DeviceDescription lsiohci_Descriptor = {
-    lsiohci::create, {}, {}
+    lsiohci::create, {}, {}, HWCompType::MMIO_DEV | HWCompType::PCI_DEV
 };
 
 REGISTER_DEVICE(LsiOhci, lsiohci_Descriptor);

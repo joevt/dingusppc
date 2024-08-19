@@ -214,7 +214,7 @@ void promise20269::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
 
 
 static const DeviceDescription promise20269_Descriptor = {
-    promise20269::create, {}, {}
+    promise20269::create, {}, {}, HWCompType::MMIO_DEV | HWCompType::PCI_DEV
 };
 
 

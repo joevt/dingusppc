@@ -157,7 +157,7 @@ void necehci::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int siz
 }
 
 static const DeviceDescription necehci_Descriptor = {
-    necehci::create, {}, {}
+    necehci::create, {}, {}, HWCompType::MMIO_DEV | HWCompType::PCI_DEV
 };
 
 REGISTER_DEVICE(NecEhci, necehci_Descriptor);

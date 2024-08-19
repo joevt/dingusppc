@@ -59,7 +59,7 @@ optiohci::optiohci()
 }
 
 static const DeviceDescription optiohci_Descriptor = {
-    optiohci::create, {}, {}
+    optiohci::create, {}, {}, HWCompType::MMIO_DEV | HWCompType::PCI_DEV
 };
 
 REGISTER_DEVICE(OptiOhci, optiohci_Descriptor);

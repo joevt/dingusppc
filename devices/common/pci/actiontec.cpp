@@ -103,7 +103,7 @@ void ActiontecBridge::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDet
 }
 
 static const DeviceDescription Actiontec_Descriptor = {
-    ActiontecBridge::create, {}, {}
+    ActiontecBridge::create, {}, {}, HWCompType::PCI_HOST | HWCompType::PCI_DEV
 };
 
 REGISTER_DEVICE(ActiontecBridge, Actiontec_Descriptor);
