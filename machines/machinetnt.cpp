@@ -196,87 +196,37 @@ static std::vector<std::string> pm9500_devices = {
 };
 
 static const DeviceDescription MachineTnt7300_descriptor = {
-    Machine::create<MachineTnt>, pm7500_devices, pm7500_settings_604e
+    Machine::create<MachineTnt>, pm7500_devices, pm7500_settings_604e, HWCompType::MACHINE, "Power Macintosh 7300"
 };
 
 static const DeviceDescription MachineTnt7500_descriptor = {
-    Machine::create<MachineTnt>, pm7500_devices, pm7500_settings_601
+    Machine::create<MachineTnt>, pm7500_devices, pm7500_settings_601, HWCompType::MACHINE, "Power Macintosh 7500"
 };
 
 static const DeviceDescription MachineTnt8500_descriptor = {
-    Machine::create<MachineTnt>, pm8500_devices, pm7500_settings_604
+    Machine::create<MachineTnt>, pm8500_devices, pm7500_settings_604, HWCompType::MACHINE, "Power Macintosh 8500"
 };
 
 static const DeviceDescription MachineTnt9500_descriptor = {
-    Machine::create<MachineTnt>, pm9500_devices, pm7500_settings_604
+    Machine::create<MachineTnt>, pm9500_devices, pm7500_settings_604, HWCompType::MACHINE, "Power Macintosh 9500"
 };
 
 static const DeviceDescription MachineTnt7600_descriptor = {
-    Machine::create<MachineTnt>, pm7500_devices, pm7500_settings_604e
+    Machine::create<MachineTnt>, pm7500_devices, pm7500_settings_604e, HWCompType::MACHINE, "Power Macintosh 7600"
 };
 
 static const DeviceDescription MachineTnt8600_descriptor = {
-    Machine::create<MachineTnt>, pm8500_devices, pm7500_settings_604e
+    Machine::create<MachineTnt>, pm8500_devices, pm7500_settings_604e, HWCompType::MACHINE, "Power Macintosh 8600"
 };
 
 static const DeviceDescription MachineTnt9600_descriptor = {
-    Machine::create<MachineTnt>, pm9500_devices, pm7500_settings_604e
+    Machine::create<MachineTnt>, pm9500_devices, pm7500_settings_604e, HWCompType::MACHINE, "Power Macintosh 9600"
 };
 
-REGISTER_DEVICE(MachineTnt7300, MachineTnt7300_descriptor);
-REGISTER_DEVICE(MachineTnt7500, MachineTnt7500_descriptor);
-REGISTER_DEVICE(MachineTnt8500, MachineTnt8500_descriptor);
-REGISTER_DEVICE(MachineTnt9500, MachineTnt9500_descriptor);
-REGISTER_DEVICE(MachineTnt7600, MachineTnt7600_descriptor);
-REGISTER_DEVICE(MachineTnt8600, MachineTnt8600_descriptor);
-REGISTER_DEVICE(MachineTnt9600, MachineTnt9600_descriptor);
-
-static const MachineDescription pm7300_descriptor = {
-    .name = "pm7300",
-    .description = "Power Macintosh 7300",
-    .machine_root = "MachineTnt7300",
-};
-
-static const MachineDescription pm7500_descriptor = {
-    .name = "pm7500",
-    .description = "Power Macintosh 7500",
-    .machine_root = "MachineTnt7500",
-};
-
-static const MachineDescription pm8500_descriptor = {
-    .name = "pm8500",
-    .description = "Power Macintosh 8500",
-    .machine_root = "MachineTnt8500",
-};
-
-static const MachineDescription pm9500_descriptor = {
-    .name = "pm9500",
-    .description = "Power Macintosh 9500",
-    .machine_root = "MachineTnt9500",
-};
-
-static const MachineDescription pm7600_descriptor = {
-    .name = "pm7600",
-    .description = "Power Macintosh 7600",
-    .machine_root = "MachineTnt7600",
-};
-
-static const MachineDescription pm8600_descriptor = {
-    .name = "pm8600",
-    .description = "Power Macintosh 8600",
-    .machine_root = "MachineTnt8600",
-};
-
-static const MachineDescription pm9600_descriptor = {
-    .name = "pm9600",
-    .description = "Power Macintosh 9600",
-    .machine_root = "MachineTnt9600",
-};
-
-REGISTER_MACHINE(pm7300, pm7300_descriptor);
-REGISTER_MACHINE(pm7500, pm7500_descriptor);
-REGISTER_MACHINE(pm8500, pm8500_descriptor);
-REGISTER_MACHINE(pm9500, pm9500_descriptor);
-REGISTER_MACHINE(pm7600, pm7600_descriptor);
-REGISTER_MACHINE(pm8600, pm8600_descriptor);
-REGISTER_MACHINE(pm9600, pm9600_descriptor);
+REGISTER_DEVICE(pm7300, MachineTnt7300_descriptor);
+REGISTER_DEVICE(pm7500, MachineTnt7500_descriptor);
+REGISTER_DEVICE(pm8500, MachineTnt8500_descriptor);
+REGISTER_DEVICE(pm9500, MachineTnt9500_descriptor);
+REGISTER_DEVICE(pm7600, MachineTnt7600_descriptor);
+REGISTER_DEVICE(pm8600, MachineTnt8600_descriptor);
+REGISTER_DEVICE(pm9600, MachineTnt9600_descriptor);
