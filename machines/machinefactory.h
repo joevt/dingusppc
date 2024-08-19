@@ -37,12 +37,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 struct DeviceDescription;
 
-struct MachineDescription {
-    std::string                  name;
-    std::string                  description;
-    std::string                  machine_root;
-};
-
 typedef std::function<std::optional<std::string>(const std::string&)> GetSettingValueFunc;
 
 typedef enum {
@@ -62,8 +56,6 @@ class MachineFactory
 {
 public:
     MachineFactory() = delete;
-
-    static bool add(const std::string& machine_id, MachineDescription desc);
 
     static size_t read_boot_rom(std::string& rom_filepath, char *rom_data);
     static std::string machine_name_from_rom(char *rom_data, size_t rom_size);
@@ -85,14 +77,6 @@ private:
     static void list_device_settings(DeviceDescription& dev, PropScope scope, int indent, std::string path);
     static int  load_boot_rom(char *rom_data, size_t rom_size);
     static void register_settings(const PropMap& p);
-
-    static std::map<std::string, MachineDescription> & get_registry() {
-        static std::map<std::string, MachineDescription> machine_registry;
-        return machine_registry;
-    }
 };
-
-#define REGISTER_MACHINE(mach_name, mach_desc) \
-    static bool mach_name ## _registered = MachineFactory::add(#mach_name, (mach_desc))
 
 #endif /* MACHINE_FACTORY_H */
