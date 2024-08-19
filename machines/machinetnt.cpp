@@ -31,7 +31,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/hammerhead.h>
 #include <loguru.hpp>
 #include <machines/machine.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
@@ -60,6 +59,7 @@ static std::vector<PciIrqMap> chaos_irq_map = {
 
 class MachineTnt : public Machine {
 public:
+    MachineTnt() : HWComponent("MachineTnt") {}
     int initialize(const std::string &id);
 };
 
@@ -75,39 +75,36 @@ int MachineTnt::initialize(const std::string &id) {
     GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralTnt"));
 
     // connect GrandCentral I/O controller to the PCI1 bus
-    pci_host->pci_register_device(
-        DEV_FUN(0x10,0), gc_obj);
+    pci_host->add_device(DEV_FUN(0x10,0), gc_obj);
 
     // get video PCI controller object
     PCIHost *vci_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name_optional("Chaos"));
     if (vci_host) {
         vci_host->set_irq_map(chaos_irq_map);
         // connect built-in video device to the VCI bus
-        vci_host->pci_register_device(
-            DEV_FUN(0x0B,0), dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("ControlVideo")));
+        vci_host->add_device(DEV_FUN(0x0B,0),
+            dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("ControlVideo")));
     }
 
     // attach IOBus Device #1 0xF301A000
-    gMachineObj->add_device("BoardReg1", std::unique_ptr<BoardRegister>(
-        new BoardRegister("Board Register 1",
+    gc_obj->add_device(0x1A000,
+        new BoardRegister("BoardReg1",
             0x3F                                                                       | // pull up all PRSNT bits
             ((GET_BIN_PROP("emmo") ^ 1) << 8)                                          | // factory tests (active low)
             ((gMachineObj->get_comp_by_name_optional("Sixty6Video") == nullptr) << 13) | // composite video out (active low)
             ((gMachineObj->get_comp_by_name_optional("MeshTnt") != nullptr) << 14)     | // fast SCSI (active high)
             0x8000U                                                                      // pull up unused bits
-    )));
-    gc_obj->attach_iodevice(0, dynamic_cast<BoardRegister*>(gMachineObj->get_comp_by_name("BoardReg1")));
+    ));
 
     PCIHost *pci2_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name_optional("Bandit2"));
     if (pci2_host) {
         pci2_host->set_irq_map(bandit2_irq_map);
         // attach IOBus Device #3 0xF301C000
-        gMachineObj->add_device("BoardReg2", std::unique_ptr<BoardRegister>(
-            new BoardRegister("Board Register 2",
+        gc_obj->add_device(0x1C000,
+            new BoardRegister("BoardReg2",
                 0x3F                                        | // pull up all PRSNT bits
                 0x8000U                                       // pull up unused bits
-        )));
-        gc_obj->attach_iodevice(2, dynamic_cast<BoardRegister*>(gMachineObj->get_comp_by_name("BoardReg2")));
+        ));
     }
 
     // get (raw) pointer to the memory controller
@@ -157,8 +154,7 @@ int MachineTnt::initialize(const std::string &id) {
 }
 
 // If this is templated, it hits a compiler bug in MSVC, so use #define instead.
-#define static_const_pm7500_settings(cpu) \
-static const PropMap pm7500_settings_ ## cpu = { \
+#define static_const_tnt_common_settings(cpu) \
     {"rambank0_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
     {"rambank1_size" , new IntProperty(16, std::vector<uint32_t>({   4, 8, 16, 32, 64, 128}))}, \
     {"rambank2_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
@@ -173,108 +169,69 @@ static const PropMap pm7500_settings_ ## cpu = { \
     {"rambank11_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
     {"rambank12_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
     {"emmo", new BinProperty(0)}, \
-    {"cpu", new StrProperty(# cpu, std::vector<std::string>({"601", "604", "604e", "750"}))}, \
+    {"cpu", new StrProperty(# cpu, std::vector<std::string>({"601", "604", "604e", "750"}))},
+
+#define static_const_tnt_settings(cpu) \
+static const PropMap tnt_settings_ ## cpu = { \
+    static_const_tnt_common_settings(cpu) \
 };
 
-static_const_pm7500_settings(601)
-static_const_pm7500_settings(604)
-static_const_pm7500_settings(604e)
+static_const_tnt_settings(601)
+static_const_tnt_settings(604)
+static_const_tnt_settings(604e)
 
 static std::vector<std::string> pm7500_devices = {
-    "Hammerhead", "Bandit1", "GrandCentralTnt", "Chaos"
+    "Hammerhead@F8000000", "Bandit1@F2000000", "GrandCentralTnt@10", "Chaos@F0000000"
 };
 
 static std::vector<std::string> pm8500_devices = {
-    "Hammerhead", "Bandit1", "GrandCentralTnt", "Chaos",
-    "Sixty6Video"
+    "Hammerhead@F8000000", "Bandit1@F2000000", "GrandCentralTnt@10", "Chaos@F0000000",
+    "Sixty6Video@1C000"
 };
 
 static std::vector<std::string> pm9500_devices = {
-    "Hammerhead", "Bandit1", "GrandCentralTnt", "Bandit2",
+    "Hammerhead@F8000000", "Bandit1@F2000000", "GrandCentralTnt@10", "Bandit2@F4000000",
 };
 
 static const DeviceDescription MachineTnt7300_descriptor = {
-    Machine::create<MachineTnt>, pm7500_devices, pm7500_settings_604e
+    Machine::create<MachineTnt>, pm7500_devices, tnt_settings_604e, HWCompType::MACHINE,
+    "Power Macintosh 7300"
 };
 
 static const DeviceDescription MachineTnt7500_descriptor = {
-    Machine::create<MachineTnt>, pm7500_devices, pm7500_settings_601
+    Machine::create<MachineTnt>, pm7500_devices, tnt_settings_601, HWCompType::MACHINE,
+    "Power Macintosh 7500"
 };
 
 static const DeviceDescription MachineTnt8500_descriptor = {
-    Machine::create<MachineTnt>, pm8500_devices, pm7500_settings_604
+    Machine::create<MachineTnt>, pm8500_devices, tnt_settings_604, HWCompType::MACHINE,
+    "Power Macintosh 8500"
 };
 
 static const DeviceDescription MachineTnt9500_descriptor = {
-    Machine::create<MachineTnt>, pm9500_devices, pm7500_settings_604
+    Machine::create<MachineTnt>, pm9500_devices, tnt_settings_604, HWCompType::MACHINE,
+    "Power Macintosh 9500"
 };
 
 static const DeviceDescription MachineTnt7600_descriptor = {
-    Machine::create<MachineTnt>, pm7500_devices, pm7500_settings_604e
+    Machine::create<MachineTnt>, pm7500_devices, tnt_settings_604e, HWCompType::MACHINE,
+    "Power Macintosh 7600"
 };
 
 static const DeviceDescription MachineTnt8600_descriptor = {
-    Machine::create<MachineTnt>, pm8500_devices, pm7500_settings_604e
+    Machine::create<MachineTnt>, pm8500_devices, tnt_settings_604e, HWCompType::MACHINE,
+    "Power Macintosh 8600"
 };
 
 static const DeviceDescription MachineTnt9600_descriptor = {
-    Machine::create<MachineTnt>, pm9500_devices, pm7500_settings_604e
+    Machine::create<MachineTnt>, pm9500_devices, tnt_settings_604e, HWCompType::MACHINE,
+    "Power Macintosh 9600"
 };
 
-REGISTER_DEVICE(MachineTnt7300, MachineTnt7300_descriptor);
-REGISTER_DEVICE(MachineTnt7500, MachineTnt7500_descriptor);
-REGISTER_DEVICE(MachineTnt8500, MachineTnt8500_descriptor);
-REGISTER_DEVICE(MachineTnt9500, MachineTnt9500_descriptor);
-REGISTER_DEVICE(MachineTnt7600, MachineTnt7600_descriptor);
-REGISTER_DEVICE(MachineTnt8600, MachineTnt8600_descriptor);
-REGISTER_DEVICE(MachineTnt9600, MachineTnt9600_descriptor);
-
-static const MachineDescription pm7300_descriptor = {
-    .name = "pm7300",
-    .description = "Power Macintosh 7300",
-    .machine_root = "MachineTnt7300",
-};
-
-static const MachineDescription pm7500_descriptor = {
-    .name = "pm7500",
-    .description = "Power Macintosh 7500",
-    .machine_root = "MachineTnt7500",
-};
-
-static const MachineDescription pm8500_descriptor = {
-    .name = "pm8500",
-    .description = "Power Macintosh 8500",
-    .machine_root = "MachineTnt8500",
-};
-
-static const MachineDescription pm9500_descriptor = {
-    .name = "pm9500",
-    .description = "Power Macintosh 9500",
-    .machine_root = "MachineTnt9500",
-};
-
-static const MachineDescription pm7600_descriptor = {
-    .name = "pm7600",
-    .description = "Power Macintosh 7600",
-    .machine_root = "MachineTnt7600",
-};
-
-static const MachineDescription pm8600_descriptor = {
-    .name = "pm8600",
-    .description = "Power Macintosh 8600",
-    .machine_root = "MachineTnt8600",
-};
-
-static const MachineDescription pm9600_descriptor = {
-    .name = "pm9600",
-    .description = "Power Macintosh 9600",
-    .machine_root = "MachineTnt9600",
-};
-
-REGISTER_MACHINE(pm7300, pm7300_descriptor);
-REGISTER_MACHINE(pm7500, pm7500_descriptor);
-REGISTER_MACHINE(pm8500, pm8500_descriptor);
-REGISTER_MACHINE(pm9500, pm9500_descriptor);
-REGISTER_MACHINE(pm7600, pm7600_descriptor);
-REGISTER_MACHINE(pm8600, pm8600_descriptor);
-REGISTER_MACHINE(pm9600, pm9600_descriptor);
+REGISTER_DEVICE(pm7300, MachineTnt7300_descriptor);
+REGISTER_DEVICE(pm7500, MachineTnt7500_descriptor);
+REGISTER_DEVICE(pm8500, MachineTnt8500_descriptor);
+REGISTER_DEVICE(pm9500, MachineTnt9500_descriptor);
+REGISTER_DEVICE(pm7600, MachineTnt7600_descriptor);
+REGISTER_DEVICE(pm8600, MachineTnt8600_descriptor);
+REGISTER_DEVICE(pm9600, MachineTnt9600_descriptor);

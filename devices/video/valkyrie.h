@@ -65,15 +65,15 @@ namespace Valkyrie {
 
 class ValkyrieVideo : public VideoCtrlBase, public MMIODevice {
 public:
-    ValkyrieVideo(const uint32_t base_addr);
+    ValkyrieVideo(const std::string &dev_name, const uint32_t base_addr);
     ~ValkyrieVideo() = default;
 
-    static std::unique_ptr<HWComponent> create_for_cordyceps() {
-        return std::unique_ptr<ValkyrieVideo>(new ValkyrieVideo(Valkyrie::REGBASE_CORDYCEPS));
-    }
-
-    static std::unique_ptr<HWComponent> create_for_alchemy() {
-        return std::unique_ptr<ValkyrieVideo>(new ValkyrieVideo(Valkyrie::REGBASE_ALCHEMY));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        if (dev_name == "ValkyrieCordyceps")
+            return std::unique_ptr<ValkyrieVideo>(new ValkyrieVideo(dev_name, Valkyrie::REGBASE_CORDYCEPS));
+        if (dev_name == "ValkyrieAlchemy")
+            return std::unique_ptr<ValkyrieVideo>(new ValkyrieVideo(dev_name, Valkyrie::REGBASE_ALCHEMY));
+        return nullptr;
     }
 
     // HWComponent methods
@@ -107,8 +107,8 @@ private:
     void enable_video_internal();
     void schedule_mode_switch();
 
-    std::unique_ptr<DisplayID>      disp_id = nullptr;
-    std::unique_ptr<AthensClocks>   clk_gen = nullptr;
+    std::unique_ptr<DisplayID>      disp_id;
+    AthensClocks*                   clk_gen = nullptr;
 };
 
 #endif // VALKYRIE_VIDEO_H

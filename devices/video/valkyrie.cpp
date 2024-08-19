@@ -28,12 +28,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/video/pdmonboard.h>
 #include <devices/video/valkyrie.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 #include <machines/machineproperties.h>
 
-ValkyrieVideo::ValkyrieVideo(const uint32_t base_addr) : VideoCtrlBase() {
-    set_name("Valkyrie");
-
+ValkyrieVideo::ValkyrieVideo(const std::string &dev_name, const uint32_t base_addr)
+    : VideoCtrlBase(), HWComponent(dev_name)
+{
     supports_types(HWCompType::MMIO_DEV);
 
     this->reg_shift = (base_addr == Valkyrie::REGBASE_CORDYCEPS) ? 2 : 3;
@@ -54,12 +53,12 @@ ValkyrieVideo::ValkyrieVideo(const uint32_t base_addr) : VideoCtrlBase() {
     this->disp_id = std::unique_ptr<DisplayID> (new DisplayID());
 
     // initialize the video clock generator
-    this->clk_gen = std::unique_ptr<AthensClocks>(new AthensClocks(0x28));
+    this->clk_gen = new AthensClocks(0x28);
 
     // register the video clock generator with the I2C host
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(
         HWCompType::I2C_HOST));
-    i2c_bus->register_device(0x28, this->clk_gen.get());
+    i2c_bus->add_device(0x28, this->clk_gen);
 }
 
 int ValkyrieVideo::device_postinit() {
@@ -294,13 +293,9 @@ static const PropMap Valkyrie_Properties = {
         new StrProperty("HiRes12-14in")},
 };
 
-static const DeviceDescription Valkyrie_Cordyceps_Descriptor = {
-    ValkyrieVideo::create_for_cordyceps, {}, Valkyrie_Properties, HWCompType::MMIO_DEV
+static const DeviceDescription Valkyrie_Descriptor = {
+    ValkyrieVideo::create, {}, Valkyrie_Properties, HWCompType::MMIO_DEV
 };
 
-static const DeviceDescription Valkyrie_Alchemy_Descriptor = {
-    ValkyrieVideo::create_for_alchemy, {}, Valkyrie_Properties, HWCompType::MMIO_DEV
-};
-
-REGISTER_DEVICE(ValkyrieCordyceps, Valkyrie_Cordyceps_Descriptor);
-REGISTER_DEVICE(ValkyrieAlchemy,   Valkyrie_Alchemy_Descriptor);
+REGISTER_DEVICE(ValkyrieCordyceps, Valkyrie_Descriptor);
+REGISTER_DEVICE(ValkyrieAlchemy,   Valkyrie_Descriptor);
