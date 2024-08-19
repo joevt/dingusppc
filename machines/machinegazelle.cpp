@@ -141,15 +141,7 @@ static vector<string> pm6500_devices = {
 };
 
 static const DeviceDescription MachineGazelle_descriptor = {
-    MachineGazelle::create, pm6500_devices, pm6500_settings
+    MachineGazelle::create, pm6500_devices, pm6500_settings, HWCompType::MACHINE, "Power Macintosh 6500"
 };
 
-REGISTER_DEVICE(MachineGazelle, MachineGazelle_descriptor);
-
-static const MachineDescription pm6500_descriptor = {
-    .name = "pm6500",
-    .description = "Power Macintosh 6500",
-    .machine_root = "MachineGazelle",
-};
-
-REGISTER_MACHINE(pm6500, pm6500_descriptor);
+REGISTER_DEVICE(pm6500, MachineGazelle_descriptor);

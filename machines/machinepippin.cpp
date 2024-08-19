@@ -108,15 +108,7 @@ static vector<string> Pippin_devices = {
 };
 
 static const DeviceDescription MachinePippin_descriptor = {
-    MachinePippin::create, Pippin_devices, Pippin_settings
+    MachinePippin::create, Pippin_devices, Pippin_settings, HWCompType::MACHINE, "Bandai Pippin"
 };
 
-REGISTER_DEVICE(MachinePippin, MachinePippin_descriptor);
-
-static const MachineDescription Pippin_Descriptor = {
-    .name = "pippin",
-    .description = "Bandai Pippin",
-    .machine_root = "MachinePippin",
-};
-
-REGISTER_MACHINE(pippin, Pippin_Descriptor);
+REGISTER_DEVICE(pippin, MachinePippin_descriptor);

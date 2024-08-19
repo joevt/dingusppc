@@ -37,12 +37,6 @@ using namespace std;
 
 struct DeviceDescription;
 
-struct MachineDescription {
-    string                  name;
-    string                  description;
-    string                  machine_root;
-};
-
 extern const map<string, tuple<int, string>> gPropHelp;
 extern map<string, string> gMachineFactorySettings;
 
@@ -50,8 +44,6 @@ class MachineFactory
 {
 public:
     MachineFactory() = delete;
-
-    static bool add(const string& machine_id, MachineDescription desc);
 
     static size_t read_boot_rom(string& rom_filepath, char *rom_data);
     static string machine_name_from_rom(char *rom_data, size_t rom_size);
@@ -71,14 +63,6 @@ private:
     static void print_settings(PropMap& p, int type, int indent, string path);
     static void list_device_settings(DeviceDescription& dev, int type, int indent, string path);
     static int  load_boot_rom(char *rom_data, size_t rom_size);
-
-    static map<string, MachineDescription> & get_registry() {
-        static map<string, MachineDescription> machine_registry;
-        return machine_registry;
-    }
 };
-
-#define REGISTER_MACHINE(mach_name, mach_desc) \
-    static bool mach_name ## _registered = MachineFactory::add(#mach_name, (mach_desc))
 
 #endif /* MACHINE_FACTORY_H */

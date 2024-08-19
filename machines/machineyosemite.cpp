@@ -179,15 +179,7 @@ static vector<string> yosemite_devices = {
 };
 
 static const DeviceDescription MachineYosemite_descriptor = {
-    MachineYosemite::create, yosemite_devices, yosemite_settings
+    MachineYosemite::create, yosemite_devices, yosemite_settings, HWCompType::MACHINE, "Power Macintosh G3 Blue and White"
 };
 
-REGISTER_DEVICE(MachineYosemite, MachineYosemite_descriptor);
-
-static const MachineDescription yosemite_descriptor = {
-    .name = "pmg3nw",
-    .description = "Power Macintosh G3 Blue and White",
-    .machine_root = "MachineYosemite",
-};
-
-REGISTER_MACHINE(pmg3nw, yosemite_descriptor);
+REGISTER_DEVICE(pmg3nw, MachineYosemite_descriptor);

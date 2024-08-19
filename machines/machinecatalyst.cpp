@@ -144,15 +144,7 @@ static vector<string> pm7200_devices = {
 };
 
 static const DeviceDescription MachineCatalyst_descriptor = {
-    MachineCatalyst::create, pm7200_devices, pm7200_settings
+    MachineCatalyst::create, pm7200_devices, pm7200_settings, HWCompType::MACHINE, "Power Macintosh 7200"
 };
 
-REGISTER_DEVICE(MachineCatalyst, MachineCatalyst_descriptor);
-
-static const MachineDescription pm7200_descriptor = {
-    .name = "pm7200",
-    .description = "Power Macintosh 7200",
-    .machine_root = "MachineCatalyst",
-};
-
-REGISTER_MACHINE(pm7200, pm7200_descriptor);
+REGISTER_DEVICE(pm7200, MachineCatalyst_descriptor);
