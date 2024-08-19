@@ -70,9 +70,9 @@ enum DpllMode : uint8_t {
 };
 
 /** ESCC Channel class. */
-class EsccChannel {
+class EsccChannel : virtual public HWComponent {
 public:
-    EsccChannel(std::string name) { this->name = name; }
+    EsccChannel(const std::string name) : HWComponent(name) {}
     ~EsccChannel() = default;
 
     void attach_backend(int id);
@@ -133,7 +133,6 @@ private:
 
     DmaBidirChannel*    dma_ch[2];
 
-    std::string     name;
     uint8_t         read_regs[16] = {};
     uint8_t         write_regs[16] = {};
     uint8_t         wr7_enh = 0;
@@ -148,13 +147,13 @@ private:
 };
 
 /** ESCC Controller class. */
-class EsccController : public HWComponent {
+class EsccController : virtual public HWComponent {
 public:
-    EsccController();
+    EsccController(const std::string &dev_name);
     ~EsccController() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<EsccController>(new EsccController());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<EsccController>(new EsccController(dev_name));
     }
 
     // ESCC registers access
@@ -173,8 +172,8 @@ private:
     void write_internal(EsccChannel* ch, uint8_t value);
     uint8_t read_internal(EsccChannel* ch);
 
-    std::unique_ptr<EsccChannel>    ch_a;
-    std::unique_ptr<EsccChannel>    ch_b;
+    EsccChannel*    ch_a;
+    EsccChannel*    ch_b;
 
     int reg_ptr; // register pointer for reading/writing (same for both channels)
 
