@@ -121,22 +121,13 @@ static uint32_t oldworldchecksum(char *buf, size_t len) {
     return ck;
 }
 
-bool MachineFactory::add(const string& machine_id, MachineDescription desc)
-{
-    if (get_registry().find(machine_id) != get_registry().end()) {
-        return false;
-    }
-
-    get_registry()[machine_id] = desc;
-    return true;
-}
-
 void MachineFactory::list_machines()
 {
     cout << endl << "Supported machines:" << endl << endl;
 
-    for (auto& m : get_registry()) {
-        cout << setw(13) << right << m.first << "\t\t" << m.second.description << endl;
+    for (auto& m : DeviceRegistry::get_registry()) {
+        if (m.second.supports_types & HWCompType::MACHINE)
+            cout << setw(13) << right << m.first << "\t\t" << m.second.description << endl;
     }
 
     cout << endl;
@@ -155,8 +146,10 @@ void MachineFactory::create_device(string& dev_name, DeviceDescription& dev)
 
 int MachineFactory::create(string& mach_id)
 {
-    auto it = get_registry().find(mach_id);
-    if (it == get_registry().end()) {
+    auto it = DeviceRegistry::get_registry().find(mach_id);
+    if (it == DeviceRegistry::get_registry().end() ||
+        !(it->second.supports_types & HWCompType::MACHINE)
+    ) {
         LOG_F(ERROR, "Unknown machine id %s", mach_id.c_str());
         return -1;
     }
@@ -164,15 +157,15 @@ int MachineFactory::create(string& mach_id)
     LOG_F(INFO, "Initializing %s hardware...", it->second.description.c_str());
 
     // initialize global machine object
-    gMachineObj.reset(new MachineBase(it->second.name));
+    gMachineObj.reset(new MachineBase(mach_id));
 
     // create and register sound server
     gMachineObj->add_device("SoundServer", std::unique_ptr<SoundServer>(new SoundServer()));
 
     // recursively create device objects
-    create_device(it->second.machine_root, DeviceRegistry::get_descriptor(it->second.machine_root));
+    create_device(mach_id, it->second);
 
-    if (!gMachineObj->get_comp_by_name(it->second.machine_root)) {
+    if (!gMachineObj->get_comp_by_name(mach_id)) {
         LOG_F(ERROR, "Machine initialization function failed!");
         gMachineObj->clear_devices();
         return -1;
@@ -194,21 +187,24 @@ void MachineFactory::list_properties(vector<string> machine_list)
     cout << endl;
 
     if (machine_list.empty()) {
-    for (auto& mach : get_registry()) {
-        cout << mach.second.description << " supported properties:" << endl << endl;
-                list_device_settings(DeviceRegistry::get_descriptor(mach.second.machine_root), PropertyMachine, 0, "");
-                list_device_settings(DeviceRegistry::get_descriptor(mach.second.machine_root), PropertyDevice, 0, "");
+        for (auto& mach : DeviceRegistry::get_registry()) {
+            if (mach.second.supports_types & HWCompType::MACHINE) {
+                cout << mach.second.description << " supported properties:" << endl << endl;
+                list_device_settings(mach.second, PropertyMachine, 0, "");
+                list_device_settings(mach.second, PropertyDevice, 0, "");
+            }
         }
     } else {
         for (auto& name : machine_list) {
-            auto it = get_registry().find(name);
-            if (it != get_registry().end()) {
-                cout << it->second.description << " supported properties:" << endl << endl;
-                list_device_settings(DeviceRegistry::get_descriptor(it->second.machine_root), PropertyMachine, 0, "");
-                list_device_settings(DeviceRegistry::get_descriptor(it->second.machine_root), PropertyDevice, 0, "");
+            auto it = DeviceRegistry::get_registry().find(name);
+            if (it != DeviceRegistry::get_registry().end()) {
+                cout << (it->second.description.empty() ? name : it->second.description)
+                    << " supported properties:" << endl << endl;
+                list_device_settings(it->second, PropertyMachine, 0, "");
+                list_device_settings(it->second, PropertyDevice, 0, "");
             }
             else {
-                cout << name << " is not a valid machine id." << endl << endl;
+                cout << name << " is not a valid machine or device." << endl << endl;
             }
         }
     }
@@ -294,11 +290,11 @@ void MachineFactory::register_device_settings(const std::string& name)
 
 int MachineFactory::register_machine_settings(const std::string& id)
 {
-    auto it = get_registry().find(id);
-    if (it != get_registry().end()) {
+    auto it = DeviceRegistry::get_registry().find(id);
+    if (it != DeviceRegistry::get_registry().end() && (it->second.supports_types & HWCompType::MACHINE)) {
         gMachineSettings.clear();
 
-        register_device_settings(it->second.machine_root);
+        register_device_settings(id);
     } else {
         LOG_F(ERROR, "Unknown machine id %s", id.c_str());
         return -1;
