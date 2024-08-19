@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -42,11 +42,11 @@ constexpr auto CHS_LIMIT = 267386880;
 class AtaHardDisk : public AtaBaseDevice
 {
 public:
-    AtaHardDisk(std::string name);
+    AtaHardDisk(const std::string name);
     ~AtaHardDisk() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AtaHardDisk>(new AtaHardDisk("ATA-HD"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<AtaHardDisk>(new AtaHardDisk(dev_name));
     }
 
     int device_postinit() override;

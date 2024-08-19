@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -37,15 +37,11 @@ enum {
 
 class DecPciBridge : public PCIBridge {
 public:
-    DecPciBridge(std::string name);
+    DecPciBridge(const std::string name);
     ~DecPciBridge() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<DecPciBridge>(new DecPciBridge("DEC21154"));
-    }
-
-    static std::unique_ptr<HWComponent> create_yosemite() {
-        return std::unique_ptr<DecPciBridge>(new DecPciBridge("DEC21154Yosemite"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<DecPciBridge>(new DecPciBridge(dev_name));
     }
 
     // PCIDevice methods

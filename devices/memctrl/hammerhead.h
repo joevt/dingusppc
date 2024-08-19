@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -105,11 +105,11 @@ namespace Hammerhead {
 
 class HammerheadCtrl : public MemCtrlBase, public MMIODevice {
 public:
-    HammerheadCtrl();
+    HammerheadCtrl(const std::string &dev_name);
     ~HammerheadCtrl() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<HammerheadCtrl>(new HammerheadCtrl());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<HammerheadCtrl>(new HammerheadCtrl(dev_name));
     }
 
     // MMIODevice methods

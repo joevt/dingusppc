@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -39,7 +39,7 @@ enum {
 class PCIBridgeBase : public PCIHost, public PCIBase {
     friend class PCIHost;
 public:
-    PCIBridgeBase(std::string name, PCIHeaderType hdr_type, int num_bars);
+    PCIBridgeBase(const std::string name, PCIHeaderType hdr_type, int num_bars);
     ~PCIBridgeBase() = default;
 
     // PCIHost methods

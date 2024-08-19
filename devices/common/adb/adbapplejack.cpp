@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -27,7 +27,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/hostevents.h>
 #include <loguru.hpp>
 
-AdbAppleJack::AdbAppleJack(std::string name) : AdbMouse(name, AdbMouse::TRACKBALL, 2, 7, 300) {
+AdbAppleJack::AdbAppleJack(const std::string name)
+    : AdbMouse(name, AdbMouse::TRACKBALL, 2, 7, 300), HWComponent(name)
+{
     EventManager::get_instance()->add_gamepad_handler(this, &AdbAppleJack::event_handler);
 }
 

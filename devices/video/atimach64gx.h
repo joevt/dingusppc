@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -34,11 +34,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class AtiMach64Gx : public PCIDevice, public VideoCtrlBase {
 public:
-    AtiMach64Gx();
+    AtiMach64Gx(const std::string &dev_name);
     ~AtiMach64Gx() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AtiMach64Gx>(new AtiMach64Gx());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<AtiMach64Gx>(new AtiMach64Gx(dev_name));
     }
 
     // PCI device methods

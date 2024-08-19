@@ -41,11 +41,19 @@ const uint8_t compat_to_macrisc[6] = {
     EsccReg::Enh_Reg_B,     EsccReg::Enh_Reg_A
 };
 
-EsccController::EsccController()
+EsccController::EsccController(const std::string &dev_name)
+    : HWComponent(dev_name)
 {
     // allocate channels
-    this->ch_a = std::unique_ptr<EsccChannel> (new EsccChannel("ESCC_A"));
-    this->ch_b = std::unique_ptr<EsccChannel> (new EsccChannel("ESCC_B"));
+    this->ch_a = new EsccChannel("ESCC_A");
+    this->ch_b = new EsccChannel("ESCC_B");
+    if (dev_name == "EsccPdm") {
+        add_device(0x4002, this->ch_a);
+        add_device(0x4000, this->ch_b);
+    } else {
+        add_device(0x13020, this->ch_a);
+        add_device(0x13000, this->ch_b);
+    }
 
     // attach backends
     std::string backend_name = GET_STR_PROP("serial_backend");
@@ -80,10 +88,10 @@ uint8_t EsccController::read(uint8_t reg_offset)
 
     switch(reg_offset) {
     case EsccReg::Port_B_Cmd:
-        value = this->read_internal(this->ch_b.get());
+        value = this->read_internal(this->ch_b);
         break;
     case EsccReg::Port_A_Cmd:
-        value = this->read_internal(this->ch_a.get());
+        value = this->read_internal(this->ch_a);
         break;
     case EsccReg::Port_B_Data:
         value = this->ch_b->receive_byte();
@@ -109,10 +117,10 @@ void EsccController::write(uint8_t reg_offset, uint8_t value)
 {
     switch(reg_offset) {
     case EsccReg::Port_B_Cmd:
-        this->write_internal(this->ch_b.get(), value);
+        this->write_internal(this->ch_b, value);
         break;
     case EsccReg::Port_A_Cmd:
-        this->write_internal(this->ch_a.get(), value);
+        this->write_internal(this->ch_a, value);
         break;
     case EsccReg::Port_B_Data:
         this->ch_b->send_byte(value);
@@ -524,3 +532,4 @@ static const DeviceDescription Escc_Descriptor = {
 };
 
 REGISTER_DEVICE(Escc, Escc_Descriptor);
+REGISTER_DEVICE(EsccPdm, Escc_Descriptor);
