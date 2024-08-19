@@ -38,9 +38,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <vector>
 
-AthensClocks::AthensClocks(uint8_t dev_addr) : I2CDevice() {
-    set_name("Athens");
-
+AthensClocks::AthensClocks(uint8_t dev_addr)
+    : HWComponent("Athens")
+{
     this->my_addr = dev_addr;
 
     // This initialization is not prescribed

@@ -27,7 +27,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/hostevents.h>
 #include <loguru.hpp>
 
-AdbAppleJack::AdbAppleJack(std::string name) : AdbMouse(name, AdbMouse::TRACKBALL, 2, 7, 300) {
+AdbAppleJack::AdbAppleJack(const std::string name)
+    : AdbMouse(name, AdbMouse::TRACKBALL, 2, 7, 300), HWComponent(name)
+{
     EventManager::get_instance()->add_gamepad_handler(this, &AdbAppleJack::event_handler);
 }
 

@@ -70,7 +70,7 @@ enum {
 
 class PCICardbusBridge : public PCIBridgeBase {
 public:
-    PCICardbusBridge(std::string name);
+    PCICardbusBridge(const std::string name);
     ~PCICardbusBridge() = default;
 
     // PCIBase methods

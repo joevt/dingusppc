@@ -50,7 +50,7 @@ std::unique_ptr<HWComponent> DeviceRegistry::create(const std::string& name)
 {
     auto it = get_registry().find(name);
     if (it != get_registry().end()) {
-        return it->second.m_create_func();
+        return it->second.m_create_func(name);
     }
 
     return nullptr;

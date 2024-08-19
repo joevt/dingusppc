@@ -85,11 +85,11 @@ enum {
 
 class HMC : public MemCtrlBase, public MMIODevice {
 public:
-    HMC();
+    HMC(const std::string &dev_name);
     ~HMC() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<HMC>(new HMC());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<HMC>(new HMC(dev_name));
     }
 
     /* MMIODevice methods */

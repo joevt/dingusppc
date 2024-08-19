@@ -24,19 +24,39 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/timermanager.h>
 #include <devices/common/adb/adbdevice.h>
 #include <devices/common/adb/adbbus.h>
-#include <machines/machinebase.h>
+#include <regex>
 
-AdbDevice::AdbDevice(std::string name) {
-    this->set_name(name);
+AdbDevice::AdbDevice(const std::string name) : HWComponent(name) {
     this->supports_types(HWCompType::ADB_DEV);
 }
 
 int AdbDevice::device_postinit() {
     // register itself with the ADB host
     this->host_obj = dynamic_cast<AdbBus*>(gMachineObj->get_comp_by_type(HWCompType::ADB_HOST));
-    this->host_obj->register_device(this);
-
     return 0;
+}
+
+int32_t AdbDevice::parse_self_unit_address_string(const std::string unit_address_string) {
+    return AdbDevice::parse_unit_address_string(unit_address_string);
+}
+
+int32_t AdbDevice::parse_unit_address_string(const std::string unit_address_string) {
+    std::regex unit_address_re("(\\d+)(?:,[0-9A-F]+)?", std::regex_constants::icase);
+    std::smatch results;
+    if (std::regex_match(unit_address_string, results, unit_address_re)) {
+        return (int32_t)std::stol(results[1], nullptr, 16);
+    } else {
+        return -1;
+    }
+}
+
+std::string AdbDevice::get_self_unit_address_string(int32_t unit_address) {
+    char buf[20];
+    if (unit_address < 0)
+        return "";
+    if (unit_address >= 0)
+        snprintf(buf, sizeof(buf), "@%d,%X", unit_address, this->get_address());
+    return buf;
 }
 
 uint8_t AdbDevice::poll() {
