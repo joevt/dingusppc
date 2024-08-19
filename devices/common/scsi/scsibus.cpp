@@ -26,7 +26,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/scsi/scsihd.h>
 #include <devices/common/scsi/scsicdrom.h>
 #include <devices/deviceregistry.h>
-#include <machines/machinebase.h>
 #include <loguru.hpp>
 
 #include <cinttypes>
@@ -38,9 +37,8 @@ namespace loguru {
     };
 }
 
-ScsiBus::ScsiBus(const std::string name)
+ScsiBus::ScsiBus(const std::string name) : HWComponent(name)
 {
-    this->set_name(name);
     supports_types(HWCompType::SCSI_BUS);
 
     for(int i = 0; i < SCSI_MAX_DEVS; i++) {
@@ -53,6 +51,10 @@ ScsiBus::ScsiBus(const std::string name)
     this->arb_winner_id = -1;
     this->initiator_id  = -1;
     this->target_id     = -1;
+}
+
+int32_t ScsiBus::parse_child_unit_address_string(const std::string unit_address_string) {
+    return ScsiDevice::parse_unit_address_string(unit_address_string);
 }
 
 void ScsiBus::register_device(int id, ScsiDevice* dev_obj)
@@ -367,11 +369,9 @@ void ScsiBus::attach_scsi_devices(const std::string bus_suffix)
 
             if (scsi_id < SCSI_MAX_DEVS * 2) {
                 scsi_id = scsi_id % SCSI_MAX_DEVS;
-                std::string scsi_device_name = "ScsiHD" + bus_suffix + "," +
-                                               std::to_string(scsi_id);
+                std::string scsi_device_name = "ScsiHD";
                 ScsiHardDisk *scsi_device = new ScsiHardDisk(scsi_device_name, scsi_id);
-                gMachineObj->add_device(scsi_device_name,
-                                        std::unique_ptr<ScsiHardDisk>(scsi_device));
+                this->add_device(scsi_id, scsi_device);
                 this->register_device(scsi_id, scsi_device);
                 scsi_device->insert_image(path);
             }
@@ -392,11 +392,9 @@ void ScsiBus::attach_scsi_devices(const std::string bus_suffix)
 
             if (scsi_id < SCSI_MAX_DEVS * 2) {
                 scsi_id = scsi_id % SCSI_MAX_DEVS;
-                std::string scsi_device_name = "ScsiCdrom" + bus_suffix + "," +
-                                               std::to_string(scsi_id);
+                std::string scsi_device_name = "ScsiCdrom";
                 ScsiCdrom *scsi_device = new ScsiCdrom(scsi_device_name, scsi_id);
-                gMachineObj->add_device(scsi_device_name,
-                                        std::unique_ptr<ScsiCdrom>(scsi_device));
+                this->add_device(scsi_id, scsi_device);
                 this->register_device(scsi_id, scsi_device);
                 scsi_device->insert_image(path);
             }
@@ -407,14 +405,3 @@ void ScsiBus::attach_scsi_devices(const std::string bus_suffix)
         }
     }
 }
-
-static const DeviceDescription ScsiCurio_Descriptor = {
-    ScsiBus::create_ScsiCurio, {}, {}, HWCompType::SCSI_BUS
-};
-
-static const DeviceDescription ScsiMesh_Descriptor = {
-    ScsiBus::create_ScsiMesh, {}, {}, HWCompType::SCSI_BUS
-};
-
-REGISTER_DEVICE(ScsiCurio, ScsiCurio_Descriptor);
-REGISTER_DEVICE(ScsiMesh,  ScsiMesh_Descriptor);

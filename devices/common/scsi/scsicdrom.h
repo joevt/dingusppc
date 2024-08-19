@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -34,7 +34,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class ScsiCdrom : public CdromDrive, public ScsiDevice {
 public:
-    ScsiCdrom(std::string name, int my_id);
+    ScsiCdrom(const std::string name, int my_id);
     ~ScsiCdrom() = default;
 
     virtual void process_command() override;

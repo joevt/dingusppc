@@ -28,7 +28,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/serial/escc.h>
 #include <endianswap.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 
 #include <cinttypes>
 #include <memory>
@@ -40,13 +39,17 @@ namespace loguru {
     };
 }
 
-NvramDev::NvramDev(NvramAddrHiDev *addr_hi) {
+NvramDev::NvramDev(NvramAddrHiDev *addr_hi)
+    : HWComponent("NvramDev")
+{
     // NVRAM connection
     this->nvram = dynamic_cast<NVram*>(gMachineObj->get_comp_by_name("NVRAM"));
+    this->nvram->move_device(this);
     this->addr_hi = addr_hi;
 }
 
-GrandCentral::GrandCentral() : PCIDevice("mac-io_grandcentral"), InterruptCtrl()
+GrandCentral::GrandCentral(const std::string name)
+    : PCIDevice(name), InterruptCtrl(), HWComponent(name)
 {
     supports_types(HWCompType::IOBUS_HOST | HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL);
 
@@ -67,20 +70,20 @@ GrandCentral::GrandCentral() : PCIDevice("mac-io_grandcentral"), InterruptCtrl()
     this->viacuda = dynamic_cast<ViaCuda*>(gMachineObj->get_comp_by_name("ViaCuda"));
 
     // initialize sound chip and its DMA output channel, then wire them together
-    this->awacs       = std::unique_ptr<AwacsScreamer> (new AwacsScreamer());
+    this->awacs = dynamic_cast<AwacsScreamer*>(gMachineObj->get_comp_by_type(HWCompType::SND_CODEC));
     this->snd_out_dma = std::unique_ptr<DMAChannel> (new DMAChannel("snd_out"));
     this->snd_out_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_DAVBUS_Tx));
     this->awacs->set_dma_out(this->snd_out_dma.get());
     this->snd_out_dma->set_callbacks(
-        std::bind(&AwacsScreamer::dma_out_start, this->awacs.get()),
-        std::bind(&AwacsScreamer::dma_out_stop, this->awacs.get())
+        std::bind(&AwacsScreamer::dma_out_start, this->awacs),
+        std::bind(&AwacsScreamer::dma_out_stop, this->awacs)
     );
     this->snd_in_dma = std::unique_ptr<DMAChannel> (new DMAChannel("snd_in"));
     this->snd_in_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_DAVBUS_Rx));
     this->awacs->set_dma_in(this->snd_in_dma.get());
     this->snd_in_dma->set_callbacks(
-        std::bind(&AwacsScreamer::dma_in_start, this->awacs.get()),
-        std::bind(&AwacsScreamer::dma_in_stop, this->awacs.get())
+        std::bind(&AwacsScreamer::dma_in_start, this->awacs),
+        std::bind(&AwacsScreamer::dma_in_stop, this->awacs)
     );
 
     // connect serial HW
@@ -99,13 +102,13 @@ GrandCentral::GrandCentral() : PCIDevice("mac-io_grandcentral"), InterruptCtrl()
     this->escc->set_dma_channel(3, this->escc_b_rx_dma.get());
 
     // connect MESH (internal SCSI)
-    this->mesh = dynamic_cast<MeshBase*>(gMachineObj->get_comp_by_name_optional("MeshTnt"));
-    if (this->mesh == nullptr) {
-        this->mesh_stub = std::unique_ptr<MeshStub>(new MeshStub());
-        this->mesh = dynamic_cast<MeshBase*>(this->mesh_stub.get());
+    MeshController *mesh_obj = dynamic_cast<MeshController*>(gMachineObj->get_comp_by_name_optional("MeshTnt"));
+    if (mesh_obj == nullptr) {
+        this->mesh_stub = new MeshStub();
+        this->mesh = this->mesh_stub;
+        this->add_device(0x18000, this->mesh_stub);
     } else {
-        MeshController *mesh_obj =
-            dynamic_cast<MeshController*>(gMachineObj->get_comp_by_name_optional("MeshTnt"));
+        this->mesh = mesh_obj;
         this->mesh_dma = std::unique_ptr<DMAChannel> (new DMAChannel("mesh_scsi"));
         this->mesh_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCSI_MESH));
         this->mesh_dma->connect(mesh_obj);
@@ -140,12 +143,12 @@ GrandCentral::GrandCentral() : PCIDevice("mac-io_grandcentral"), InterruptCtrl()
     this->floppy_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SWIM3));
 
     // attach IOBus Device #4 0xF301D000 ; NVRAM High Address
-    this->nvram_addr_hi_dev = std::unique_ptr<NvramAddrHiDev>(new NvramAddrHiDev());
-    attach_iodevice(3, this->nvram_addr_hi_dev.get());
+    this->nvram_addr_hi_dev = new NvramAddrHiDev();
+    this->add_device(0x1D000, this->nvram_addr_hi_dev);
 
     // attach IOBus Device #6 0xF301F000 ; NVRAM Data
-    this->nvram_dev = std::unique_ptr<NvramDev>(new NvramDev(nvram_addr_hi_dev.get()));
-    attach_iodevice(5, this->nvram_dev.get());
+    this->nvram_dev = new NvramDev(nvram_addr_hi_dev);
+    this->add_device(0x1F000, this->nvram_dev);
 }
 
 void GrandCentral::notify_bar_change(int bar_num)
@@ -534,6 +537,13 @@ void GrandCentral::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value
     }
 }
 
+HWComponent* GrandCentral::add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name)
+{
+    if (unit_address >= 0x1A000 && unit_address <= 0x1F000)
+        this->attach_iodevice(((unit_address >> 12) & 0xF) - 10, dynamic_cast<IobusDevice*>(dev_obj));
+    return HWComponent::add_device(unit_address, dev_obj, name);
+}
+
 void GrandCentral::attach_iodevice(int dev_num, IobusDevice* dev_obj)
 {
     if (dev_num >= 0 && dev_num < 6) {
@@ -657,11 +667,11 @@ void GrandCentral::clear_cpu_int() {
 }
 
 static const std::vector<std::string> GrandCentralCatalyst_Subdevices = {
-    "NVRAM", "ViaCuda", "Escc", "Sc53C94", "Mace", "Swim3"
+    "NVRAM", "ViaCuda@16000", "ScreamerSnd@14000", "Escc@13000", "Sc53C94@10000", "Mace@11000", "Swim3@15000"
 };
 
 static const std::vector<std::string> GrandCentralTnt_Subdevices = {
-    "NVRAM", "ViaCuda", "Escc", "Sc53C94", "MeshTnt", "Mace", "Swim3"
+    "NVRAM", "ViaCuda@16000", "ScreamerSnd@14000", "Escc@13000", "Sc53C94@10000", "Mace@11000", "Swim3@15000", "MeshTnt@18000"
 };
 
 static const DeviceDescription GrandCentralCatalyst_Descriptor = {

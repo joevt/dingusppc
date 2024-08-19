@@ -101,9 +101,9 @@ public:
     virtual void    write(uint8_t reg_offset, uint8_t value) = 0;
 };
 
-class MeshStub : public HWComponent, public MeshBase {
+class MeshStub : public MeshBase, virtual public HWComponent {
 public:
-    MeshStub() { set_name("MeshStub"); }
+    MeshStub() : HWComponent("MeshStub") {}
     ~MeshStub() = default;
 
     // registers access
@@ -113,18 +113,17 @@ public:
 
 class MeshController : public ScsiBusController, public MeshBase {
 public:
-    MeshController(uint8_t mesh_id) : ScsiBusController("MESH", 7) {
+    MeshController(uint8_t mesh_id, const std::string name)
+        : ScsiBusController(name, 7), HWComponent(name)
+    {
         this->chip_id = mesh_id;
         this->reset(true);
     }
     ~MeshController() = default;
 
-    static std::unique_ptr<HWComponent> create_for_tnt() {
-        return std::unique_ptr<MeshController>(new MeshController(TntMeshID));
-    }
-
-    static std::unique_ptr<HWComponent> create_for_heathrow() {
-        return std::unique_ptr<MeshController>(new MeshController(HeathrowMeshID));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        if (dev_name == "MeshTnt"     ) return std::unique_ptr<MeshController>(new MeshController(TntMeshID     , dev_name));
+        if (dev_name == "MeshHeathrow") return std::unique_ptr<MeshController>(new MeshController(HeathrowMeshID, dev_name));
     }
 
     // MeshBase methods

@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -58,11 +58,11 @@ enum {
 
 class AspenCtrl : public MemCtrlBase, public MMIODevice {
 public:
-    AspenCtrl();
+    AspenCtrl(const std::string &dev_name);
     ~AspenCtrl() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AspenCtrl>(new AspenCtrl());
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<AspenCtrl>(new AspenCtrl(dev_name));
     }
 
     int device_postinit() override;

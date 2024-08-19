@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -81,17 +81,18 @@ namespace MaceEnet {
 
 } // namespace MaceEnet
 
-class MaceController : public DmaDevice, public HWComponent {
+class MaceController : public DmaDevice, virtual public HWComponent {
 public:
-    MaceController(uint16_t id) {
+    MaceController(const std::string &dev_name, uint16_t id)
+        : HWComponent(dev_name)
+    {
         this->chip_id = id;
-        this->set_name("MACE");
         this->supports_types(HWCompType::MMIO_DEV | HWCompType::ETHER_MAC);
     }
     ~MaceController() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<MaceController>(new MaceController(MACE_ID_REV_A2));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<MaceController>(new MaceController(dev_name, MACE_ID_REV_A2));
     }
 
     // MACE registers access
