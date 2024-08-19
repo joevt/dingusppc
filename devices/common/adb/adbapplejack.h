@@ -41,8 +41,8 @@ public:
     AdbAppleJack(std::string name);
     ~AdbAppleJack() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AdbAppleJack>(new AdbAppleJack("ADB-APPLEJACK"));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        return std::unique_ptr<AdbAppleJack>(new AdbAppleJack(dev_name));
     }
 
     void reset() override;

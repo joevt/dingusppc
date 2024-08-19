@@ -32,8 +32,9 @@ namespace loguru {
     };
 }
 
-BigMac::BigMac(uint8_t id) {
-    set_name("BigMac");
+BigMac::BigMac(const std::string &dev_name, uint8_t id)
+    : HWComponent(dev_name)
+{
     supports_types(HWCompType::MMIO_DEV | HWCompType::ETHER_MAC);
 
     this->chip_id = id;
@@ -596,13 +597,9 @@ void BigMac::srom_xmit_bit(const uint8_t bit_val) {
     }
 }
 
-static const DeviceDescription BigMac_Heathrow_Descriptor = {
-    BigMac::create_for_heathrow, {}, {}, HWCompType::MMIO_DEV | HWCompType::ETHER_MAC
+static const DeviceDescription BigMac_Descriptor = {
+    BigMac::create, {}, {}, HWCompType::MMIO_DEV | HWCompType::ETHER_MAC
 };
 
-static const DeviceDescription BigMac_Paddington_Descriptor = {
-    BigMac::create_for_paddington, {}, {}, HWCompType::MMIO_DEV | HWCompType::ETHER_MAC
-};
-
-REGISTER_DEVICE(BigMacHeathrow, BigMac_Heathrow_Descriptor);
-REGISTER_DEVICE(BigMacPaddington, BigMac_Paddington_Descriptor);
+REGISTER_DEVICE(BigMacHeathrow, BigMac_Descriptor);
+REGISTER_DEVICE(BigMacPaddington, BigMac_Descriptor);

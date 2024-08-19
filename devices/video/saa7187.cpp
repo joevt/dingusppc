@@ -24,7 +24,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/video/saa7187.h>
 #include <loguru.hpp>
 
-Saa7187VideoEncoder::Saa7187VideoEncoder(uint8_t dev_addr) : I2CDevice() {
+Saa7187VideoEncoder::Saa7187VideoEncoder(uint8_t dev_addr)
+    : HWComponent("Saa7187VideoEncoder")
+{
     this->my_addr = dev_addr;
 }
 

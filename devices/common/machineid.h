@@ -48,8 +48,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 class NubusMacID : public MMIODevice {
 public:
-    NubusMacID(const uint16_t id) {
-        this->name = "Nubus-Machine-id";
+    NubusMacID(const uint16_t id)
+        : HWComponent("Nubus-Machine-id")
+    {
         this->id[0] = 0xA5;
         this->id[1] = 0x5A;
         this->id[2] = (id >> 8) & 0xFF;
@@ -88,10 +89,11 @@ namespace loguru {
     Both board registers are attached to the IOBus of the I/O controller.
     See machines/machinetnt.cpp for further details.
  **/
-class BoardRegister : public HWComponent, public IobusDevice {
+class BoardRegister : public IobusDevice {
 public:
-    BoardRegister(std::string name, const uint16_t data) {
-        this->set_name(name);
+    BoardRegister(const std::string name, const uint16_t data)
+        : HWComponent(name)
+    {
         supports_types(HWCompType::IOBUS_DEV);
         this->data = data;
     }
@@ -127,9 +129,8 @@ private:
  */
 class GossamerID : public MMIODevice {
 public:
-    GossamerID(const uint16_t id) {
+    GossamerID(const uint16_t id) : HWComponent("Machine-id") {
         this->id = id;
-        this->name = "Machine-id";
         supports_types(HWCompType::MMIO_DEV);
     }
     ~GossamerID() = default;
