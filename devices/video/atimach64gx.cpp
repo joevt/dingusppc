@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -143,8 +143,8 @@ static const std::map<uint16_t, std::string> rgb514_ind_reg_names = {
     #undef one_reg_name
 };
 
-AtiMach64Gx::AtiMach64Gx()
-    : PCIDevice("ati-mach64-gx"), VideoCtrlBase()
+AtiMach64Gx::AtiMach64Gx(const std::string &dev_name)
+    : PCIDevice(dev_name), VideoCtrlBase(), HWComponent(dev_name)
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV);
 

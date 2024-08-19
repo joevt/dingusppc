@@ -44,19 +44,13 @@ enum {
 
 class ATIRage : public PCIDevice, public VideoCtrlBase {
 public:
-    ATIRage(uint16_t dev_id);
+    ATIRage(const std::string &dev_name, uint16_t dev_id);
     ~ATIRage() = default;
 
-    static std::unique_ptr<HWComponent> create_gt() {
-        return std::unique_ptr<ATIRage>(new ATIRage(ATI_RAGE_GT_DEV_ID));
-    }
-
-    static std::unique_ptr<HWComponent> create_gw() {
-        return std::unique_ptr<ATIRage>(new ATIRage(ATI_RAGE_GW_DEV_ID));
-    }
-
-    static std::unique_ptr<HWComponent> create_pro() {
-        return std::unique_ptr<ATIRage>(new ATIRage(ATI_RAGE_PRO_DEV_ID));
+    static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
+        if (dev_name == "AtiRageGT" ) return std::unique_ptr<ATIRage>(new ATIRage(dev_name, ATI_RAGE_GT_DEV_ID));
+        if (dev_name == "AtiRageGW" ) return std::unique_ptr<ATIRage>(new ATIRage(dev_name, ATI_RAGE_GW_DEV_ID));
+        if (dev_name == "AtiRagePro") return std::unique_ptr<ATIRage>(new ATIRage(dev_name, ATI_RAGE_PRO_DEV_ID));
     }
 
     // HWComponent methods
