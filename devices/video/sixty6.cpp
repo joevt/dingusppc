@@ -26,7 +26,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/video/control.h>
 #include <devices/video/sixty6.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 
 namespace loguru {
     enum : Verbosity {
@@ -36,29 +35,17 @@ namespace loguru {
     };
 }
 
-Sixty6Video::Sixty6Video()
+Sixty6Video::Sixty6Video(const std::string &dev_name)
+    : HWComponent(dev_name)
 {
+    supports_types(HWCompType::MMIO_DEV);
+
     // initialize the video clock generator
-    this->saa7187 = std::unique_ptr<Saa7187VideoEncoder> (new Saa7187VideoEncoder(0x44));
+    this->saa7187 = new Saa7187VideoEncoder(0x44);
 
     // register the video clock generator with the I2C host
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
-    i2c_bus->register_device(0x44, this->saa7187.get());
-
-    // get (raw) pointer to the I/O controller
-    GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralTnt"));
-
-    // attach IOBus Device #3 0xF301C000 ; sixty6
-    gc_obj->attach_iodevice(2, this);
-
-    // attach IOBus Device #5 0xF301E000 ; sixty6 composite/s-video
-    gMachineObj->add_device("BoardReg66", std::unique_ptr<BoardRegister>(
-        new BoardRegister("Board Register 66",
-            ((GET_BIN_PROP("has_svideo") ^ 1) << 6)    | // S-Video connected (active low)
-            ((GET_BIN_PROP("has_composite") ^ 1) << 7) | // Composite Video connected (active low)
-            0xFF3FU                                      // pull up unused bits
-    )));
-    gc_obj->attach_iodevice(4, dynamic_cast<BoardRegister*>(gMachineObj->get_comp_by_name("BoardReg66")));
+    i2c_bus->add_device(0x44, this->saa7187);
 }
 
 uint16_t Sixty6Video::iodev_read(uint32_t address)
@@ -407,6 +394,20 @@ void Sixty6Video::disable_display()
 
 int Sixty6Video::device_postinit()
 {
+    // get (raw) pointer to the I/O controller
+    GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralTnt"));
+
+    // attach IOBus Device #3 0xF301C000 ; sixty6
+    gc_obj->add_device(0x1C000, this);
+
+    // attach IOBus Device #5 0xF301E000 ; sixty6 composite/s-video
+    gc_obj->add_device(0x1E000,
+        new BoardRegister("BoardReg66",
+            ((GET_BIN_PROP("has_svideo") ^ 1) << 6)    | // S-Video connected (active low)
+            ((GET_BIN_PROP("has_composite") ^ 1) << 7) | // Composite Video connected (active low)
+            0xFF3FU                                      // pull up unused bits
+    ));
+
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::SIXTY6);

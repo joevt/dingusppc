@@ -33,7 +33,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace ata_interface;
 
 AtapiBaseDevice::AtapiBaseDevice(const std::string name)
-    : AtaBaseDevice(name, DEVICE_TYPE_ATAPI) {
+    : AtaBaseDevice(name, DEVICE_TYPE_ATAPI), HWComponent(name) {
 }
 
 void AtapiBaseDevice::device_set_signature() {

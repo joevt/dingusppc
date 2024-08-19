@@ -39,7 +39,7 @@ enum {
 class PCIBridgeBase : public PCIHost, public PCIBase {
     friend class PCIHost;
 public:
-    PCIBridgeBase(std::string name, PCIHeaderType hdr_type, int num_bars);
+    PCIBridgeBase(const std::string name, PCIHeaderType hdr_type, int num_bars);
     ~PCIBridgeBase() = default;
 
     // PCIHost methods
