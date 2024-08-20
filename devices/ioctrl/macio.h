@@ -263,12 +263,12 @@ private:
 
 /** O'Hare/Heathrow specific registers. */
 enum {
-    MIO_OHARE_ID        = 0x34, // IDs register
+    MIO_OHARE_ID        = 0x34, // IDs register (MIO_HEAT_ID)
     MIO_OHARE_FEAT_CTRL = 0x38, // feature control register
     MIO_AUX_CTRL        = 0x3C,
 };
 
-/** MIO_OHARE_ID bits. */
+/** MIO_OHARE_ID or MIO_HEAT_ID bits. */
 enum {
     MIO_OH_ID_FP                       = 0x70000000, // Flat panel ID
     MIO_OH_ID_MON                      = 0x00300000, // Monitor ID (mon_id?=1, no s-video/composite=3 but only if fatman exists).
@@ -379,6 +379,7 @@ protected:
     void dma_write(uint32_t offset, uint32_t value, int size);
 
     uint32_t mio_ctrl_read(uint32_t offset, int size);
+    uint32_t mio_ctrl_read_aligned(uint32_t offset);
     void mio_ctrl_write(uint32_t offset, uint32_t value, int size);
 
     void feature_control(uint32_t value);

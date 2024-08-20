@@ -304,9 +304,22 @@ void MacIoTwo::dma_write(uint32_t offset, uint32_t value, int size) {
 }
 
 uint32_t MacIoTwo::mio_ctrl_read(uint32_t offset, int size) {
+    uint32_t value2 = 0;
+    uint32_t value = mio_ctrl_read_aligned(offset & ~3);
+    if ((offset & 3) + size > 4) {
+        value2 = mio_ctrl_read_aligned((offset & ~3) + 4);
+    }
+    AccessDetails details;
+    details.size = size;
+    details.offset = offset & 3;
+    value = pci_conv_rd_data(value, value2, details);
+    return value;
+}
+
+uint32_t MacIoTwo::mio_ctrl_read_aligned(uint32_t offset) {
     uint32_t value;
 
-    switch (offset & 0xFC) {
+    switch (offset & 0x7FFC) {
     case MIO_INT_EVENTS2:
         value = this->int_events >> 32;
         break;
@@ -348,11 +361,17 @@ uint32_t MacIoTwo::mio_ctrl_read(uint32_t offset, int size) {
             this->get_name().c_str(), offset);
     }
 
-    return BYTESWAP_32(value);
+    return value;
 }
 
 void MacIoTwo::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
-    switch (offset & 0xFC) {
+    if (size != 4) {
+        LOG_F(ERROR, "%s: write size not supported @%x.%c = %0*x",
+            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value
+        );
+    }
+
+    switch (offset & 0x7FFC) {
     case MIO_INT_MASK2:
         this->int_mask |= uint64_t(BYTESWAP_32(value) & ~MACIO_INT_MODE) << 32;
         LOG_F(INTERRUPT, "%s: int_mask2:0x%08x", name.c_str(), uint32_t(this->int_mask >> 32));
