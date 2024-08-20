@@ -253,9 +253,22 @@ void OHare::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
 }
 
 uint32_t OHare::mio_ctrl_read(uint32_t offset, int size) {
+    uint32_t value2 = 0;
+    uint32_t value = mio_ctrl_read_aligned(offset & ~3);
+    if ((offset & 3) + size > 4) {
+        value2 = mio_ctrl_read_aligned((offset & ~3) + 4);
+    }
+    AccessDetails details;
+    details.size = size;
+    details.offset = offset & 3;
+    value = pci_conv_rd_data(value, value2, details);
+    return value;
+}
+
+uint32_t OHare::mio_ctrl_read_aligned(uint32_t offset) {
     uint32_t value;
 
-    switch (offset & 0xFC) {
+    switch (offset & 0x7FFC) {
     case MIO_INT_EVENTS1:
         value = this->int_events;
         break;
@@ -268,25 +281,31 @@ uint32_t OHare::mio_ctrl_read(uint32_t offset, int size) {
     case MIO_OHARE_ID: // FIXME: HACK: no clue what this register is supposed to contain
         value = ~0x00004000; // ~(1<<14)   6500
       //value = ~0x00000000; //  (1<<14)   TAM
-        LOG_F(ERROR, "%s: read  OHARE_ID @%02x.%c = %0*x",
-            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
+        LOG_F(ERROR, "%s: read  OHARE_ID @%02x = %08x",
+            this->get_name().c_str(), offset, value);
         break;
     case MIO_OHARE_FEAT_CTRL:
         value = this->feat_ctrl;
-        LOG_F(WARNING, "%s: read  FEAT_CTRL @%x.%c = %0*x",
-            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
+        LOG_F(WARNING, "%s: read  FEAT_CTRL @%02x = %08x",
+            this->get_name().c_str(), offset, value);
         break;
     default:
         value = 0;
-        LOG_F(WARNING, "%s: read @%02x.%c",
-            this->get_name().c_str(), offset, SIZE_ARG(size));
+        LOG_F(WARNING, "%s: read @%02x",
+            this->get_name().c_str(), offset);
     }
 
-    return BYTESWAP_32(value);
+    return value;
 }
 
 void OHare::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
-    switch (offset) {
+    if (size != 4) {
+        LOG_F(ERROR, "%s: write size not supported @%x.%c = %0*x",
+            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value
+        );
+    }
+
+    switch (offset & 0x7FFC) {
     case MIO_INT_MASK1:
         this->int_mask = BYTESWAP_32(value);
         LOG_F(INTERRUPT, "%s: int_mask:0x%08x", name.c_str(), this->int_mask);
