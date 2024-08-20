@@ -220,6 +220,7 @@ public:
 protected:
     void notify_bar_change(int bar_num);
     uint32_t mio_ctrl_read(uint32_t offset, int size);
+    uint32_t mio_ctrl_read_aligned(uint32_t offset);
     void mio_ctrl_write(uint32_t offset, uint32_t value, int size);
     uint32_t dma_read(uint32_t offset, int size);
     void dma_write(uint32_t offset, uint32_t value, int size);
