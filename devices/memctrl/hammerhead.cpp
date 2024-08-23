@@ -42,38 +42,38 @@ HammerheadCtrl::HammerheadCtrl() : MemCtrlBase()
 
 uint32_t HammerheadCtrl::read(uint32_t rgn_start, uint32_t offset, int size)
 {
-    uint32_t result;
+    uint32_t value;
 
     if (offset >= HammerheadReg::BANK_0_BASE_MSB &&
         offset <= HammerheadReg::BANK_25_BASE_LSB) {
         offset = (offset - HammerheadReg::BANK_0_BASE_MSB) >> 4;
         int bank = offset >> 1;
         if (offset & 1) { // return the LSB part
-            result = bank_base[bank] & 0xFFU;
+            value = bank_base[bank] & 0xFFU;
         } else { // return the MSB part
-            result = bank_base[bank] >> 8;
+            value = bank_base[bank] >> 8;
         }
         goto finish;
     }
 
     switch (offset) {
     case HammerheadReg::CPU_ID:
-        result = HH_CPU_ID_TNT;
+        value = HH_CPU_ID_TNT;
         break;
     case HammerheadReg::MOTHERBOARD_ID:
-        result = (this->mb_id << 5) | (this->rom_type << 4);
+        value = (this->mb_id << 5) | (this->rom_type << 4);
         break;
     case HammerheadReg::CPU_SPEED:
-        result = this->bus_speed << 5;
+        value = this->bus_speed << 5;
         break;
     case HammerheadReg::ARBITER_CONFIG:
-        result = this->arb_config;
+        value = this->arb_config;
         break;
     case HammerheadReg::WHO_AM_I:
-        result = BM_PRIMARY_CPU << 3;
+        value = BM_PRIMARY_CPU << 3;
         break;
     case HammerheadReg::L2_CACHE_CONFIG:
-        result = 0; // say there is no L2 cache
+        value = 0; // say there is no L2 cache
         break;
     default:
         LOG_F(WARNING, "%s: unknown register read at offset 0x%X", this->name.c_str(),
@@ -84,7 +84,7 @@ uint32_t HammerheadCtrl::read(uint32_t rgn_start, uint32_t offset, int size)
     // Hammerhead registers are one byte wide so always place
     // the result in the MSB of a multibyte read
 finish:
-    return result << ((size - 1) << 3);
+    return value << ((size - 1) << 3);
 }
 
 void HammerheadCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
