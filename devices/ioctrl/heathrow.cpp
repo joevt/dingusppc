@@ -131,6 +131,10 @@ static const char *get_name_dma(unsigned dma_channel) {
     }
 }
 
+void HeathrowIC::set_media_bay_id(uint8_t id) {
+    this->mb_id = id;
+}
+
 void HeathrowIC::notify_bar_change(int bar_num)
 {
     if (bar_num) // only BAR0 is supported
