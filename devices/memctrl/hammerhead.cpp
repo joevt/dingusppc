@@ -28,6 +28,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <memory>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_HAMMERHEAD = loguru::Verbosity_INFO
+    };
+}
+
 using namespace Hammerhead;
 
 HammerheadCtrl::HammerheadCtrl() : MemCtrlBase()
@@ -59,26 +65,38 @@ uint32_t HammerheadCtrl::read(uint32_t rgn_start, uint32_t offset, int size)
     switch (offset) {
     case HammerheadReg::CPU_ID:
         value = HH_CPU_ID_TNT;
+        LOG_F(HAMMERHEAD, "%s: read CPU_ID @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case HammerheadReg::MOTHERBOARD_ID:
         value = (this->mb_id << 5) | (this->rom_type << 4);
+        LOG_F(HAMMERHEAD, "%s: read MOTHERBOARD_ID @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case HammerheadReg::CPU_SPEED:
         value = this->bus_speed << 5;
+        LOG_F(HAMMERHEAD, "%s: read CPU_SPEED @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case HammerheadReg::ARBITER_CONFIG:
         value = this->arb_config;
+        LOG_F(HAMMERHEAD, "%s: read ARBITER_CONFIG @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case HammerheadReg::WHO_AM_I:
         value = BM_PRIMARY_CPU << 3;
+        LOG_F(HAMMERHEAD, "%s: read WHO_AM_I @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case HammerheadReg::L2_CACHE_CONFIG:
         value = 0; // say there is no L2 cache
+        LOG_F(HAMMERHEAD, "%s: read L2_CACHE_CONFIG @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     default:
-        LOG_F(WARNING, "%s: unknown register read at offset 0x%X", this->name.c_str(),
-              offset);
-        return 0;
+        value = 0;
+        LOG_F(WARNING, "%s: read unknown register @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
     }
 
     // Hammerhead registers are one byte wide so always place
@@ -108,23 +126,29 @@ void HammerheadCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, 
 
     switch (offset) {
     case HammerheadReg::MEM_TIMING_0:
-        LOG_F(9, "%s: MEM_TIMING_0 set to 0x%X", this->name.c_str(), value);
+        LOG_F(HAMMERHEAD, "%s: write MEM_TIMING_0 @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case HammerheadReg::MEM_TIMING_1:
-        LOG_F(9, "%s: MEM_TIMING_1 set to 0x%X", this->name.c_str(), value);
+        LOG_F(HAMMERHEAD, "%s: write MEM_TIMING_1 @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case HammerheadReg::REFRESH_TIMING:
-        LOG_F(9, "%s: REFRESH_TIMING set to 0x%X", this->name.c_str(), value);
+        LOG_F(HAMMERHEAD, "%s: write REFRESH_TIMING @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case HammerheadReg::ROM_TIMING:
-        LOG_F(9, "%s: ROM_TIMING set to 0x%X", this->name.c_str(), value);
+        LOG_F(HAMMERHEAD, "%s: write ROM_TIMING @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case HammerheadReg::ARBITER_CONFIG:
+        LOG_F(HAMMERHEAD, "%s: write ARBITER_CONFIG @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->arb_config = value;
         break;
     default:
-        LOG_F(WARNING, "%s: unknown register write at offset 0x%X", this->name.c_str(),
-              offset);
+        LOG_F(WARNING, "%s: write unknown register @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
     }
 }
 
