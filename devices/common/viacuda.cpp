@@ -308,7 +308,7 @@ void ViaCuda::write(int reg, uint8_t value) {
     case VIA_A:
     case VIA_ANH:
         this->via_porta = value;
-        LOG_F(WARNING, "Attempted write to VIA Port A!");
+        LOG_F(WARNING, "Attempted write to VIA Port A! (%x) (%08x)", value, ppc_state.pc);
         break;
     case VIA_DIRB:
         this->via_ddrb = value;
