@@ -434,6 +434,8 @@ void ViaCuda::print_enabled_ints() {
     const char* via_int_src[] = {"CA2", "CA1", "SR", "CB2", "CB1", "T2", "T1"};
 
     for (int i = 0; i < 7; i++) {
+        if (i == 2)
+            continue;
         if (this->_via_ier & (1 << i))
             LOG_F(INFO, "VIA %s interrupt enabled", via_int_src[i]);
     }
