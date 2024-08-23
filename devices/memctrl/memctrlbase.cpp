@@ -187,7 +187,8 @@ AddressMapEntry* MemCtrlBase::add_mem_region(uint32_t start_addr, uint32_t size,
         return nullptr;
 
     if (!reg_content) {
-        reg_content = new uint8_t[size](); // allocate and clear to zero
+        // allocate 64-bits aligned in host memory.
+        reg_content = (uint8_t*)(new uint64_t[(size + 7) / 8]()); // allocate and clear to zero
         this->mem_regions.push_back(reg_content);
     }
 
