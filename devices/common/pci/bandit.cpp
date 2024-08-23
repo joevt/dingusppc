@@ -67,26 +67,46 @@ BanditPciDevice::BanditPciDevice(int bridge_num, std::string name, int dev_id, i
     this->rd_hold_off_cnt = 8;
 }
 
+const char * bandit_reg_name(uint32_t reg_offs)
+{
+    switch (reg_offs) {
+        case BANDIT_ADDR_MASK         : return "BANDIT_ADDR_MASK";
+        case BANDIT_MODE_SELECT       : return "BANDIT_MODE_SELECT";
+        case BANDIT_ARBUS_RD_HOLD_OFF : return "BANDIT_ARBUS_RD_HOLD_OFF";
+        case BANDIT_DELAYED_AACK      : return "BANDIT_DELAYED_AACK";
+        default                       : return "unknown";
+    }
+}
+
 uint32_t BanditPciDevice::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
 {
     if (reg_offs < 64) {
         return PCIDevice::pci_cfg_read(reg_offs, details);
     }
 
+    uint32_t value;
+
     switch (reg_offs) {
     case BANDIT_ADDR_MASK:
-        return this->addr_mask;
+        value = this->addr_mask;
+        break;
     case BANDIT_MODE_SELECT:
-        return this->mode_ctrl;
+        value = this->mode_ctrl;
+        break;
     case BANDIT_ARBUS_RD_HOLD_OFF:
-        return this->rd_hold_off_cnt;
+        value = this->rd_hold_off_cnt;
+        break;
     case BANDIT_DELAYED_AACK: // BANDIT_ONS
-        return 0;
+        value = 0;
+        break;
     default:
         LOG_READ_UNIMPLEMENTED_CONFIG_REGISTER();
         dump_backtrace();
+        return 0;
     }
-    return 0;
+
+    LOG_READ_NAMED_CONFIG_REGISTER(bandit_reg_name(reg_offs));
+    return value;
 }
 
 void BanditPciDevice::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details)
@@ -98,22 +118,26 @@ void BanditPciDevice::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDet
 
     switch (reg_offs) {
     case BANDIT_ADDR_MASK:
+        LOG_WRITE_NAMED_CONFIG_REGISTER(bandit_reg_name(reg_offs));
         this->addr_mask = value;
         this->verbose_address_space();
         return;
     case BANDIT_MODE_SELECT:
         this->mode_ctrl = value;
-        return;
+        break;
     case BANDIT_ARBUS_RD_HOLD_OFF:
         this->rd_hold_off_cnt = value & 0x1F;
-        return;
+        break;
     case BANDIT_DELAYED_AACK:
         // implement this for CATALYST and Platinum
-        return;
+        break;
     default:
         LOG_WRITE_UNIMPLEMENTED_CONFIG_REGISTER();
         dump_backtrace();
+        return;
     }
+
+    LOG_WRITE_NAMED_CONFIG_REGISTER(bandit_reg_name(reg_offs));
 }
 
 void BanditPciDevice::verbose_address_space()
