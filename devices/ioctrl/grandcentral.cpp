@@ -657,7 +657,7 @@ void GrandCentral::signal_cpu_int(uint32_t irq_id) {
         if (!this->cpu_int_latch) {
             this->cpu_int_latch = true;
             ppc_assert_int();
-            LOG_F(5, "%s: CPU INT asserted, source: %d", this->name.c_str(), irq_id);
+            LOG_F(5, "%s: CPU INT asserted, source: 0x%08x", this->name.c_str(), irq_id);
         } else {
             LOG_F(5, "%s: CPU INT already latched", this->name.c_str());
         }
