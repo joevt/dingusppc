@@ -188,8 +188,9 @@ AddressMapEntry* MemCtrlBase::add_mem_region(uint32_t start_addr, uint32_t size,
         return nullptr;
 
     if (!mem_ptr) {
-        mem_ptr = new uint8_t[size](); // allocate and clear to zero
-        this->mem_regions.push_back(mem_ptr);
+        mem_ptr = (uint8_t*)(new uint64_t[(size + 7) / 8]()); // allocate and clear to zero
+        if (((size_t)mem_ptr & 7) != 0)
+            ABORT_F("not aligned!");
     }
 
     entry = new AddressMapEntry;
