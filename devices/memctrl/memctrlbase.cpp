@@ -396,6 +396,10 @@ AddressMapEntry* MemCtrlBase::remove_region(AddressMapEntry* entry)
 }
 
 
+bool MemCtrlBase::needs_swap_endian(bool is_mmio) {
+    return false;
+}
+
 AddressMapEntry* MemCtrlBase::find_rom_region()
 {
     for (auto& entry : address_map) {
