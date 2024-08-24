@@ -651,6 +651,14 @@ bool ATIRage::pci_io_read(uint32_t offset, uint32_t size, uint32_t* res) {
     }
 
     *res = BYTESWAP_SIZED(this->read_reg(offset - this->aperture_base[1], size), size);
+#if 0
+    if ((offset - this->aperture_base[1]) < (ATI_GP_IO * 4) ||
+        (offset - this->aperture_base[1]) > (ATI_GP_IO * 4) + 4) {
+        LOG_F(INFO, "ATIRage Read: offset=%x, value=%x, size=%x",
+            offset - this->aperture_base[1], *res, size
+        );
+    }
+#endif
     return true;
 }
 
@@ -659,6 +667,14 @@ bool ATIRage::pci_io_write(uint32_t offset, uint32_t value, uint32_t size) {
         return false;
     }
 
+#if 0
+    if ((offset - this->aperture_base[1]) < (ATI_GP_IO * 4) ||
+        (offset - this->aperture_base[1]) > (ATI_GP_IO * 4) + 4) {
+        LOG_F(INFO, "ATIRage Write: offset=%x, value=%x, size=%x",
+            offset - this->aperture_base[1], BYTESWAP_SIZED(value, size), size
+        );
+    }
+#endif
     this->write_reg(offset - this->aperture_base[1], BYTESWAP_SIZED(value, size), size);
     return true;
 }
@@ -674,12 +690,26 @@ uint32_t ATIRage::read(uint32_t rgn_start, uint32_t offset, int size)
         }
         //if (!bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_APER_REG_DIS)) {
             if (offset >= MM_REGS_0_OFF) { // memory-mapped registers, block 0
-                return BYTESWAP_SIZED(this->read_reg(offset & 0x3FF, size), size);
+                uint32_t value = BYTESWAP_SIZED(this->read_reg(offset & 0x3FF, size), size);
+#if 0
+                if ((offset & 0x3ff) < (ATI_GP_IO * 4) || (offset & 0x3ff) > (ATI_GP_IO * 4) + 4) {
+                    LOG_F(INFO, "ATIRage Read: offset=%x, value=%x, size=%x", offset & 0x3FF, value, size);
+                }
+#endif
+                return value;
             }
             if (offset >= MM_REGS_1_OFF
                 //&& bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_EXT_REG_EN)
             ) { // memory-mapped registers, block 1
-                return BYTESWAP_SIZED(this->read_reg((offset & 0x3FF) + 0x400, size), size);
+                uint32_t value = BYTESWAP_SIZED(this->read_reg((offset & 0x3FF) + 0x400, size), size);
+#if 0
+                if (((offset & 0x3ff) + 0x400) < (ATI_GP_IO * 4) || ((offset & 0x3ff) + 0x400) > (ATI_GP_IO * 4) + 4) {
+                    LOG_F(INFO, "ATIRage Read: offset=%x, value=%x, size=%x",
+                        (offset & 0x3FF) + 0x400, value, size
+                    );
+                }
+#endif
+                return value;
             }
         //}
         LOG_F(WARNING, "%s: read  unmapped aperture[0] region %08x.%c",
@@ -727,11 +757,26 @@ void ATIRage::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int siz
         }
         //if (!bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_APER_REG_DIS)) {
             if (offset >= MM_REGS_0_OFF) { // memory-mapped registers, block 0
+#if 0
+                if ((offset & 0x3ff) < (ATI_GP_IO * 4) || (offset & 0x3ff) > (ATI_GP_IO * 4) + 4) {
+                    LOG_F(INFO, "ATIRage Write: offset=%x, value=%x, size=%x",
+                        offset & 0x3FF, BYTESWAP_SIZED(value, size), size
+                    );
+                }
+#endif
                 return this->write_reg(offset & 0x3FF, BYTESWAP_SIZED(value, size), size);
             }
             if (offset >= MM_REGS_1_OFF
                 //&& bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_EXT_REG_EN)
             ) { // memory-mapped registers, block 1
+#if 0
+                if (((offset & 0x3ff) + 0x400) < (ATI_GP_IO * 4) ||
+                    ((offset & 0x3ff) + 0x400) > (ATI_GP_IO * 4) + 4) {
+                    LOG_F(INFO, "ATIRage Write: offset=%x, value=%x, size=%x",
+                        (offset & 0x3FF) + 0x400, BYTESWAP_SIZED(value, size), size
+                    );
+                }
+#endif
                 return this->write_reg((offset & 0x3FF) + 0x400,
                                         BYTESWAP_SIZED(value, size), size);
             }
@@ -957,6 +1002,14 @@ void ATIRage::crtc_update() {
     LOG_F(INFO, "VPLL frequency: %f MHz", vpll_freq * 1e-6);
     LOG_F(INFO, "Pixel (dot) clock: %f MHz", this->pixel_clock * 1e-6);
     LOG_F(INFO, "Refresh rate: %f Hz", this->refresh_rate);
+    LOG_F(INFO, "Framebuffer offset: %x",
+        extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH],
+        ATI_CRTC_OFFSET, ATI_CRTC_OFFSET_size) * 8
+    );
+    LOG_F(INFO, "Framebuffer pitch: %x (%x)",
+        extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH],
+        ATI_CRTC_PITCH, ATI_CRTC_PITCH_size), fb_pitch
+    );
 
     this->stop_refresh_task();
     this->start_refresh_task();
