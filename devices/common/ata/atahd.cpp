@@ -86,6 +86,9 @@ void AtaHardDisk::insert_image(std::string filename) {
 }
 
 int AtaHardDisk::perform_command() {
+
+    //LOG_F(INFO, "%s: running ATA command 0x%X", this->name.c_str(), this->r_command);
+
     this->r_status |= BSY;
     this->r_error = 0;
 
