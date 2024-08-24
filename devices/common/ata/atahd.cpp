@@ -32,6 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cstring>
 #include <fstream>
 #include <string>
+#include <core/timermanager.h>
 
 namespace loguru {
     enum : Verbosity {
@@ -141,7 +142,14 @@ int AtaHardDisk::perform_command() {
                 this->host_obj->assert_dmareq(500);
             } else {
                 // PIO commands generate IRQ for each sector or multiple block.
-                this->signal_data_ready();
+                if (this->signal_ready_timer.active)
+                    LOG_F(ERROR, "%s: signal_ready_timer is already active", this->name.c_str());
+                TimerManager::get_instance()->add_oneshot_timer(this->signal_ready_timer,
+                    USECS_TO_NSECS(100), [this](uint64_t, uint64_t) {
+                        this->signal_ready_timer.active = false;
+                        this->signal_data_ready();
+                    }
+                );
             }
         }
         break;
