@@ -71,6 +71,9 @@ public:
     virtual void convert_frame_32bpp_BE(uint8_t *dst_buf, int dst_pitch);
 
 protected:
+    virtual bool framebuffer_in_main_memory(void) {
+        return false;
+    }
     // CRT controller parameters
     bool        crtc_on = false;
     bool        blank_on = true;
