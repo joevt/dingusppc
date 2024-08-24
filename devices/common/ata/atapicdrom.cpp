@@ -68,7 +68,21 @@ int AtapiCdrom::device_postinit() {
 }
 
 void AtapiCdrom::perform_packet_command() {
-    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: perform_packet_command 0x%X", this->name.c_str(), this->cmd_pkt[0]);
+    VLOG_SCOPE_F(loguru::Verbosity_INFO, "%s: perform_packet_command %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+        this->name.c_str(),
+        this->cmd_pkt[0],
+        this->cmd_pkt[1],
+        this->cmd_pkt[2],
+        this->cmd_pkt[3],
+        this->cmd_pkt[4],
+        this->cmd_pkt[5],
+        this->cmd_pkt[6],
+        this->cmd_pkt[7],
+        this->cmd_pkt[8],
+        this->cmd_pkt[9],
+        this->cmd_pkt[10],
+        this->cmd_pkt[11]
+    );
 
     uint32_t lba, xfer_len;
 
