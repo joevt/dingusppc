@@ -29,6 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 #include <cstring>
+#include <core/timermanager.h>
 #include <debugger/backtrace.h>
 
 using namespace ata_interface;
