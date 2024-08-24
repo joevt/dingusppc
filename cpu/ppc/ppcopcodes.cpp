@@ -833,6 +833,9 @@ void dppc_interpreter::ppc_mtmsr(uint32_t opcode) {
     uint32_t reg_s = (opcode >> 21) & 0x1F;
     uint32_t old_msr_val = ppc_state.msr;
     uint32_t new_msr_val = ppc_state.gpr[reg_s];
+    if (!is_601) {
+        ppc_change_endian((new_msr_val & MSR::LE) != 0);
+    }
     ppc_msr_did_change(old_msr_val, new_msr_val);
 
 #ifdef DBG_MMU_MODE_CHANGE
@@ -1170,6 +1173,12 @@ void dppc_interpreter::ppc_mtspr(uint32_t opcode) {
     case 543:
         ppc_state.spr[ref_spr] = val;
         dbat_update(ref_spr);
+        break;
+    case SPR::HID0:
+        ppc_state.spr[ref_spr] = val;
+        if (is_601) {
+            ppc_change_endian((val & 0x10000000) != 0);
+        }
         break;
     default:
         // FIXME: Unknown SPR should be noop or illegal instruction.
@@ -1531,7 +1540,9 @@ void dppc_interpreter::ppc_rfi(uint32_t opcode) {
                               (msr_bits_to_replace & ~msr_bits_to_clear);
     uint32_t new_msr_val    = (ppc_state.msr & ~(msr_bits_to_replace | msr_bits_to_clear)) |
                                bits_from_srr1;
-
+    if (!is_601) {
+        ppc_change_endian((new_msr_val & MSR::LE) != 0);
+    }
     ppc_msr_did_change(ppc_state.msr, new_msr_val);
 
 #ifdef DBG_MMU_MODE_CHANGE
