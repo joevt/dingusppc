@@ -32,6 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cstring>
 #include <fstream>
 #include <string>
+#include <core/timermanager.h>
 
 namespace loguru {
     enum : Verbosity {
@@ -129,7 +130,8 @@ int AtaHardDisk::perform_command() {
             this->data_ptr = (uint16_t *)this->buffer;
             // those commands should generate IRQ for each sector
             this->prepare_xfer(xfer_size, ints_size);
-            this->signal_data_ready();
+            TimerManager::get_instance()->add_oneshot_timer(
+                USECS_TO_NSECS(100), [this]() { this->signal_data_ready(); });
         }
         break;
     case WRITE_MULTIPLE:
