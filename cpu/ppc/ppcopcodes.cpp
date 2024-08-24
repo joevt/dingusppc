@@ -836,6 +836,9 @@ void dppc_interpreter::ppc_mtmsr(uint32_t opcode) {
     }
     uint32_t reg_s = (opcode >> 21) & 0x1F;
     ppc_state.msr = ppc_state.gpr[reg_s];
+    if (!is_601) {
+        ppc_change_endian((ppc_state.msr & MSR::LE) != 0);
+    }
 
 #ifdef DBG_MMU_MODE_CHANGE
     uint8_t cur_mode = CurITLBMode;
@@ -1142,6 +1145,11 @@ void dppc_interpreter::ppc_mtspr(uint32_t opcode) {
     case 543:
         ppc_state.spr[ref_spr] = val;
         dbat_update(ref_spr);
+    case SPR::HID0:
+        ppc_state.spr[ref_spr] = val;
+        if (is_601)
+            ppc_change_endian((val & 0x10000000) != 0);
+        break;
     default:
         // FIXME: Unknown SPR should be noop or illegal instruction.
         ppc_state.spr[ref_spr] = val;
@@ -1492,6 +1500,9 @@ void dppc_interpreter::ppc_rfi(uint32_t opcode) {
     uint32_t new_srr1_val   = (ppc_state.spr[SPR::SRR1] & 0x87C0FF73UL);
     uint32_t new_msr_val    = (ppc_state.msr & ~0x87C0FF73UL);
     ppc_state.msr           = (new_msr_val | new_srr1_val) & 0xFFFBFFFFUL;
+    if (!is_601) {
+        ppc_change_endian((ppc_state.msr & MSR::LE) != 0);
+    }
 
 #ifdef DBG_MMU_MODE_CHANGE
     uint8_t cur_mode = CurITLBMode;
