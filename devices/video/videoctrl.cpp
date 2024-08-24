@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/timermanager.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/video/videoctrl.h>
+#include <devices/memctrl/memctrlbase.h>
 #include <memaccess.h>
 
 #include <cinttypes>
@@ -307,6 +308,11 @@ void VideoCtrlBase::convert_frame_8bpp(uint8_t *dst_buf, int dst_pitch)
     }
 }
 
+static bool needs_swap_endian(bool in_main_mem) {
+    extern MemCtrlBase* mem_ctrl_instance;
+    return mem_ctrl_instance->needs_swap_endian(!in_main_mem);
+}
+
 // RGB555
 void VideoCtrlBase::convert_frame_15bpp(uint8_t *dst_buf, int dst_pitch)
 {
@@ -318,9 +324,10 @@ void VideoCtrlBase::convert_frame_15bpp(uint8_t *dst_buf, int dst_pitch)
 
     src_row = this->fb_ptr;
     dst_row = dst_buf;
+    bool swap = needs_swap_endian(framebuffer_in_main_memory());
     for (int h = this->active_height; h > 0; h--) {
         for (int x = this->active_width; x > 0; x--) {
-            uint32_t c = *((uint16_t*)(src_row));
+            uint32_t c = swap ? READ_WORD_BE_A(src_row) : READ_WORD_LE_A(src_row);
             uint32_t r = ((c << 9) & 0x00F80000) | ((c << 4) & 0x00070000);
             uint32_t g = ((c << 6) & 0x0000F800) | ((c << 1) & 0x00000700);
             uint32_t b = ((c << 3) & 0x000000F8) | ((c >> 2) & 0x00000007);
@@ -344,9 +351,10 @@ void VideoCtrlBase::convert_frame_15bpp_BE(uint8_t *dst_buf, int dst_pitch)
 
     src_row = this->fb_ptr;
     dst_row = dst_buf;
+    bool swap = needs_swap_endian(framebuffer_in_main_memory());
     for (int h = this->active_height; h > 0; h--) {
         for (int x = this->active_width; x > 0; x--) {
-            uint32_t c = READ_WORD_BE_A(src_row);
+            uint32_t c = swap ? READ_WORD_LE_A(src_row) : READ_WORD_BE_A(src_row);
             uint32_t r = ((c << 9) & 0x00F80000) | ((c << 4) & 0x00070000);
             uint32_t g = ((c << 6) & 0x0000F800) | ((c << 1) & 0x00000700);
             uint32_t b = ((c << 3) & 0x000000F8) | ((c >> 2) & 0x00000007);
@@ -370,9 +378,10 @@ void VideoCtrlBase::convert_frame_16bpp(uint8_t *dst_buf, int dst_pitch)
 
     src_row = this->fb_ptr;
     dst_row = dst_buf;
+    bool swap = needs_swap_endian(framebuffer_in_main_memory());
     for (int h = this->active_height; h > 0; h--) {
         for (int x = this->active_width; x > 0; x--) {
-            uint32_t c = *((uint16_t*)(src_row));
+            uint32_t c = swap ? READ_WORD_BE_A(src_row) : READ_WORD_LE_A(src_row);
             uint32_t r = ((c << 8) & 0x00F80000) | ((c << 3) & 0x00070000);
             uint32_t g = ((c << 5) & 0x0000FC00) | ((c >> 1) & 0x00000300);
             uint32_t b = ((c << 3) & 0x000000F8) | ((c >> 2) & 0x00000007);
@@ -419,9 +428,10 @@ void VideoCtrlBase::convert_frame_32bpp(uint8_t *dst_buf, int dst_pitch)
 
     src_row = (uint32_t*)this->fb_ptr;
     dst_row = (uint32_t*)dst_buf;
+    bool swap = needs_swap_endian(framebuffer_in_main_memory());
     for (int h = this->active_height; h > 0; h--) {
         for (int x = this->active_width; x > 0; x--) {
-            uint32_t c = READ_DWORD_LE_A(src_row);
+            uint32_t c = swap ? READ_DWORD_BE_A(src_row) : READ_DWORD_LE_A(src_row);
             WRITE_DWORD_LE_A(dst_row, c);
             src_row++;
             dst_row++;
@@ -442,9 +452,10 @@ void VideoCtrlBase::convert_frame_32bpp_BE(uint8_t *dst_buf, int dst_pitch)
 
     src_row = (uint32_t*)this->fb_ptr;
     dst_row = (uint32_t*)dst_buf;
+    bool swap = needs_swap_endian(framebuffer_in_main_memory());
     for (int h = this->active_height; h > 0; h--) {
         for (int x = this->active_width; x > 0; x--) {
-            uint32_t c = READ_DWORD_BE_A(src_row);
+            uint32_t c = swap ? READ_DWORD_LE_A(src_row) : READ_DWORD_BE_A(src_row);
             WRITE_DWORD_LE_A(dst_row, c);
             src_row++;
             dst_row++;
