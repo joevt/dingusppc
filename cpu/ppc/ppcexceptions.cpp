@@ -122,7 +122,10 @@ void ppc_exception_handler(Except_Type exception_type, uint32_t srr1_bits) {
     uint32_t old_msr_val = ppc_state.msr;
     ppc_state.msr &= 0xFFFB1041;
     /* copy MSR[ILE] to MSR[LE] */
-    ppc_state.msr = (ppc_state.msr & ~MSR::LE) | !!(ppc_state.msr & MSR::ILE);
+    if (!is_601) {
+        ppc_state.msr = (ppc_state.msr & ~MSR::LE) | !!(ppc_state.msr & MSR::ILE);
+        ppc_change_endian((ppc_state.msr & MSR::LE) != 0);
+    }
     // Don't clobber the ppc_next_instruction_address value
     ppc_msr_did_change(old_msr_val, false);
 
@@ -149,6 +152,10 @@ void ppc_exception_handler(Except_Type exception_type, uint32_t srr1_bits) {
 #endif
 
     if (exception_type != Except_Type::EXC_EXT_INT && exception_type != Except_Type::EXC_DECR) {
+        if (!power_on && power_off_reason == po_endian_switch) {
+            [[unlikely]]
+            power_on = true;
+        }
         longjmp(exc_env, 2); /* return to the main execution loop. */
     }
 }
