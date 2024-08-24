@@ -54,12 +54,17 @@ uint16_t AtapiBaseDevice::read(const uint8_t reg_addr) {
             uint16_t ret_data = get_data();
             this->xfer_cnt -= 2;
             if (this->xfer_cnt <= 0) {
+                #if 0
+                    LOG_F(INFO, "%s: Read completed (%d, %d, %d)", this->name.c_str(),
+                        this->xfer_cnt, r_int_reason & ATAPI_Int_Reason::IO, r_int_reason & ATAPI_Int_Reason::CoD);
+                #endif
                 this->r_status &= ~DRQ;
 
                 if ((this->r_int_reason & ATAPI_Int_Reason::IO) &&
                     !(this->r_int_reason & ATAPI_Int_Reason::CoD)
                 ) {
                     if (this->data_available()) {
+                        //LOG_F(INFO, "%s: [data available interrupt]", name.c_str());
                         this->r_status &= ~DRQ;
                         this->r_status |= BSY;
                         this->update_intrq(1); // Is this going to work here? The interrupt happens before returning ret_data.
