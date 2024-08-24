@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -79,6 +79,13 @@ public:
     void convert_frame_32bpp(uint8_t *dst_buf, int dst_pitch);
 
 protected:
+#if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
+    virtual bool framebuffer_in_main_memory(void) {
+        return false;
+    }
+    virtual bool needs_swap_endian();
+#endif
+
     // CRT controller parameters
     bool        crtc_on = false;
     bool        blank_on = true;
