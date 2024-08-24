@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -69,6 +69,11 @@ public:
     }
 
 protected:
+#if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
+    bool framebuffer_in_main_memory(void) override {
+        return true;
+    }
+#endif
     void    set_depth_internal(int width);
     void    enable_video_internal();
     void    disable_video_internal();
