@@ -352,7 +352,9 @@ extern uint32_t ppc_cur_instruction;
 extern uint32_t ppc_next_instruction_address;
 
 inline void ppc_set_cur_instruction(const uint8_t* ptr) {
-    ppc_cur_instruction = READ_DWORD_BE_A(ptr);
+    extern MemCtrlBase* mem_ctrl_instance;
+    bool needs_swap = mem_ctrl_instance->needs_swap_endian(false);
+    ppc_cur_instruction = needs_swap ? READ_DWORD_LE_A(ptr) : READ_DWORD_BE_A(ptr);
 }
 
 // Profiling Stats
