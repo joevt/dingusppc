@@ -180,6 +180,10 @@ public:
         return std::unique_ptr<MPC106>(new MPC106("GrackleYosemite"));
     }
 
+    static std::unique_ptr<HWComponent> create_Bondi() {
+        return std::unique_ptr<MPC106>(new MPC106("GrackleBondi"));
+    }
+
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
     void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
