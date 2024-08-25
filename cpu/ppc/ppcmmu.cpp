@@ -1003,8 +1003,16 @@ static void tlb_flush_secondary_entry(std::array<TLBEntry, TLB_SIZE*TLB2_WAYS> &
     }
 }
 
+template <const TLBType tlb_type>
+void tlb_flush_entries(TLBFlags type);
+
 void tlb_flush_entry(uint32_t ea)
 {
+#if 1
+    // bugbug: flush all tlbs
+    tlb_flush_entries<TLBType::ITLB>((TLBFlags)0xffffffff);
+    tlb_flush_entries<TLBType::DTLB>((TLBFlags)0xffffffff);
+#else
     const uint32_t tag = ea & TLB_VPS_MASK;
     tlb_flush_primary_entry(itlb1_mode1, tag);
     tlb_flush_secondary_entry(itlb2_mode1, tag);
@@ -1018,6 +1026,7 @@ void tlb_flush_entry(uint32_t ea)
     tlb_flush_secondary_entry(dtlb2_mode2, tag);
     tlb_flush_primary_entry(dtlb1_mode3, tag);
     tlb_flush_secondary_entry(dtlb2_mode3, tag);
+#endif
 }
 
 template <std::size_t N>
