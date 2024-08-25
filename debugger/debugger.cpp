@@ -559,8 +559,13 @@ static void fdd(string params) {
 // 2 = named && !offset
 
 static uint32_t disasm(PPCDisasmContext &ctx) {
+    bool needs_swap = false;
+    if (mem_ctrl_instance != nullptr)
+        needs_swap = mem_ctrl_instance->needs_swap_endian(false);
+
     uint32_t phys_addr;
-    ctx.instr_code = READ_DWORD_BE_A(mmu_translate_imem(ctx.instr_addr, &phys_addr));
+    uint8_t* real_addr = mmu_translate_imem(ctx.instr_addr, &phys_addr);
+    ctx.instr_code = needs_swap ? READ_DWORD_LE_A(real_addr) : READ_DWORD_BE_A(real_addr);
 
     int offset;
     binary_kind_t kind;
