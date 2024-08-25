@@ -325,6 +325,7 @@ static void ppc_exec_inner()
     uint32_t page_start, eb_start, eb_end;
     uint32_t opcode;
     uint8_t* pc_real;
+    bool msr_le;
 
     max_cycles = 0;
 
@@ -342,6 +343,7 @@ static void ppc_exec_inner()
         // interpret execution block
         while (power_on && ppc_state.pc < eb_end) {
             ppc_main_opcode(opcode);
+            msr_le = (ppc_state.msr & MSR::LE) != 0;
             if (g_icycles++ >= max_cycles || exec_timer) {
                 max_cycles = process_events();
             }
@@ -351,6 +353,8 @@ static void ppc_exec_inner()
                 eb_start = ppc_next_instruction_address;
                 if (!(exec_flags & EXEF_RFI) && (eb_start & PPC_PAGE_MASK) == page_start) {
                     pc_real += (int)eb_start - (int)ppc_state.pc;
+                    if (msr_le)
+                        pc_real = mmu_translate_imem(eb_start ATPCP); // &pcp
 #ifdef LOG_INSTRUCTIONS
                     pcp += (int)eb_start - (int)ppc_state.pc;
 #endif
@@ -366,6 +370,8 @@ static void ppc_exec_inner()
             } else {
                 ppc_state.pc += 4;
                 pc_real += 4;
+                if (msr_le)
+                    pc_real = mmu_translate_imem(ppc_state.pc ATPCP); // &pcp
 #ifdef LOG_INSTRUCTIONS
                 pcp += 4;
 #endif
@@ -436,6 +442,7 @@ static void ppc_exec_until_inner(const uint32_t goal_addr)
     uint32_t page_start, eb_start, eb_end;
     uint8_t* pc_real;
     uint32_t opcode;
+    bool msr_le;
 
     max_cycles = 0;
 
@@ -536,6 +543,7 @@ static void ppc_exec_until_inner(const uint32_t goal_addr)
 #endif
 
             ppc_main_opcode(opcode);
+            msr_le = (ppc_state.msr & MSR::LE) != 0;
             if (g_icycles++ >= max_cycles || exec_timer) {
                 max_cycles = process_events();
             }
@@ -545,6 +553,8 @@ static void ppc_exec_until_inner(const uint32_t goal_addr)
                 eb_start = ppc_next_instruction_address;
                 if (!(exec_flags & EXEF_RFI) && (eb_start & PPC_PAGE_MASK) == page_start) {
                     pc_real += (int)eb_start - (int)ppc_state.pc;
+                    if (msr_le)
+                        pc_real = mmu_translate_imem(eb_start ATPCP); // &pcp
 #ifdef LOG_INSTRUCTIONS
                     pcp += (int)eb_start - (int)ppc_state.pc;
 #endif
@@ -560,6 +570,8 @@ static void ppc_exec_until_inner(const uint32_t goal_addr)
             } else {
                 ppc_state.pc += 4;
                 pc_real += 4;
+                if (msr_le)
+                    pc_real = mmu_translate_imem(ppc_state.pc ATPCP); // &pcp
 #ifdef LOG_INSTRUCTIONS
                 pcp += 4;
 #endif
@@ -595,6 +607,7 @@ static void ppc_exec_dbg_inner(const uint32_t start_addr, const uint32_t size)
     uint32_t page_start, eb_start, eb_end;
     uint8_t* pc_real;
     uint32_t opcode;
+    bool msr_le;
 
     max_cycles = 0;
 
@@ -613,6 +626,7 @@ static void ppc_exec_dbg_inner(const uint32_t start_addr, const uint32_t size)
         while (power_on && (ppc_state.pc < start_addr || ppc_state.pc >= start_addr + size)
                 && (ppc_state.pc < eb_end)) {
             ppc_main_opcode(opcode);
+            msr_le = (ppc_state.msr & MSR::LE) != 0;
             if (g_icycles++ >= max_cycles || exec_timer) {
                 max_cycles = process_events();
             }
@@ -622,6 +636,8 @@ static void ppc_exec_dbg_inner(const uint32_t start_addr, const uint32_t size)
                 eb_start = ppc_next_instruction_address;
                 if (!(exec_flags & EXEF_RFI) && (eb_start & PPC_PAGE_MASK) == page_start) {
                     pc_real += (int)eb_start - (int)ppc_state.pc;
+                    if (msr_le)
+                        pc_real = mmu_translate_imem(eb_start ATPCP); // &pcp
 #ifdef LOG_INSTRUCTIONS
                     pcp += (int)eb_start - (int)ppc_state.pc;
 #endif
@@ -637,6 +653,8 @@ static void ppc_exec_dbg_inner(const uint32_t start_addr, const uint32_t size)
             } else {
                 ppc_state.pc += 4;
                 pc_real += 4;
+                if (msr_le)
+                    pc_real = mmu_translate_imem(ppc_state.pc ATPCP); // &pcp
 #ifdef LOG_INSTRUCTIONS
                 pcp += 4;
 #endif
