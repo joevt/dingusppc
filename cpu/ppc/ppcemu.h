@@ -355,7 +355,9 @@ extern bool is_deterministic;
 extern uint32_t ppc_next_instruction_address;
 
 inline uint32_t ppc_read_instruction(const uint8_t* ptr) {
-    return READ_DWORD_BE_A(ptr);
+    extern MemCtrlBase* mem_ctrl_instance;
+    bool needs_swap = mem_ctrl_instance->needs_swap_endian(false);
+    return needs_swap ? READ_DWORD_LE_A(ptr) : READ_DWORD_BE_A(ptr);
 }
 
 // Profiling Stats
