@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -419,7 +419,7 @@ void opc_twi(PPCDisasmContext* ctx) {
     add_reg_in(ctx, "r%d", ra);
 }
 
-void opc_group4(PPCDisasmContext* ctx) {
+void opc_group4(PPCDisasmContext* /*ctx*/) {
     printf("Altivec group 4 not supported yet\n");
 }
 
