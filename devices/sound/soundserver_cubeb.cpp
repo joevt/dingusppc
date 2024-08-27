@@ -115,8 +115,8 @@ void SoundServer::shutdown()
     LOG_F(INFO, "Sound Server shut down.");
 }
 
-static long sound_out_callback(cubeb_stream* stream, void* user_data,
-                        void const *input_buffer, void *output_buffer,
+static long sound_out_callback(cubeb_stream* /*stream*/, void* user_data,
+                        void const */*input_buffer*/, void *output_buffer,
                         long req_frames)
 {
     uint8_t *p_in;
@@ -160,7 +160,7 @@ static long sound_out_callback(cubeb_stream* stream, void* user_data,
     return out_frames;
 }
 
-static void status_callback(cubeb_stream *stream, void *user_data, cubeb_state state)
+static void status_callback(cubeb_stream */*stream*/, void */*user_data*/, cubeb_state state)
 {
     LOG_F(9, "Cubeb status callback fired, status = %d", state);
 }
