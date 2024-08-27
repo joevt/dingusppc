@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -75,7 +75,8 @@ uint32_t AspenCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
         reg_val = this->gpio_enable << 24;
         break;
     default:
-        LOG_F(WARNING, "%s: reading from register at 0x%X", this->name.c_str(), offset);
+        LOG_F(WARNING, "%s: read  @%02x.%c", this->name.c_str(),
+            offset, SIZE_ARG(size));
         reg_val = 0;
     }
 
@@ -102,8 +103,8 @@ void AspenCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int s
         LOG_F(INFO, "%s: output 0x%X to GPIO pins", this->name.c_str(), value >> 24);
         break;
     default:
-        LOG_F(WARNING, "%s: unknown register write at offset 0x%X", this->name.c_str(),
-              offset);
+        LOG_F(WARNING, "%s: write @%02x.%c", this->name.c_str(),
+              offset, SIZE_ARG(size));
     }
 }
 

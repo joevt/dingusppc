@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -97,7 +97,8 @@ uint32_t TaosVideo::read(uint32_t rgn_start, uint32_t offset, int size) {
     case TAOS_VERSION:
         return TAOS_CHIP_VERSION;
     default:
-        LOG_F(WARNING, "%s: reading register at 0x%X", this->name.c_str(), offset);
+        LOG_F(WARNING, "%s: read  @%02x.%c", this->name.c_str(),
+            offset, SIZE_ARG(size));
     }
 
     return 0;
@@ -172,7 +173,8 @@ void TaosVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int s
         }
         break;
     default:
-        LOG_F(WARNING, "%s: register at 0x%X set to 0x%X", this->name.c_str(), offset, value);
+        LOG_F(WARNING, "%s: write @%02x.%c = %0*x", this->name.c_str(),
+            offset, SIZE_ARG(size), size * 2, value);
     }
 }
 
