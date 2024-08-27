@@ -89,11 +89,11 @@ public:
     }
 
     /* I/O space access methods */
-    virtual bool pci_io_read(uint32_t offset, uint32_t size, uint32_t* res) {
+    virtual bool pci_io_read(uint32_t /*offset*/, uint32_t /*size*/, uint32_t* /*res*/) {
         return false;
     }
 
-    virtual bool pci_io_write(uint32_t offset, uint32_t value, uint32_t size) {
+    virtual bool pci_io_write(uint32_t /*offset*/, uint32_t /*value*/, uint32_t /*size*/) {
         return false;
     }
 
@@ -136,8 +136,8 @@ public:
     virtual void pci_interrupt(uint8_t irq_line_state);
 
     // MMIODevice methods
-    virtual uint32_t read(uint32_t rgn_start, uint32_t offset, int size) { return 0; }
-    virtual void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) { }
+    virtual uint32_t read(uint32_t /*rgn_start*/, uint32_t /*offset*/, int /*size*/) { return 0; }
+    virtual void write(uint32_t /*rgn_start*/, uint32_t /*offset*/, uint32_t /*value*/, int /*size*/) { }
 
 protected:
     void set_bar_value(int bar_num, uint32_t value);
