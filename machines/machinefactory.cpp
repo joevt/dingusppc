@@ -228,7 +228,7 @@ void MachineFactory::list_device_settings(DeviceDescription& dev, PropScope scop
     print_settings(dev.properties, scope, indent, path);
 }
 
-void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope, int indent, string path)
+void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope, int /*indent*/, string path)
 {
     string help;
 
