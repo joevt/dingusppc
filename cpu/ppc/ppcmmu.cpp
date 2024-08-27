@@ -1086,7 +1086,7 @@ static void tlb_flush_secondary_entry(std::array<TLBEntry, TLB_SIZE*TLB2_WAYS> &
 template <const TLBType tlb_type>
 void tlb_flush_entries(TLBFlags type);
 
-void tlb_flush_entry(uint32_t ea)
+void tlb_flush_entry(uint32_t /*ea*/)
 {
 #if 1
     // bugbug: flush all tlbs
