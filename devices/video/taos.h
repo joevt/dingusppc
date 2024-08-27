@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -133,7 +133,7 @@ public:
         this->pos = 0; // reset read/write position
     }
 
-    bool send_subaddress(uint8_t sub_addr) {
+    bool send_subaddress(uint8_t /*sub_addr*/) {
         return true;
     }
 
