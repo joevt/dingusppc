@@ -46,7 +46,7 @@ HammerheadCtrl::HammerheadCtrl() : MemCtrlBase()
     this->add_mmio_region(0xF8000000, 0x500, this);
 }
 
-uint32_t HammerheadCtrl::read(uint32_t rgn_start, uint32_t offset, int size)
+uint32_t HammerheadCtrl::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
 {
     uint32_t value;
 
@@ -105,7 +105,7 @@ finish:
     return value << ((size - 1) << 3);
 }
 
-void HammerheadCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
+void HammerheadCtrl::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size)
 {
     // extract byte value from the MSB of a multibyte value
     value = value >> ((size - 1) << 3);

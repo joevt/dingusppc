@@ -113,10 +113,10 @@ public:
     ~DmaDevice() = default;
 
     virtual void connect(DmaChannel *ch_obj) { this->channel_obj = ch_obj; }
-    virtual void notify(DmaChannel *ch_obj, DmaMsg msg) {}
-    virtual int  xfer_from(DmaChannel *ch_obj, uint8_t *buf, int len) { return len; }
-    virtual int  xfer_to(DmaChannel *ch_obj, uint8_t *buf, int len) { return len; }
-    virtual int  tell_xfer_size(DmaChannel *ch_obj) { return 0; }
+    virtual void notify(DmaChannel */*ch_obj*/, DmaMsg /*msg*/) {}
+    virtual int  xfer_from(DmaChannel */*ch_obj*/, uint8_t */*buf*/, int len) { return len; }
+    virtual int  xfer_to(DmaChannel */*ch_obj*/, uint8_t */*buf*/, int len) { return len; }
+    virtual int  tell_xfer_size(DmaChannel */*ch_obj*/) { return 0; }
 
 protected:
     DmaChannel* channel_obj = nullptr;
@@ -137,8 +137,7 @@ public:
     void        set_type(const DmaChannelType type) { this->ch_type = type; }
 
     virtual void connect(DmaDevice *dev_obj) { this->dev_obj = dev_obj; }
-
-    virtual void notify(DmaMsg msg) {}
+    virtual void notify(DmaMsg /*msg*/) {}
     virtual bool dma_is_ready() { return false; }
     virtual void xfer_retry() {}
 
