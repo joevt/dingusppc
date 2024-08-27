@@ -53,11 +53,11 @@ using namespace std;
 extern bool g_auto_grab_mouse;
 extern bool g_swap_command_option;
 
-static void sigint_handler(int signum) {
+static void sigint_handler(int /*signum*/) {
     power_off(po_signal_interrupt);
 }
 
-static void sigabrt_handler(int signum) {
+static void sigabrt_handler(int /*signum*/) {
     LOG_F(INFO, "Shutting down...");
 
     delete gMachineObj.release();
