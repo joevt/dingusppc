@@ -284,8 +284,9 @@ uint8_t ViaCuda::read(int reg) {
         value = (this->_via_ier | 0x80); // bit 7 always reads as "1"
         break;
     default:
+        value = 0;
         LOG_F(ERROR, "Cuda: read  %s = 0x%02x", get_reg_name(reg).c_str(), value);
-        return 0;
+        return value;
     }
 
     LOG_F(CUDAREAD, "Cuda: read  %s = 0x%02x", get_reg_name(reg).c_str(), value);
