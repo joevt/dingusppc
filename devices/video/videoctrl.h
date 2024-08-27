@@ -58,7 +58,7 @@ public:
 
     // HW cursor support
     void setup_hw_cursor(int cursor_width=64, int cur_height=64);
-    virtual void draw_hw_cursor(uint8_t *dst_buf, int dst_pitch) {}
+    virtual void draw_hw_cursor(uint8_t */*dst_buf*/, int /*dst_pitch*/) {}
     virtual void get_cursor_position(int& x, int& y) { x = 0; y = 0; }
 
     // converters for various framebuffer pixel depths

@@ -39,7 +39,7 @@ PCIBridgeBase::PCIBridgeBase(std::string name, PCIHeaderType hdr_type, int num_b
         this->sec_latency_timer = (this->sec_latency_timer & ~this->sec_latency_timer_cfg) |
                                   (val & this->sec_latency_timer_cfg);
     };
-    this->pci_wr_sec_status         = [this](uint16_t val) {};
+    this->pci_wr_sec_status         = [this](uint16_t /*val*/) {};
     this->pci_wr_bridge_control     = [this](uint16_t val) { this->bridge_control = val; };
 }
 
