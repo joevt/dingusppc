@@ -396,7 +396,7 @@ AddressMapEntry* MemCtrlBase::remove_region(AddressMapEntry* entry)
 }
 
 
-bool MemCtrlBase::needs_swap_endian(bool is_mmio) {
+bool MemCtrlBase::needs_swap_endian(bool /*is_mmio*/) {
     return false;
 }
 
