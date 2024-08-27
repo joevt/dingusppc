@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -319,7 +319,7 @@ void Sixty6Video::iodev_write(uint32_t address, uint16_t value)
 
 void Sixty6Video::enable_display()
 {
-    int new_width, new_height, clk_divisor;
+    int new_width, new_height;
 
     // get pixel frequency from Saa7187
     this->pixel_clock = 25000000; // this->saa7187->get_dot_freq();
