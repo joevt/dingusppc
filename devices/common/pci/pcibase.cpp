@@ -69,11 +69,11 @@ PCIBase::PCIBase(std::string name, PCIHeaderType hdr_type, int num_bars)
         CHANGED(0xF800, ERROR  , "Reserved 0x%04x"               , );
         this->command = new_cmd;
     };
-    this->pci_wr_bist       = [](uint8_t  val) {};
+    this->pci_wr_bist       = [](uint8_t  /*val*/) {};
     this->pci_wr_lat_timer  = [this](uint8_t val) { this->lat_timer = val; };
     this->pci_wr_cache_lnsz = [this](uint8_t val) { this->cache_ln_sz = val; };
 
-    this->pci_notify_bar_change = [](int bar_num) {};
+    this->pci_notify_bar_change = [](int /*bar_num*/) {};
 }
 
 uint32_t PCIBase::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
