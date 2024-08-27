@@ -123,7 +123,7 @@ int AMIC::device_postinit()
     return 0;
 }
 
-uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
+uint32_t AMIC::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
 {
     VLOG_SCOPE_F(loguru::Verbosity_9, "AMIC read  %x.%c", offset, SIZE_ARG(size));
 
@@ -272,7 +272,7 @@ uint32_t AMIC::read(uint32_t rgn_start, uint32_t offset, int size)
     return 0;
 }
 
-void AMIC::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
+void AMIC::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size)
 {
     VLOG_SCOPE_F(loguru::Verbosity_9, "AMIC write %x.%c = %0*x", offset, SIZE_ARG(size), size * 2, value);
 
@@ -536,7 +536,7 @@ uint64_t AMIC::register_dev_int(IntSrc src_id) {
     return 0;
 }
 
-uint64_t AMIC::register_dma_int(IntSrc src_id) {
+uint64_t AMIC::register_dma_int(IntSrc /*src_id*/) {
     ABORT_F("AMIC: register_dma_int() not implemented");
     return 0;
 }
@@ -763,8 +763,8 @@ int AmicFloppyDma::push_data(const char* src_ptr, int len)
     return 0;
 }
 
-DmaPullResult AmicFloppyDma::pull_data(uint32_t req_len, uint32_t *avail_len,
-                                       uint8_t **p_data)
+DmaPullResult AmicFloppyDma::pull_data(uint32_t /*req_len*/, uint32_t */*avail_len*/,
+                                       uint8_t **/*p_data*/)
 {
     return DmaPullResult::NoMoreData;
 }
@@ -862,8 +862,8 @@ void AmicSerialXmitDma::write_ctrl(const uint8_t value)
     }
 }
 
-DmaPullResult AmicSerialXmitDma::pull_data(uint32_t req_len, uint32_t *avail_len,
-                                           uint8_t **p_data)
+DmaPullResult AmicSerialXmitDma::pull_data(uint32_t /*req_len*/, uint32_t */*avail_len*/,
+                                           uint8_t **/*p_data*/)
 {
     return DmaPullResult::NoMoreData;
 }
