@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <core/timermanager.h>
 #include <devices/common/hwcomponent.h>
+#include <devices/common/mmiodevice.h>
 #include <devices/deviceregistry.h>
 #include <devices/sound/burgundy.h>
 #include <endianswap.h>
@@ -54,8 +55,8 @@ uint32_t BurgundyCodec::snd_ctrl_read(uint32_t offset, int size) {
                  (this->data_byte << 4);
         break;
     default:
-        LOG_F(ERROR, "%s: read from unsupported register 0x%X", this->name.c_str(),
-              offset);
+        LOG_F(ERROR, "%s: read  @%02x.%c", this->name.c_str(),
+            offset, SIZE_ARG(size));
     }
 
     return BYTESWAP_32(result);
@@ -93,8 +94,8 @@ void BurgundyCodec::snd_ctrl_write(uint32_t offset, uint32_t value, int size) {
         }
         break;
     default:
-        LOG_F(ERROR, "%s: write to unsupported register 0x%X", this->name.c_str(),
-              offset);
+        LOG_F(ERROR, "%s: write @%02x.%c = %0*x", this->name.c_str(),
+            offset, SIZE_ARG(size), size * 2, value);
     }
 }
 
