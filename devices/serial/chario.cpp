@@ -38,7 +38,7 @@ bool CharIoNull::rcv_char_available_now()
     return false;
 }
 
-int CharIoNull::xmit_char(uint8_t c)
+int CharIoNull::xmit_char(uint8_t /*c*/)
 {
     return 0;
 }
