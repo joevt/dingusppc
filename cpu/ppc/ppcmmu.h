@@ -124,8 +124,13 @@ enum TLBFlags : uint16_t {
     PTE_SET_C     = 1 << 6, // tells if C bit of the PTE needs to be updated
 };
 
-extern std::function<void(uint32_t bat_reg)> ibat_update;
-extern std::function<void(uint32_t bat_reg)> dbat_update;
+#if 0
+    typedef std::function<void(uint32_t bat_reg)> BatUpdateCallback;
+#else
+    typedef void (*BatUpdateCallback)(uint32_t bat_reg);
+#endif
+extern BatUpdateCallback ibat_update;
+extern BatUpdateCallback dbat_update;
 
 extern MapDmaResult mmu_map_dma_mem(uint32_t addr, uint32_t size, bool allow_mmio);
 
