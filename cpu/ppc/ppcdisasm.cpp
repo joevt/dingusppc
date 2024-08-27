@@ -419,7 +419,7 @@ void opc_twi(PPCDisasmContext* ctx) {
     add_reg_in(ctx, "r%d", ra);
 }
 
-void opc_group4(PPCDisasmContext* ctx) {
+void opc_group4(PPCDisasmContext* /*ctx*/) {
     printf("Altivec group 4 not supported yet\n");
 }
 

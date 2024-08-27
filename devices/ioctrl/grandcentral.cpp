@@ -40,11 +40,11 @@ namespace loguru {
     };
 }
 
-uint16_t NvramAddrHiDev::iodev_read(uint32_t address) {
+uint16_t NvramAddrHiDev::iodev_read(uint32_t /*address*/) {
     return nvram_addr_hi;
 }
 
-void NvramAddrHiDev::iodev_write(uint32_t address, uint16_t value) {
+void NvramAddrHiDev::iodev_write(uint32_t /*address*/, uint16_t value) {
     this->nvram_addr_hi = value;
 }
 
@@ -233,7 +233,7 @@ static const char *get_name_gc_reg(unsigned offset) {
 static uint8_t mac_address[] = { 0x08, 0x00, 0x07, 0x44, 0x55, 0x66, 0x00, 0x00 };
 static bool bit_flip_0x08 = false;
 
-uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
+uint32_t GrandCentral::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
 {
     if (offset & 0x10000) { // Device register space
         unsigned subdev_num = (offset >> 12) & 0xF;
@@ -387,7 +387,7 @@ uint32_t GrandCentral::read(uint32_t rgn_start, uint32_t offset, int size)
     return 0;
 }
 
-void GrandCentral::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
+void GrandCentral::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size)
 {
     if (offset & 0x10000) { // Device register space
         unsigned subdev_num = (offset >> 12) & 0xF;

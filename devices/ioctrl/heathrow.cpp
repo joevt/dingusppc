@@ -150,7 +150,7 @@ void HeathrowIC::notify_bar_change(int bar_num)
     }
 }
 
-uint32_t HeathrowIC::read(uint32_t rgn_start, uint32_t offset, int size) {
+uint32_t HeathrowIC::read(uint32_t /*rgn_start*/, uint32_t offset, int size) {
     uint32_t value;
 
     LOG_F(9, "%s: read @%x.%c", this->get_name().c_str(),
@@ -214,7 +214,7 @@ uint32_t HeathrowIC::read(uint32_t rgn_start, uint32_t offset, int size) {
     return value;
 }
 
-void HeathrowIC::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) {
+void HeathrowIC::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
     LOG_F(9, "%s: write @%x.%c = %0*x", this->get_name().c_str(),
         offset, SIZE_ARG(size), size * 2, value);
 

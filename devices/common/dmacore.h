@@ -97,8 +97,10 @@ public:
     ~DmaDevice() = default;
 
     void connect(DmaChannel *ch_obj) { this->channel_obj = ch_obj; };
-    void notify(DmaMsg msg) {};
-    virtual int xfer_from(uint8_t *buf, int len) { return len; };
+    void notify(DmaMsg /*msg*/) {};
+    virtual int xfer_from(uint8_t */*buf*/, int len) {
+        return len;
+    };
 
 protected:
     DmaChannel* channel_obj = nullptr;
@@ -110,7 +112,7 @@ public:
     ~DmaChannel() = default;
 
     void connect(DmaDevice *dev_obj) { this->dev_obj = dev_obj; };
-    void notify(DmaMsg msg) {};
+    void notify(DmaMsg /*msg*/) {};
 
 protected:
     DmaDevice*  dev_obj  = nullptr;

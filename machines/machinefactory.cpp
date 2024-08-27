@@ -492,7 +492,7 @@ void MachineFactory::list_device_settings(DeviceDescription& dev, int type, int 
     print_settings(dev.properties, type, indent, path);
 }
 
-void MachineFactory::print_settings(PropMap& prop_map, int type, int indent, string path)
+void MachineFactory::print_settings(PropMap& prop_map, int type, int /*indent*/, string path)
 {
     string help;
 
