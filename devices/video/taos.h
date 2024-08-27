@@ -135,7 +135,7 @@ public:
         this->pos = 0; // reset read/write position
     };
 
-    bool send_subaddress(uint8_t sub_addr) {
+    bool send_subaddress(uint8_t /*sub_addr*/) {
         return true;
     };
 
