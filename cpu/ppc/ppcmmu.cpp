@@ -48,8 +48,8 @@ void (*mmu_exception_handler)(Except_Type exception_type, uint32_t srr1_bits);
 uint64_t g_mmio_access_count = 0;
 
 /* pointers to BAT update functions. */
-std::function<void(uint32_t bat_reg)> ibat_update;
-std::function<void(uint32_t bat_reg)> dbat_update;
+BatUpdateCallback ibat_update;
+BatUpdateCallback dbat_update;
 
 /** PowerPC-style MMU BAT arrays (NULL initialization isn't prescribed). */
 PPC_BAT_entry ibat_array[4] = {{0}};
