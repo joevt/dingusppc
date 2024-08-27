@@ -56,7 +56,7 @@ void AspenCtrl::insert_ram_dimm(int bank_num, uint32_t capacity) {
     }
 }
 
-uint32_t AspenCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
+uint32_t AspenCtrl::read(uint32_t /*rgn_start*/, uint32_t offset, int size) {
     uint8_t     reg_num = (offset >> 2) & 0x1F;
     uint32_t    reg_val;
 
@@ -83,7 +83,7 @@ uint32_t AspenCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     return reg_val;
 }
 
-void AspenCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) {
+void AspenCtrl::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
     uint8_t     reg_num = (offset >> 2) & 0x1F;
 
     switch(reg_num) {
