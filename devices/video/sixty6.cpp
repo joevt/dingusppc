@@ -319,7 +319,7 @@ void Sixty6Video::iodev_write(uint32_t address, uint16_t value)
 
 void Sixty6Video::enable_display()
 {
-    int new_width, new_height, clk_divisor;
+    int new_width, new_height;
 
     // get pixel frequency from Saa7187
     this->pixel_clock = 25000000; // this->saa7187->get_dot_freq();
