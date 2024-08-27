@@ -31,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/sound/awacs.h>
 #include <devices/sound/soundserver.h>
 #include <devices/common/dbdma.h>
+#include <devices/common/mmiodevice.h>
 #include <endianswap.h>
 #include <machines/machinebase.h>
 
@@ -194,7 +195,8 @@ uint32_t AwacsScreamer::snd_ctrl_read(uint32_t offset, int size) {
     case AWAC_CODEC_STATUS_REG:
         return (AWAC_AVAILABLE << 8) | (AWAC_MAKER_CRYSTAL << 16) | (AWAC_REV_SCREAMER << 20);
     default:
-        LOG_F(ERROR, "%s: unsupported register at offset 0x%X", this->name.c_str(), offset);
+        LOG_F(ERROR, "%s: read  @%02x.%c", this->name.c_str(),
+            offset, SIZE_ARG(size));
     }
 
     return 0;
@@ -219,8 +221,8 @@ void AwacsScreamer::snd_ctrl_write(uint32_t offset, uint32_t value, int size) {
             this->control_regs[reg_num] = data;
         break;
     default:
-        LOG_F(ERROR, "%s: unsupported register at offset 0x%X", this->name.c_str(),
-              offset);
+        LOG_F(ERROR, "%s: write @%02x.%c = %0*x", this->name.c_str(),
+            offset, SIZE_ARG(size), size * 2, value);
     }
 }
 
