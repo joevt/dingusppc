@@ -142,7 +142,7 @@ int BlockStorageDevice::read_more() {
     return read_size;
 }
 
-int BlockStorageDevice::write_begin(char *buf, int nblocks) {
+int BlockStorageDevice::write_begin(char */*buf*/, int /*nblocks*/) {
     if (!this->is_writeable)
         return -1;
 

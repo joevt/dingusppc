@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -435,7 +435,7 @@ void Display::blank() {
 void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> convert_fb_cb,
                      std::function<void(uint8_t *dst_buf, int dst_pitch)> cursor_ovl_cb,
                      bool draw_hw_cursor, int cursor_x, int cursor_y,
-                     bool fb_known_to_be_changed) {
+                     bool /*fb_known_to_be_changed*/) {
     uint8_t*    dst_buf = nullptr;
     int         dst_pitch;
 
