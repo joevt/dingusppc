@@ -28,7 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <string>
 
-PsxCtrl::PsxCtrl(int bridge_num, std::string name)
+PsxCtrl::PsxCtrl(int /*bridge_num*/, std::string name)
 {
     this->name = name;
 
@@ -42,7 +42,7 @@ PsxCtrl::PsxCtrl(int bridge_num, std::string name)
     this->sys_config = PSX_BUS_SPEED_50;
 }
 
-uint32_t PsxCtrl::read(uint32_t rgn_start, uint32_t offset, int size)
+uint32_t PsxCtrl::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
 {
     switch (offset >> 3) {
     case PsxReg::Sys_Id:
@@ -58,7 +58,7 @@ uint32_t PsxCtrl::read(uint32_t rgn_start, uint32_t offset, int size)
     }
 }
 
-void PsxCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
+void PsxCtrl::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size)
 {
     switch (offset >> 3) {
     case PsxReg::Sys_Config:
