@@ -277,7 +277,7 @@ void ScsiBus::confirm_selection(int target_id)
     }
 }
 
-bool ScsiBus::end_selection(int initiator_id, int target_id)
+bool ScsiBus::end_selection(int /*initiator_id*/, int target_id)
 {
     // check for selection confirmation from target
     return this->target_id == target_id;
