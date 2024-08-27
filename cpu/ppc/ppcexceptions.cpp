@@ -161,7 +161,7 @@ void ppc_exception_handler(Except_Type exception_type, uint32_t srr1_bits) {
 }
 #endif
 
-[[noreturn]] void dbg_exception_handler(Except_Type exception_type, uint32_t srr1_bits) {
+[[noreturn]] void dbg_exception_handler(Except_Type exception_type, uint32_t /*srr1_bits*/) {
     std::string exc_descriptor;
 
     switch (exception_type) {
