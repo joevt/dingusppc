@@ -58,7 +58,7 @@ public:
     }
     ~NubusMacID() = default;
 
-    uint32_t read(uint32_t rgn_start, uint32_t offset, int size) {
+    uint32_t read(uint32_t /*rgn_start*/, uint32_t offset, int size) {
         if (size == 4 && offset == 0) {
             return *(uint32_t*)this->id;
         }
@@ -70,7 +70,7 @@ public:
     }
 
     /* not writable */
-    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) {}
+    void write(uint32_t /*rgn_start*/, uint32_t /*offset*/, uint32_t /*value*/, int /*size*/) {}
 
 private:
     uint8_t id[4];
@@ -134,12 +134,12 @@ public:
     }
     ~GossamerID() = default;
 
-    uint32_t read(uint32_t rgn_start, uint32_t offset, int size) {
+    uint32_t read(uint32_t /*rgn_start*/, uint32_t offset, int size) {
         return ((offset == 4 && size == 2) ? this->id : 0);
     }
 
     /* not writable */
-    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) {}
+    void write(uint32_t /*rgn_start*/, uint32_t /*offset*/, uint32_t /*value*/, int /*size*/) {}
 
 private:
     uint16_t id;
