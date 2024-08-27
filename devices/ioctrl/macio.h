@@ -121,11 +121,11 @@ public:
 class NvramAddrHiDev: public IobusDevice {
 public:
     // IobusDevice methods
-    uint16_t iodev_read(uint32_t address) {
+    uint16_t iodev_read(uint32_t /*address*/) {
         return nvram_addr_hi;
     }
 
-    void iodev_write(uint32_t address, uint16_t value) {
+    void iodev_write(uint32_t /*address*/, uint16_t value) {
         this->nvram_addr_hi = value;
     }
 
