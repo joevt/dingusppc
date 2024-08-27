@@ -85,8 +85,13 @@ constexpr uint32_t PPC_PAGE_SIZE_BITS = 12;
 constexpr uint32_t PPC_PAGE_SIZE      = (1 << PPC_PAGE_SIZE_BITS);
 constexpr uint32_t PPC_PAGE_MASK      = ~(PPC_PAGE_SIZE - 1);
 
-extern std::function<void(uint32_t bat_reg)> ibat_update;
-extern std::function<void(uint32_t bat_reg)> dbat_update;
+#if 0
+    typedef std::function<void(uint32_t bat_reg)> BatUpdateCallback;
+#else
+    typedef void (*BatUpdateCallback)(uint32_t bat_reg);
+#endif
+extern BatUpdateCallback ibat_update;
+extern BatUpdateCallback dbat_update;
 
 extern PPC_BAT_entry ibat_array[4];
 extern PPC_BAT_entry dbat_array[4];
