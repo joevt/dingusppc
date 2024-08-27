@@ -685,8 +685,6 @@ void opc_bool_im(PPCDisasmContext* ctx) {
 void generic_bcx(PPCDisasmContext* ctx, uint32_t bo, uint32_t bi, uint32_t dst) {
     char opcode[10] = "bc";
 
-    uint32_t cr;
-
     if (!(bo & 4)) {
         add_reg_in(ctx, "ctr");
         add_reg_out(ctx, "ctr");
