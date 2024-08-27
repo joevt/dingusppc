@@ -29,7 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <algorithm>
 
-PsxCtrl::PsxCtrl(int bridge_num, std::string name)
+PsxCtrl::PsxCtrl(int /*bridge_num*/, std::string name)
 {
     this->name = name;
 
@@ -55,7 +55,7 @@ void PsxCtrl::set_bus_speed(uint32_t bus_freq) {
     insert_bits(this->sys_config, bus_speed, 0, 2);
 }
 
-uint32_t PsxCtrl::read(uint32_t rgn_start, uint32_t offset, int size)
+uint32_t PsxCtrl::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
 {
     switch (offset >> 3) {
     case PsxReg::Sys_Id:
@@ -71,7 +71,7 @@ uint32_t PsxCtrl::read(uint32_t rgn_start, uint32_t offset, int size)
     }
 }
 
-void PsxCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
+void PsxCtrl::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size)
 {
     switch (offset >> 3) {
     case PsxReg::Sys_Config:
