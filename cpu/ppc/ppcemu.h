@@ -492,7 +492,12 @@ void ppc_alignment_exception(uint32_t opcode, uint32_t ea);
 // MEMORY DECLARATIONS
 extern MemCtrlBase* mem_ctrl_instance;
 
-extern void add_ctx_sync_action(const std::function<void()> &);
+#if 0
+    typedef std::function<void()> CtxSyncCallback;
+#else
+    typedef void (*CtxSyncCallback)(void);
+#endif
+extern void add_ctx_sync_action(const CtxSyncCallback &cb);
 extern void do_ctx_sync(void);
 
 // The functions used by the PowerPC processor

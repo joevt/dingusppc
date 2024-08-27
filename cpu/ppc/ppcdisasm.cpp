@@ -2393,7 +2393,12 @@ void opc_fltldst(PPCDisasmContext* ctx) {
 }
 
 /** main dispatch table. */
-static std::function<void(PPCDisasmContext*)> OpcodeDispatchTable[64] = {
+#if 0
+    typedef std::function<void(PPCDisasmContext*)> OpcodeFunction;
+#else
+    typedef void (*OpcodeFunction)(PPCDisasmContext*);
+#endif
+static OpcodeFunction OpcodeDispatchTable[64] = {
     opc_illegal, opc_illegal, opc_illegal, opc_twi,      opc_group4,   opc_illegal, opc_illegal,
     opc_ar_im,   opc_ar_im,   power_dozi,  opc_cmp_i_li, opc_cmp_i_li, opc_ar_im,   opc_ar_im,
     opc_ar_im,   opc_ar_im,   opc_bcx,     opc_sc,       opc_bx,       opc_group19, opc_rlwimi,
