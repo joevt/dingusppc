@@ -84,7 +84,6 @@ inline static void ppc_setsoov(uint32_t a, uint32_t b, uint32_t d) {
     }
 }
 
-typedef std::function<void()> CtxSyncCallback;
 std::vector<CtxSyncCallback> gCtxSyncCallbacks;
 
 // perform context synchronization by executing registered actions if any
