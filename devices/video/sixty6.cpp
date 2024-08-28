@@ -420,7 +420,6 @@ int Sixty6Video::device_postinit()
             irq_line_state, ((this->control_1 & 0x40) && this->crtc_on));
 
         if (this->interrupt_enabled && this->crtc_on) {
-            //this->pci_interrupt(irq_line_state);
             this->int_ctrl->ack_int(this->irq_id, irq_line_state);
         }
     };
