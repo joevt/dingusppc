@@ -240,7 +240,7 @@ inline uint32_t pci_cfg_log(uint32_t value, AccessDetails &details) {
 #define LOG_READ_NON_EXISTENT_PCI_DEVICE() \
     LOG_F( \
         ERROR, \
-        "%s err: read attempt from non-existent PCI device %02x:%02x.%x @%02x.%c", \
+        "%s: read attempt from non-existent PCI device %02x:%02x.%x @%02x.%c", \
         this->name.c_str(), bus_num, dev_num, fun_num, reg_offs + details.offset, \
         SIZE_ARG(details.size) \
     )
@@ -248,7 +248,7 @@ inline uint32_t pci_cfg_log(uint32_t value, AccessDetails &details) {
 #define LOG_WRITE_NON_EXISTENT_PCI_DEVICE() \
     LOG_F( \
         ERROR, \
-        "%s err: write attempt to non-existent PCI device %02x:%02x.%x @%02x.%c = %0*x", \
+        "%s: write attempt to non-existent PCI device %02x:%02x.%x @%02x.%c = %0*x", \
         this->name.c_str(), bus_num, dev_num, fun_num, reg_offs + details.offset, \
         SIZE_ARG(details.size), \
         details.size * 2, BYTESWAP_SIZED(value, details.size) \
