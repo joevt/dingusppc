@@ -350,6 +350,13 @@ static const PropMap GrackleBondi_Properties = {
     {"pci_PERCH", new StrProperty("")},
 };
 
+static const PropMap GrackleLombard_Properties = {
+    {"pci_USB"    , new StrProperty("")},
+    {"pci_ZIVA"   , new StrProperty("")},
+    {"pci_E1"     , new StrProperty("")},
+    {"pci_CARDBUS", new StrProperty("")},
+};
+
 static const DeviceDescription GrackleGossamer_Descriptor = {
     MPC106::create, {}, GrackleGossamer_Properties,
     HWCompType::MEM_CTRL | HWCompType::MMIO_DEV | HWCompType::PCI_HOST
@@ -365,6 +372,12 @@ static const DeviceDescription GrackleBondi_Descriptor = {
     HWCompType::MEM_CTRL | HWCompType::MMIO_DEV | HWCompType::PCI_HOST
 };
 
+static const DeviceDescription GrackleLombard_Descriptor = {
+    MPC106::create, {}, GrackleLombard_Properties,
+    HWCompType::MEM_CTRL | HWCompType::MMIO_DEV | HWCompType::PCI_HOST
+};
+
 REGISTER_DEVICE(GrackleGossamer, GrackleGossamer_Descriptor);
 REGISTER_DEVICE(GrackleYosemite, GrackleYosemite_Descriptor);
 REGISTER_DEVICE(GrackleBondi   , GrackleBondi_Descriptor   );
+REGISTER_DEVICE(GrackleLombard , GrackleLombard_Descriptor );
