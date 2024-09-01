@@ -465,6 +465,7 @@ uint64_t MacIoTwo::register_dev_int(IntSrc src_id) {
 
     case IntSrc::PERCH2     : return INT_TO_IRQ_ID(0x15);
     case IntSrc::PCI_GPU    : return INT_TO_IRQ_ID(0x16);
+    case IntSrc::PCI_CARDBUS: return INT_TO_IRQ_ID(0x16); // Lombard
     case IntSrc::PERCH1     : return INT_TO_IRQ_ID(0x1A);
     case IntSrc::PCI_PERCH  : return INT_TO_IRQ_ID(0x1C);
 
@@ -474,7 +475,9 @@ uint64_t MacIoTwo::register_dev_int(IntSrc src_id) {
     case IntSrc::PCI_J10    : return INT_TO_IRQ_ID(0x18); // Yosemite 64-bit 33MHz slot
     case IntSrc::PCI_J9     : return INT_TO_IRQ_ID(0x19); // Yosemite 64-bit 33MHz slot
     case IntSrc::ATA        : return INT_TO_IRQ_ID(0x1A); // Yosemite PCI pci-ata
-    case IntSrc::USB        : return INT_TO_IRQ_ID(0x1C); // Yosemite PCI USB
+    case IntSrc::ZIVA       : return INT_TO_IRQ_ID(0x1A); // Lombard ZiVA DVD Decoder
+    case IntSrc::USB        : return INT_TO_IRQ_ID(0x1C); // Yosemite/Lombard PCI USB
+    case IntSrc::MEDIA_BAY  : return INT_TO_IRQ_ID(0x1D); // Lombard
 
     case IntSrc::ETHERNET   : return INT_TO_IRQ_ID(0x2A);
 
