@@ -80,6 +80,9 @@ enum IntSrc : uint32_t {
     USB,
     PIPPIN_E,
     PIPPIN_F,
+    ZIVA,
+    PCI_CARDBUS,
+    MEDIA_BAY,
 };
 
 /** Base class for interrupt controllers. */
