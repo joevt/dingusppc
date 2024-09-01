@@ -87,6 +87,8 @@ const map<string, PropHelpItem> gPropHelp = {
     {"pci_UltraATA",    {PropertyMachine, "inserts PCI device into PCI slot reserved for Yosemite Ultra ATA"}},
     {"pci_USB",         {PropertyMachine, "inserts PCI device into PCI slot reserved for Yosemite USB"}},
     {"pci_PERCH",       {PropertyMachine, "inserts PCI device into PERCH slot"}},
+    {"pci_CARDBUS",     {PropertyMachine, "inserts PCI device into PCI slot reserved for Lombard CardBus"}},
+    {"pci_ZIVA",        {PropertyMachine, "inserts PCI device into PCI slot reserved for Lombard DVD Decoder"}},
     {"pci_A1",          {PropertyMachine, "inserts PCI device into slot A1"}},
     {"pci_B1",          {PropertyMachine, "inserts PCI device into slot B1"}},
     {"pci_C1",          {PropertyMachine, "inserts PCI device into slot C1"}},
