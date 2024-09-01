@@ -189,7 +189,7 @@ static rom_info rom_identity[] = {
     { 0x077d45f6, 4096, 0xecb8e951,           0, 0,    "NewWorld v1.0...", 0, 0, nullptr   , "NewWorld Mac"               , "Mac OS ROM file 10.1.1"                            }, // 2003-03-17 - Mac OS 9.2.2 bundled on eMac 800MHz (CPU Software 5.7)
     { 0x077d45f6, 4096, 0xecb73ad5,           0, 0,    "NewWorld v1.0...", 0, 0, nullptr   , "NewWorld Mac"               , "Mac OS ROM file 10.2.1"                            }, // 2003-04-03 - Mac OS 9.2.2 Retail International CD
 
-    {     0x10f1, 1024, 0,        0,          0, 0, nullptr       , nullptr    , nullptr   , nullptr                      , "PowerBook G3 Lombard"                              }, // PowerBook1,1
+    {     0x10f1, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "pbg3lb"  , "PowerBook G3 Lombard"       , "PowerBook G3 Lombard"                              }, // PowerBook1,1
     {     0x11f4, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "pmg3nw"  , "Power Mac Yosemite"         , "Power Mac B&W G3"                                  }, // PowerMac1,1
     {     0x13f2, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "imacg3"  , "iMac G3 Bondi"              , "iMac (233 MHz) (Bondi Blue)"                       }, // iMac,1
     {     0x13f3, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "imacg3"  , "iMac G3 Tray Loading"       , "iMac (266,333 MHz) (Tray Loading)"                 }, // iMac,1
@@ -428,6 +428,8 @@ const map<string, PropHelpItem> gPropHelp = {
     {"pci_UltraATA",    {PropertyMachine, "inserts PCI device into PCI slot reserved for Yosemite Ultra ATA"}},
     {"pci_USB",         {PropertyMachine, "inserts PCI device into PCI slot reserved for Yosemite USB"}},
     {"pci_PERCH",       {PropertyMachine, "inserts PCI device into PERCH slot"}},
+    {"pci_CARDBUS",     {PropertyMachine, "inserts PCI device into PCI slot reserved for Lombard CardBus"}},
+    {"pci_ZIVA",        {PropertyMachine, "inserts PCI device into PCI slot reserved for Lombard DVD Decoder"}},
     {"pci_A1",          {PropertyMachine, "inserts PCI device into slot A1"}},
     {"pci_B1",          {PropertyMachine, "inserts PCI device into slot B1"}},
     {"pci_C1",          {PropertyMachine, "inserts PCI device into slot C1"}},
