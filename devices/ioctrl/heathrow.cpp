@@ -384,9 +384,9 @@ void HeathrowIC::feature_control(const uint32_t value)
     this->feat_ctrl = value;
 
     if (!(this->feat_ctrl & 1)) {
-        LOG_F(9, "Heathrow: Monitor sense enabled");
+        LOG_F(9, "%s: Monitor sense enabled", this->get_name().c_str());
     } else {
-        LOG_F(9, "Heathrow: Monitor sense disabled");
+        LOG_F(9, "%s: Monitor sense disabled", this->get_name().c_str());
     }
 }
 
@@ -437,7 +437,7 @@ uint32_t HeathrowIC::register_dev_int(IntSrc src_id)
     case IntSrc::ETHERNET   : return INT_TO_IRQ_ID(0x2A);
 
     default:
-        ABORT_F("Heathrow: unknown interrupt source %d", src_id);
+        ABORT_F("%s: unknown interrupt source %d", this->name.c_str(), src_id);
     }
     return 0;
 }
@@ -471,7 +471,7 @@ uint32_t HeathrowIC::register_dma_int(IntSrc src_id)
     case IntSrc::DMA_ETHERNET_Tx    : return DMA_INT_TO_IRQ_ID(0x20);
     case IntSrc::DMA_ETHERNET_Rx    : return DMA_INT_TO_IRQ_ID(0x21);
     default:
-        ABORT_F("Heathrow: unknown DMA interrupt source %d", src_id);
+        ABORT_F("%s: unknown DMA interrupt source %d", this->name.c_str(), src_id);
     }
     return 0;
 }
@@ -644,7 +644,7 @@ void HeathrowIC::clear_cpu_int()
         this->cpu_int_latch) {
         this->cpu_int_latch = false;
         ppc_release_int();
-        LOG_F(5, "Heathrow: CPU INT latch cleared");
+        LOG_F(5, "%s: CPU INT latch cleared", this->name.c_str());
     }
 }
 
