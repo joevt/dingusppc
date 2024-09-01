@@ -78,6 +78,9 @@ enum IntSrc : uint32_t {
     PCI_J9,
     ATA,
     USB,
+    ZIVA,
+    PCI_CARDBUS,
+    MEDIA_BAY,
 };
 
 /** Base class for interrupt controllers. */

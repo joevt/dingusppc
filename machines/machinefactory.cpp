@@ -142,7 +142,7 @@ static rom_info rom_identity[] = {
     { 0x077d45f1, 4096, 0x78fdb784,           0, 0,    "Boot Gossamer 0.", 0, 0, "pmg3dt"  , "Power Mac G3 Beige"         , "PowerMac G3 Minitower (beige 266MHz), Beige G3 233"}, // Gossamer
     { 0x077d45f2, 4096, 0x78f57389,           0, 0,    "Boot Gossamer 0.", 0, 0, "pmg3dt"  , "Power Mac G3 Beige"         , "Power Mac G3 (v3)"                                 }, // Gossamer
 
-    {     0x10f1, 1024, 0,        0,          0, 0, nullptr       , nullptr    , nullptr   , nullptr                      , "PowerBook G3 Lombard"                              }, // PowerBook1,1
+    {     0x10f1, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "pbg3lb"  , "PowerBook G3 Lombard"       , "PowerBook G3 Lombard"                              }, // PowerBook1,1
     {     0x11f4, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "pmg3nw"  , "Power Mac Yosemite"         , "Power Mac B&W G3"                                  }, // PowerMac1,1
     {     0x13f2, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "imacg3"  , "iMac G3 Bondi"              , "iMac (233 MHz) (Bondi Blue)"                       }, // iMac,1
     {     0x13f3, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "imacg3"  , "iMac G3 Tray Loading"       , "iMac (266,333 MHz) (Tray Loading)"                 }, // iMac,1
