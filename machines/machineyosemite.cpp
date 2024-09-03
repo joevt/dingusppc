@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -53,8 +53,10 @@ int initialize_yosemite(std::string& id)
     DecPciBridge *sec_bridge = dynamic_cast<DecPciBridge*>(gMachineObj->get_comp_by_name("Dec21154"));
 
     // attach PCI devices to the PCI bridges
+#if 0
     grackle_obj->pci_register_device(DEV_FUN(16,0),
         dynamic_cast<PCIBase*>(gMachineObj->get_comp_by_name("AtiRage128")));
+#endif
 
     grackle_obj->pci_register_device(DEV_FUN(13,0),
         dynamic_cast<PCIBase*>(gMachineObj->get_comp_by_name("Dec21154")));
