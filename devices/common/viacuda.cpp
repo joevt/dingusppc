@@ -54,7 +54,7 @@ namespace loguru {
 ViaCuda::ViaCuda() {
     this->name = "ViaCuda";
 
-    supports_types(HWCompType::ADB_HOST | HWCompType::I2C_HOST);
+    supports_types(HWCompType::I2C_HOST);
 
     // VIA reset clears all internal registers to logic 0
     // except timers/counters and the shift register
@@ -1005,7 +1005,7 @@ static const vector<string> Cuda_Subdevices = {
 };
 
 static const DeviceDescription ViaCuda_Descriptor = {
-    ViaCuda::create, Cuda_Subdevices, {}, HWCompType::ADB_HOST | HWCompType::I2C_HOST
+    ViaCuda::create, Cuda_Subdevices, {}, HWCompType::I2C_HOST
 };
 
 REGISTER_DEVICE(ViaCuda, ViaCuda_Descriptor);
