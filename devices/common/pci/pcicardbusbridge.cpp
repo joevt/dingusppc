@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -76,7 +76,8 @@ typedef struct {
     /* 0x848 */ uint32_t UserDefined848h[494];
 } CardBusStatusAnfControlRegisters;
 
-PCICardbusBridge::PCICardbusBridge(std::string name) : PCIBridgeBase(name, PCI_HEADER_TYPE_2, 1)
+PCICardbusBridge::PCICardbusBridge(const std::string name)
+    : PCIBridgeBase(name, PCI_HEADER_TYPE_2, 1), HWComponent(name)
 {
     this->pci_rd_memory_base_0  = [this]() { return this->memory_base_0  ; };
     this->pci_rd_memory_limit_0 = [this]() { return this->memory_limit_0 ; };
