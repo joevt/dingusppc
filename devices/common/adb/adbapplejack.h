@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -42,7 +42,7 @@ public:
     ~AdbAppleJack() = default;
 
     static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AdbAppleJack>(new AdbAppleJack("ADB-APPLEJACK"));
+        return std::unique_ptr<AdbAppleJack>(new AdbAppleJack("AdbAppleJack"));
     }
 
     void reset() override;

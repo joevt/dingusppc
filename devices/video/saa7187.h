@@ -118,7 +118,7 @@ enum Saa7187Regs : uint8_t { // i2c address is 0x44; fatman is at 0x46?
 
 } // namespace Saa7187Regs
 
-class Saa7187VideoEncoder : public I2CDevice, public HWComponent
+class Saa7187VideoEncoder : public I2CDevice
 {
 public:
     Saa7187VideoEncoder(uint8_t dev_addr);
