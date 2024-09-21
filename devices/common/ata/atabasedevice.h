@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -34,11 +34,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class IdeChannel;
 
-class AtaBaseDevice : public HWComponent, public AtaInterface
+class AtaBaseDevice : public AtaInterface, virtual public HWComponent
 {
 public:
     AtaBaseDevice(const std::string name, uint8_t type);
     ~AtaBaseDevice() = default;
+
+    // HWComponent methods
+
+    int32_t parse_self_unit_address_string(const std::string unit_address_string) override;
+    static int32_t parse_unit_address_string(const std::string unit_address_string);
+
+    // AtaBaseDevice methods
 
     void set_host(IdeChannel* host, uint8_t dev_id) {
         this->host_obj = host;

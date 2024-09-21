@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-21 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -83,7 +83,7 @@ enum {
     SWIM3_DATA_XFER,
 };
 
-class Swim3Ctrl : public HWComponent {
+class Swim3Ctrl : virtual public HWComponent {
 public:
     Swim3Ctrl();
     ~Swim3Ctrl() = default;
@@ -118,8 +118,8 @@ protected:
     void    mode_change(uint8_t new_mode);
 
 private:
-    std::unique_ptr<MacSuperdrive::MacSuperDrive> drive_1;
-    std::unique_ptr<MacSuperdrive::MacSuperDrive> drive_2;
+    MacSuperdrive::MacSuperDrive *drive_1;
+    MacSuperdrive::MacSuperDrive *drive_2;
     MacSuperdrive::MacSuperDrive *selected_drive;
 
     DmaBidirChannel*    dma_ch;

@@ -81,11 +81,12 @@ namespace MaceEnet {
 
 }; // namespace MaceEnet
 
-class MaceController : public DmaDevice, public HWComponent {
+class MaceController : public DmaDevice, virtual public HWComponent {
 public:
-    MaceController(uint16_t id) {
+    MaceController(uint16_t id)
+        : HWComponent("Mace")
+    {
         this->chip_id = id;
-        this->set_name("MACE");
         this->supports_types(HWCompType::MMIO_DEV | HWCompType::ETHER_MAC);
     };
     ~MaceController() = default;

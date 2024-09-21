@@ -41,7 +41,7 @@ enum {
 
 class PCIBridge : public PCIBridgeBase {
 public:
-    PCIBridge(std::string name);
+    PCIBridge(const std::string name);
     ~PCIBridge() = default;
 
     // PCIBase methods

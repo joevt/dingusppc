@@ -36,10 +36,9 @@ namespace loguru {
 
 using namespace Hammerhead;
 
-HammerheadCtrl::HammerheadCtrl() : MemCtrlBase()
+HammerheadCtrl::HammerheadCtrl()
+    : MemCtrlBase(), HWComponent("Hammerhead")
 {
-    this->name = "Hammerhead";
-
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV);
 
     // add MMIO region for the configuration and status registers

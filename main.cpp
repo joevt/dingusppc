@@ -28,8 +28,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cpu/ppc/ppcemu.h>
 #include <cpu/ppc/ppcmmu.h>
 #include <debugger/debugger.h>
-#include <machines/machinebase.h>
 #include <debugger/symbols.h>
+#include <devices/common/hwcomponent.h>
 #include <machines/machinefactory.h>
 #include <utils/profiler.h>
 #include <main.h>

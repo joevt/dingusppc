@@ -37,7 +37,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/pci/pcidevice.h>
 #include <devices/common/pci/pcihost.h>
 #include <devices/memctrl/memctrlbase.h>
-#include <machines/machinebase.h>
 
 #include <cinttypes>
 #include <memory>
@@ -167,7 +166,8 @@ enum {
     PICR1_LE_MODE = 0x20
 };
 
-class MPC106 : public MemCtrlBase, public PCIDevice, public PCIHost {
+class MPC106 : public MemCtrlBase, public MMIODevice, public PCIHost {
+friend class MPC106PCI;
 public:
     MPC106();
     ~MPC106() = default;
@@ -185,13 +185,6 @@ public:
 
     int device_postinit() override;
 
-protected:
-    /* my own PCI configuration registers access */
-    uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details) override;
-    void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details) override;
-
-    void setup_ram(void);
-
 private:
     inline void cfg_setup(uint32_t offset, int size, int &bus_num, int &dev_num,
                           int &fun_num, uint8_t &reg_offs, AccessDetails &details,
@@ -199,11 +192,27 @@ private:
 
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
     inline bool needs_swap_endian_pci() {
-        return (picr1 & PICR1_LE_MODE) != 0;
+        return le_mode;
     }
-#endif
 
+    bool le_mode;
+#endif
     uint32_t config_addr;
+};
+
+class MPC106PCI : public PCIDevice {
+public:
+    MPC106PCI(MPC106 *mpc106);
+    ~MPC106PCI() = default;
+
+    uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details) override;
+    void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details) override;
+
+protected:
+    void setup_ram(void);
+
+private:
+    MPC106 *mpc106;
 
     uint16_t pmcr1 = 0;          // power management config 1
     uint8_t  pmcr2 = 0;          // power management config 2

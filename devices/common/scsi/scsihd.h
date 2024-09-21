@@ -33,7 +33,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class ScsiHardDisk : public ScsiDevice {
 public:
-    ScsiHardDisk(std::string name, int my_id);
+    ScsiHardDisk(const std::string name, int my_id);
     ~ScsiHardDisk() = default;
 
     void insert_image(std::string filename);
