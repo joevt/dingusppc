@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -86,7 +86,7 @@ enum {
     MIO_INT_LEVELS1 = 0x2C
 };
 
-class IobusDevice {
+class IobusDevice : virtual public HWComponent {
 public:
     virtual uint16_t iodev_read(uint32_t address) = 0;
     virtual void iodev_write(uint32_t address, uint16_t value) = 0;
@@ -109,6 +109,7 @@ enum : uint8_t {
 
 class NvramAddrHiDev: public IobusDevice {
 public:
+    NvramAddrHiDev() : HWComponent("NvramAddrHiDev") {}
     // IobusDevice methods
     uint16_t iodev_read(uint32_t address);
     void iodev_write(uint32_t address, uint16_t value);
@@ -132,24 +133,31 @@ protected:
 
 class GrandCentral : public PCIDevice, public InterruptCtrl {
 public:
-    GrandCentral();
+    GrandCentral(const std::string name);
     ~GrandCentral() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<GrandCentral>(new GrandCentral());
+    static std::unique_ptr<HWComponent> create_tnt() {
+        return std::unique_ptr<GrandCentral>(new GrandCentral("GrandCentralTnt"));
+    }
+    static std::unique_ptr<HWComponent> create_catalyst() {
+        return std::unique_ptr<GrandCentral>(new GrandCentral("GrandCentralCatalyst"));
     }
 
+    // HWComponent methods
+
+    virtual HWComponent* add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name = "") override;
+
     // MMIO device methods
-    uint32_t read(uint32_t rgn_start, uint32_t offset, int size);
-    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size);
+
+    uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
+    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
     // InterruptCtrl methods
-    uint32_t register_dev_int(IntSrc src_id);
-    uint32_t register_dma_int(IntSrc src_id);
-    void ack_int(uint32_t irq_id, uint8_t irq_line_state);
-    void ack_dma_int(uint32_t irq_id, uint8_t irq_line_state);
 
-    void attach_iodevice(int dev_num, IobusDevice* dev_obj);
+    uint32_t register_dev_int(IntSrc src_id) override;
+    uint32_t register_dma_int(IntSrc src_id) override;
+    void ack_int(uint32_t irq_id, uint8_t irq_line_state) override;
+    void ack_dma_int(uint32_t irq_id, uint8_t irq_line_state) override;
 
 protected:
     void notify_bar_change(int bar_num);
@@ -158,6 +166,8 @@ protected:
     void clear_cpu_int();
 
 private:
+    void attach_iodevice(int dev_num, IobusDevice* dev_obj);
+
     uint32_t    base_addr = 0;
 
     // interrupt state
@@ -167,13 +177,13 @@ private:
     bool        cpu_int_latch = false;
 
     // IOBus devices
-    IobusDevice*    iobus_devs[6] = { nullptr };
-    std::unique_ptr<NvramAddrHiDev>  nvram_addr_hi_dev = nullptr;
-    std::unique_ptr<NvramDev>        nvram_dev = nullptr;
+    IobusDevice*     iobus_devs[6] = { nullptr };
+    NvramAddrHiDev*  nvram_addr_hi_dev = nullptr;
+    NvramDev*        nvram_dev = nullptr;
 
     // subdevice objects
-    std::unique_ptr<AwacsScreamer>      awacs;   // AWACS audio codec instance
-    std::unique_ptr<MeshStub>           mesh_stub = nullptr;
+    AwacsScreamer*      awacs;   // AWACS audio codec instance
+    MeshStub*           mesh_stub;
 
     MaceController*     mace;       // Ethernet cell within Curio
     ViaCuda*            viacuda;    // VIA cell with Cuda MCU attached to it

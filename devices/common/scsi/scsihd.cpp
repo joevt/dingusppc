@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -39,7 +39,8 @@ namespace loguru {
 
 using namespace std;
 
-ScsiHardDisk::ScsiHardDisk(std::string name, int my_id) : ScsiDevice(name, my_id) {
+ScsiHardDisk::ScsiHardDisk(const std::string name, int my_id)
+    : ScsiDevice(name, my_id), HWComponent(name) {
 }
 
 void ScsiHardDisk::insert_image(std::string filename) {

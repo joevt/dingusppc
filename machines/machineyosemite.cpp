@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -27,7 +27,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/mpc106.h>
 #include <devices/memctrl/spdram.h>
 #include <machines/machine.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
@@ -48,22 +47,20 @@ static const std::vector<PciIrqMap> pci_bridge_irq_map = {
     {"pci_USB"     , DEV_FUN(0x06,0), IntSrc::USB     },
 };
 
-static void setup_ram_slot(std::string name, int i2c_addr, int capacity_megs) {
+static void setup_ram_slot(const std::string name, int i2c_addr, int capacity_megs) {
     if (!capacity_megs)
         return;
-
-    gMachineObj->add_device(name, std::unique_ptr<SpdSdram168>(new SpdSdram168(i2c_addr)));
-    SpdSdram168* ram_dimm = dynamic_cast<SpdSdram168*>(gMachineObj->get_comp_by_name(name));
-    ram_dimm->set_capacity(capacity_megs);
-
-    // register RAM DIMM with the I2C bus
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
-    i2c_bus->register_device(i2c_addr, ram_dimm);
+    SpdSdram168* ram_dimm = new SpdSdram168(i2c_addr);
+    i2c_bus->add_device(i2c_addr, ram_dimm, name);
+    ram_dimm->set_capacity(capacity_megs);
 }
 
 class MachineYosemite : public Machine {
 
 public:
+
+MachineYosemite() : HWComponent("MachineYosemite") {}
 
 int initialize(const std::string &id)
 {
@@ -78,13 +75,13 @@ int initialize(const std::string &id)
     sec_bridge->set_irq_map(pci_bridge_irq_map);
 
     // 00:0D.0 PCI Bridge
-    grackle_obj->pci_register_device(DEV_FUN(0x0D,0), dynamic_cast<PCIBase*>(sec_bridge));
+    grackle_obj->add_device(DEV_FUN(0x0D,0), dynamic_cast<PCIBase*>(sec_bridge));
 
     // register CMD646U2 PCI Ultra ATA Controller
-    sec_bridge->pci_register_device(DEV_FUN(1,0),
+    sec_bridge->add_device(DEV_FUN(1,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("CmdAta")));
 
-    sec_bridge->pci_register_device(DEV_FUN(5,0),
+    sec_bridge->add_device(DEV_FUN(5,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("Heathrow")));
 
     // allocate ROM region
@@ -132,11 +129,11 @@ static const PropMap yosemite_settings = {
 };
 
 static std::vector<std::string> yosemite_devices = {
-    "Grackle",
-    "Dec21154Yosemite",
-    "CmdAta",
-    "BurgundySnd",
-    "Heathrow",
+    "Grackle@80000000",
+    "Dec21154Yosemite@D",
+    "CmdAta@1",
+    "BurgundySnd@14000",
+    "Heathrow@5",
     "AtaHardDisk",
     "AtapiCdrom",
 };

@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-21 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -58,9 +58,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 enum RAMType : int { SDRAM = 4 };
 
 
-class SpdSdram168 : public HWComponent, public I2CDevice {
+class SpdSdram168 : public I2CDevice {
 public:
-    SpdSdram168(uint8_t addr) {
+    SpdSdram168(uint8_t addr)
+        : HWComponent("SpdSdram168")
+    {
         this->dev_addr = addr;
         this->pos      = 0;
         supports_types(HWCompType::RAM);
