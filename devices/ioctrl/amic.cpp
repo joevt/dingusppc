@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -35,7 +35,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/floppy/swim3.h>
 #include <devices/ioctrl/amic.h>
 #include <devices/serial/escc.h>
-#include <machines/machinebase.h>
 #include <devices/memctrl/memctrlbase.h>
 #include <devices/video/displayid.h>
 #include <devices/video/pdmonboard.h>
@@ -45,10 +44,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 #include <memory>
 
-AMIC::AMIC() : MMIODevice()
+AMIC::AMIC()
+    : MMIODevice(), HWComponent("Amic")
 {
-    this->set_name("Apple Memory-mapped I/O Controller");
-
     supports_types(HWCompType::MMIO_DEV | HWCompType::INT_CTRL);
 
     // connect internal SCSI controller
@@ -65,7 +63,7 @@ AMIC::AMIC() : MMIODevice()
     });
 
     // connect serial HW
-    this->escc = dynamic_cast<EsccController*>(gMachineObj->get_comp_by_name("Escc"));
+    this->escc = dynamic_cast<EsccController*>(gMachineObj->get_comp_by_name("EsccPdm"));
     this->escc_xmit_b_dma = std::unique_ptr<AmicSerialXmitDma>(new AmicSerialXmitDma("EsccBXmit"));
     this->escc_xmit_a_dma = std::unique_ptr<AmicSerialXmitDma>(new AmicSerialXmitDma("EsccAXmit"));
 
@@ -78,7 +76,8 @@ AMIC::AMIC() : MMIODevice()
     // initialize sound HW
     this->snd_out_dma = std::unique_ptr<AmicSndOutDma>(new AmicSndOutDma());
     this->snd_out_dma->init_interrupts(this, DMA1_INT_SOUND << DMA1_INT_SHIFT);
-    this->awacs       = std::unique_ptr<AwacDevicePdm> (new AwacDevicePdm());
+    this->awacs = new AwacDevicePdm();
+    this->add_device(0x14000, this->awacs);
     this->awacs->set_dma_out(this->snd_out_dma.get());
 
     // initialize on-board video
@@ -869,7 +868,11 @@ DmaPullResult AmicSerialXmitDma::pull_data(uint32_t /*req_len*/, uint32_t */*ava
 };
 
 static std::vector<std::string> Amic_Subdevices = {
-    "Sc53C94", "Escc", "Mace", "ViaCuda", "Swim3"
+    "Sc53C94@10000",
+    "EsccPdm@4000",
+    "Mace@A000",
+    "ViaCuda@0",
+    "Swim3@16000"
 };
 
 static const DeviceDescription Amic_Descriptor = {
