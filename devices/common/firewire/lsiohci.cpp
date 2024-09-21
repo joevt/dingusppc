@@ -26,7 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <memaccess.h>
 
 lsiohci::lsiohci()
-    : PCIDevice("lsiohci")
+    : PCIDevice("LsiOhci"), HWComponent("LsiOhci")
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV);
 
