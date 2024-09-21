@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -25,8 +25,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/ethernet/bigmac.h>
 #include <loguru.hpp>
 
-BigMac::BigMac(uint8_t id) {
-    set_name("BigMac");
+BigMac::BigMac(uint8_t id)
+    : HWComponent(id == EthernetCellId::Heathrow ? "BigMacHeathrow" : "BigMacPaddington")
+{
     supports_types(HWCompType::MMIO_DEV | HWCompType::ETHER_MAC);
 
     this->chip_id = id;

@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -33,7 +33,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class ScsiHardDisk : public ScsiDevice {
 public:
-    ScsiHardDisk(std::string name, int my_id);
+    ScsiHardDisk(const std::string name, int my_id);
     ~ScsiHardDisk() = default;
 
     void insert_image(std::string filename);

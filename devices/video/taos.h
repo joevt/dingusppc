@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -120,9 +120,11 @@ enum {
 };
 
 /** Broktree Bt856 digital video encoder. */
-class Bt856 : public I2CDevice, public HWComponent {
+class Bt856 : public I2CDevice {
 public:
-    Bt856(uint8_t dev_addr) {
+    Bt856(uint8_t dev_addr)
+        : HWComponent("Bt856")
+    {
         supports_types(HWCompType::I2C_DEV);
 
         this->my_addr = dev_addr;
@@ -185,8 +187,8 @@ private:
     void disable_display();
     void convert_frame_15bpp_indexed(uint8_t *dst_buf, int dst_pitch);
 
-    std::unique_ptr<AthensClocks>   clk_gen = nullptr;
-    std::unique_ptr<Bt856>          vid_enc = nullptr;
+    AthensClocks *clk_gen = nullptr;
+    Bt856        *vid_enc = nullptr;
 
     uint8_t     gpio_cfg        = 0;
     uint8_t     mon_id          = MON_ID_NTSC;
