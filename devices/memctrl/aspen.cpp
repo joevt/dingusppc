@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -25,9 +25,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/aspen.h>
 #include <loguru.hpp>
 
-AspenCtrl::AspenCtrl() : MemCtrlBase() {
-    this->name = "Aspen";
-
+AspenCtrl::AspenCtrl()
+    : MemCtrlBase(), HWComponent("Aspen")
+{
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV);
 
     // add MMIO region for the configuration and status registers

@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -42,11 +42,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 class AtaHardDisk : public AtaBaseDevice
 {
 public:
-    AtaHardDisk(std::string name);
+    AtaHardDisk(const std::string name);
     ~AtaHardDisk() = default;
 
     static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AtaHardDisk>(new AtaHardDisk("ATA-HD"));
+        return std::unique_ptr<AtaHardDisk>(new AtaHardDisk("AtaHardDisk"));
     }
 
     int device_postinit() override;
