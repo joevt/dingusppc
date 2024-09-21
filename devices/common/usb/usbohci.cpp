@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -158,8 +158,8 @@ static uint8_t* mmu_get_dma_mem(uint32_t addr, uint32_t size) {
     return res.host_va;
 }
 
-USBHostOHCI::USBHostOHCI(std::string name)
-    : PCIDevice(name)
+USBHostOHCI::USBHostOHCI(const std::string name)
+    : PCIDevice(name), HWComponent(name)
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV);
 

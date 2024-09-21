@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -409,7 +409,7 @@ typedef struct {
 
 class USBHostOHCI : public PCIDevice {
 public:
-    USBHostOHCI(std::string name);
+    USBHostOHCI(const std::string name);
     ~USBHostOHCI() = default;
 
     // MMIODevice methods
