@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -48,7 +48,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class ActiontecBridge : public PCIBridge {
 public:
-    ActiontecBridge(std::string name);
+    ActiontecBridge(const std::string name);
     ~ActiontecBridge() = default;
 
     static std::unique_ptr<HWComponent> create() {

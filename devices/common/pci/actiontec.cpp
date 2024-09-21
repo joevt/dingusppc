@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -28,7 +28,7 @@ enum {
     PCI_VENDOR_ACTIONTEC   = 0x1668, // Actiontec Electronics Inc
 };
 
-ActiontecBridge::ActiontecBridge(std::string name) : PCIBridge(name)
+ActiontecBridge::ActiontecBridge(const std::string name) : PCIBridge(name), HWComponent(name)
 {
     supports_types(HWCompType::PCI_HOST | HWCompType::PCI_DEV);
 
