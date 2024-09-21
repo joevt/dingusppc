@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-22 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -59,11 +59,11 @@ enum {
 
 class PsxCtrl : public MemCtrlBase, public MMIODevice {
 public:
-    PsxCtrl(int bridge_num, std::string name);
+    PsxCtrl(const int bridge_num, const std::string name);
     ~PsxCtrl() = default;
 
     static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<PsxCtrl>(new PsxCtrl(1, "PSX-PCI1"));
+        return std::unique_ptr<PsxCtrl>(new PsxCtrl(1, "Psx"));
     };
 
     // MMIODevice methods
