@@ -28,6 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cstring>
 
 I2CProm::I2CProm(uint8_t dev_addr, int size)
+    : HWComponent("I2CProm")
 {
     supports_types(HWCompType::I2C_DEV);
 

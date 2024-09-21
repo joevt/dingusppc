@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -27,12 +27,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 
 #include <cinttypes>
+#include <regex>
 #include <core/timermanager.h>
 
 using namespace ata_interface;
 
-AtaBaseDevice::AtaBaseDevice(const std::string name, uint8_t type) {
-    this->set_name(name);
+AtaBaseDevice::AtaBaseDevice(const std::string name, uint8_t type)
+    : HWComponent(name)
+{
     supports_types(HWCompType::IDE_DEV);
 
     this->device_type = type;
@@ -214,4 +216,18 @@ void AtaBaseDevice::signal_data_ready() {
     this->r_status |= DRQ;
     this->r_status &= ~BSY;
     this->update_intrq(1);
+}
+
+int32_t AtaBaseDevice::parse_self_unit_address_string(const std::string unit_address_string) {
+    return AtaBaseDevice::parse_unit_address_string(unit_address_string);
+}
+
+int32_t AtaBaseDevice::parse_unit_address_string(const std::string unit_address_string) {
+    std::regex unit_address_re("0*([01])", std::regex_constants::icase);
+    std::smatch results;
+    if (std::regex_match(unit_address_string, results, unit_address_re)) {
+        return (int32_t)std::stol(results[1], nullptr, 10);
+    } else {
+        return -1;
+    }
 }
