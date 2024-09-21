@@ -49,7 +49,7 @@ enum AthensRegs: uint8_t {
 
 } // namespace AthensRegs
 
-class AthensClocks : public I2CDevice, public HWComponent
+class AthensClocks : public I2CDevice
 {
 public:
     AthensClocks(uint8_t dev_addr);
