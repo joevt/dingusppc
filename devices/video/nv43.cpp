@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -70,7 +70,7 @@ const regop regops[] = {
 const int maxregop = sizeof(regops) / sizeof(regops[0]);
 
 NV43::NV43()
-    : PCIDevice("nv43"), VideoCtrlBase()
+    : PCIDevice("Nv43"), VideoCtrlBase(), HWComponent("Nv43")
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV);
 
