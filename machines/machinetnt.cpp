@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -31,7 +31,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/hammerhead.h>
 #include <loguru.hpp>
 #include <machines/machine.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
@@ -62,6 +61,8 @@ class MachineTnt : public Machine {
 
 public:
 
+MachineTnt() : HWComponent("MachineTnt") {}
+
 int initialize(const std::string &id)
 {
     LOG_F(INFO, "Building machine TNT...");
@@ -75,39 +76,36 @@ int initialize(const std::string &id)
     GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralTnt"));
 
     // connect GrandCentral I/O controller to the PCI1 bus
-    pci_host->pci_register_device(
-        DEV_FUN(0x10,0), gc_obj);
+    pci_host->add_device(DEV_FUN(0x10,0), gc_obj);
 
     // get video PCI controller object
     PCIHost *vci_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name_optional("Chaos"));
     if (vci_host) {
         vci_host->set_irq_map(chaos_irq_map);
         // connect built-in video device to the VCI bus
-        vci_host->pci_register_device(
-            DEV_FUN(0x0B,0), dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("ControlVideo")));
+        vci_host->add_device(DEV_FUN(0x0B,0),
+            dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("ControlVideo")));
     }
 
     // attach IOBus Device #1 0xF301A000
-    gMachineObj->add_device("BoardReg1", std::unique_ptr<BoardRegister>(
-        new BoardRegister("Board Register 1",
+    gc_obj->add_device(0x1A000,
+        new BoardRegister("BoardReg1",
             0x3F                                                                       | // pull up all PRSNT bits
             ((GET_BIN_PROP("emmo") ^ 1) << 8)                                          | // factory tests (active low)
             ((gMachineObj->get_comp_by_name_optional("Sixty6Video") == nullptr) << 13) | // composite video out (active low)
             ((gMachineObj->get_comp_by_name_optional("MeshTnt") != nullptr) << 14)     | // fast SCSI (active high)
             0x8000U                                                                      // pull up unused bits
-    )));
-    gc_obj->attach_iodevice(0, dynamic_cast<BoardRegister*>(gMachineObj->get_comp_by_name("BoardReg1")));
+    ));
 
     PCIHost *pci2_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name_optional("Bandit2"));
     if (pci2_host) {
         pci2_host->set_irq_map(bandit2_irq_map);
         // attach IOBus Device #3 0xF301C000
-        gMachineObj->add_device("BoardReg2", std::unique_ptr<BoardRegister>(
-            new BoardRegister("Board Register 2",
+        gc_obj->add_device(0x1C000,
+            new BoardRegister("BoardReg2",
                 0x3F                                        | // pull up all PRSNT bits
                 0x8000U                                       // pull up unused bits
-        )));
-        gc_obj->attach_iodevice(2, dynamic_cast<BoardRegister*>(gMachineObj->get_comp_by_name("BoardReg2")));
+        ));
     }
 
     // get (raw) pointer to the memory controller
@@ -183,16 +181,16 @@ static_const_pm7500_settings(604)
 static_const_pm7500_settings(604e)
 
 static std::vector<std::string> pm7500_devices = {
-    "Hammerhead", "Bandit1", "GrandCentralTnt", "Chaos"
+    "Hammerhead@F8000000", "Bandit1@F2000000", "GrandCentralTnt@10", "Chaos@F0000000"
 };
 
 static std::vector<std::string> pm8500_devices = {
-    "Hammerhead", "Bandit1", "GrandCentralTnt", "Chaos",
-    "Sixty6Video"
+    "Hammerhead@F8000000", "Bandit1@F2000000", "GrandCentralTnt@10", "Chaos@F0000000",
+    "Sixty6Video@1C000"
 };
 
 static std::vector<std::string> pm9500_devices = {
-    "Hammerhead", "Bandit1", "GrandCentralTnt", "Bandit2",
+    "Hammerhead@F8000000", "Bandit1@F2000000", "GrandCentralTnt@10", "Bandit2@F4000000",
 };
 
 static const DeviceDescription MachineTnt7300_descriptor = {

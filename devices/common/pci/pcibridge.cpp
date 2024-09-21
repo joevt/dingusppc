@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -24,7 +24,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/pci/pcihost.h>
 #include <loguru.hpp>
 
-PCIBridge::PCIBridge(std::string name) : PCIBridgeBase(name, PCI_HEADER_TYPE_1, 2)
+PCIBridge::PCIBridge(const std::string name)
+    : PCIBridgeBase(name, PCI_HEADER_TYPE_1, 2), HWComponent(name)
 {
     this->pci_rd_memory_base        = [this]() { return this->memory_base; };
     this->pci_rd_memory_limit       = [this]() { return this->memory_limit; };
