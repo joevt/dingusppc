@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -40,9 +40,9 @@ class DmaInChannel;
 class SoundServer;
 
 /** Base class for the AWACs codecs. */
-class AwacsBase : public HWComponent {
+class AwacsBase : virtual public HWComponent {
 public:
-    AwacsBase(std::string name);
+    AwacsBase(const std::string name);
     ~AwacsBase() = default;
 
     void set_dma_out(DmaOutChannel *dma_out_ch) {
@@ -107,7 +107,7 @@ enum {
 /** Audio processor chip (TDA7433) emulation. */
 class AudioProcessor : public I2CDevice {
 public:
-    AudioProcessor()  = default;
+    AudioProcessor() : HWComponent("AudioProcessor") {}
     ~AudioProcessor() = default;
 
     void start_transaction() {
@@ -157,7 +157,7 @@ private:
 /** Sound codec interface with the typical MacIO access. */
 class MacioSndCodec : public AwacsBase {
 public:
-    MacioSndCodec(std::string name) : AwacsBase(name) {};
+    MacioSndCodec(const std::string name) : AwacsBase(name) {}
     virtual uint32_t snd_ctrl_read(uint32_t offset, int size) = 0;
     virtual void     snd_ctrl_write(uint32_t offset, uint32_t value, int size) = 0;
 };
@@ -170,7 +170,7 @@ public:
 /** Screamer sound codec. */
 class AwacsScreamer : public MacioSndCodec {
 public:
-    AwacsScreamer(std::string name = "Screamer");
+    AwacsScreamer(const std::string name = "ScreamerSnd");
     ~AwacsScreamer() = default;
 
     uint32_t    snd_ctrl_read(uint32_t offset, int size);
@@ -179,15 +179,13 @@ public:
     int device_postinit();
 
     static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AwacsScreamer>(new AwacsScreamer("Screamer"));
+        return std::unique_ptr<AwacsScreamer>(new AwacsScreamer());
     }
 
 private:
     uint32_t snd_ctrl_reg    = 0;
     uint16_t control_regs[8] = {}; // control registers, each 12-bits wide
     uint8_t  is_busy         = 0;
-
-    std::unique_ptr<AudioProcessor> audio_proc;
 };
 
 #endif /* AWAC_H */
