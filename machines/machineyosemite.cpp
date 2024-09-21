@@ -142,4 +142,9 @@ static const DeviceDescription MachineYosemite_descriptor = {
     Machine::create<MachineYosemite>, yosemite_devices, yosemite_settings, HWCompType::MACHINE, "Power Macintosh G3 Blue and White"
 };
 
+static const DeviceDescription MachineYikes_descriptor = {
+    Machine::create<MachineYosemite>, yosemite_devices, yosemite_settings, HWCompType::MACHINE, "Power Macintosh G4 Yikes"
+};
+
 REGISTER_DEVICE(pmg3nw, MachineYosemite_descriptor);
+REGISTER_DEVICE(pmyikes, MachineYikes_descriptor);
