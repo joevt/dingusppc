@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -36,10 +36,9 @@ namespace loguru {
 
 using namespace Hammerhead;
 
-HammerheadCtrl::HammerheadCtrl() : MemCtrlBase()
+HammerheadCtrl::HammerheadCtrl()
+    : MemCtrlBase(), HWComponent("Hammerhead")
 {
-    this->name = "Hammerhead";
-
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV);
 
     // add MMIO region for the configuration and status registers

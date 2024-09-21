@@ -25,7 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/hmc.h>
 #include <devices/video/pdmonboard.h>
 #include <devices/video/videoctrl.h>
-#include <machines/machinebase.h>
 #include <memaccess.h>
 #include <loguru.hpp>
 
