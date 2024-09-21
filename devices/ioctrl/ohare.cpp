@@ -31,7 +31,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/sound/awacs.h>
 #include <endianswap.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 
 #include <cinttypes>
 #include <functional>
@@ -44,7 +43,8 @@ namespace loguru {
     };
 }
 
-OHare::OHare() : PCIDevice("mac-io_ohare"), InterruptCtrl()
+OHare::OHare()
+    : PCIDevice("OHare"), HWComponent("OHare")
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL);
 
@@ -69,6 +69,7 @@ OHare::OHare() : PCIDevice("mac-io_ohare"), InterruptCtrl()
     // find appropriate sound chip, create a DMA output channel for sound,
     // then wire everything together
     this->snd_codec = dynamic_cast<MacioSndCodec*>(gMachineObj->get_comp_by_type(HWCompType::SND_CODEC));
+    this->add_device(0x14000, this->snd_codec);
     this->snd_out_dma = std::unique_ptr<DMAChannel> (new DMAChannel("snd_out"));
     this->snd_out_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_DAVBUS_Tx));
     this->snd_codec->set_dma_out(this->snd_out_dma.get());
@@ -528,7 +529,7 @@ void OHare::clear_cpu_int()
 }
 
 static const std::vector<std::string> OHare_Subdevices = {
-    "NVRAM", "ViaCuda", "MeshHeathrow", "Escc", "Swim3", "Ide0"
+    "NVRAM@60000", "ViaCuda@16000", "MeshHeathrow@10000", "Escc@13000", "Swim3@15000", "Ide0@20000"
 };
 
 static const DeviceDescription OHare_Descriptor = {

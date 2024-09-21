@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -174,7 +174,7 @@ constexpr auto CUDA_ROM_START     = 0xF00;    // starting address of ROM contain
 constexpr auto CUDA_FW_VERSION_MAJOR = 0x0002;
 constexpr auto CUDA_FW_VERSION_MINOR = 0x0029;
 
-class ViaCuda : public HWComponent, public I2CBus {
+class ViaCuda : virtual public HWComponent {
 public:
     ViaCuda();
     ~ViaCuda();
@@ -257,10 +257,12 @@ private:
     void (ViaCuda::*out_handler)(void);
     void (ViaCuda::*next_out_handler)(void);
 
-    std::unique_ptr<NVram>   pram_obj;
+    NVram*  pram_obj = nullptr;
 
     AdbBus* adb_bus_obj = nullptr;
     bool    autopoll_enabled = false;
+
+    I2CBus* i2c_bus = nullptr;
 
     // VIA methods
     void print_enabled_ints(); // print enabled VIA interrupts and their sources
@@ -293,6 +295,18 @@ private:
     void i2c_simple_transaction(uint8_t dev_addr, const uint8_t* in_buf, int in_bytes);
     void i2c_comb_transaction(uint8_t dev_addr, uint8_t sub_addr, uint8_t dev_addr1,
                               const uint8_t* in_buf, int in_bytes);
+};
+
+class ViaCudaI2C : public I2CBus {
+public:
+    ViaCudaI2C() : HWComponent("ViaCudaI2C") {
+        supports_types(HWCompType::I2C_HOST);
+    }
+    ~ViaCudaI2C() = default;
+
+    static std::unique_ptr<HWComponent> create() {
+        return std::unique_ptr<ViaCudaI2C>(new ViaCudaI2C());
+    }
 };
 
 #endif // VIACUDA_H

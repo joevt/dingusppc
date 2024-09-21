@@ -39,7 +39,9 @@ namespace loguru {
 
 using namespace std;
 
-ScsiHardDisk::ScsiHardDisk(std::string name, int my_id) : ScsiDevice(name, my_id) {
+ScsiHardDisk::ScsiHardDisk(const std::string name, int my_id)
+    : ScsiDevice(name, my_id), HWComponent(name)
+{
     this->data_buf_size = 1 << 22;
     this->data_buf_obj = std::unique_ptr<uint8_t[]>(new uint8_t[this->data_buf_size]);
     this->data_buf = this->data_buf_obj.get();

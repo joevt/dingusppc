@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -96,8 +96,9 @@ static const std::map<uint16_t, std::string> mach64_reg_names = {
     one_reg_name(SETUP_CNTL),
 };
 
-ATIRage::ATIRage(uint16_t dev_id)
-    : PCIDevice("ati-rage"), VideoCtrlBase()
+ATIRage::ATIRage(uint16_t dev_id) : VideoCtrlBase(),
+        PCIDevice(dev_id == ATI_RAGE_GT_DEV_ID ? "AtiRageGT" : "AtiRagePro"),
+        HWComponent(dev_id == ATI_RAGE_GT_DEV_ID ? "AtiRageGT" : "AtiRagePro")
 {
     uint8_t asic_id;
 
