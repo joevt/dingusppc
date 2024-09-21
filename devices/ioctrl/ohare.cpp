@@ -266,7 +266,8 @@ uint32_t OHare::mio_ctrl_read(uint32_t offset, int size) {
         value = this->int_levels;
         break;
     case MIO_OHARE_ID: // FIXME: HACK: no clue what this register is supposed to contain
-        value = ~0x00004000; // 1<<14
+        value = ~0x00004000; // ~(1<<14)   6500
+      //value = ~0x00000000; //  (1<<14)   TAM
         LOG_F(ERROR, "%s: read  OHARE_ID @%02x.%c = %0*x",
             this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
