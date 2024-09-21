@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -26,7 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <memaccess.h>
 
 promise20269::promise20269()
-    : PCIDevice("promise20269")
+    : PCIDevice("Promise20269"), HWComponent("Promise20269")
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV);
 
