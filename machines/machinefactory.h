@@ -59,9 +59,9 @@ public:
     static void list_properties(vector<string> machine_list);
 
 private:
-    static void create_device(string& dev_name, DeviceDescription& dev);
-    static void print_settings(PropMap& p, int type, int indent, string path);
-    static void list_device_settings(DeviceDescription& dev, int type, int indent, string path);
+    static HWComponent* create_device(HWComponent *parent, string dev_name, DeviceDescription& dev);
+    static void print_settings(PropMap& p, int type, int indent, string path, string device);
+    static void list_device_settings(DeviceDescription& dev, int type, int indent, string path, string device);
     static int  load_boot_rom(char *rom_data, size_t rom_size);
 };
 

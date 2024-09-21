@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -35,7 +35,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using namespace ata_interface;
 
 AtapiBaseDevice::AtapiBaseDevice(const std::string name)
-    : AtaBaseDevice(name, DEVICE_TYPE_ATAPI) {
+    : AtaBaseDevice(name, DEVICE_TYPE_ATAPI), HWComponent(name) {
 }
 
 void AtapiBaseDevice::device_set_signature() {

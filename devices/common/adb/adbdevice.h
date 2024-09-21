@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -37,12 +37,18 @@ enum {
 
 class AdbBus; // forward declaration to prevent compiler errors
 
-class AdbDevice : public HWComponent {
+class AdbDevice : virtual public HWComponent {
 public:
-    AdbDevice(std::string name);
+    AdbDevice(const std::string name);
     ~AdbDevice() = default;
 
+    // HWComponent methods
+
     int device_postinit() override;
+    int32_t parse_self_unit_address_string(std::string unit_address) override;
+    std::string get_self_unit_address_string(int32_t unit_address) override;
+
+    // AdbDevice methods
 
     virtual void reset() = 0;
     virtual bool talk(const uint8_t dev_addr, const uint8_t reg_num);

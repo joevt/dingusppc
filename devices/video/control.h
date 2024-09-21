@@ -137,8 +137,8 @@ protected:
 
 private:
     std::unique_ptr<DisplayID>      display_id;
-    std::unique_ptr<AthensClocks>   clk_gen;
-    std::unique_ptr<AppleRamdac>    radacal = nullptr;
+    AthensClocks*                   clk_gen;
+    AppleRamdac*                    radacal = nullptr;
 
     std::unique_ptr<uint8_t[]>  vram_ptr;
 

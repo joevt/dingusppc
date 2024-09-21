@@ -26,7 +26,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/scsi/scsihd.h>
 #include <devices/common/scsi/scsicdrom.h>
 #include <devices/deviceregistry.h>
-#include <machines/machinebase.h>
 #include <loguru.hpp>
 
 #include <cinttypes>
@@ -38,9 +37,8 @@ namespace loguru {
     };
 }
 
-ScsiBus::ScsiBus(const std::string name)
+ScsiBus::ScsiBus(const std::string name) : HWComponent(name)
 {
-    this->set_name(name);
     supports_types(HWCompType::SCSI_BUS);
 
     for(int i = 0; i < SCSI_MAX_DEVS; i++) {
@@ -366,11 +364,9 @@ void ScsiBus::attach_scsi_devices(const std::string bus_suffix)
 
             if (scsi_id < SCSI_MAX_DEVS * 2) {
                 scsi_id = scsi_id % SCSI_MAX_DEVS;
-                std::string scsi_device_name = "ScsiHD" + bus_suffix + "," +
-                                               std::to_string(scsi_id);
+                std::string scsi_device_name = "ScsiHD";
                 ScsiHardDisk *scsi_device = new ScsiHardDisk(scsi_device_name, scsi_id);
-                gMachineObj->add_device(scsi_device_name,
-                                        std::unique_ptr<ScsiHardDisk>(scsi_device));
+                this->add_device(scsi_id, scsi_device);
                 this->register_device(scsi_id, scsi_device);
                 scsi_device->insert_image(path);
             }
@@ -391,11 +387,9 @@ void ScsiBus::attach_scsi_devices(const std::string bus_suffix)
 
             if (scsi_id < SCSI_MAX_DEVS * 2) {
                 scsi_id = scsi_id % SCSI_MAX_DEVS;
-                std::string scsi_device_name = "ScsiCdrom" + bus_suffix + "," +
-                                               std::to_string(scsi_id);
+                std::string scsi_device_name = "ScsiCdrom";
                 ScsiCdrom *scsi_device = new ScsiCdrom(scsi_device_name, scsi_id);
-                gMachineObj->add_device(scsi_device_name,
-                                        std::unique_ptr<ScsiCdrom>(scsi_device));
+                this->add_device(scsi_id, scsi_device);
                 this->register_device(scsi_id, scsi_device);
                 scsi_device->insert_image(path);
             }

@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -31,8 +31,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace ata_interface;
 
-AtaBaseDevice::AtaBaseDevice(const std::string name, uint8_t type) {
-    this->set_name(name);
+AtaBaseDevice::AtaBaseDevice(const std::string name, uint8_t type)
+    : HWComponent(name)
+{
     supports_types(HWCompType::IDE_DEV);
 
     this->device_type = type;

@@ -28,7 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <debugger/debugger.h>
 #include <debugger/symbols.h>
 #include <devices/deviceregistry.h>
-#include <machines/machinebase.h>
+#include <devices/common/hwcomponent.h>
 #include <machines/machinefactory.h>
 #include <utils/profiler.h>
 #include <main.h>

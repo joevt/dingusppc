@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -37,9 +37,8 @@ using namespace std;
 static char NVRAM_FILE_ID[] = "DINGUSPPCNVRAM";
 
 NVram::NVram(std::string file_name, uint32_t ram_size)
+    : HWComponent(ram_size == 8192 ? "NVRAM" : "PRAM")
 {
-    this->name = "NVRAM";
-
     supports_types(HWCompType::NVRAM);
 
     this->file_name = file_name;
@@ -97,4 +96,9 @@ static const DeviceDescription Nvram_Descriptor = {
     NVram::create, {}, {}, HWCompType::NVRAM
 };
 
+static const DeviceDescription Pram_Descriptor = {
+    NVram::create_pram, {}, {}, HWCompType::NVRAM
+};
+
 REGISTER_DEVICE(NVRAM, Nvram_Descriptor);
+REGISTER_DEVICE(PRAM, Pram_Descriptor);

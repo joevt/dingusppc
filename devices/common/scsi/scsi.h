@@ -169,15 +169,14 @@ class ScsiBus;
 
 typedef std::function<void()> action_callback;
 
-class ScsiDevice : public HWComponent {
+class ScsiDevice : virtual public HWComponent {
 public:
-    ScsiDevice(std::string name, int my_id) {
-        this->set_name(name);
+    ScsiDevice(const std::string name, int my_id) : HWComponent(name) {
         supports_types(HWCompType::SCSI_DEV);
         this->scsi_id = my_id;
         this->lun = 0,
         this->cur_phase = ScsiPhase::BUS_FREE;
-    };
+    }
     ~ScsiDevice() = default;
 
     virtual void notify(ScsiMsg msg_type, int param);
@@ -229,7 +228,7 @@ protected:
 };
 
 /** This class provides a higher level abstraction for the SCSI bus. */
-class ScsiBus : public HWComponent {
+class ScsiBus : virtual public HWComponent {
 public:
     ScsiBus(const std::string name);
     ~ScsiBus() = default;

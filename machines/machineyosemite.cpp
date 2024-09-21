@@ -26,7 +26,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/deviceregistry.h>
 #include <devices/memctrl/mpc106.h>
 #include <devices/memctrl/spdram.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
@@ -47,22 +46,20 @@ static const std::vector<PciIrqMap> pci_bridge_irq_map = {
     {"pci_USB"     , DEV_FUN(0x06,0), IntSrc::USB     },
 };
 
-static void setup_ram_slot(std::string name, int i2c_addr, int capacity_megs) {
+static void setup_ram_slot(const std::string name, int i2c_addr, int capacity_megs) {
     if (!capacity_megs)
         return;
-
-    gMachineObj->add_device(name, std::unique_ptr<SpdSdram168>(new SpdSdram168(i2c_addr)));
-    SpdSdram168* ram_dimm = dynamic_cast<SpdSdram168*>(gMachineObj->get_comp_by_name(name));
-    ram_dimm->set_capacity(capacity_megs);
-
-    // register RAM DIMM with the I2C bus
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
-    i2c_bus->register_device(i2c_addr, ram_dimm);
+    SpdSdram168* ram_dimm = new SpdSdram168(i2c_addr);
+    i2c_bus->add_device(i2c_addr, ram_dimm, name);
+    ram_dimm->set_capacity(capacity_megs);
 }
 
-class MachineYosemite : public HWComponent {
+class MachineYosemite : virtual public HWComponent {
 
 public:
+
+MachineYosemite() : HWComponent("MachineYosemite") {}
 
 static std::unique_ptr<HWComponent> create() {
     MachineYosemite *machine = new MachineYosemite();
@@ -88,23 +85,23 @@ int initialize_yosemite()
     // attach PCI devices
 
     // 00:0D.0 PCI Bridge
-    grackle_obj->pci_register_device(DEV_FUN(0x0D,0), dynamic_cast<PCIBase*>(sec_bridge));
+    grackle_obj->add_device(DEV_FUN(0x0D,0), dynamic_cast<PCIBase*>(sec_bridge));
 
 #if 0
     // 00:10.0 slot J12 GPU
-    grackle_obj->pci_register_device(DEV_FUN(0x10,0),
+    grackle_obj->add_device(DEV_FUN(0x10,0),
         dynamic_cast<PCIBase*>(gMachineObj->get_comp_by_name("AtiRage128")));
 #endif
 
 #if 0
     // 01:00.0 FireWire
-    sec_bridge->pci_register_device(DEV_FUN(0,0),
+    sec_bridge->add_device(DEV_FUN(0,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("TiPciLynx")));
 #endif
 
     // 01:01.0 IDE
     // register CMD646U2 PCI Ultra ATA Controller
-    sec_bridge->pci_register_device(DEV_FUN(1,0),
+    sec_bridge->add_device(DEV_FUN(1,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("CmdAta")));
 
     // 01:02.0 slot J11
@@ -112,12 +109,12 @@ int initialize_yosemite()
     // 01:04.0 slot J9
 
     // 01:05.0 mac-io
-    sec_bridge->pci_register_device(DEV_FUN(5,0),
+    sec_bridge->add_device(DEV_FUN(5,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("Heathrow")));
 
     // 01:06.0 USB
 #if 0
-    sec_bridge->pci_register_device(DEV_FUN(6,0),
+    sec_bridge->add_device(DEV_FUN(6,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("OptiOhci")));
 #endif
 
@@ -166,15 +163,15 @@ static const PropMap yosemite_settings = {
 };
 
 static vector<string> yosemite_devices = {
-    "Grackle",
-    "Dec21154Yosemite",
-    "CmdAta",
-    "BurgundySnd",
-    "Heathrow",
+    "Grackle@80000000",
+    "Dec21154Yosemite@D",
+    "CmdAta@1",
+    "BurgundySnd@14000",
+    "Heathrow@5",
     "AtaHardDisk",
     "AtapiCdrom",
 #if 0
-    "OptiOhci",
+    "OptiOhci@6",
 #endif
 };
 

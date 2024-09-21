@@ -39,7 +39,8 @@ namespace loguru {
 
 using namespace std;
 
-ScsiHardDisk::ScsiHardDisk(std::string name, int my_id) : ScsiDevice(name, my_id) {
+ScsiHardDisk::ScsiHardDisk(const std::string name, int my_id)
+    : ScsiDevice(name, my_id), HWComponent(name) {
 }
 
 void ScsiHardDisk::insert_image(std::string filename) {

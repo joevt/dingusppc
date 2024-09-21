@@ -28,7 +28,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/scsi/sc53c94.h>
 #include <devices/deviceregistry.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 
 #include <cinttypes>
 #include <cstring>
@@ -54,7 +53,8 @@ static bool debug_scsi_log = false;
 #define SCSI_LOG_F(verbosity_name, ...) \
     do { VLOG_F(loguru::Verbosity_ ## verbosity_name, __VA_ARGS__); last_log_message = LastLog::Misc; } while (0)
 
-Sc53C94::Sc53C94(uint8_t chip_id, uint8_t my_id) : ScsiDevice("SC53C94", my_id)
+Sc53C94::Sc53C94(uint8_t chip_id, uint8_t my_id)
+    : ScsiDevice("Sc53C94", my_id), HWComponent("Sc53C94")
 {
     this->chip_id   = chip_id;
     this->my_bus_id = my_id;

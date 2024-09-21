@@ -34,16 +34,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/deviceregistry.h>
 #include <devices/memctrl/hmc.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
 #include <string>
 #include <vector>
 
-class MachinePdm : public HWComponent {
+class MachinePdm : virtual public HWComponent {
 
 public:
+
+MachinePdm() : HWComponent("MachinePdm") {}
 
 static std::unique_ptr<HWComponent> create(std::string id) {
     MachinePdm *machine = new MachinePdm();
@@ -87,9 +88,9 @@ int initialize_pdm(std::string& id)
     }
 
     // create machine ID register
-    gMachineObj->add_device("MachineID", std::unique_ptr<NubusMacID>(new NubusMacID(machine_id)));
-    hmc_obj->add_mmio_region(0x5FFFFFFC, 4,
-        dynamic_cast<MMIODevice*>(gMachineObj->get_comp_by_name("MachineID")));
+    NubusMacID *nubus_macid = new NubusMacID(machine_id);
+    hmc_obj->add_mmio_region(0x5FFFFFFC, 4, nubus_macid);
+    this->add_device(0x5FFFFFFC, nubus_macid);
 
     // allocate ROM region
     if (!hmc_obj->add_rom_region(0x40000000, 0x400000)) {
@@ -143,7 +144,7 @@ static const PropMap pm6100_settings = {
 };
 
 static vector<string> pm6100_devices = {
-    "HMC", "Amic"
+    "HMC@50F40000", "Amic@50F00000"
 };
 
 static const DeviceDescription MachinePdm6100_descriptor = {

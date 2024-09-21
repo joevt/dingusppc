@@ -30,7 +30,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/deviceregistry.h>
 #include <devices/memctrl/platinum.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 #include <memctrl/memctrlbase.h>
@@ -45,9 +44,11 @@ static std::vector<PciIrqMap> bandit1_irq_map = {
     {nullptr , DEV_FUN(0x10,0),              }, // GrandCentral
 };
 
-class MachineCatalyst : public HWComponent {
+class MachineCatalyst : virtual public HWComponent {
 
 public:
+
+MachineCatalyst() : HWComponent("MachineCatalyst") {}
 
 static std::unique_ptr<HWComponent> create() {
     MachineCatalyst *machine = new MachineCatalyst();
@@ -71,18 +72,16 @@ int initialize_catalyst()
     GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralCatalyst"));
 
     // connect GrandCentral I/O controller to the PCI1 bus
-    pci_host->pci_register_device(DEV_FUN(0x10,0), gc_obj);
+    pci_host->add_device(DEV_FUN(0x10,0), gc_obj);
 
     // attach IOBus Device #1 0xF301A000
-    gMachineObj->add_device("BoardReg1", std::unique_ptr<BoardRegister>(
-        new BoardRegister("Board Register 1",
+    gc_obj->add_device(0x1A000,
+        new BoardRegister("BoardReg1",
             0x3F                                | // pull up all PRSNT bits
             ((GET_BIN_PROP("emmo") ^ 1) << 8)   | // factory tests (active low)
             (0 << 11)                           | // 2-bit box ID
             0xE000U                               // pull up unused bits
-    )));
-
-    gc_obj->attach_iodevice(0, dynamic_cast<BoardRegister*>(gMachineObj->get_comp_by_name("BoardReg1")));
+    ));
 
     // get (raw) pointer to the memory controller
     platinum_obj = dynamic_cast<PlatinumCtrl*>(gMachineObj->get_comp_by_name("Platinum"));
@@ -140,7 +139,7 @@ static const PropMap pm7200_settings = {
 };
 
 static vector<string> pm7200_devices = {
-    "Platinum", "Bandit1", "GrandCentralCatalyst"
+    "Platinum@F8000000", "Bandit1@F2000000", "GrandCentralCatalyst@10"
 };
 
 static const DeviceDescription MachineCatalyst_descriptor = {

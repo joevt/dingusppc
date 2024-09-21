@@ -26,21 +26,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/mpc106.h>
 #include <devices/memctrl/spdram.h>
 #include <devices/ioctrl/macio.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
-static void setup_ram_slot(std::string name, int i2c_addr, int capacity_megs) {
+static void setup_ram_slot(const std::string name, int i2c_addr, int capacity_megs) {
     if (!capacity_megs)
         return;
-
-    gMachineObj->add_device(name, std::unique_ptr<SpdSdram168>(new SpdSdram168(i2c_addr)));
-    SpdSdram168* ram_dimm = dynamic_cast<SpdSdram168*>(gMachineObj->get_comp_by_name(name));
-    ram_dimm->set_capacity(capacity_megs);
-
-    // register RAM DIMM with the I2C bus
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
-    i2c_bus->register_device(i2c_addr, ram_dimm);
+    SpdSdram168* ram_dimm = new SpdSdram168(i2c_addr);
+    i2c_bus->add_device(i2c_addr, ram_dimm, name);
+    ram_dimm->set_capacity(capacity_megs);
 }
 
 static const std::vector<PciIrqMap> grackle_irq_map = {
@@ -53,9 +48,11 @@ static const std::vector<PciIrqMap> grackle_irq_map = {
     {"pci_PERCH", DEV_FUN(0x14,0), IntSrc::PCI_PERCH},
 };
 
-class MachineBondi : public HWComponent {
+class MachineBondi : virtual public HWComponent {
 
 public:
+
+MachineBondi() : HWComponent("MachineBondi") {}
 
 static std::unique_ptr<HWComponent> create() {
     MachineBondi *machine = new MachineBondi();
@@ -74,13 +71,11 @@ int initialize_bondi()
     MPC106* grackle_obj = dynamic_cast<MPC106*>(gMachineObj->get_comp_by_name("Grackle"));
     grackle_obj->set_irq_map(grackle_irq_map);
 
-    dynamic_cast<HeathrowIC*>(gMachineObj->get_comp_by_name("Heathrow"))->set_media_bay_id(0x30);
+    HeathrowIC *heathrow = dynamic_cast<HeathrowIC*>(gMachineObj->get_comp_by_name("Heathrow"));
+    heathrow->set_media_bay_id(0x30);
+    grackle_obj->add_device(DEV_FUN(0x10,0), heathrow);
 
-    grackle_obj->pci_register_device(DEV_FUN(0x10,0),
-        dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("Heathrow")));
-
-    grackle_obj->pci_register_device(
-        DEV_FUN(0x12, 0),
+    grackle_obj->add_device(DEV_FUN(0x12,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("AtiMach64Gx")));
 
     // allocate ROM region
@@ -121,7 +116,7 @@ static const PropMap bondi_settings = {
 };
 
 static vector<string> bondi_devices = {
-    "Grackle", "BurgundySnd", "Heathrow", "AtiMach64Gx", "AtaHardDisk", "AtapiCdrom"
+    "Grackle@80000000", "BurgundySnd@14000", "Heathrow@10", "AtiMach64Gx@12", "AtaHardDisk", "AtapiCdrom"
 };
 
 static const DeviceDescription MachineBondi_descriptor = {

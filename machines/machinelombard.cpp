@@ -26,21 +26,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/memctrl/mpc106.h>
 #include <devices/memctrl/spdram.h>
 #include <devices/ioctrl/macio.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
-static void setup_ram_slot(std::string name, int i2c_addr, int capacity_megs) {
+static void setup_ram_slot(const std::string name, int i2c_addr, int capacity_megs) {
     if (!capacity_megs)
         return;
-
-    gMachineObj->add_device(name, std::unique_ptr<SpdSdram168>(new SpdSdram168(i2c_addr)));
-    SpdSdram168* ram_dimm = dynamic_cast<SpdSdram168*>(gMachineObj->get_comp_by_name(name));
-    ram_dimm->set_capacity(capacity_megs);
-
-    // register RAM DIMM with the I2C bus
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
-    i2c_bus->register_device(i2c_addr, ram_dimm);
+    SpdSdram168* ram_dimm = new SpdSdram168(i2c_addr);
+    i2c_bus->add_device(i2c_addr, ram_dimm, name);
+    ram_dimm->set_capacity(capacity_megs);
 }
 
 static const std::vector<PciIrqMap> grackle_irq_map = {
@@ -52,9 +47,11 @@ static const std::vector<PciIrqMap> grackle_irq_map = {
     {"pci_CARDBUS", DEV_FUN(0x13,0), IntSrc::PCI_CARDBUS}, // Texas Instruments PCI1211 CardBus Controller (PCMCIA)
 };
 
-class MachineLombard : public HWComponent {
+class MachineLombard : virtual public HWComponent {
 
 public:
+
+MachineLombard() : HWComponent("MachineLombard") {}
 
 static std::unique_ptr<HWComponent> create() {
     MachineLombard *machine = new MachineLombard();
@@ -75,10 +72,10 @@ int initialize_lombard()
 
     dynamic_cast<HeathrowIC*>(gMachineObj->get_comp_by_name("Heathrow"))->set_media_bay_id(0x30); // hasATA
 
-    grackle_obj->pci_register_device(DEV_FUN(0x10,0),
+    grackle_obj->add_device(DEV_FUN(0x10,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("Heathrow")));
 
-    grackle_obj->pci_register_device(DEV_FUN(0x11,0),
+    grackle_obj->add_device(DEV_FUN(0x11,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("AtiMach64Gx")));
 
     // allocate ROM region
@@ -127,7 +124,7 @@ static const PropMap lombard_settings = {
 };
 
 static vector<string> lombard_devices = {
-    "Grackle", "ScreamerSnd", "Heathrow", "AtiMach64Gx", "AtaHardDisk", "AtapiCdrom"
+    "Grackle@80000000", "ScreamerSnd@14000", "Heathrow@10", "AtiMach64Gx@11", "AtaHardDisk", "AtapiCdrom"
 };
 
 static const DeviceDescription MachineLombard_descriptor = {
