@@ -191,6 +191,7 @@ static rom_info rom_identity[] = {
 
     {     0x10f1, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "pbg3lb"  , "PowerBook G3 Lombard"       , "PowerBook G3 Lombard"                              }, // PowerBook1,1
     {     0x11f4, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "pmg3nw"  , "Power Mac Yosemite"         , "Power Mac B&W G3"                                  }, // PowerMac1,1
+    {     0x12f2, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "pmyikes" , "Power Mac G4 Yikes"         , "Power Mac G4 Yikes"                                }, // PowerMac1,2
     {     0x13f2, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "imacg3"  , "iMac G3 Bondi"              , "iMac (233 MHz) (Bondi Blue)"                       }, // iMac,1
     {     0x13f3, 1024, 0,        0,          0, 0, nullptr       , nullptr    , "imacg3"  , "iMac G3 Tray Loading"       , "iMac (266,333 MHz) (Tray Loading)"                 }, // iMac,1
 
