@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-22 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -73,10 +73,9 @@ std::string MacSuperdrive::get_status_name(uint8_t addr)
     }
 }
 
-MacSuperDrive::MacSuperDrive(std::string name)
+MacSuperDrive::MacSuperDrive(const std::string name) : HWComponent(name)
 {
-    this->set_name(name);
-    this->supported_types = HWCompType::FLOPPY_DRV;
+    supports_types(HWCompType::FLOPPY_DRV);
 
     this->eject_latch = 0; // eject latch is off
 
