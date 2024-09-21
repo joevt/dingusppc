@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -26,7 +26,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/ata/idechannel.h>
 #include <devices/common/scsi/scsi.h> // ATAPI CDROM reuses SCSI commands (sic!)
 #include <devices/deviceregistry.h>
-#include <machines/machinebase.h>
 #include <machines/machineproperties.h>
 #include <memaccess.h>
 
@@ -35,7 +34,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 using namespace ata_interface;
 
-AtapiCdrom::AtapiCdrom(std::string name) : CdromDrive(), AtapiBaseDevice(name) {
+AtapiCdrom::AtapiCdrom(const std::string name) : AtapiBaseDevice(name), HWComponent(name) {
     this->set_error_callback(
         [this](uint8_t sense_key, uint8_t asc) {
             this->status_error(sense_key, asc);
@@ -56,7 +55,7 @@ int AtapiCdrom::device_postinit() {
     parse_device_path(cdr_config, bus_id, dev_num);
 
     auto bus_obj = dynamic_cast<IdeChannel*>(gMachineObj->get_comp_by_name(bus_id));
-    bus_obj->register_device(dev_num, this);
+    bus_obj->add_device(dev_num, this);
 
     std::string cdr_image_path = GET_STR_PROP("cdr_img");
     if (!cdr_image_path.empty()) {

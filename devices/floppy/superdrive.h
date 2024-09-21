@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-22 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -97,9 +97,9 @@ typedef struct SectorHdr {
 std::string get_command_name(uint8_t addr);
 std::string get_status_name(uint8_t addr);
 
-class MacSuperDrive : public HWComponent {
+class MacSuperDrive : virtual public HWComponent {
 public:
-    MacSuperDrive(std::string name);
+    MacSuperDrive(const std::string name);
     ~MacSuperDrive() = default;
 
     void command(uint8_t addr, uint8_t value);

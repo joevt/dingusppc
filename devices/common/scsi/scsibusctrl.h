@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -62,7 +62,7 @@ constexpr auto DATA_FIFO_DEPTH = 16;
 
 class ScsiBusController : public ScsiDevice, public DmaDevice {
 public:
-    ScsiBusController(std::string name, uint8_t my_bus_id=7) : ScsiDevice(name, my_bus_id) {
+    ScsiBusController(const std::string name, uint8_t my_bus_id=7) : ScsiDevice(name, my_bus_id) {
         supports_types(HWCompType::SCSI_HOST | HWCompType::SCSI_DEV);
     }
     ~ScsiBusController() = default;
