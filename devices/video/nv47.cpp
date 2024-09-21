@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -74,7 +74,7 @@ static const std::map<uint16_t, std::string> nv47_reg_names = {
 };
 
 NV47::NV47()
-    : PCIDevice("nv47"), VideoCtrlBase()
+    : PCIDevice("Nv47"), VideoCtrlBase(), HWComponent("Nv47")
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV);
 
