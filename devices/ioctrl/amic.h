@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -159,7 +159,7 @@ private:
 /** AMIC specific Serial Transmit DMA channel. */
 class AmicSerialXmitDma : public DmaOutChannel {
 public:
-    AmicSerialXmitDma(std::string name) : DmaOutChannel(name) {}
+    AmicSerialXmitDma(const std::string name) : DmaOutChannel(name) {}
     ~AmicSerialXmitDma() = default;
 
     void            write_ctrl(const uint8_t value);
@@ -368,7 +368,7 @@ private:
     ViaCuda*            viacuda;
     Swim3::Swim3Ctrl*   swim3;
 
-    std::unique_ptr<AwacDevicePdm>      awacs;
+    AwacDevicePdm*      awacs;
     std::unique_ptr<AmicSndOutDma>      snd_out_dma;
     std::unique_ptr<AmicFloppyDma>      floppy_dma;
     std::unique_ptr<AmicScsiDma>        curio_dma;

@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 #include <cstring>
+#include <regex>
 
 namespace loguru {
     enum : Verbosity {
@@ -275,4 +276,21 @@ void ScsiDevice::report_error(uint8_t sense_key, uint8_t asc) {
     this->ascq   = 0;
     this->sksv   = 0xC0; // sksv=1, C/D=Command, BPV=0, BP=0
     this->switch_phase(ScsiPhase::STATUS);
+}
+
+int32_t ScsiDevice::parse_self_unit_address_string(const std::string unit_address_string) {
+    return ScsiDevice::parse_unit_address_string(unit_address_string);
+}
+
+int32_t ScsiDevice::parse_unit_address_string(const std::string unit_address_string) {
+    std::regex unit_address_re("0*(1?[0-9])", std::regex_constants::icase);
+    std::smatch results;
+    if (std::regex_match(unit_address_string, results, unit_address_re)) {
+        int result = (int32_t)std::stol(results[1], nullptr, 10);
+        if (result >= SCSI_MAX_DEVS)
+            return -1;
+        return result;
+    } else {
+        return -1;
+    }
 }

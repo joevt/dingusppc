@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 
 Saa7187VideoEncoder::Saa7187VideoEncoder(uint8_t dev_addr)
+    : HWComponent("Saa7187VideoEncoder")
 {
     supports_types(HWCompType::I2C_DEV);
 
