@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -34,13 +34,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     automatically saved to and restored from the dedicated file.
  */
 
-class NVram : public HWComponent {
+class NVram : virtual public HWComponent {
 public:
     NVram(std::string file_name = "nvram.bin", uint32_t ram_size = 8192);
     ~NVram();
 
     static std::unique_ptr<HWComponent> create() {
         return std::unique_ptr<NVram>(new NVram());
+    }
+
+    static std::unique_ptr<HWComponent> create_pram() {
+        return std::unique_ptr<NVram>(new NVram("pram.bin", 256));
     }
 
     uint8_t read_byte(uint32_t offset);
