@@ -31,7 +31,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/ioctrl/macio.h>
 #include <devices/memctrl/aspen.h>
 #include <machines/machine.h>
-#include <machines/machinebase.h>
 #include <machines/machinefactory.h>
 #include <loguru.hpp>
 
@@ -47,6 +46,8 @@ class MachinePippin : public Machine {
 
 public:
 
+MachinePippin() : HWComponent("MachinePippin") {}
+
 int initialize(const std::string &id)
 {
     LOG_F(INFO, "Building machine Pippin...");
@@ -55,7 +56,7 @@ int initialize(const std::string &id)
     pci_host->set_irq_map(aspen_irq_map);
 
     // connect GrandCentral I/O controller to the PCI1 bus
-    pci_host->pci_register_device(DEV_FUN(0x10,0),
+    pci_host->add_device(DEV_FUN(0x10,0),
         dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralTnt")));
 
     // get (raw) pointer to the memory controller
@@ -97,7 +98,7 @@ static const PropMap Pippin_settings = {
 };
 
 static std::vector<std::string> Pippin_devices = {
-    "Aspen", "AspenPci1", "GrandCentralTnt", "TaosVideo"
+    "Aspen@F8000000", "AspenPci1@F2000000", "GrandCentralTnt@10", "TaosVideo@F0000000"
 };
 
 static const DeviceDescription MachinePippin_descriptor = {

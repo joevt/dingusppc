@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -137,8 +137,8 @@ protected:
 
 private:
     std::unique_ptr<DisplayID>      disp_id;
-    std::unique_ptr<AthensClocks>   clk_gen;
-    std::unique_ptr<AppleRamdac>    radacal = nullptr;
+    AthensClocks*                   clk_gen;
+    AppleRamdac*                    radacal = nullptr;
 
     std::unique_ptr<uint8_t[]>  vram_ptr;
 
