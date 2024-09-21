@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -29,8 +29,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 
 AdbMouse::AdbMouse(
-    std::string name, uint8_t device_class, int num_buttons, int num_bits, uint16_t resolution
-) : AdbDevice(name), device_class(device_class), num_buttons(num_buttons), num_bits(num_bits), resolution(resolution)
+    const std::string name, uint8_t device_class, int num_buttons, int num_bits, uint16_t resolution
+) : AdbDevice(name), HWComponent(name),
+    device_class(device_class), num_buttons(num_buttons), num_bits(num_bits), resolution(resolution)
 {
     EventManager::get_instance()->add_mouse_handler(this, &AdbMouse::event_handler);
 

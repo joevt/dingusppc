@@ -166,16 +166,22 @@ class ScsiBus;
 
 typedef std::function<void()> action_callback;
 
-class ScsiDevice : public HWComponent {
+class ScsiDevice : virtual public HWComponent {
 public:
-    ScsiDevice(std::string name, int my_id) {
-        this->set_name(name);
+    ScsiDevice(const std::string name, int my_id) : HWComponent(name) {
         supports_types(HWCompType::SCSI_DEV);
         this->scsi_id = my_id;
         this->lun = 0,
         this->cur_phase = ScsiPhase::BUS_FREE;
-    };
+    }
     ~ScsiDevice() = default;
+
+    // HWComponent methods
+
+    int32_t parse_self_unit_address_string(const std::string unit_address_string) override;
+    static int32_t parse_unit_address_string(const std::string unit_address_string);
+
+    // ScsiDevice methods
 
     virtual void notify(ScsiNotification notif_type, int param);
     virtual void next_step();
@@ -226,7 +232,7 @@ protected:
 };
 
 /** This class provides a higher level abstraction for the SCSI bus. */
-class ScsiBus : public HWComponent {
+class ScsiBus : virtual public HWComponent {
 public:
     ScsiBus(const std::string name);
     ~ScsiBus() = default;
@@ -239,6 +245,14 @@ public:
         return std::unique_ptr<ScsiBus>(new ScsiBus("ScsiCurio"));
     }
 
+    // HWComponent methods
+
+    int32_t parse_child_unit_address_string(const std::string unit_address_string) override;
+
+    // ScsiBus methods
+
+    template <class T>
+    HWComponent* set_property(const std::string &value, int32_t unit_address);
     void attach_scsi_devices(const std::string bus_suffix);
 
     // low-level state management
