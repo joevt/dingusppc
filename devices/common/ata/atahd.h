@@ -42,11 +42,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 class AtaHardDisk : public AtaBaseDevice
 {
 public:
-    AtaHardDisk(std::string name);
+    AtaHardDisk(const std::string name);
     ~AtaHardDisk() = default;
 
     static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<AtaHardDisk>(new AtaHardDisk("ATA-HD"));
+        return std::unique_ptr<AtaHardDisk>(new AtaHardDisk("AtaHardDisk"));
     }
 
     int device_postinit() override;

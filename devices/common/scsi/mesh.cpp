@@ -28,7 +28,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/scsi/scsi.h>
 #include <devices/deviceregistry.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 
 #include <cinttypes>
 

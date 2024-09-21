@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -28,10 +28,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <string>
 
-PsxCtrl::PsxCtrl(int /*bridge_num*/, std::string name)
+PsxCtrl::PsxCtrl(int /*bridge_num*/, const std::string name) : HWComponent(name)
 {
-    this->name = name;
-
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV);
 
     // add MMIO region for the PSX control registers

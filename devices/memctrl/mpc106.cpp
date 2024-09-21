@@ -32,18 +32,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cstring>
 #include <string>
 
-MPC106::MPC106() : MemCtrlBase(), PCIDevice("Grackle"), PCIHost()
+MPC106::MPC106()
+    : HWComponent("Grackle")
 {
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV |
-                   HWCompType::PCI_HOST | HWCompType::PCI_DEV);
-
-    // populate PCI config header
-    this->vendor_id   = PCI_VENDOR_MOTOROLA;
-    this->device_id   = 0x0002;
-    this->class_rev   = 0x06000040;
-    this->cache_ln_sz = 8;
-    this->command     = 6;
-    this->status      = 0x80;
+                   HWCompType::PCI_HOST);
 
     // add PCI/ISA I/O space, 64K for now
     add_mmio_region(0xFE000000, 0x10000, this);
@@ -55,7 +48,8 @@ MPC106::MPC106() : MemCtrlBase(), PCIDevice("Grackle"), PCIHost()
 int MPC106::device_postinit()
 {
     // assign PCI device number zero to myself
-    this->pci_register_device(DEV_FUN(0,0), this);
+    MPC106PCI *mpc106pci = new MPC106PCI(this);
+    this->add_device(DEV_FUN(0,0), mpc106pci);
     return this->pcihost_device_postinit();
 }
 
@@ -141,7 +135,24 @@ inline void MPC106::cfg_setup(uint32_t offset, int size, int &bus_num, int &dev_
     }
 }
 
-uint32_t MPC106::pci_cfg_read(uint32_t reg_offs, AccessDetails &details) {
+MPC106PCI::MPC106PCI(MPC106 *mpc106)
+    : PCIDevice("GracklePCI"), HWComponent("GracklePCI")
+{
+    supports_types(HWCompType::PCI_DEV);
+
+    // populate PCI config header
+    this->vendor_id   = PCI_VENDOR_MOTOROLA;
+    this->device_id   = 0x0002;
+    this->class_rev   = 0x06000040;
+    this->cache_ln_sz = 8;
+    this->command     = 6;
+    this->status      = 0x80;
+
+    this->mpc106 = mpc106;
+    mpc106->le_mode = (picr1 & PICR1_LE_MODE) != 0;
+}
+
+uint32_t MPC106PCI::pci_cfg_read(uint32_t reg_offs, AccessDetails &details) {
     if (reg_offs < 64) {
         return PCIDevice::pci_cfg_read(reg_offs, details);
     }
@@ -184,7 +195,7 @@ uint32_t MPC106::pci_cfg_read(uint32_t reg_offs, AccessDetails &details) {
     return 0; // PCI Spec §6.1
 }
 
-void MPC106::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details) {
+void MPC106PCI::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details) {
     if (reg_offs < 64) {
         PCIDevice::pci_cfg_write(reg_offs, value, details);
         return;
@@ -220,6 +231,7 @@ void MPC106::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &det
         break;
     case GrackleReg::PICR1:
         this->picr1 = value;
+        mpc106->le_mode = (picr1 & PICR1_LE_MODE) != 0;
         break;
     case GrackleReg::PICR2:
         this->picr2 = value;
@@ -227,7 +239,7 @@ void MPC106::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &det
     case GrackleReg::MCCR1:
         if ((value ^ this->mccr1) & MEMGO) {
             if (value & MEMGO)
-                setup_ram();
+                this->setup_ram();
         }
         this->mccr1 = value;
         break;
@@ -245,7 +257,7 @@ void MPC106::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &det
     }
 }
 
-void MPC106::setup_ram() {
+void MPC106PCI::setup_ram() {
     uint32_t bank_start[8];
     uint32_t bank_end[8];
     int bank_order[8];
@@ -289,7 +301,7 @@ void MPC106::setup_ram() {
     // allocate memory regions
     for (int i = 0; i < region_count; i++) {
         uint32_t region_size = bank_end[bank_order[i]] - bank_start[bank_order[i]] + 1;
-        if (!this->add_ram_region(bank_start[bank_order[i]], region_size)) {
+        if (!mpc106->add_ram_region(bank_start[bank_order[i]], region_size)) {
             LOG_F(WARNING, "Grackle: %d MB RAM allocation 0x%X..0x%X failed (maybe already exists?)",
                 region_size / (1024 * 1024), bank_start[bank_order[i]], bank_end[bank_order[i]]
             );
@@ -314,7 +326,7 @@ static const PropMap Grackle_Properties = {
 
 static const DeviceDescription Grackle_Descriptor = {
     MPC106::create, {}, Grackle_Properties,
-    HWCompType::MEM_CTRL | HWCompType::MMIO_DEV | HWCompType::PCI_HOST | HWCompType::PCI_DEV
+    HWCompType::MEM_CTRL | HWCompType::MMIO_DEV | HWCompType::PCI_HOST
 };
 
 REGISTER_DEVICE(Grackle, Grackle_Descriptor);

@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -24,7 +24,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/ofnvram.h>
 #include <devices/common/nvram.h>
 #include <endianswap.h>
-#include <machines/machinebase.h>
 #include <memaccess.h>
 
 #include <cinttypes>

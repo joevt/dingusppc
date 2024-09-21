@@ -31,7 +31,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/sound/awacs.h>
 #include <endianswap.h>
 #include <loguru.hpp>
-#include <machines/machinebase.h>
 
 #include <cinttypes>
 #include <functional>
@@ -51,7 +50,8 @@ namespace loguru {
 
 using namespace std;
 
-HeathrowIC::HeathrowIC() : PCIDevice("mac-io_heathrow"), InterruptCtrl()
+HeathrowIC::HeathrowIC()
+    : PCIDevice("Heathrow"), InterruptCtrl(), HWComponent("Heathrow")
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL);
 
@@ -75,7 +75,8 @@ HeathrowIC::HeathrowIC() : PCIDevice("mac-io_heathrow"), InterruptCtrl()
 
     // find appropriate sound chip, create a DMA output channel for sound,
     // then wire everything together
-    this->snd_codec   = dynamic_cast<MacioSndCodec*>(gMachineObj->get_comp_by_type(HWCompType::SND_CODEC));
+    this->snd_codec = dynamic_cast<MacioSndCodec*>(gMachineObj->get_comp_by_type(HWCompType::SND_CODEC));
+    this->add_device(0x14000, this->snd_codec);
     this->snd_out_dma = std::unique_ptr<DMAChannel> (new DMAChannel("snd_out"));
     this->snd_out_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_DAVBUS_Tx));
     this->snd_codec->set_dma_out(this->snd_out_dma.get());
@@ -737,8 +738,8 @@ void HeathrowIC::clear_cpu_int()
 }
 
 static const vector<string> Heathrow_Subdevices = {
-    "NVRAM", "ViaCuda", "MeshHeathrow", "Escc", "Swim3", "Ide0", "Ide1",
-    "BigMacHeathrow"
+    "NVRAM@60000", "ViaCuda@16000", "MeshHeathrow@10000", "Escc@13000", "Swim3@15000", "Ide0@20000", "Ide1@21000",
+    "BigMacHeathrow@11000"
 };
 
 static const DeviceDescription Heathrow_Descriptor = {

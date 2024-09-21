@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -40,14 +40,14 @@ enum {
 
 class BurgundyCodec : public MacioSndCodec {
 public:
-    BurgundyCodec(std::string name);
+    BurgundyCodec(const std::string name);
     ~BurgundyCodec() = default;
 
     uint32_t    snd_ctrl_read(uint32_t offset, int size);
     void        snd_ctrl_write(uint32_t offset, uint32_t value, int size);
 
     static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<BurgundyCodec>(new BurgundyCodec("Burgundy"));
+        return std::unique_ptr<BurgundyCodec>(new BurgundyCodec("BurgundySnd"));
     }
 
 private:

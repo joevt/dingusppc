@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -23,7 +23,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/pci/pcibridgebase.h>
 #include <memaccess.h>
 
-PCIBridgeBase::PCIBridgeBase(std::string name, PCIHeaderType hdr_type, int num_bars) : PCIBase(name, hdr_type, num_bars)
+PCIBridgeBase::PCIBridgeBase(const std::string name, PCIHeaderType hdr_type, int num_bars)
+    : PCIBase(name, hdr_type, num_bars), HWComponent(name)
 {
     this->pci_rd_primary_bus        = [this]() { return this->primary_bus; };
     this->pci_rd_secondary_bus      = [this]() { return this->secondary_bus; };
