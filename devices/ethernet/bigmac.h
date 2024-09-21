@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -116,7 +116,7 @@ enum {
     PHY_ANAR    = 4,
 };
 
-class BigMac : public HWComponent {
+class BigMac : virtual public HWComponent {
 public:
     BigMac(uint8_t id);
     ~BigMac() = default;
