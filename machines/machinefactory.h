@@ -72,9 +72,9 @@ public:
     static GetSettingValueFunc get_setting_value;
 
 private:
-    static void create_device(std::string& dev_name, DeviceDescription& dev);
-    static void print_settings(const PropMap& p, PropScope scope, int indent, std::string path);
-    static void list_device_settings(DeviceDescription& dev, PropScope scope, int indent, std::string path);
+    static HWComponent* create_device(HWComponent *parent, std::string dev_name, DeviceDescription& dev);
+    static void print_settings(const PropMap& p, PropScope scope, int indent, std::string path, std::string device);
+    static void list_device_settings(DeviceDescription& dev, PropScope scope, int indent, std::string path, std::string device);
     static int  load_boot_rom(char *rom_data, size_t rom_size);
     static void register_settings(const PropMap& p);
 };

@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-23 divingkatae and maximum
+Copyright (C) 2018-24 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -55,7 +55,7 @@ public:
     std::function<void()> deterministic_poll_cb;
 };
 
-SoundServer::SoundServer(): impl(std::make_unique<Impl>())
+SoundServer::SoundServer() : impl(std::make_unique<Impl>()), HWComponent("SoundServer")
 {
     supports_types(HWCompType::SND_SERVER);
     this->start();
