@@ -37,7 +37,17 @@ using namespace std;
 
 struct DeviceDescription;
 
-extern const map<string, tuple<int, string>> gPropHelp;
+typedef enum {
+    PropertyDevice,
+    PropertyMachine,
+} PropScope;
+
+typedef struct {
+    PropScope property_scope;
+    const std::string property_description;
+} PropHelpItem;
+
+extern const map<string, PropHelpItem> gPropHelp;
 extern map<string, string> gMachineFactorySettings;
 
 class MachineFactory
@@ -60,8 +70,8 @@ public:
 
 private:
     static HWComponent* create_device(HWComponent *parent, string dev_name, DeviceDescription& dev);
-    static void print_settings(PropMap& p, int type, int indent, string path, string device);
-    static void list_device_settings(DeviceDescription& dev, int type, int indent, string path, string device);
+    static void print_settings(PropMap& p, PropScope scope, int indent, string path, string device);
+    static void list_device_settings(DeviceDescription& dev, PropScope scope, int indent, string path, string device);
     static int  load_boot_rom(char *rom_data, size_t rom_size);
 };
 

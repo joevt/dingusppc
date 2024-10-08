@@ -340,57 +340,57 @@ static rom_info rom_identity[] = {
     { 0 }
 };
 
-const map<string, tuple<int, string>> gPropHelp = {
-    {"rambank1_size",   {1, "specifies RAM bank 1 size in MB"}},
-    {"rambank2_size",   {1, "specifies RAM bank 2 size in MB"}},
-    {"rambank3_size",   {1, "specifies RAM bank 3 size in MB"}},
-    {"rambank4_size",   {1, "specifies RAM bank 4 size in MB"}},
-    {"rambank5_size",   {1, "specifies RAM bank 5 size in MB"}},
-    {"rambank6_size",   {1, "specifies RAM bank 6 size in MB"}},
-    {"rambank7_size",   {1, "specifies RAM bank 7 size in MB"}},
-    {"rambank8_size",   {1, "specifies RAM bank 8 size in MB"}},
-    {"rambank9_size",   {1, "specifies RAM bank 9 size in MB"}},
-    {"rambank10_size",  {1, "specifies RAM bank 10 size in MB"}},
-    {"rambank11_size",  {1, "specifies RAM bank 11 size in MB"}},
-    {"rambank12_size",  {1, "specifies RAM bank 12 size in MB"}},
-    {"rambank0_size",   {1, "specifies onboard RAM bank size in MB"}},
-    {"gfxmem_size",     {0, "specifies video memory size in MB"}},
-    {"fdd_drives",      {1, "specifies the number of floppy drives"}},
-    {"fdd_img",         {0, "specifies path to floppy disk image"}},
-    {"fdd_img2",        {0, "specifies path to 2nd floppy disk image"}},
-    {"fdd_fmt",         {0, "specifies floppy disk format"}},
-    {"fdd_wr_prot",     {0, "specifies floppy disk's write protection setting"}},
-    {"fdd_wr_prot2",    {0, "specifies 2nd floppy disk's write protection setting"}},
-    {"hdd_img",         {0, "specifies path to hard disk image"}},
-    {"hdd_img2",        {0, "specifies path to secondary hard disk image"}},
-    {"cdr_config",      {1, "CD-ROM device path in [bus]:[device#] format"}},
-    {"hdd_config",      {1, "HD device path in [bus]:[device#] format"}},
-    {"cdr_img",         {0, "specifies path to CD-ROM image"}},
-    {"cdr_img2",        {0, "specifies path to secondary CD-ROM image"}},
-    {"mon_id",          {0, "specifies which monitor to emulate"}},
-    {"pci_GPU",         {0, "specifies PCI device for Beige G3 grackle device @12"}},
-    {"pci_J12",         {0, "inserts PCI device into 32-bit 66MHz slot J12"}},
-    {"pci_J11",         {0, "inserts PCI device into 64-bit 33MHz slot J11"}},
-    {"pci_J10",         {0, "inserts PCI device into 64-bit 33MHz slot J10"}},
-    {"pci_J9",          {0, "inserts PCI device into 64-bit 33MHz slot J9"}},
-    {"pci_FireWire",    {0, "inserts PCI device into PCI slot reserved for Yosemite FireWire"}},
-    {"pci_UltraATA",    {0, "inserts PCI device into PCI slot reserved for Yosemite Ultra ATA"}},
-    {"pci_USB",         {0, "inserts PCI device into PCI slot reserved for Yosemite USB"}},
-    {"pci_PERCH",       {0, "inserts PCI device into PERCH slot"}},
-    {"pci_A1",          {0, "inserts PCI device into slot A1"}},
-    {"pci_B1",          {0, "inserts PCI device into slot B1"}},
-    {"pci_C1",          {0, "inserts PCI device into slot C1"}},
-    {"pci_E1",          {0, "inserts PCI device into slot E1"}},
-    {"pci_F1",          {0, "inserts PCI device into slot F1"}},
-    {"pci_D2",          {0, "inserts PCI device into slot D2"}},
-    {"pci_E2",          {0, "inserts PCI device into slot E2"}},
-    {"pci_F2",          {0, "inserts PCI device into slot F2"}},
-    {"vci_D",           {0, "inserts VCI device 0x0D"}},
-    {"vci_E",           {0, "inserts VCI device 0x0E"}},
-    {"serial_backend",  {0, "specifies the backend for the serial port"}},
-    {"emmo",            {1, "enables/disables factory HW tests during startup"}},
-    {"cpu",             {1, "specifies CPU"}},
-    {"adb_devices",     {1, "specifies which ADB device(s) to attach"}},
+const map<string, PropHelpItem> gPropHelp = {
+    {"rambank1_size",   {PropertyMachine, "specifies RAM bank 1 size in MB"}},
+    {"rambank2_size",   {PropertyMachine, "specifies RAM bank 2 size in MB"}},
+    {"rambank3_size",   {PropertyMachine, "specifies RAM bank 3 size in MB"}},
+    {"rambank4_size",   {PropertyMachine, "specifies RAM bank 4 size in MB"}},
+    {"rambank5_size",   {PropertyMachine, "specifies RAM bank 5 size in MB"}},
+    {"rambank6_size",   {PropertyMachine, "specifies RAM bank 6 size in MB"}},
+    {"rambank7_size",   {PropertyMachine, "specifies RAM bank 7 size in MB"}},
+    {"rambank8_size",   {PropertyMachine, "specifies RAM bank 8 size in MB"}},
+    {"rambank9_size",   {PropertyMachine, "specifies RAM bank 9 size in MB"}},
+    {"rambank10_size",  {PropertyMachine, "specifies RAM bank 10 size in MB"}},
+    {"rambank11_size",  {PropertyMachine, "specifies RAM bank 11 size in MB"}},
+    {"rambank12_size",  {PropertyMachine, "specifies RAM bank 12 size in MB"}},
+    {"rambank0_size",   {PropertyMachine, "specifies onboard RAM bank size in MB"}},
+    {"gfxmem_size",     {PropertyDevice , "specifies video memory size in MB"}},
+    {"fdd_drives",      {PropertyMachine, "specifies the number of floppy drives"}},
+    {"fdd_img",         {PropertyDevice , "specifies path to floppy disk image"}},
+    {"fdd_img2",        {PropertyDevice , "specifies path to 2nd floppy disk image"}},
+    {"fdd_fmt",         {PropertyDevice , "specifies floppy disk format"}},
+    {"fdd_wr_prot",     {PropertyDevice , "specifies floppy disk's write protection setting"}},
+    {"fdd_wr_prot2",    {PropertyDevice , "specifies 2nd floppy disk's write protection setting"}},
+    {"hdd_img",         {PropertyDevice , "specifies path to hard disk image"}},
+    {"hdd_img2",        {PropertyDevice , "specifies path to secondary hard disk image"}},
+    {"cdr_config",      {PropertyMachine, "CD-ROM device path in [bus]:[device#] format"}},
+    {"hdd_config",      {PropertyMachine, "HD device path in [bus]:[device#] format"}},
+    {"cdr_img",         {PropertyDevice , "specifies path to CD-ROM image"}},
+    {"cdr_img2",        {PropertyDevice , "specifies path to secondary CD-ROM image"}},
+    {"mon_id",          {PropertyDevice , "specifies which monitor to emulate"}},
+    {"pci_GPU",         {PropertyDevice , "specifies PCI device for Beige G3 grackle device @12"}},
+    {"pci_J12",         {PropertyDevice , "inserts PCI device into 32-bit 66MHz slot J12"}},
+    {"pci_J11",         {PropertyDevice , "inserts PCI device into 64-bit 33MHz slot J11"}},
+    {"pci_J10",         {PropertyDevice , "inserts PCI device into 64-bit 33MHz slot J10"}},
+    {"pci_J9",          {PropertyDevice , "inserts PCI device into 64-bit 33MHz slot J9"}},
+    {"pci_FireWire",    {PropertyDevice , "inserts PCI device into PCI slot reserved for Yosemite FireWire"}},
+    {"pci_UltraATA",    {PropertyDevice , "inserts PCI device into PCI slot reserved for Yosemite Ultra ATA"}},
+    {"pci_USB",         {PropertyDevice , "inserts PCI device into PCI slot reserved for Yosemite USB"}},
+    {"pci_PERCH",       {PropertyDevice , "inserts PCI device into PERCH slot"}},
+    {"pci_A1",          {PropertyDevice , "inserts PCI device into slot A1"}},
+    {"pci_B1",          {PropertyDevice , "inserts PCI device into slot B1"}},
+    {"pci_C1",          {PropertyDevice , "inserts PCI device into slot C1"}},
+    {"pci_E1",          {PropertyDevice , "inserts PCI device into slot E1"}},
+    {"pci_F1",          {PropertyDevice , "inserts PCI device into slot F1"}},
+    {"pci_D2",          {PropertyDevice , "inserts PCI device into slot D2"}},
+    {"pci_E2",          {PropertyDevice , "inserts PCI device into slot E2"}},
+    {"pci_F2",          {PropertyDevice , "inserts PCI device into slot F2"}},
+    {"vci_D",           {PropertyDevice , "inserts VCI device 0x0D"}},
+    {"vci_E",           {PropertyDevice , "inserts VCI device 0x0E"}},
+    {"serial_backend",  {PropertyDevice , "specifies the backend for the serial port"}},
+    {"emmo",            {PropertyMachine, "enables/disables factory HW tests during startup"}},
+    {"cpu",             {PropertyMachine, "specifies CPU"}},
+    {"adb_devices",     {PropertyMachine, "specifies which ADB device(s) to attach"}},
 };
 
 void MachineFactory::list_machines()
@@ -504,8 +504,8 @@ void MachineFactory::list_properties(vector<string> machine_list)
         for (auto& mach : DeviceRegistry::get_registry()) {
             if (mach.second.supports_types & HWCompType::MACHINE) {
                 cout << mach.second.description << " supported properties:" << endl << endl;
-                list_device_settings(mach.second, 1, 0, "", "");
-                list_device_settings(mach.second, 0, 0, "", "");
+                list_device_settings(mach.second, PropertyMachine, 0, "", "");
+                list_device_settings(mach.second, PropertyDevice, 0, "", "");
             }
         }
     } else {
@@ -514,8 +514,8 @@ void MachineFactory::list_properties(vector<string> machine_list)
             if (it != DeviceRegistry::get_registry().end()) {
                 cout << (it->second.description.empty() ? name : it->second.description)
                     << " supported properties:" << endl << endl;
-                list_device_settings(it->second, 1, 0, "", "");
-                list_device_settings(it->second, 0, 0, "", "");
+                list_device_settings(it->second, PropertyMachine, 0, "", "");
+                list_device_settings(it->second, PropertyDevice, 0, "", "");
             }
             else {
                 cout << name << " is not a valid machine or device." << endl << endl;
@@ -526,29 +526,29 @@ void MachineFactory::list_properties(vector<string> machine_list)
     cout << endl;
 }
 
-void MachineFactory::list_device_settings(DeviceDescription& dev, int type, int indent, string path, string device)
+void MachineFactory::list_device_settings(DeviceDescription& dev, PropScope scope, int indent, string path, string device)
 {
     for (auto& d : dev.subdev_list) {
-        list_device_settings(DeviceRegistry::get_descriptor(HWComponent::extract_device_name(d)), type, type ? indent : indent + 4, path + "/" + d, d);
+        list_device_settings(DeviceRegistry::get_descriptor(HWComponent::extract_device_name(d)), scope, scope == PropertyMachine ? indent : indent + 4, path + "/" + d, d);
     }
 
-    print_settings(dev.properties, type, indent, path, device);
+    print_settings(dev.properties, scope, indent, path, device);
 }
 
-void MachineFactory::print_settings(PropMap& prop_map, int type, int /*indent*/, string path, string device)
+void MachineFactory::print_settings(PropMap& prop_map, PropScope scope, int /*indent*/, string path, string device)
 {
     string help;
 
-    bool did_path = type == 1;
+    bool did_path = scope == PropertyMachine;
 
     for (auto& p : prop_map) {
         auto phelp = gPropHelp.find(p.first);
         if (phelp != gPropHelp.end()) {
-            if (std::get<0>(phelp->second) != type)
+            if (phelp->second.property_scope != scope)
                 continue;
-            help = std::get<1>(phelp->second);
+            help = phelp->second.property_description;
         } else {
-            if (type != 0)
+            if (scope != PropertyDevice)
                 continue;
             help = "";
         }
