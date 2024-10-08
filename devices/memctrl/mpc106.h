@@ -169,11 +169,15 @@ enum {
 class MPC106 : public MemCtrlBase, public MMIODevice, public PCIHost {
 friend class MPC106PCI;
 public:
-    MPC106();
+    MPC106(const std::string &name);
     ~MPC106() = default;
 
-    static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<MPC106>(new MPC106());
+    static std::unique_ptr<HWComponent> create_Gossamer() {
+        return std::unique_ptr<MPC106>(new MPC106("GrackleGossamer"));
+    }
+
+    static std::unique_ptr<HWComponent> create_Yosemite() {
+        return std::unique_ptr<MPC106>(new MPC106("GrackleYosemite"));
     }
 
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
