@@ -74,7 +74,7 @@ protected:
 /** Converter for raw floppy images. */
 class RawFloppyImg : public FloppyImgConverter {
 public:
-    RawFloppyImg(std::string& file_path);
+    RawFloppyImg(const std::string& file_path);
     ~RawFloppyImg() = default;
 
     int calc_phys_params(void);
@@ -85,7 +85,7 @@ public:
 /** Converter for Disk Copy 4.2 images. */
 class DiskCopy42Img : public FloppyImgConverter {
 public:
-    DiskCopy42Img(std::string& file_path);
+    DiskCopy42Img(const std::string& file_path);
     ~DiskCopy42Img() = default;
 
     int calc_phys_params(void);
@@ -93,6 +93,6 @@ public:
     int export_data(void);
 };
 
-extern FloppyImgConverter* open_floppy_image(std::string& img_path);
+extern FloppyImgConverter* open_floppy_image(const std::string& img_path);
 
 #endif // FLOPPY_IMG_H
