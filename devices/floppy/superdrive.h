@@ -104,7 +104,7 @@ public:
 
     void command(uint8_t addr, uint8_t value);
     uint8_t status(uint8_t addr);
-    int insert_disk(std::string& img_path, int write_flag);
+    int insert_disk(const std::string& img_path, int write_flag = 0);
     void set_motor_stat(uint8_t new_motor_stat);
     void init_track_search(int pos);
     uint64_t sync_to_disk();
