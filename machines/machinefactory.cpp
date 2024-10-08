@@ -355,6 +355,7 @@ const map<string, tuple<int, string>> gPropHelp = {
     {"rambank12_size",  {1, "specifies RAM bank 12 size in MB"}},
     {"rambank0_size",   {1, "specifies onboard RAM bank size in MB"}},
     {"gfxmem_size",     {0, "specifies video memory size in MB"}},
+    {"fdd_drives",      {1, "specifies the number of floppy drives"}},
     {"fdd_img",         {0, "specifies path to floppy disk image"}},
     {"fdd_img2",        {0, "specifies path to 2nd floppy disk image"}},
     {"fdd_fmt",         {0, "specifies floppy disk format"}},
