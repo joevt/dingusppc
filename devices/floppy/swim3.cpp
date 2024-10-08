@@ -155,12 +155,7 @@ void Swim3Ctrl::insert_disk(int drive, const std::string& img_path, int write_fl
     }
 
     if (the_drive) {
-        if (img_path.empty()) {
-            the_drive->command(MacSuperdrive::CommandAddr::Eject_Disk, 1);
-        }
-        else {
-            the_drive->insert_disk(img_path, write_flag);
-        }
+        the_drive->insert_disk(img_path, write_flag);
     }
     else {
         LOG_F(ERROR, "SWIM3: Drive %d is not connected", drive);
