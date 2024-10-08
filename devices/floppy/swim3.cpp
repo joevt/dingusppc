@@ -137,7 +137,7 @@ int Swim3Ctrl::device_postinit()
     return 0;
 }
 
-void Swim3Ctrl::insert_disk(int drive, std::string& img_path, int write_flag = 0)
+void Swim3Ctrl::insert_disk(int drive, const std::string& img_path, int write_flag)
 {
     MacSuperdrive::MacSuperDrive *the_drive = nullptr;
     switch (drive) {
