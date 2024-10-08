@@ -67,7 +67,7 @@ int initialize_lombard()
     LOG_F(INFO, "Building machine Lombard...");
 
     // get pointer to the memory controller/primary PCI bridge object
-    MPC106* grackle_obj = dynamic_cast<MPC106*>(gMachineObj->get_comp_by_name("Grackle"));
+    MPC106* grackle_obj = dynamic_cast<MPC106*>(gMachineObj->get_comp_by_name("GrackleLombard"));
     grackle_obj->set_irq_map(grackle_irq_map);
 
     dynamic_cast<HeathrowIC*>(gMachineObj->get_comp_by_name("Heathrow"))->set_media_bay_id(0x30); // hasATA
@@ -109,14 +109,6 @@ static const PropMap lombard_settings = {
         new IntProperty(128, vector<uint32_t>({32, 64, 128}))},
     {"emmo",
         new BinProperty(0)},
-    {"pci_USB",
-        new StrProperty("")},
-    {"pci_ZIVA",
-        new StrProperty("")},
-    {"pci_E1",
-        new StrProperty("")},
-    {"pci_CARDBUS",
-        new StrProperty("")},
     {"hdd_config",
         new StrProperty("Ide0:0")},
     {"cdr_config",
@@ -124,7 +116,7 @@ static const PropMap lombard_settings = {
 };
 
 static vector<string> lombard_devices = {
-    "Grackle@80000000", "ScreamerSnd@14000", "Heathrow@10", "AtiMach64Gx@11", "AtaHardDisk", "AtapiCdrom"
+    "GrackleLombard@80000000", "ScreamerSnd@14000", "Heathrow@10", "AtiMach64Gx@11", "AtaHardDisk", "AtapiCdrom"
 };
 
 static const DeviceDescription MachineLombard_descriptor = {
