@@ -60,7 +60,7 @@ int initialize(const std::string &id)
     LOG_F(INFO, "Building machine Bondi...");
 
     // get pointer to the memory controller/primary PCI bridge object
-    MPC106* grackle_obj = dynamic_cast<MPC106*>(gMachineObj->get_comp_by_name("Grackle"));
+    MPC106* grackle_obj = dynamic_cast<MPC106*>(gMachineObj->get_comp_by_name("GrackleBondi"));
     grackle_obj->set_irq_map(grackle_irq_map);
 
     HeathrowIC* heathrow = dynamic_cast<HeathrowIC*>(gMachineObj->get_comp_by_name("Heathrow"));
@@ -106,7 +106,7 @@ static const PropMap bondi_settings = {
 };
 
 static std::vector<std::string> bondi_devices = {
-    "Grackle@80000000", "BurgundySnd@14000", "Heathrow@10", "AtiMach64Gx@12", "AtaHardDisk", "AtapiCdrom"};
+    "GrackleBondi@80000000", "BurgundySnd@14000", "Heathrow@10", "AtiMach64Gx@12", "AtaHardDisk", "AtapiCdrom"};
 
 static const DeviceDescription MachineBondi_descriptor = {
     Machine::create<MachineBondi>, bondi_devices, bondi_settings, HWCompType::MACHINE,
