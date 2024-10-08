@@ -63,6 +63,7 @@ const map<string, PropHelpItem> gPropHelp = {
     {"rambank12_size",  {PropertyMachine, "specifies RAM bank 12 size in MB"}},
     {"rambank0_size",   {PropertyMachine, "specifies onboard RAM bank size in MB"}},
     {"gfxmem_size",     {PropertyDevice , "specifies video memory size in MB"}},
+    {"fdd_drives",      {PropertyMachine, "specifies the number of floppy drives"}},
     {"fdd_img",         {PropertyDevice , "specifies path to floppy disk image"}},
     {"fdd_img2",        {PropertyDevice , "specifies path to 2nd floppy disk image"}},
     {"fdd_fmt",         {PropertyDevice , "specifies floppy disk format"}},
