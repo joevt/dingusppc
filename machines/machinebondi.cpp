@@ -68,9 +68,6 @@ int initialize(const std::string &id)
 
     grackle_obj->add_device(DEV_FUN(0x10,0), heathrow);
 
-    grackle_obj->add_device(
-        DEV_FUN(0x12,0), dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("AtiMach64Gx")));
-
     // allocate ROM region
     if (!grackle_obj->add_rom_region(0xFFF00000, 0x100000)) {
         LOG_F(ERROR, "Could not allocate ROM region!");
@@ -103,10 +100,11 @@ static const PropMap bondi_settings = {
     {"emmo", new BinProperty(0)},
     {"hdd_config", new StrProperty("Ide0:0")},
     {"cdr_config", new StrProperty("Ide1:0")},
+    {"pci_GPU", new StrProperty("AtiMach64Gx")},
 };
 
 static std::vector<std::string> bondi_devices = {
-    "GrackleBondi@80000000", "BurgundySnd@14000", "Heathrow@10", "AtiMach64Gx@12", "AtaHardDisk", "AtapiCdrom"};
+    "GrackleBondi@80000000", "BurgundySnd@14000", "Heathrow@10", "AtaHardDisk", "AtapiCdrom"};
 
 static const DeviceDescription MachineBondi_descriptor = {
     Machine::create<MachineBondi>, bondi_devices, bondi_settings, HWCompType::MACHINE,
