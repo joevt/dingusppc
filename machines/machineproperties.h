@@ -196,9 +196,6 @@ typedef map<string, BasicProperty*> PropMap;
 extern map<string, unique_ptr<BasicProperty>> gMachineSettings;
 
 /** Conveniency macros to hide complex casts. */
-#define SET_STR_PROP(name, value) \
-    dynamic_cast<StrProperty*>(gMachineSettings.at(name).get())->set_string(value)
-
 #define GET_STR_PROP(name) \
     dynamic_cast<StrProperty*>(gMachineSettings.at(name).get())->get_string()
 

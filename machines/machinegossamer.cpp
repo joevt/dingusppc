@@ -154,10 +154,6 @@ int initialize_gossamer(std::string& id)
     grackle_obj->add_device(DEV_FUN(0x10,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("Heathrow")));
 
-    std::string gpu = GET_STR_PROP("pci_GPU");
-    if (gpu.empty())
-        SET_STR_PROP("pci_GPU", id == "pmg3twr" ? "AtiRagePro" : "AtiRageGT");
-
     // add Athens clock generator device and register it with the I2C host
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
     i2c_bus->add_device(0x28, new AthensClocks(0x28));
@@ -184,7 +180,7 @@ int initialize_gossamer(std::string& id)
 
 };
 
-static const PropMap gossamer_settings = {
+static const PropMap gossamer_desktop_settings = {
     {"rambank1_size",
         new IntProperty(256, vector<uint32_t>({8, 16, 32, 64, 128, 256}))},
     {"rambank2_size",
@@ -197,6 +193,25 @@ static const PropMap gossamer_settings = {
         new StrProperty("Ide0:0")},
     {"cdr_config",
         new StrProperty("Ide1:0")},
+    {"pci_GPU",
+        new StrProperty("AtiRageGT")},
+};
+
+static const PropMap gossamer_tower_settings = {
+    {"rambank1_size",
+        new IntProperty(256, vector<uint32_t>({8, 16, 32, 64, 128, 256}))},
+    {"rambank2_size",
+        new IntProperty(  0, vector<uint32_t>({0, 8, 16, 32, 64, 128, 256}))},
+    {"rambank3_size",
+        new IntProperty(  0, vector<uint32_t>({0, 8, 16, 32, 64, 128, 256}))},
+    {"emmo",
+        new BinProperty(0)},
+    {"hdd_config",
+        new StrProperty("Ide0:0")},
+    {"cdr_config",
+        new StrProperty("Ide1:0")},
+    {"pci_GPU",
+        new StrProperty("AtiRagePro")},
 };
 
 static vector<string> pmg3_devices = {
@@ -208,11 +223,11 @@ static vector<string> pmg3twr_devices = {
 };
 
 static const DeviceDescription MachineGossamerDesktop_descriptor = {
-    MachineGossamer::create_desktop, pmg3_devices, gossamer_settings, HWCompType::MACHINE, "Power Macintosh G3 (Beige) Desktop"
+    MachineGossamer::create_desktop, pmg3_devices, gossamer_desktop_settings, HWCompType::MACHINE, "Power Macintosh G3 (Beige) Desktop"
 };
 
 static const DeviceDescription MachineGossamerTower_descriptor = {
-    MachineGossamer::create_tower, pmg3twr_devices, gossamer_settings, HWCompType::MACHINE, "Power Macintosh G3 (Beige) Tower"
+    MachineGossamer::create_tower, pmg3twr_devices, gossamer_tower_settings, HWCompType::MACHINE, "Power Macintosh G3 (Beige) Tower"
 };
 
 REGISTER_DEVICE(pmg3dt, MachineGossamerDesktop_descriptor);

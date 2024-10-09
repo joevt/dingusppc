@@ -84,10 +84,6 @@ int initialize_gazelle()
     pci_host->add_device(DEV_FUN(0x10,0),
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("OHare")));
 
-    std::string gpu = GET_STR_PROP("pci_F1");
-    if (gpu.empty())
-        SET_STR_PROP("pci_F1", "AtiRageGT");
-
     PsxCtrl* psx_obj = dynamic_cast<PsxCtrl*>(gMachineObj->get_comp_by_name("Psx"));
 
     // allocate ROM region
@@ -133,6 +129,8 @@ static const PropMap pm6500_settings = {
         new BinProperty(0)},
     {"hdd_config",
         new StrProperty("Ide0:0")},
+    {"pci_F1",
+        new StrProperty("AtiRageGT")},
 };
 
 static vector<string> pm6500_devices = {
