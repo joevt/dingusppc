@@ -296,20 +296,19 @@ void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope, in
 
         switch(p.second->get_type()) {
         case PROP_TYPE_INTEGER:
-            cout << dynamic_cast<IntProperty*>(p.second)->get_valid_values_as_str()
-                << endl;
+            cout << dynamic_cast<IntProperty*>(p.second)->get_valid_values_as_str();
             break;
         case PROP_TYPE_STRING:
-            cout << dynamic_cast<StrProperty*>(p.second)->get_valid_values_as_str()
-                << endl;
+            cout << dynamic_cast<StrProperty*>(p.second)->get_valid_values_as_str();
             break;
         case PROP_TYPE_BINARY:
-            cout << dynamic_cast<BinProperty*>(p.second)->get_valid_values_as_str()
-                << endl;
+            cout << dynamic_cast<BinProperty*>(p.second)->get_valid_values_as_str();
             break;
         default:
+            cout << "???";
             break;
         }
+        cout << endl;
         cout << endl;
     }
 }
