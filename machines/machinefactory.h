@@ -34,6 +34,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <optional>
 #include <string>
 #include <vector>
+#include <set>
 
 struct DeviceDescription;
 
@@ -73,8 +74,10 @@ public:
 
 private:
     static HWComponent* create_device(HWComponent *parent, std::string dev_name, DeviceDescription& dev);
-    static void print_settings(const PropMap& p, PropScope scope, int indent, std::string path, std::string device);
-    static void list_device_settings(DeviceDescription& dev, PropScope scope, int indent, std::string path, std::string device);
+    static void print_settings(const PropMap& p, PropScope scope, int indent,
+        std::string path, std::string device, std::set<std::string> *properties);
+    static void list_device_settings(DeviceDescription& dev, PropScope scope, int indent,
+        std::string path, std::string device, std::set<std::string> *properties);
     static int  load_boot_rom(char *rom_data, size_t rom_size);
     static void register_settings(const PropMap& p);
 };
