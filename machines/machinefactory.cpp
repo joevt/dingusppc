@@ -43,6 +43,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <map>
 #include <string>
 #include <vector>
+#include <set>
 
 using namespace std;
 
@@ -242,8 +243,9 @@ void MachineFactory::list_properties(vector<string> machine_list)
         for (auto& mach : DeviceRegistry::get_registry()) {
             if (mach.second.supports_types & HWCompType::MACHINE) {
                 cout << mach.second.description << " supported properties:" << endl << endl;
-                list_device_settings(mach.second, PropertyMachine, 0, "", "");
-                list_device_settings(mach.second, PropertyDevice, 0, "", "");
+                std::set<string> properties;
+                list_device_settings(mach.second, PropertyMachine, 0, "", "", &properties);
+                list_device_settings(mach.second, PropertyDevice, 0, "", "", nullptr);
             }
         }
     } else {
@@ -252,8 +254,9 @@ void MachineFactory::list_properties(vector<string> machine_list)
             if (it != DeviceRegistry::get_registry().end()) {
                 cout << (it->second.description.empty() ? name : it->second.description)
                     << " supported properties:" << endl << endl;
-                list_device_settings(it->second, PropertyMachine, 0, "", "");
-                list_device_settings(it->second, PropertyDevice, 0, "", "");
+                std::set<string> properties;
+                list_device_settings(it->second, PropertyMachine, 0, "", "", &properties);
+                list_device_settings(it->second, PropertyDevice, 0, "", "", nullptr);
             }
             else {
                 cout << name << " is not a valid machine or device." << endl << endl;
@@ -264,24 +267,32 @@ void MachineFactory::list_properties(vector<string> machine_list)
     cout << endl;
 }
 
-void MachineFactory::list_device_settings(DeviceDescription& dev, PropScope scope, int indent, string path, string device)
+void MachineFactory::list_device_settings(DeviceDescription& dev, PropScope scope,
+    int indent, string path, string device, std::set<string> *properties)
 {
+    print_settings(dev.properties, scope, indent, path, device, properties);
+
     for (auto& d : dev.subdev_list) {
         list_device_settings(DeviceRegistry::get_descriptor(HWComponent::extract_device_name(d)),
-            scope, scope == PropertyMachine ? indent : indent + 4, path + "/" + d, d
+            scope, scope == PropertyMachine ? indent : indent + 4, path + "/" + d, d, properties
         );
     }
-
-    print_settings(dev.properties, scope, indent, path, device);
 }
 
-void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope, int /*indent*/, string path, string device)
+void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope,
+    int /*indent*/, string path, string device, std::set<string> *properties)
 {
     string help;
 
     bool did_path = scope == PropertyMachine;
 
     for (auto& p : prop_map) {
+        if (properties) {
+            if (properties->count(p.first))
+                continue;
+            properties->insert(p.first);
+        }
+
         auto phelp = gPropHelp.find(p.first);
         if (phelp != gPropHelp.end()) {
             if (phelp->second.property_scope != scope)
@@ -294,8 +305,18 @@ void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope, in
         }
 
         if (!did_path) {
-            // don't print path because registry path is not the same as config path
-            cout << setw(4) << "" << device << endl;
+            // only output device name because registry path is not the same as config path
+            if (!device.empty() || scope == PropertyDevice) {
+                cout << setw(4) << "";
+                if (!device.empty()) {
+                    cout << device;
+                    if (scope == PropertyDevice)
+                        cout << " ";
+                }
+                if (scope == PropertyDevice)
+                    cout << "per device properties:";
+                cout << endl << endl;
+            }
             did_path = true;
         }
 
