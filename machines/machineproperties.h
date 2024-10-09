@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -175,9 +175,7 @@ public:
     // override BasicProperty::set_string() and perform checks
     void set_string(std::string str);
 
-    std::string get_valid_values_as_str() {
-        return std::string("on, off, ON, OFF");
-    }
+    std::string get_valid_values_as_str();
 
     int get_val() { return this->bin_val; }
 
