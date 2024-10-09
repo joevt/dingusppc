@@ -175,9 +175,7 @@ public:
     // override BasicProperty::set_string() and perform checks
     void set_string(std::string str);
 
-    std::string get_valid_values_as_str() {
-        return std::string("on, off, ON, OFF");
-    }
+    std::string get_valid_values_as_str();
 
     int get_val() { return this->bin_val; }
 
