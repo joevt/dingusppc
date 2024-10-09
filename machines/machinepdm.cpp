@@ -124,21 +124,11 @@ int initialize_pdm(std::string& id)
 
 };
 
-// Monitors supported by the PDM on-board video.
-// see displayid.cpp for the full list of supported monitor IDs.
-static const vector<string> PDMBuiltinMonitorIDs = {
-    "PortraitGS", "MacRGB12in", "MacRGB15in", "HiRes12-14in", "VGA-SVGA",
-    "MacRGB16in", "Multiscan15in", "Multiscan17in", "Multiscan20in",
-    "NotConnected"
-};
-
 static const PropMap pm6100_settings = {
     {"rambank1_size",
         new IntProperty(0, vector<uint32_t>({0, 2, 4, 8, 16, 32, 64, 128}))},
     {"rambank2_size",
         new IntProperty(0, vector<uint32_t>({0, 2, 4, 8, 16, 32, 64, 128}))},
-    {"mon_id",
-        new StrProperty("HiRes12-14in", PDMBuiltinMonitorIDs)},
     {"emmo",
         new BinProperty(0)},
 };
