@@ -102,6 +102,8 @@ const map<string, PropHelpItem> gPropHelp = {
     {"cpu",             {PropertyMachine, "specifies CPU"}},
     {"adb_devices",     {PropertyMachine, "specifies which ADB device(s) to attach"}},
     {"pds",             {PropertyMachine, "specify device for the processsor direct slot"}},
+    {"has_composite",   {PropertyMachine, "indicates if composite video output is connected"}},
+    {"has_svideo",      {PropertyMachine, "indicates if s-video output is connected"}},
 };
 
 static uint32_t adler32(char *buf, size_t len) {
