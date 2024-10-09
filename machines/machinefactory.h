@@ -32,6 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <map>
 #include <string>
 #include <vector>
+#include <set>
 
 using namespace std;
 
@@ -70,8 +71,8 @@ public:
 
 private:
     static HWComponent* create_device(HWComponent *parent, string dev_name, DeviceDescription& dev);
-    static void print_settings(PropMap& p, PropScope scope, int indent, string path, string device);
-    static void list_device_settings(DeviceDescription& dev, PropScope scope, int indent, string path, string device);
+    static void print_settings(PropMap& p, PropScope scope, int indent, string path, string device, std::set<string> *properties);
+    static void list_device_settings(DeviceDescription& dev, PropScope scope, int indent, string path, string device, std::set<string> *properties);
     static int  load_boot_rom(char *rom_data, size_t rom_size);
 };
 
