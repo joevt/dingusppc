@@ -101,6 +101,7 @@ const map<string, PropHelpItem> gPropHelp = {
     {"emmo",            {PropertyMachine, "enables/disables factory HW tests during startup"}},
     {"cpu",             {PropertyMachine, "specifies CPU"}},
     {"cpu_freq",        {PropertyMachine, "specifies CPU frequency in MHz"}},
+    {"video_out",       {PropertyMachine, "specifies Pippin video output connection type"}},
     {"adb_devices",     {PropertyMachine, "specifies which ADB device(s) to attach"}},
     {"pds",             {PropertyMachine, "specify device for the processsor direct slot"}},
     {"has_composite",   {PropertyMachine, "indicates if composite video output is connected"}},
