@@ -867,6 +867,19 @@ DmaPullResult AmicSerialXmitDma::pull_data(uint32_t /*req_len*/, uint32_t */*ava
     return DmaPullResult::NoMoreData;
 }
 
+// Monitors supported by the PDM on-board video.
+// see displayid.cpp for the full list of supported monitor IDs.
+static const std::vector<std::string> PDMBuiltinMonitorIDs = {
+    "PortraitGS", "MacRGB12in", "MacRGB15in", "HiRes12-14in", "VGA-SVGA",
+    "MacRGB16in", "Multiscan15in", "Multiscan17in", "Multiscan20in",
+    "NotConnected"
+};
+
+static const PropMap Amic_Properties = {
+    {"mon_id",
+        new StrProperty("HiRes12-14in", PDMBuiltinMonitorIDs)},
+};
+
 static std::vector<std::string> Amic_Subdevices = {
     "Sc53C94@10000",
     "EsccPdm@4000",
@@ -876,7 +889,7 @@ static std::vector<std::string> Amic_Subdevices = {
 };
 
 static const DeviceDescription Amic_Descriptor = {
-    AMIC::create, Amic_Subdevices, {}, HWCompType::MMIO_DEV | HWCompType::INT_CTRL
+    AMIC::create, Amic_Subdevices, Amic_Properties, HWCompType::MMIO_DEV | HWCompType::INT_CTRL
 };
 
 REGISTER_DEVICE(Amic, Amic_Descriptor);
