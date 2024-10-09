@@ -394,6 +394,7 @@ const map<string, PropHelpItem> gPropHelp = {
     {"serial_backend",  {PropertyDevice , "specifies the backend for the serial port"}},
     {"emmo",            {PropertyMachine, "enables/disables factory HW tests during startup"}},
     {"cpu",             {PropertyMachine, "specifies CPU"}},
+    {"video_out",       {PropertyMachine, "specifies Pippin video output connection type"}},
     {"adb_devices",     {PropertyMachine, "specifies which ADB device(s) to attach"}},
     {"has_composite",   {PropertyMachine, "indicates if composite video output is connected"}},
     {"has_svideo",      {PropertyMachine, "indicates if s-video output is connected"}},
