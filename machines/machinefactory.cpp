@@ -395,6 +395,8 @@ const map<string, PropHelpItem> gPropHelp = {
     {"emmo",            {PropertyMachine, "enables/disables factory HW tests during startup"}},
     {"cpu",             {PropertyMachine, "specifies CPU"}},
     {"adb_devices",     {PropertyMachine, "specifies which ADB device(s) to attach"}},
+    {"has_composite",   {PropertyMachine, "indicates if composite video output is connected"}},
+    {"has_svideo",      {PropertyMachine, "indicates if s-video output is connected"}},
 };
 
 void MachineFactory::list_machines()
