@@ -49,13 +49,18 @@ std::string StrProperty::get_valid_values_as_str()
             if (!first)
                 ss << ", ";
             ss << "'" << *it << "'";
+            if (*it == this->val)
+                ss << " (default)";
             first = false;
         }
+        break;
+    }
+    default:
+        ss << "Any";
+        if (!this->val.empty())
+            ss << ", '" << this->val << "' (default)";
     }
     return ss.str();
-    default:
-        return std::string("Any");
-    }
 }
 
 bool StrProperty::check_val(std::string str)
@@ -99,20 +104,25 @@ std::string IntProperty::get_valid_values_as_str()
     switch (this->check_type) {
     case CHECK_TYPE_RANGE:
         ss << "[" << this->min << "..." << this->max << "]";
-        return ss.str();
+        ss << ", " << this->int_val << " (default)";
+        break;
     case CHECK_TYPE_LIST: {
         bool first = true;
         for (auto it = begin(this->vec); it != end(this->vec); ++it) {
             if (!first)
                 ss << ", ";
             ss << *it;
+            if (*it == this->int_val)
+                ss << " (default)";
             first = false;
         }
-        return ss.str();
+        break;
     }
     default:
-        return std::string("Any");
+        ss << "Any";
+        ss << ", " << this->int_val << " (default)";
     }
+    return ss.str();
 }
 
 bool IntProperty::check_val(uint32_t val)
@@ -144,6 +154,11 @@ void BinProperty::set_string(std::string val)
     } else {
         LOG_F(ERROR, "Invalid BinProperty value %s!", val.c_str());
     }
+}
+
+std::string BinProperty::get_valid_values_as_str() {
+    return std::string("1 | on | ON") + (this->bin_val ? " (default)" : "")
+        + ", 0 | off | OFF" + (this->bin_val ? "" : " (default)");
 }
 
 void parse_device_path(std::string dev_path, std::string& bus_id, uint32_t& dev_num) {
