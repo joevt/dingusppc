@@ -200,20 +200,20 @@ void EsccChannel::attach_backend(int id)
 {
     switch(id) {
     case CHARIO_BE_NULL:
-        this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoNull);
+        this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoNull(this->get_name() + "_CharIoNull"));
         break;
     case CHARIO_BE_STDIO:
-        this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoStdin);
+        this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoStdin(this->get_name() + "_CharIoStdin"));
         break;
 #ifdef _WIN32
 #else
     case CHARIO_BE_SOCKET:
-        this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoSocket);
+        this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoSocket(this->get_name() + "_CharIoSocket"));
         break;
 #endif
     default:
         LOG_F(ERROR, "%s: unknown backend ID %d, using NULL instead", this->name.c_str(), id);
-        this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoNull);
+        this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoNull(this->get_name() + "_CharIoNull"));
     }
 }
 
