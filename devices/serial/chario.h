@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define CHAR_IO_H
 
 #include <cinttypes>
+#include <string>
 
 #ifdef _WIN32
 #else
@@ -41,8 +42,8 @@ enum {
 /** Interface for character I/O backends. */
 class CharIoBackEnd {
 public:
-    CharIoBackEnd() = default;
-    virtual ~CharIoBackEnd() = default;
+    CharIoBackEnd(const std::string &name);
+    virtual ~CharIoBackEnd();
 
     virtual int rcv_enable() { return 0; }
     virtual void rcv_disable() {}
@@ -50,12 +51,15 @@ public:
     virtual bool rcv_char_available_now() = 0;
     virtual int xmit_char(uint8_t c) = 0;
     virtual int rcv_char(uint8_t *c) = 0;
+
+private:
+    std::string name;
 };
 
 /** Null character I/O backend. */
 class CharIoNull : public CharIoBackEnd {
 public:
-    CharIoNull()  = default;
+    CharIoNull(const std::string &name) : CharIoBackEnd(name) {}
     ~CharIoNull() = default;
 
     bool rcv_char_available();
@@ -67,7 +71,7 @@ public:
 /** Stdin character I/O backend. */
 class CharIoStdin : public CharIoBackEnd  {
 public:
-    CharIoStdin() { this->stdio_inited = false; }
+    CharIoStdin(const std::string &name) : CharIoBackEnd(name) { this->stdio_inited = false; }
     ~CharIoStdin() = default;
 
     int rcv_enable();
@@ -86,7 +90,7 @@ private:
 /** Socket character I/O backend. */
 class CharIoSocket : public CharIoBackEnd  {
 public:
-    CharIoSocket();
+    CharIoSocket(const std::string &name);
     ~CharIoSocket();
 
     int rcv_enable();
