@@ -28,6 +28,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cstring>
 #include <memory>
 
+//======================== BASE character I/O backend ========================
+CharIoBackEnd::CharIoBackEnd(const std::string &name)
+{
+    this->name = name;
+    LOG_F(INFO, "Created %s", this->name.c_str());
+}
+
+CharIoBackEnd::~CharIoBackEnd()
+{
+    LOG_F(INFO, "Deleted %s", this->name.c_str());
+}
+
+//======================== NULL character I/O backend ========================
 bool CharIoNull::rcv_char_available()
 {
     return false;
@@ -267,7 +280,7 @@ int CharIoStdin::rcv_char(uint8_t *c)
 #include <sys/errno.h>
 
 
-CharIoSocket::CharIoSocket()
+CharIoSocket::CharIoSocket(const std::string &name) : CharIoBackEnd(name)
 {
     int rc;
 
