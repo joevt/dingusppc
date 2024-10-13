@@ -30,10 +30,10 @@ AdbDevice::AdbDevice(const std::string name) : HWComponent(name) {
     this->supports_types(HWCompType::ADB_DEV);
 }
 
-int AdbDevice::device_postinit() {
+PostInitResultType AdbDevice::device_postinit() {
     // register itself with the ADB host
     this->host_obj = dynamic_cast<AdbBus*>(gMachineObj->get_comp_by_type(HWCompType::ADB_HOST));
-    return 0;
+    return PI_SUCCESS;
 }
 
 int32_t AdbDevice::parse_self_unit_address_string(const std::string unit_address_string) {

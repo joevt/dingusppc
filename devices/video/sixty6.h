@@ -115,11 +115,11 @@ protected:
     void disable_display();
 
     // HWComponent methods
-    int device_postinit();
+    PostInitResultType device_postinit() override;
 
     // IobusDevice methods
-    uint16_t iodev_read(uint32_t address);
-    void iodev_write(uint32_t address, uint16_t value);
+    uint16_t iodev_read(uint32_t address) override;
+    void iodev_write(uint32_t address, uint16_t value) override;
 
     uint8_t     control_addr = 0;
     uint8_t     clut_addr = 0;
