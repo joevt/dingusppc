@@ -1048,7 +1048,7 @@ void ATIRage::get_cursor_position(int& x, int& y) {
     y = extract_bits<uint32_t>(this->regs[ATI_CUR_HORZ_VERT_POSN], ATI_CUR_VERT_POSN, ATI_CUR_VERT_POSN_size);
 }
 
-int ATIRage::device_postinit()
+PostInitResultType ATIRage::device_postinit()
 {
     this->vbl_cb = [this](uint8_t irq_line_state) {
         insert_bits<uint32_t>(this->regs[ATI_CRTC_INT_CNTL], irq_line_state, ATI_CRTC_VBLANK, irq_line_state);
@@ -1077,7 +1077,7 @@ int ATIRage::device_postinit()
             this->pci_interrupt(irq_line_state);
         }
     };
-    return 0;
+    return PI_SUCCESS;
 }
 
 // =================================== Draw Engine =====================================
