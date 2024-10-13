@@ -86,7 +86,7 @@ public:
         return std::unique_ptr<IdeChannel>(new MacioIdeChannel(dev_name));
     }
 
-    int device_postinit() override;
+    PostInitResultType device_postinit() override;
 
     uint32_t read(const uint8_t reg_addr, const int size);
     void write(const uint8_t reg_addr, const uint32_t val, const int size);
