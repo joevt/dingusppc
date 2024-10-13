@@ -182,7 +182,7 @@ public:
     }
 
     // HWComponent methods
-    int device_postinit();
+    PostInitResultType device_postinit();
 
     uint8_t read(int reg);
     void write(int reg, uint8_t value);
