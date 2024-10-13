@@ -56,7 +56,7 @@ public:
     }
 
     // HWComponent methods
-    int device_postinit();
+    PostInitResultType device_postinit();
 
     // MMIODevice methods
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size);

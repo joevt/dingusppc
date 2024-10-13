@@ -65,7 +65,7 @@ Sc53C94::Sc53C94(uint8_t chip_id, uint8_t my_id)
     reset_device();
 }
 
-int Sc53C94::device_postinit()
+PostInitResultType Sc53C94::device_postinit()
 {
     ScsiBus* bus = dynamic_cast<ScsiBus*>(gMachineObj->get_comp_by_name("ScsiCurio"));
     if (bus) {
@@ -77,7 +77,7 @@ int Sc53C94::device_postinit()
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::SCSI_CURIO);
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 void Sc53C94::reset_device()
