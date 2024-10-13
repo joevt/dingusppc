@@ -41,7 +41,7 @@ int AdbBus::device_postinit() {
     std::istringstream adb_device_stream(adb_device_list);
 
     while (getline(adb_device_stream, adb_device, ',')) {
-        std::string dev_name = "Adb" + adb_device;
+        std::string dev_name = adb_device;
 
         if (dev_name == this->name)
             continue; // don't register a second ADB bus
@@ -168,7 +168,7 @@ uint8_t AdbBus::process_command(const uint8_t* in_data, int data_size) {
 }
 
 static const PropMap AdbBus_Properties = {
-    {"adb_devices", new StrProperty("Mouse,Keyboard")},
+    {"adb_devices", new StrProperty("AdbMouse,AdbKeyboard")},
 };
 
 static const DeviceDescription AdbBus_Descriptor = {

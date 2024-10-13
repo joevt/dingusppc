@@ -91,7 +91,7 @@ static const PropMap Pippin_settings = {
     {"emmo",
         new BinProperty(0)},
     {"adb_devices",
-        new StrProperty("AppleJack,Keyboard")},
+        new StrProperty("AdbAppleJack,AdbKeyboard")},
 };
 
 static std::vector<std::string> Pippin_devices = {
