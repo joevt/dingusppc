@@ -178,10 +178,10 @@ public:
     AwacsScreamer(const std::string name);
     ~AwacsScreamer() = default;
 
-    uint32_t    snd_ctrl_read(uint32_t offset, int size);
-    void        snd_ctrl_write(uint32_t offset, uint32_t value, int size);
+    uint32_t    snd_ctrl_read(uint32_t offset, int size) override;
+    void        snd_ctrl_write(uint32_t offset, uint32_t value, int size) override;
 
-    int device_postinit();
+    PostInitResultType device_postinit() override;
 
     static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
         return std::unique_ptr<AwacsScreamer>(new AwacsScreamer(dev_name));

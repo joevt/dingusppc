@@ -59,6 +59,12 @@ enum HWCompType : uint64_t {
     MACHINE     = 1ULL << 41, // machine root
 };
 
+enum PostInitResultType : int {
+    PI_SUCCESS = 0,
+    PI_FAIL    = -1,
+    PI_RETRY   = 1,
+};
+
 /** Base class for HW components. */
 class HWComponent {
 friend class MachineFactory;
@@ -81,8 +87,8 @@ public:
         this->supported_types = types;
     }
 
-    virtual int device_postinit() {
-        return 0;
+    virtual PostInitResultType device_postinit() {
+        return PI_SUCCESS;
     }
 
     virtual void change_unit_address(int32_t unit_address);
@@ -108,8 +114,7 @@ public:
     HWComponent* get_comp_by_name(const std::string name, bool optional = false);
     HWComponent* get_comp_by_name_optional(const std::string name);
     HWComponent* get_comp_by_type(HWCompType type);
-    int postinit_devices(int &count);
-    int postinit_devices();
+    PostInitResultType postinit_devices();
 
     std::string get_path();
     std::string get_name_and_unit_address();
@@ -134,6 +139,8 @@ protected:
 
 private:
     void move_children(HWComponent* dst);
+    PostInitResultType postinit_devices(int &devices_inited, int &devices_skipped);
+    PostInitResultType postinit_device(int &devices_inited, int &devices_skipped);
     bool postinitialized = false;
 };
 
