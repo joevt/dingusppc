@@ -42,7 +42,7 @@ void MeshStub::write(uint8_t reg_offset, uint8_t value) {
 
 using namespace MeshScsi;
 
-int MeshController::device_postinit() {
+PostInitResultType MeshController::device_postinit() {
     this->bus_obj = dynamic_cast<ScsiBus*>(gMachineObj->get_comp_by_name("ScsiMesh"));
     if (bus_obj) {
         bus_obj->register_device(7, static_cast<ScsiDevice*>(this));
@@ -53,7 +53,7 @@ int MeshController::device_postinit() {
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::SCSI_MESH);
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 void MeshController::reset(bool is_hard_reset) {
