@@ -132,7 +132,7 @@ public:
     void   write(uint8_t reg_offset, uint8_t value) override;
 
     // HWComponent methods
-    int device_postinit() override;
+    PostInitResultType device_postinit() override;
 
     // ScsiBusController methods
     void step_completed() override;
