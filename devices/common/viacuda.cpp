@@ -129,13 +129,13 @@ ViaCuda::~ViaCuda()
     }
 }
 
-int ViaCuda::device_postinit()
+PostInitResultType ViaCuda::device_postinit()
 {
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::VIA_CUDA);
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 void ViaCuda::cuda_init() {

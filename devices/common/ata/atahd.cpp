@@ -45,11 +45,11 @@ AtaHardDisk::AtaHardDisk(const std::string name)
     : AtaBaseDevice(name, DEVICE_TYPE_ATA), HWComponent(name) {
 }
 
-int AtaHardDisk::device_postinit() {
+PostInitResultType AtaHardDisk::device_postinit() {
     std::string hdd_config = GET_STR_PROP("hdd_config");
     if (hdd_config.empty()) {
         LOG_F(ERROR, "%s: hdd_config property is empty", this->name.c_str());
-        return -1;
+        return PI_FAIL;
     }
 
     std::string bus_id;
@@ -62,11 +62,11 @@ int AtaHardDisk::device_postinit() {
 
     std::string hdd_image_path = GET_STR_PROP("hdd_img");
     if (hdd_image_path.empty())
-        return 0;
+        return PI_SUCCESS;
 
     this->insert_image(hdd_image_path);
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 void AtaHardDisk::insert_image(std::string filename) {

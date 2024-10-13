@@ -161,53 +161,72 @@ HWComponent* HWComponent::get_comp_by_type(HWCompType type) {
     return nullptr;
 }
 
-int HWComponent::postinit_devices(int &devices_inited) {
+PostInitResultType HWComponent::postinit_devices(int &devices_inited, int &devices_skipped) {
     std::vector<HWComponent*> devices;
 
-    // First, make a copy of the children list in case a device wants to move to a different parent
+    // Make a copy of the children list in case a device wants to move to a different parent.
     for (auto it = this->children.begin(); it != this->children.end(); it++)
         devices.push_back(it->second.get());
 
+    // Iterate the copy of the children list.
     for (auto it = devices.begin(); it != devices.end(); it++) {
         HWComponent* hwc = *it;
-        VLOG_SCOPE_F(loguru::Verbosity_INFO, "%s %s", hwc->postinitialized ? "Check" : "Post init",
-            hwc->get_name_and_unit_address().c_str());
-        int postinit_result = hwc->postinit_devices(devices_inited);
-        if (postinit_result < 0) {
-            LOG_F(INFO, "A device could not be initialized.");
-            return -1;
+        if (hwc->postinitialized) {
+            if (hwc->postinit_device(devices_inited, devices_skipped) == PI_FAIL)
+                return PI_FAIL;
         }
-        if (!hwc->postinitialized) {
-            devices_inited++;
-            postinit_result = hwc->device_postinit();
-            if (postinit_result < 0) {
-                LOG_F(ERROR, "Could not initialize device %s", hwc->get_path().c_str());
-                return -1;
-            }
-            if (postinit_result > 0) {
-                LOG_F(INFO, "Will retry post init %s later", hwc->get_path().c_str());
-            } else {
-                hwc->postinitialized = true;
-            }
+        else {
+            VLOG_SCOPE_F(loguru::Verbosity_INFO, "%s %s", hwc->postinitialized ? "Check" : "Post init",
+                hwc->get_name_and_unit_address().c_str());
+            if (hwc->postinit_device(devices_inited, devices_skipped) == PI_FAIL)
+                return PI_FAIL;
         }
     }
 
-    return 0;
+    return PI_SUCCESS;
 }
 
-int HWComponent::postinit_devices() {
-    int devices_inited;
+PostInitResultType HWComponent::postinit_device(int &devices_inited, int &devices_skipped) {
+    int postinit_result = this->postinit_devices(devices_inited, devices_skipped);
+    if (postinit_result == PI_FAIL) {
+        LOG_F(INFO, "A device could not be initialized.");
+        return PI_FAIL;
+    }
+    if (!this->postinitialized) {
+        postinit_result = this->device_postinit();
+        if (postinit_result == PI_FAIL) {
+            LOG_F(ERROR, "Could not initialize device %s", this->get_path().c_str());
+            return PI_FAIL;
+        }
+        if (postinit_result == PI_RETRY) {
+            devices_skipped++;
+            LOG_F(INFO, "Will retry post init %s later", this->get_path().c_str());
+        } else {
+            devices_inited++;
+            this->postinitialized = true;
+        }
+    }
+    return PI_SUCCESS;
+}
+
+PostInitResultType HWComponent::postinit_devices() {
+    int devices_inited, devices_skipped;
     int i = 0;
-    int result;
+    PostInitResultType result;
     do {
-        devices_inited = 0;
+        devices_inited = devices_skipped = 0;
         i++;
         {
             VLOG_SCOPE_F(loguru::Verbosity_INFO, "Post init loop %d", i);
-            result = this->postinit_devices(devices_inited);
-            LOG_F(INFO, "%d devices initialized.", devices_inited);
+            result = this->postinit_devices(devices_inited, devices_skipped);
+            if (devices_inited)
+                LOG_F(INFO, "%d devices initialized.", devices_inited);
+            if (devices_skipped)
+                LOG_F(INFO, "%d devices skipped.", devices_skipped);
         }
-    } while (!parent && !result && devices_inited);
+    } while ((this->parent == nullptr) && (result == PI_SUCCESS) && (devices_inited > 0));
+    if (devices_skipped)
+        return PI_RETRY;
     return result;
 }
 

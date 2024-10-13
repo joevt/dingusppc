@@ -122,7 +122,7 @@ void Swim3Ctrl::reset()
     }
 }
 
-int Swim3Ctrl::device_postinit()
+PostInitResultType Swim3Ctrl::device_postinit()
 {
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
@@ -138,7 +138,7 @@ int Swim3Ctrl::device_postinit()
     int fd_write_prot2 = GET_BIN_PROP("fdd_wr_prot2");
     this->insert_disk(2, fd_image_path2, fd_write_prot2);
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 void Swim3Ctrl::insert_disk(int drive, const std::string& img_path, int write_flag)

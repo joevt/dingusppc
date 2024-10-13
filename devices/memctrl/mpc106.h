@@ -178,7 +178,7 @@ public:
     bool needs_swap_endian(bool is_mmio) override;
 #endif
 
-    int device_postinit() override;
+    PostInitResultType device_postinit() override;
 
 private:
     inline void cfg_setup(uint32_t offset, int size, int &bus_num, int &dev_num,
