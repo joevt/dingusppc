@@ -77,7 +77,7 @@ public:
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
     void    write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
-    int device_postinit() override;
+    PostInitResultType device_postinit() override;
 
 protected:
     uint32_t    config_addr;

@@ -32,10 +32,10 @@ AdbBus::AdbBus(const std::string name) : HWComponent(name) {
     this->devices.clear();
 }
 
-int AdbBus::device_postinit() {
+PostInitResultType AdbBus::device_postinit() {
     std::string adb_device_list = GET_STR_PROP("adb_devices");
     if (adb_device_list.empty())
-        return 0;
+        return PI_SUCCESS;
 
     std::string adb_device;
     std::istringstream adb_device_stream(adb_device_list);
@@ -53,7 +53,7 @@ int AdbBus::device_postinit() {
         }
     }
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 HWComponent* AdbBus::add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name) {
