@@ -158,7 +158,7 @@ void ControlVideo::notify_bar_change(int bar_num) {
     }
 }
 
-int ControlVideo::device_postinit() {
+PostInitResultType ControlVideo::device_postinit() {
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::CONTROL);
@@ -175,7 +175,7 @@ int ControlVideo::device_postinit() {
         }
     };
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 static const char * get_name_controlreg(int offset) {

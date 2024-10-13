@@ -176,11 +176,11 @@ AwacsScreamer::AwacsScreamer(const std::string name)
     this->max_sr_id = 7;
 }
 
-int AwacsScreamer::device_postinit() {
+PostInitResultType AwacsScreamer::device_postinit() {
     /* register audio processor chip with the I2C bus */
     I2CBus* i2c_bus = dynamic_cast<I2CBus*>(gMachineObj->get_comp_by_type(HWCompType::I2C_HOST));
     i2c_bus->add_device(0x45, new AudioProcessor());
-    return 0;
+    return PI_SUCCESS;
 }
 
 uint32_t AwacsScreamer::snd_ctrl_read(uint32_t offset, int size) {
