@@ -54,7 +54,7 @@ public:
 
     // HWComponent methods
 
-    int device_postinit() override;
+    PostInitResultType device_postinit() override;
     virtual HWComponent* add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name = "") override;
     virtual bool remove_device(int32_t unit_address) override;
     virtual std::string get_child_unit_address_string(int32_t unit_address) override;
