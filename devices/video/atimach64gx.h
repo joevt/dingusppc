@@ -51,7 +51,7 @@ public:
     bool pci_io_write(uint32_t offset, uint32_t value, uint32_t size);
 
     // HWComponent methods
-    int device_postinit();
+    PostInitResultType device_postinit();
 
     // MMIODevice methods
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size);

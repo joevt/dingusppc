@@ -100,7 +100,7 @@ void IdeChannel::write(const uint8_t reg_addr, const uint32_t val, const int siz
     }
 }
 
-int MacioIdeChannel::device_postinit() {
+PostInitResultType MacioIdeChannel::device_postinit() {
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(
@@ -110,7 +110,7 @@ int MacioIdeChannel::device_postinit() {
         this->int_ctrl->ack_int(this->irq_id, intrq_state);
     };
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 uint32_t MacioIdeChannel::read(const uint8_t reg_addr, const int size)
