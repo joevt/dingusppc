@@ -65,7 +65,7 @@ public:
         return std::unique_ptr<AspenCtrl>(new AspenCtrl(dev_name));
     }
 
-    int device_postinit() override;
+    PostInitResultType device_postinit() override;
 
     void insert_ram_dimm(int bank_num, uint32_t capacity);
 
@@ -74,7 +74,7 @@ public:
     void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
 private:
-    int     map_phys_ram();
+    PostInitResultType map_phys_ram();
 
     uint8_t     gpio_enable = 0;
 
