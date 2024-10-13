@@ -44,7 +44,7 @@ public:
 
     // HWComponent methods
 
-    int device_postinit() override;
+    PostInitResultType device_postinit() override;
     int32_t parse_self_unit_address_string(const std::string unit_address_string) override;
     static int32_t parse_unit_address_string(const std::string unit_address_string);
     std::string get_self_unit_address_string(int32_t unit_address) override;
