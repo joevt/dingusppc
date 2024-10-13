@@ -34,7 +34,7 @@ AspenCtrl::AspenCtrl(const std::string &dev_name)
     this->add_mmio_region(0xF8000000, 0x800, this);
 }
 
-int AspenCtrl::device_postinit() {
+PostInitResultType AspenCtrl::device_postinit() {
     return this->map_phys_ram();
 }
 
@@ -108,7 +108,7 @@ void AspenCtrl::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, i
     }
 }
 
-int AspenCtrl::map_phys_ram() {
+PostInitResultType AspenCtrl::map_phys_ram() {
     uint32_t total_ram = 0, row_mask, col_mask, offset;
 
     for (int i = 0; i < 4; i++)
@@ -123,7 +123,7 @@ int AspenCtrl::map_phys_ram() {
             continue;
         if (!add_ram_region(addr, this->bank_sizes[i])) {
             LOG_F(ERROR, "%s: could not allocate RAM at 0x%X", this->name.c_str(), addr);
-            return -1;
+            return PI_FAIL;
         }
 
         switch(this->bank_sizes[i]) {
@@ -149,14 +149,14 @@ int AspenCtrl::map_phys_ram() {
         if (!this->add_mem_mirror_partial(addr + 0xC01000, addr + offset, offset, 0x1000)) {
             LOG_F(ERROR, "%s: could not create alias for RAM bank %d",
                   this->name.c_str(), i);
-            return -1;
+            return PI_FAIL;
         }
 
         if (this->bank_sizes[i] < DRAM_CAP_16MB) {
             if (!this->add_mem_mirror_partial(addr + 0xC00000, addr + offset, offset, 0x1000)) {
                 LOG_F(ERROR, "%s: could not create alias for RAM bank %d",
                       this->name.c_str(), i);
-                return -1;
+                return PI_FAIL;
             }
         }
 
@@ -164,12 +164,12 @@ int AspenCtrl::map_phys_ram() {
             if (!this->add_mem_mirror_partial(addr + 0x400000, addr + offset, offset, 0x1000)) {
                 LOG_F(ERROR, "%s: could not create alias for RAM bank %d",
                       this->name.c_str(), i);
-                return -1;
+                return PI_FAIL;
             }
         }
     }
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 static const DeviceDescription Aspen_Descriptor = {

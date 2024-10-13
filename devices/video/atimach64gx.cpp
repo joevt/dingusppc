@@ -908,7 +908,7 @@ void AtiMach64Gx::get_cursor_position(int& x, int& y) {
     y = extract_bits<uint32_t>(this->regs[ATI_CUR_HORZ_VERT_POSN], ATI_CUR_VERT_POSN, ATI_CUR_VERT_POSN_size);
 }
 
-int AtiMach64Gx::device_postinit()
+PostInitResultType AtiMach64Gx::device_postinit()
 {
     this->vbl_cb = [this](uint8_t irq_line_state) {
         insert_bits<uint32_t>(this->regs[ATI_CRTC_INT_CNTL], irq_line_state, ATI_CRTC_VBLANK, 1);
@@ -923,7 +923,7 @@ int AtiMach64Gx::device_postinit()
 
         this->update_interrupt();
     };
-    return 0;
+    return PI_SUCCESS;
 }
 
 void AtiMach64Gx::update_interrupt()
