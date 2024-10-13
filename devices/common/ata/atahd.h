@@ -49,7 +49,7 @@ public:
         return std::unique_ptr<AtaHardDisk>(new AtaHardDisk(dev_name));
     }
 
-    int device_postinit() override;
+    PostInitResultType device_postinit() override;
 
     void insert_image(std::string filename);
     int perform_command() override;

@@ -38,7 +38,7 @@ public:
         return std::unique_ptr<AtapiCdrom>(new AtapiCdrom(dev_name));
     }
 
-    int device_postinit() override;
+    PostInitResultType device_postinit() override;
 
     void perform_packet_command() override;
 

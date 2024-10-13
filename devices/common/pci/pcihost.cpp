@@ -261,7 +261,7 @@ PCIBase *PCIHost::pci_find_device(uint8_t dev_num, uint8_t fun_num)
     return NULL;
 }
 
-int PCIHost::pcihost_device_postinit()
+PostInitResultType PCIHost::pcihost_device_postinit()
 {
     std::string pci_dev_name;
 
@@ -274,7 +274,7 @@ int PCIHost::pcihost_device_postinit()
         }
     }
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 std::string PCIHost::get_child_unit_address_string(int32_t unit_address) {
