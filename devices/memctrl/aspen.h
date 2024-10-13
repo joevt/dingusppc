@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -65,7 +65,7 @@ public:
         return std::unique_ptr<AspenCtrl>(new AspenCtrl());
     }
 
-    int device_postinit() override;
+    PostInitResultType device_postinit() override;
 
     void insert_ram_dimm(int bank_num, uint32_t capacity);
 
@@ -74,7 +74,7 @@ public:
     void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
 private:
-    int     map_phys_ram();
+    PostInitResultType map_phys_ram();
 
     uint8_t     gpio_enable = 0;
 
