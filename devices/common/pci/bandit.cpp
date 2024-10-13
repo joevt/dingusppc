@@ -312,7 +312,7 @@ inline void BanditHost::cfg_setup(uint32_t offset, int size, int &bus_num,
     device = pci_find_device(dev_num, fun_num);
 }
 
-int BanditHost::device_postinit() {
+PostInitResultType BanditHost::device_postinit() {
     return this->pcihost_device_postinit();
 }
 
