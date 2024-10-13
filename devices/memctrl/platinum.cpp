@@ -100,7 +100,7 @@ PlatinumCtrl::PlatinumCtrl(const std::string &dev_name)
     this->draw_fb_is_dynamic = true;
 }
 
-int PlatinumCtrl::device_postinit() {
+PostInitResultType PlatinumCtrl::device_postinit() {
     // attach IOBus Device #2 0xF301B000 ; register DACula with the I/O controller
     GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralCatalyst"));
     this->dacula->move_device(gc_obj);
@@ -113,7 +113,7 @@ int PlatinumCtrl::device_postinit() {
         this->update_irq(irq_line_state, SWATCH_INT_VBL);
     };
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
