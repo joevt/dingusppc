@@ -61,7 +61,7 @@ ValkyrieVideo::ValkyrieVideo(const std::string &dev_name, const uint32_t base_ad
     i2c_bus->add_device(0x28, this->clk_gen);
 }
 
-int ValkyrieVideo::device_postinit() {
+PostInitResultType ValkyrieVideo::device_postinit() {
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_dev_int(IntSrc::VALKYRIE);
@@ -74,7 +74,7 @@ int ValkyrieVideo::device_postinit() {
         }
     };
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 uint32_t ValkyrieVideo::read(uint32_t rgn_start, uint32_t offset, int size) {
