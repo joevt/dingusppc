@@ -93,7 +93,7 @@ public:
         return std::unique_ptr<Swim3Ctrl>(new Swim3Ctrl(dev_name));
     }
 
-    int device_postinit();
+    PostInitResultType device_postinit() override;
 
     void    insert_disk(int drive, const std::string& img_path, int write_flag = 0);
 
