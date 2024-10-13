@@ -308,7 +308,7 @@ public:
     }
 
     // HWComponent methods
-    int device_postinit() override;
+    PostInitResultType device_postinit() override;
 
     /* MMIODevice methods */
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
