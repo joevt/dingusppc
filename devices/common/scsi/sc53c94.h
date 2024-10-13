@@ -197,7 +197,7 @@ public:
     }
 
     // HWComponent methods
-    int device_postinit();
+    PostInitResultType device_postinit();
 
     // 53C94 registers access
     uint8_t  read(uint8_t reg_offset);

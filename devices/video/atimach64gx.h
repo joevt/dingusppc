@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-24 divingkatae and maximum
+Copyright (C) 2018-25 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -51,7 +51,7 @@ public:
     bool pci_io_write(uint32_t offset, uint32_t value, uint32_t size);
 
     // HWComponent methods
-    int device_postinit();
+    PostInitResultType device_postinit();
 
     // MMIODevice methods
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size);
