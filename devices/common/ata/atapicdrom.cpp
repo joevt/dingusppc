@@ -53,11 +53,11 @@ AtapiCdrom::AtapiCdrom(const std::string name) : AtapiBaseDevice(name), HWCompon
     this->set_revision_id(cdrom_revision_id);
 }
 
-int AtapiCdrom::device_postinit() {
+PostInitResultType AtapiCdrom::device_postinit() {
     std::string cdr_config = GET_STR_PROP("cdr_config");
     if (cdr_config.empty()) {
         LOG_F(ERROR, "%s: cdr_config property is empty", this->name.c_str());
-        return -1;
+        return PI_FAIL;
     }
 
     std::string bus_id;
@@ -69,17 +69,17 @@ int AtapiCdrom::device_postinit() {
     if (!bus_obj) {
         LOG_F(ERROR, "%s: cdr_config device path %s does not specify a known IDE bus",
               this->name.c_str(), cdr_config.c_str());
-        return -1;
+        return PI_FAIL;
     }
     bus_obj->add_device(dev_num, this);
 
     std::string cdr_image_path = GET_STR_PROP("cdr_img");
     if (!cdr_image_path.empty()) {
         if (!this->insert_image(cdr_image_path))
-            return -1;
+            return PI_FAIL;
     }
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 void AtapiCdrom::perform_packet_command() {
