@@ -176,7 +176,7 @@ public:
     uint32_t    snd_ctrl_read(uint32_t offset, int size);
     void        snd_ctrl_write(uint32_t offset, uint32_t value, int size);
 
-    int device_postinit();
+    PostInitResultType device_postinit();
 
     static std::unique_ptr<HWComponent> create() {
         return std::unique_ptr<AwacsScreamer>(new AwacsScreamer());

@@ -69,7 +69,7 @@ public:
     std::function<void(uint16_t)>   pci_wr_bridge_control;
 
     // HWComponent methods
-    virtual int device_postinit();
+    virtual PostInitResultType device_postinit();
 
 protected:
     // PCI configuration space state
