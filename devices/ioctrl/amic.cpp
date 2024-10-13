@@ -101,7 +101,7 @@ AMIC::~AMIC()
     }
 }
 
-int AMIC::device_postinit()
+PostInitResultType AMIC::device_postinit()
 {
     MemCtrlBase *mem_ctrl = dynamic_cast<MemCtrlBase *>
                            (gMachineObj->get_comp_by_type(HWCompType::MEM_CTRL));
@@ -121,7 +121,7 @@ int AMIC::device_postinit()
     // set EMMO pin status (active low)
     this->emmo_pin = GET_BIN_PROP("emmo") ^ 1;
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 static const char* get_reg_name(uint32_t offset)

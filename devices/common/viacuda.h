@@ -190,7 +190,7 @@ public:
     static void set_start_time(std::chrono::local_seconds start_time);
 
     // HWComponent methods
-    int device_postinit();
+    PostInitResultType device_postinit() override;
 
     uint8_t read(int reg);
     void write(int reg, uint8_t value);

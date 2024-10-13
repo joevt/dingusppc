@@ -45,7 +45,7 @@ MPC106::MPC106(const std::string &dev_name)
     this->add_mmio_region(0xFEC00000, 0x300000, this);
 }
 
-int MPC106::device_postinit()
+PostInitResultType MPC106::device_postinit()
 {
     // assign PCI device number zero to myself
     MPC106PCI *mpc106pci = new MPC106PCI(this);
