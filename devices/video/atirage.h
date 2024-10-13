@@ -54,19 +54,19 @@ public:
     }
 
     // HWComponent methods
-    int device_postinit();
+    PostInitResultType device_postinit() override;
 
     // MMIODevice methods
-    uint32_t read(uint32_t rgn_start, uint32_t offset, int size);
-    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size);
+    uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
+    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
     // PCI device methods
-    uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details);
-    void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details);
+    uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details) override;
+    void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details) override;
 
     // I/O space access methods
-    bool pci_io_read(uint32_t offset, uint32_t size, uint32_t* res);
-    bool pci_io_write(uint32_t offset, uint32_t value, uint32_t size);
+    bool pci_io_read(uint32_t offset, uint32_t size, uint32_t* res) override;
+    bool pci_io_write(uint32_t offset, uint32_t value, uint32_t size) override;
 
 protected:
     void notify_bar_change(int bar_num);
@@ -77,8 +77,8 @@ protected:
     float calc_pll_freq(int scale, int fb_div) const;
     void verbose_pixel_format(int crtc_index);
     void crtc_update();
-    void draw_hw_cursor(uint8_t *dst_buf, int dst_pitch);
-    void get_cursor_position(int& x, int& y);
+    void draw_hw_cursor(uint8_t *dst_buf, int dst_pitch) override;
+    void get_cursor_position(int& x, int& y) override;
 
 private:
     void change_one_bar(uint32_t &aperture, uint32_t aperture_size,
