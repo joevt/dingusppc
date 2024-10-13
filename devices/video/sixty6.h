@@ -114,7 +114,7 @@ protected:
     void disable_display();
 
     // HWComponent methods
-    int device_postinit();
+    PostInitResultType device_postinit();
 
     // IobusDevice methods
     uint16_t iodev_read(uint32_t address);
