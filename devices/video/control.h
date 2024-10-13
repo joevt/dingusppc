@@ -133,7 +133,7 @@ protected:
     void disable_display();
 
     // HWComponent methods
-    int device_postinit();
+    PostInitResultType device_postinit();
 
 private:
     std::unique_ptr<DisplayID>      disp_id;
