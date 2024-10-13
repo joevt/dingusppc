@@ -392,7 +392,7 @@ void Sixty6Video::disable_display()
     LOG_F(INFO, "Sixty6: display disabled");
 }
 
-int Sixty6Video::device_postinit()
+PostInitResultType Sixty6Video::device_postinit()
 {
     // get (raw) pointer to the I/O controller
     GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralTnt"));
@@ -428,7 +428,7 @@ int Sixty6Video::device_postinit()
     this->control_video = dynamic_cast<ControlVideo*>(
         gMachineObj->get_comp_by_name("ControlVideo"));
 
-    return 0;
+    return PI_SUCCESS;
 }
 
 // ========================== Device registry stuff ==========================
