@@ -115,20 +115,6 @@ bool HWComponent::remove_device(int32_t unit_address) {
     return false;
 }
 
-bool HWComponent::remove_device(HWComponent* dev_obj, int depth) {
-    for (auto it = this->children.begin(); it != this->children.end(); it++) {
-        HWComponent* hwc = it->second.get();
-        if (hwc == dev_obj) {
-            return this->remove_device(it->first);
-        }
-        if (hwc->remove_device(dev_obj, depth + 1))
-            return true;
-    }
-    if (depth == 0)
-        LOG_F(ERROR, "Cannot remove %s because it is not found!", dev_obj->get_path().c_str());
-    return false;
-}
-
 HWComponent* HWComponent::get_comp_by_name(const std::string name, bool optional) {
     HWComponent* hwc;
     if (this->iterate([&](HWComponent *it, int depth) {
