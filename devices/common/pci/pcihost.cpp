@@ -71,6 +71,12 @@ void PCIHost::pci_register_device(int dev_fun_num, PCIBase* dev_instance)
     LOG_F(INFO, "Registered %s.", dev_instance->get_name_and_unit_address().c_str());
 }
 
+bool PCIHost::remove_device(int32_t unit_address)
+{
+    this->pci_unregister_device(unit_address);
+    return HWComponent::remove_device(unit_address);
+}
+
 void PCIHost::pci_unregister_device(int dev_fun_num)
 {
     if (!this->dev_map.count(dev_fun_num)) {
@@ -86,7 +92,6 @@ void PCIHost::pci_unregister_device(int dev_fun_num)
     );
 
     this->dev_map.erase(dev_fun_num);
-    gMachineObj->remove_device(dev_instance);
 }
 
 AddressMapEntry* PCIHost::pci_register_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj)
