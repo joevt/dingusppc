@@ -110,7 +110,6 @@ public:
     virtual HWComponent* add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name = "");
     virtual void move_device(HWComponent* new_parent);
     virtual bool remove_device(int32_t unit_address);
-    bool remove_device(HWComponent* dev_obj, int depth = 0);
     HWComponent* get_comp_by_name(const std::string name, bool optional = false);
     HWComponent* get_comp_by_name_optional(const std::string name);
     HWComponent* get_comp_by_type(HWCompType type);
