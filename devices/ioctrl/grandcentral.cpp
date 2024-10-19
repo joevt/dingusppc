@@ -51,7 +51,7 @@ NvramDev::NvramDev(NvramAddrHiDev *addr_hi)
 GrandCentral::GrandCentral(const std::string name)
     : PCIDevice(name), InterruptCtrl(), HWComponent(name)
 {
-    supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL);
+    supports_types(HWCompType::IOBUS_HOST | HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL);
 
     // populate my PCI config header
     this->vendor_id   = PCI_VENDOR_APPLE;
