@@ -34,12 +34,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <machines/machinefactory.h>
 #include <loguru.hpp>
 
-static std::vector<PciIrqMap> aspen_irq_map = {
-//  {nullptr , DEV_FUN(0x0B,0), IntSrc::BANDIT1 },
-//  {"pci_A1", DEV_FUN(0x0D,0), IntSrc::PCI_A   },
-    {"pci_B1", DEV_FUN(0x0E,0), IntSrc::PIPPIN_E},
-    {"pci_C1", DEV_FUN(0x0F,0), IntSrc::PIPPIN_F},
-    {nullptr , DEV_FUN(0x10,0),                 }, // GrandCentral
+static std::map<int,PciIrqMap> aspen_irq_map = {
+//  {DEV_FUN(0x0B,0), {nullptr , IntSrc::BANDIT1 }},
+//  {DEV_FUN(0x0D,0), {"pci_A1", IntSrc::PCI_A   }},
+    {DEV_FUN(0x0E,0), {"pci_B1", IntSrc::PIPPIN_E}},
+    {DEV_FUN(0x0F,0), {"pci_C1", IntSrc::PIPPIN_F}},
+    {DEV_FUN(0x10,0), {nullptr ,                 }}, // GrandCentral
 };
 
 class MachinePippin : public Machine {
