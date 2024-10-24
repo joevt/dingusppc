@@ -42,14 +42,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <string>
 
-static const std::vector<PciIrqMap> grackle_irq_map = {
-    {nullptr    , DEV_FUN(0x00,0),                    }, // Grackle
-    {"pci_PERCH", DEV_FUN(0x0C,0), IntSrc::PCI_PERCH  },
-    {"pci_A1"   , DEV_FUN(0x0D,0), IntSrc::PCI_A      },
-    {"pci_B1"   , DEV_FUN(0x0E,0), IntSrc::PCI_B      },
-    {"pci_C1"   , DEV_FUN(0x0F,0), IntSrc::PCI_C      },
-    {nullptr    , DEV_FUN(0x10,0),                    }, // Heathrow
-    {"pci_GPU"  , DEV_FUN(0x12,0), IntSrc::PCI_GPU    },
+static const std::map<int,PciIrqMap> grackle_irq_map = {
+    {DEV_FUN(0x00,0), {nullptr    ,                  }}, // Grackle
+    {DEV_FUN(0x0C,0), {"pci_PERCH", IntSrc::PCI_PERCH}},
+    {DEV_FUN(0x0D,0), {"pci_A1"   , IntSrc::PCI_A    }},
+    {DEV_FUN(0x0E,0), {"pci_B1"   , IntSrc::PCI_B    }},
+    {DEV_FUN(0x0F,0), {"pci_C1"   , IntSrc::PCI_C    }},
+    {DEV_FUN(0x10,0), {nullptr    ,                  }}, // Heathrow
+    {DEV_FUN(0x12,0), {"pci_GPU"  , IntSrc::PCI_GPU  }},
 };
 
 // Bit definitions for the Gossamer system register at 0xFF000004
