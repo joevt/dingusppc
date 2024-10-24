@@ -366,7 +366,7 @@ private:
     uint32_t    cursor_task_id      = 0;
 
     std::unique_ptr<uint8_t[]>      vram_ptr = nullptr;
-    std::unique_ptr<DisplayID>      display_id = nullptr;
+    std::unique_ptr<DisplayID>      disp_id = nullptr;
     std::unique_ptr<AppleRamdac>    dacula = nullptr;
     std::unique_ptr<uint8_t[]>      dram_ptr = nullptr;
     std::vector<AddressMapEntry*>   ram_map;
