@@ -66,7 +66,7 @@ PlatinumCtrl::PlatinumCtrl() : MemCtrlBase(), VideoCtrlBase() {
     // PowerPC 601 @ 90 MHz, bus frequency: 45 MHz
     this->cpu_id = (0x3001 << 16) | ClkSrc2 | (CpuSpeed2::CPU_90_BUS_45 << 8);
 
-    this->display_id = std::unique_ptr<DisplayID> (new DisplayID());
+    this->disp_id = std::unique_ptr<DisplayID> (new DisplayID());
 
     // attach DACula RAMDAC
     this->dacula = std::unique_ptr<AppleRamdac>(new AppleRamdac(DacFlavour::DACULA));
@@ -314,7 +314,7 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         uint8_t mon_levels = (this->fb_test >> SENSE_LINE_OUTPUT_DATA_pos) & 7;
         mon_levels = (mon_levels & mon_dirs) | (mon_dirs ^ 7);
         this->mon_sense = (mon_dirs << 3) |
-            (this->display_id->read_monitor_sense(mon_levels, mon_dirs) ^ 7);
+            (this->disp_id->read_monitor_sense(mon_levels, mon_dirs) ^ 7);
         break;
     }
     case PlatinumReg::FB_RESET:
