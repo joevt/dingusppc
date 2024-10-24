@@ -30,21 +30,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
 
-static const std::vector<PciIrqMap> grackle_irq_map = {
-    {nullptr  , DEV_FUN(0x00,0)                 }, // Grackle
-    {nullptr  , DEV_FUN(0x0D,0)                 }, // Dec21154Yosemite
-    {"pci_J12", DEV_FUN(0x10,0), IntSrc::PCI_J12}, // GPU PCI slot, 66 MHz
+static const std::map<int,PciIrqMap> grackle_irq_map = {
+    {DEV_FUN(0x00,0), {nullptr  ,                }}, // Grackle
+    {DEV_FUN(0x0D,0), {nullptr  ,                }}, // Dec21154Yosemite
+    {DEV_FUN(0x10,0), {"pci_J12", IntSrc::PCI_J12}}, // GPU PCI slot, 66 MHz
 };
 
 // 33 MHz PCI devices behind the DEC21154 PCI-to-PCI bridge
-static const std::vector<PciIrqMap> pci_bridge_irq_map = {
-    {"pci_FireWire", DEV_FUN(0x00,0), IntSrc::FIREWIRE},
-    {"pci_UltraATA", DEV_FUN(0x01,0), IntSrc::ATA     },
-    {"pci_J11"     , DEV_FUN(0x02,0), IntSrc::PCI_J11 },
-    {"pci_J10"     , DEV_FUN(0x03,0), IntSrc::PCI_J10 },
-    {"pci_J9"      , DEV_FUN(0x04,0), IntSrc::PCI_J9  },
-    {nullptr       , DEV_FUN(0x05,0)                  }, // Paddington
-    {"pci_USB"     , DEV_FUN(0x06,0), IntSrc::USB     },
+static const std::map<int,PciIrqMap> pci_bridge_irq_map = {
+    {DEV_FUN(0x00,0), {"pci_FireWire", IntSrc::FIREWIRE}},
+    {DEV_FUN(0x01,0), {"pci_UltraATA", IntSrc::ATA     }},
+    {DEV_FUN(0x02,0), {"pci_J11"     , IntSrc::PCI_J11 }},
+    {DEV_FUN(0x03,0), {"pci_J10"     , IntSrc::PCI_J10 }},
+    {DEV_FUN(0x04,0), {"pci_J9"      , IntSrc::PCI_J9  }},
+    {DEV_FUN(0x05,0), {nullptr       ,                 }}, // Paddington
+    {DEV_FUN(0x06,0), {"pci_USB"     , IntSrc::USB     }},
 };
 
 static void setup_ram_slot(const std::string name, int i2c_addr, int capacity_megs) {
