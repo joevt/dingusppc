@@ -166,15 +166,14 @@ InterruptCtrl *PCIHost::get_interrupt_controller() {
 
 bool PCIHost::register_pci_int(PCIBase* dev_instance) {
     int dev_fun_num = dev_instance->unit_address;
-    for (auto& irq : this->my_irq_map) {
-        if (irq.dev_fun_num == dev_fun_num) {
-            IntDetails new_int_detail;
-            new_int_detail.int_ctrl_obj = this->get_interrupt_controller();
-            if (new_int_detail.int_ctrl_obj && irq.int_src)
-                new_int_detail.irq_id = new_int_detail.int_ctrl_obj->register_dev_int(irq.int_src);
-            dev_instance->set_int_details(new_int_detail);
-            return true;
-        }
+    if (this->my_irq_map.count(dev_fun_num)) {
+        auto& irq = this->my_irq_map[dev_fun_num];
+        IntDetails new_int_detail;
+        new_int_detail.int_ctrl_obj = this->get_interrupt_controller();
+        if (new_int_detail.int_ctrl_obj && irq.int_src)
+            new_int_detail.irq_id = new_int_detail.int_ctrl_obj->register_dev_int(irq.int_src);
+        dev_instance->set_int_details(new_int_detail);
+        return true;
     }
 
     PCIBridgeBase *self = dynamic_cast<PCIBridgeBase*>(this);
@@ -271,10 +270,10 @@ PostInitResultType PCIHost::pcihost_device_postinit()
     std::string pci_dev_name;
 
     for (auto& slot : this->my_irq_map) {
-        if (slot.slot_name) {
-            pci_dev_name = GET_STR_PROP(slot.slot_name);
+        if (slot.second.slot_name) {
+            pci_dev_name = GET_STR_PROP(slot.second.slot_name);
             if (!pci_dev_name.empty()) {
-                this->attach_pci_device(pci_dev_name, slot.dev_fun_num);
+                this->attach_pci_device(pci_dev_name, slot.first);
             }
         }
     }

@@ -36,25 +36,25 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <string>
 
-static std::vector<PciIrqMap> bandit1_irq_map = {
-    {nullptr , DEV_FUN(0x0B,0), IntSrc::BANDIT1},
-    {"pci_A1", DEV_FUN(0x0D,0), IntSrc::PCI_A},
-    {"pci_B1", DEV_FUN(0x0E,0), IntSrc::PCI_B},
-    {"pci_C1", DEV_FUN(0x0F,0), IntSrc::PCI_C},
-    {nullptr , DEV_FUN(0x10,0),              }, // GrandCentral
+static std::map<int,PciIrqMap> bandit1_irq_map = {
+    {DEV_FUN(0x0B,0), {nullptr , IntSrc::BANDIT1}},
+    {DEV_FUN(0x0D,0), {"pci_A1", IntSrc::PCI_A  }},
+    {DEV_FUN(0x0E,0), {"pci_B1", IntSrc::PCI_B  }},
+    {DEV_FUN(0x0F,0), {"pci_C1", IntSrc::PCI_C  }},
+    {DEV_FUN(0x10,0), {nullptr ,                }}, // GrandCentral
 };
 
-static std::vector<PciIrqMap> bandit2_irq_map = {
-    {nullptr , DEV_FUN(0x0B,0), IntSrc::BANDIT2},
-    {"pci_D2", DEV_FUN(0x0D,0), IntSrc::PCI_D},
-    {"pci_E2", DEV_FUN(0x0E,0), IntSrc::PCI_E},
-    {"pci_F2", DEV_FUN(0x0F,0), IntSrc::PCI_F},
+static std::map<int,PciIrqMap> bandit2_irq_map = {
+    {DEV_FUN(0x0B,0), {nullptr , IntSrc::BANDIT2}},
+    {DEV_FUN(0x0D,0), {"pci_D2", IntSrc::PCI_D  }},
+    {DEV_FUN(0x0E,0), {"pci_E2", IntSrc::PCI_E  }},
+    {DEV_FUN(0x0F,0), {"pci_F2", IntSrc::PCI_F  }},
 };
 
-static std::vector<PciIrqMap> chaos_irq_map = {
-    {nullptr,  DEV_FUN(0x0B,0), IntSrc::CONTROL},
-    {"vci_D",  DEV_FUN(0x0D,0), IntSrc::PLANB},
-    {"vci_E",  DEV_FUN(0x0E,0), IntSrc::VCI  },
+static std::map<int,PciIrqMap> chaos_irq_map = {
+    {DEV_FUN(0x0B,0), {nullptr,  IntSrc::CONTROL}},
+    {DEV_FUN(0x0D,0), {"vci_D",  IntSrc::PLANB  }},
+    {DEV_FUN(0x0E,0), {"vci_E",  IntSrc::VCI    }},
 };
 
 class MachineTnt : public Machine {
