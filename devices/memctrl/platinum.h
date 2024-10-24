@@ -1,6 +1,6 @@
 /*
 DingusPPC - The Experimental PowerPC Macintosh emulator
-Copyright (C) 2018-25 divingkatae and maximum
+Copyright (C) 2018-26 divingkatae and maximum
                       (theweirdo)     spatium
 
 (Contact divingkatae#1017 or powermax#2286 on Discord for more info)
@@ -366,7 +366,7 @@ private:
     uint32_t    cursor_task_id      = 0;
 
     std::unique_ptr<uint8_t[]>      vram_ptr = nullptr;
-    std::unique_ptr<DisplayID>      display_id = nullptr;
+    std::unique_ptr<DisplayID>      disp_id = nullptr;
     std::unique_ptr<AppleRamdac>    dacula = nullptr;
     std::unique_ptr<uint8_t[]>      dram_ptr = nullptr;
     std::vector<AddressMapEntry*>   ram_map;
