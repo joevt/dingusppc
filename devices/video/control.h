@@ -137,7 +137,7 @@ protected:
     int device_postinit();
 
 private:
-    std::unique_ptr<DisplayID>      display_id;
+    std::unique_ptr<DisplayID>      disp_id;
     std::unique_ptr<AthensClocks>   clk_gen;
     std::unique_ptr<AppleRamdac>    radacal = nullptr;
 
