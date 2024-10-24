@@ -155,7 +155,7 @@ ControlVideo::ControlVideo()
     gc_obj->attach_iodevice(1, this->radacal.get());
 
     // initialize display identification
-    this->display_id = std::unique_ptr<DisplayID> (new DisplayID());
+    this->disp_id = std::unique_ptr<DisplayID> (new DisplayID());
 
     this->draw_fb_is_dynamic = true;
 }
@@ -654,7 +654,7 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
                 uint8_t dirs   = ((value >> 3) & 7) ^ 7;
                 uint8_t levels = ((value & 7) & dirs) | (dirs ^ 7);
                 this->mon_sense = value & 0x3F;
-                this->cur_mon_id = this->display_id->read_monitor_sense(levels, dirs);
+                this->cur_mon_id = this->disp_id->read_monitor_sense(levels, dirs);
             }
             break;
         case ControlRegs::MISC_ENABLES:
