@@ -304,6 +304,9 @@ int main(int argc, char** argv) {
         break;
     }
 
+    // if we didn't delete this then delete it now
+    delete gMachineObj.release();
+
     cleanup();
 
     return 0;
