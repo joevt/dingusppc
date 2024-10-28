@@ -32,6 +32,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 std::unique_ptr<HWComponent> gMachineObj = 0;
 
+std::map<HWCompType, HWCompType> MapBusDev {
+    { PCI_HOST    , PCI_DEV    },
+    { I2C_HOST    , I2C_DEV    },
+    { ADB_HOST    , ADB_DEV    },
+    { IOBUS_HOST  , IOBUS_DEV  },
+    { SCSI_BUS    , SCSI_DEV   },
+    { IDE_BUS     , IDE_DEV    },
+    { FLOPPY_CTRL , FLOPPY_DRV },
+    { VIDEO_CTRL  , DISPLAY    },
+};
+
 HWComponent::HWComponent(const std::string name) {
     LOG_F(INFO, "Created %s", name.c_str());
     this->set_name(name);
