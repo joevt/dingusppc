@@ -62,6 +62,8 @@ enum HWCompType : uint64_t {
     DISPLAY     = 1ULL << 43, // display
 };
 
+extern std::map<HWCompType, HWCompType> MapBusDev;
+
 enum PostInitResultType : int {
     PI_SUCCESS = 0,
     PI_FAIL    = -1,
