@@ -687,7 +687,6 @@ extern void ppc_msr_did_change(uint32_t old_msr_val, uint32_t new_msr_val, bool 
 extern void ppc_change_endian(bool newLE);
 
 /* debugging support API */
-void print_fprs(void);                   /* print content of the floating-point registers  */
 uint64_t get_reg(std::string reg_name); /* get content of the register reg_name */
 void set_reg(std::string reg_name, uint64_t val); /* set reg_name to val */
 
