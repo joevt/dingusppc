@@ -310,14 +310,20 @@ void VideoCtrlBase::convert_frame_8bpp(uint8_t *dst_buf, int dst_pitch)
     }
 }
 
-static bool needs_swap_endian(bool in_main_mem) {
+bool VideoCtrlBase::needs_swap_endian() {
     extern MemCtrlBase* mem_ctrl_instance;
-    return mem_ctrl_instance->needs_swap_endian(!in_main_mem);
+    return mem_ctrl_instance->needs_swap_endian(!this->framebuffer_in_main_memory());
 }
 
 // RGB555
+template <VideoCtrlBase::fb_endian endian>
 void VideoCtrlBase::convert_frame_15bpp(uint8_t *dst_buf, int dst_pitch)
 {
+    if (needs_swap_endian()) {
+        convert_frame_15bpp<endian == BE ? LE : BE>(dst_buf, dst_pitch);
+        return;
+    }
+
     uint8_t *src_row, *dst_row;
     int     src_pitch;
 
@@ -326,10 +332,9 @@ void VideoCtrlBase::convert_frame_15bpp(uint8_t *dst_buf, int dst_pitch)
 
     src_row = this->fb_ptr;
     dst_row = dst_buf;
-    bool swap = needs_swap_endian(framebuffer_in_main_memory());
     for (int h = this->active_height; h > 0; h--) {
         for (int x = this->active_width; x > 0; x--) {
-            uint32_t c = swap ? READ_WORD_BE_A(src_row) : READ_WORD_LE_A(src_row);
+            uint32_t c = (endian == BE) ? READ_WORD_BE_A(src_row) : READ_WORD_LE_A(src_row);
             uint32_t r = ((c << 9) & 0x00F80000) | ((c << 4) & 0x00070000);
             uint32_t g = ((c << 6) & 0x0000F800) | ((c << 1) & 0x00000700);
             uint32_t b = ((c << 3) & 0x000000F8) | ((c >> 2) & 0x00000007);
@@ -341,37 +346,18 @@ void VideoCtrlBase::convert_frame_15bpp(uint8_t *dst_buf, int dst_pitch)
         dst_row += dst_pitch;
     }
 }
-
-// RGB555_BE
-void VideoCtrlBase::convert_frame_15bpp_BE(uint8_t *dst_buf, int dst_pitch)
-{
-    uint8_t *src_row, *dst_row;
-    int     src_pitch;
-
-    src_pitch = this->fb_pitch - 2 * this->active_width;
-    dst_pitch = dst_pitch - 4 * this->active_width;
-
-    src_row = this->fb_ptr;
-    dst_row = dst_buf;
-    bool swap = needs_swap_endian(framebuffer_in_main_memory());
-    for (int h = this->active_height; h > 0; h--) {
-        for (int x = this->active_width; x > 0; x--) {
-            uint32_t c = swap ? READ_WORD_LE_A(src_row) : READ_WORD_BE_A(src_row);
-            uint32_t r = ((c << 9) & 0x00F80000) | ((c << 4) & 0x00070000);
-            uint32_t g = ((c << 6) & 0x0000F800) | ((c << 1) & 0x00000700);
-            uint32_t b = ((c << 3) & 0x000000F8) | ((c >> 2) & 0x00000007);
-            WRITE_DWORD_LE_A(dst_row, r | g | b);
-            src_row += 2;
-            dst_row += 4;
-        }
-        src_row += src_pitch;
-        dst_row += dst_pitch;
-    }
-}
+template void VideoCtrlBase::convert_frame_15bpp<VideoCtrlBase::BE>(uint8_t *dst_buf, int dst_pitch);
+template void VideoCtrlBase::convert_frame_15bpp<VideoCtrlBase::LE>(uint8_t *dst_buf, int dst_pitch);
 
 // RGB565
+template <VideoCtrlBase::fb_endian endian>
 void VideoCtrlBase::convert_frame_16bpp(uint8_t *dst_buf, int dst_pitch)
 {
+    if (needs_swap_endian()) {
+        convert_frame_16bpp<endian == BE ? LE : BE>(dst_buf, dst_pitch);
+        return;
+    }
+
     uint8_t *src_row, *dst_row;
     int     src_pitch;
 
@@ -380,10 +366,9 @@ void VideoCtrlBase::convert_frame_16bpp(uint8_t *dst_buf, int dst_pitch)
 
     src_row = this->fb_ptr;
     dst_row = dst_buf;
-    bool swap = needs_swap_endian(framebuffer_in_main_memory());
     for (int h = this->active_height; h > 0; h--) {
         for (int x = this->active_width; x > 0; x--) {
-            uint32_t c = swap ? READ_WORD_BE_A(src_row) : READ_WORD_LE_A(src_row);
+            uint32_t c = (endian == BE) ? READ_WORD_BE_A(src_row) : READ_WORD_LE_A(src_row);
             uint32_t r = ((c << 8) & 0x00F80000) | ((c << 3) & 0x00070000);
             uint32_t g = ((c << 5) & 0x0000FC00) | ((c >> 1) & 0x00000300);
             uint32_t b = ((c << 3) & 0x000000F8) | ((c >> 2) & 0x00000007);
@@ -395,6 +380,9 @@ void VideoCtrlBase::convert_frame_16bpp(uint8_t *dst_buf, int dst_pitch)
         dst_row += dst_pitch;
     }
 }
+template void VideoCtrlBase::convert_frame_16bpp<VideoCtrlBase::BE>(uint8_t *dst_buf, int dst_pitch);
+template void VideoCtrlBase::convert_frame_16bpp<VideoCtrlBase::LE>(uint8_t *dst_buf, int dst_pitch);
+
 
 // RGB888
 void VideoCtrlBase::convert_frame_24bpp(uint8_t *dst_buf, int dst_pitch)
@@ -420,8 +408,14 @@ void VideoCtrlBase::convert_frame_24bpp(uint8_t *dst_buf, int dst_pitch)
 }
 
 // ARGB8888
+template <VideoCtrlBase::fb_endian endian>
 void VideoCtrlBase::convert_frame_32bpp(uint8_t *dst_buf, int dst_pitch)
 {
+    if (needs_swap_endian()) {
+        convert_frame_32bpp<endian == BE ? LE : BE>(dst_buf, dst_pitch);
+        return;
+    }
+
     uint32_t *src_row, *dst_row;
     int     src_pitch;
 
@@ -430,10 +424,9 @@ void VideoCtrlBase::convert_frame_32bpp(uint8_t *dst_buf, int dst_pitch)
 
     src_row = (uint32_t*)this->fb_ptr;
     dst_row = (uint32_t*)dst_buf;
-    bool swap = needs_swap_endian(framebuffer_in_main_memory());
     for (int h = this->active_height; h > 0; h--) {
         for (int x = this->active_width; x > 0; x--) {
-            uint32_t c = swap ? READ_DWORD_BE_A(src_row) : READ_DWORD_LE_A(src_row);
+            uint32_t c = (endian == BE) ? READ_DWORD_BE_A(src_row) : READ_DWORD_LE_A(src_row);
             WRITE_DWORD_LE_A(dst_row, c);
             src_row++;
             dst_row++;
@@ -442,30 +435,8 @@ void VideoCtrlBase::convert_frame_32bpp(uint8_t *dst_buf, int dst_pitch)
         dst_row = (uint32_t*)((uint8_t*)dst_row + dst_pitch);
     }
 }
-
-// ARGB8888_BE
-void VideoCtrlBase::convert_frame_32bpp_BE(uint8_t *dst_buf, int dst_pitch)
-{
-    uint32_t *src_row, *dst_row;
-    int     src_pitch;
-
-    src_pitch = this->fb_pitch - 4 * this->active_width;
-    dst_pitch = dst_pitch - 4 * this->active_width;
-
-    src_row = (uint32_t*)this->fb_ptr;
-    dst_row = (uint32_t*)dst_buf;
-    bool swap = needs_swap_endian(framebuffer_in_main_memory());
-    for (int h = this->active_height; h > 0; h--) {
-        for (int x = this->active_width; x > 0; x--) {
-            uint32_t c = swap ? READ_DWORD_LE_A(src_row) : READ_DWORD_BE_A(src_row);
-            WRITE_DWORD_LE_A(dst_row, c);
-            src_row++;
-            dst_row++;
-        }
-        src_row = (uint32_t*)((uint8_t*)src_row + src_pitch);
-        dst_row = (uint32_t*)((uint8_t*)dst_row + dst_pitch);
-    }
-}
+template void VideoCtrlBase::convert_frame_32bpp<VideoCtrlBase::BE>(uint8_t *dst_buf, int dst_pitch);
+template void VideoCtrlBase::convert_frame_32bpp<VideoCtrlBase::LE>(uint8_t *dst_buf, int dst_pitch);
 
 int32_t VideoCtrlBase::parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc)
 {
