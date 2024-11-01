@@ -122,19 +122,19 @@ void PdmOnboardVideo::set_depth_internal(int width)
     switch (this->pixel_depth) {
     case 1:
         this->convert_fb_cb = [this](uint8_t* dst_buf, int dst_pitch) {
-            this->convert_frame_1bpp_indexed(dst_buf, dst_pitch);
+            this->pdm_convert_frame_1bpp_indexed(dst_buf, dst_pitch);
         };
         this->fb_pitch = width >> 3; // one byte contains 8 pixels
         break;
     case 2:
         this->convert_fb_cb = [this](uint8_t* dst_buf, int dst_pitch) {
-            this->convert_frame_2bpp_indexed(dst_buf, dst_pitch);
+            this->pdm_convert_frame_2bpp_indexed(dst_buf, dst_pitch);
         };
         this->fb_pitch = width >> 2; // one byte contains 4 pixels
         break;
     case 4:
         this->convert_fb_cb = [this](uint8_t* dst_buf, int dst_pitch) {
-            this->convert_frame_4bpp_indexed(dst_buf, dst_pitch);
+            this->pdm_convert_frame_4bpp_indexed(dst_buf, dst_pitch);
         };
         this->fb_pitch = width >> 1; // one byte contains 2 pixels
         break;
@@ -146,7 +146,7 @@ void PdmOnboardVideo::set_depth_internal(int width)
         break;
     case 16:
         this->convert_fb_cb = [this](uint8_t* dst_buf, int dst_pitch) {
-            this->convert_frame_15bpp_BE(dst_buf, dst_pitch);
+            this->convert_frame_15bpp<BE>(dst_buf, dst_pitch);
         };
         this->fb_pitch = width << 1; // 1 pixel is 2 bytes
         break;
@@ -255,7 +255,7 @@ void PdmOnboardVideo::disable_video_internal()
     CLUT entry #127 (%01111111) and a black pixel to #255 (%11111111).
     It requres a non-standard conversion routine implemented below.
  */
-void PdmOnboardVideo::convert_frame_1bpp_indexed(uint8_t *dst_buf, int dst_pitch)
+void PdmOnboardVideo::pdm_convert_frame_1bpp_indexed(uint8_t *dst_buf, int dst_pitch)
 {
     uint8_t *src_row, *dst_row;
     int     src_pitch;
@@ -287,7 +287,7 @@ void PdmOnboardVideo::convert_frame_1bpp_indexed(uint8_t *dst_buf, int dst_pitch
     }
 }
 
-void PdmOnboardVideo::convert_frame_2bpp_indexed(uint8_t *dst_buf, int dst_pitch)
+void PdmOnboardVideo::pdm_convert_frame_2bpp_indexed(uint8_t *dst_buf, int dst_pitch)
 {
     uint8_t *src_row, *dst_row;
     int     src_pitch;
@@ -316,7 +316,7 @@ void PdmOnboardVideo::convert_frame_2bpp_indexed(uint8_t *dst_buf, int dst_pitch
     }
 }
 
-void PdmOnboardVideo::convert_frame_4bpp_indexed(uint8_t *dst_buf, int dst_pitch)
+void PdmOnboardVideo::pdm_convert_frame_4bpp_indexed(uint8_t *dst_buf, int dst_pitch)
 {
     uint8_t *src_row, *dst_row;
     int     src_pitch;
