@@ -333,13 +333,17 @@ uint8_t DisplayID::read_monitor_sense(uint8_t levels, uint8_t dirs)
     case Disp_Id_Kind::AppleSense:
         switch ((dirs << 3) | levels) {
         case 0b0'100'011: // Sense line 2 pulled low; get sense line 1 and 0
+            LOG_F(INFO, "Sense line 2 pulled low; get sense line 1 and 0");
             return  ((this->ext_sense_code & 0b0'11'00'00) >> 4);               // -> 0__
         case 0b0'010'101: // Sense line 1 pulled low; get sense line 2 and 0
+            LOG_F(INFO, "Sense line 1 pulled low; get sense line 2 and 0");
             return (((this->ext_sense_code & 0b0'00'10'00) >> 1) |  // -> _00
                     ((this->ext_sense_code & 0b0'00'01'00) >> 2));  // -> 00_   // -> _0_
         case 0b0'001'110: // Sense line 0 pulled low; get sense line 2 and 1
+            LOG_F(INFO, "Sense line 0 pulled low; get sense line 2 and 1");
             return  ((this->ext_sense_code & 0b0'00'00'11) << 1);               // -> __0
         default:
+            LOG_F(INFO, "dirs:%d levels:%d", dirs, levels);
             return this->std_sense_code;
         }
     }
