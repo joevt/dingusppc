@@ -28,6 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <map>
 #include <string>
+#include <regex>
 
 typedef struct {
     uint16_t      h;
@@ -254,9 +255,17 @@ HWComponent* DisplayID::set_property(const std::string &property, const std::str
             if (property == "mon_id") {
                 // assume a DDC monitor is connected by default
                 this->id_kind = Disp_Id_Kind::DDC2B;
+                std_sense_code = 0;
+                ext_sense_code = 0;
 
-                std::string mon_id = this->get_property_str("mon_id");
-                if (!mon_id.empty()) {
+                do {
+                    std::string mon_id = this->get_property_str("mon_id");
+
+                    if (mon_id.empty()) {
+                        this->set_name("Display_DDC");
+                        break;
+                    }
+                    
                     if (MonitorAliasToId.count(mon_id)) {
                         mon_id = MonitorAliasToId.at(mon_id);
                     }
@@ -264,16 +273,43 @@ HWComponent* DisplayID::set_property(const std::string &property, const std::str
                         auto &monitor = MonitorIdToCode.at(mon_id);
                         this->std_sense_code = monitor.std_sense_code;
                         this->ext_sense_code = monitor.ext_sense_code;
-                        this->id_kind = Disp_Id_Kind::AppleSense;
                         this->set_name("Display_" + mon_id);
-                        LOG_F(INFO, "DisplayID mode set to AppleSense");
-                        LOG_F(INFO, "Standard sense code: %d", this->std_sense_code);
-                        LOG_F(INFO, "Extended sense code: 0x%02X", this->ext_sense_code);
+                        this->id_kind = Disp_Id_Kind::AppleSense;
+                        break;
                     }
+
+                    std::smatch results;
+
+                    std::regex standard_sense_re("([0-7])", std::regex_constants::icase);
+                    if (std::regex_match(mon_id, results, standard_sense_re)) {
+                        uint8_t standard_ext_sense_code[] = {0x00, 0x14, 0x21, 0x35, 0x0A, 0x1E, 0x2B, 0x3F };
+                        this->std_sense_code = std::stol(results[1], nullptr, 10);
+                        this->ext_sense_code = standard_ext_sense_code[this->std_sense_code];
+                        char buf[20];
+                        snprintf(buf, sizeof(buf), "Display_%d.%02X", this->std_sense_code, this->ext_sense_code);
+                        this->set_name(buf);
+                        this->id_kind = Disp_Id_Kind::AppleSense;
+                        break;
+                    }
+
+                    std::regex extended_sense_re("([0-7]).([0-3][0-9A-F])", std::regex_constants::icase);
+                    if (std::regex_match(mon_id, results, extended_sense_re)) {
+                        this->std_sense_code = std::stol(results[1], nullptr, 10);
+                        this->ext_sense_code = std::stol(results[2], nullptr, 16);
+                        char buf[20];
+                        snprintf(buf, sizeof(buf), "Display_%d.%02X", this->std_sense_code, this->ext_sense_code);
+                        this->set_name(buf);
+                        this->id_kind = Disp_Id_Kind::AppleSense;
+                        break;
+                    }
+                } while(0);
+
+                if (this->id_kind == Disp_Id_Kind::AppleSense) {
+                    LOG_F(INFO, "DisplayID mode set to AppleSense");
+                    LOG_F(INFO, "Standard sense code: %d", this->std_sense_code);
+                    LOG_F(INFO, "Extended sense code: 0x%02X", this->ext_sense_code);
                 }
-                else {
-                    this->set_name("Display_DDC");
-                }
+
                 video_ctrl->update_display_connection();
                 return this;
             }
