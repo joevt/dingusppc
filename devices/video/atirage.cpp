@@ -33,7 +33,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace loguru {
     enum : Verbosity {
-        Verbosity_ATIRAGE = loguru::Verbosity_9,
+        Verbosity_ATIRAGE = loguru::Verbosity_INFO,
         Verbosity_ATIINTERRUPT = loguru::Verbosity_9,
         Verbosity_ATICURSOR = loguru::Verbosity_9
     };
