@@ -80,10 +80,10 @@ protected:
 
 private:
     VideoCtrlBase*  video_ctrl = nullptr;
-    Disp_Id_Kind    id_kind;
+    Disp_Id_Kind    id_kind = Disp_Id_Kind::DDC2B;
 
-    uint8_t std_sense_code;
-    uint8_t ext_sense_code;
+    uint8_t std_sense_code = 0;
+    uint8_t ext_sense_code = 0;
 
     /* DDC I2C variables. */
     uint8_t     next_state;
