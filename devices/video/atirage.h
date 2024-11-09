@@ -63,8 +63,8 @@ public:
     void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
     // PCIDevice methods
-    uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details) override;
-    void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details) override;
+    uint32_t pci_cfg_read(uint32_t reg_offs, const AccessDetails details) override;
+    void pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details) override;
 
     // VideoCtrlBase methods
     void update_display_connection() override;
