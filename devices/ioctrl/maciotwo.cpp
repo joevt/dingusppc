@@ -312,7 +312,7 @@ uint32_t MacIoTwo::mio_ctrl_read(uint32_t offset, int size) {
     }
     AccessDetails details;
     ACCESSDETAILS_SET(details, size, offset, 0);
-    value = pci_conv_rd_data(value, value2, details);
+    value = conv_rd_data(value, value2, details);
     return value;
 }
 
