@@ -34,21 +34,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <vector>
 
 enum {
-    PCI_CONFIG_DIRECTION    = 1,
-    PCI_CONFIG_READ         = 0,
-    PCI_CONFIG_WRITE        = 1,
+    PCI_CONFIG_DIRECTION    = 0x0100,
+        PCI_CONFIG_READ     = 0x0000,
+        PCI_CONFIG_WRITE    = 0x0100,
 
-    PCI_CONFIG_TYPE         = 4,
-    PCI_CONFIG_TYPE_0       = 0,
-    PCI_CONFIG_TYPE_1       = 4,
+    PCI_CONFIG_TYPE         = 0x1000,
+        PCI_CONFIG_TYPE_0   = 0x0000,
+        PCI_CONFIG_TYPE_1   = 0x1000,
 }; // PCIAccessFlags
 
 /** PCI config space access details */
-typedef struct AccessDetails {
-    uint8_t size;
-    uint8_t offset;
-    uint8_t flags;
-} AccessDetails;
+typedef uint32_t AccessDetails;
+#define ACCESSDETAILS_SET(details, size, offset, flags) (details = (((offset) & 3) | ((size)<<2) | (flags)))
+#define ACCESSDETAILS_SIZE(details) ((details >> 2) & 7)
+#define ACCESSDETAILS_OFFSET(details) (details & 3)
+#define ACCESSDETAILS_SIZE_OFFSET(details) (details & 0x1F)
+#define ACCESSDETAILS_FLAGS(details) details
+#define ACCESSDETAILS_FLAGS_SET(details, flags) (details |= flags)
 
 #define DEV_FUN(dev_num,fun_num) (((dev_num) << 3) | (fun_num))
 
@@ -124,8 +126,8 @@ private:
 
     Unaligned data is handled properly by using bytes from the next dword.
  */
-inline uint32_t pci_conv_rd_data(uint32_t value, uint32_t value2, AccessDetails &details) {
-    switch (details.size << 2 | details.offset) {
+inline uint32_t pci_conv_rd_data(uint32_t value, uint32_t value2, const AccessDetails details) {
+    switch (ACCESSDETAILS_SIZE_OFFSET(details)) {
     // Bytes
     case 0x04:
         return value & 0xFF;            // 0
@@ -169,9 +171,9 @@ inline uint32_t pci_conv_rd_data(uint32_t value, uint32_t value2, AccessDetails 
 
     Unaligned data is handled properly by wrapping around if needed.
  */
-inline uint32_t pci_conv_wr_data(uint32_t v1, uint32_t v2, AccessDetails &details)
+inline uint32_t pci_conv_wr_data(uint32_t v1, uint32_t v2, const AccessDetails details)
 {
-    switch (details.size << 2 | details.offset) {
+    switch (ACCESSDETAILS_SIZE_OFFSET(details)) {
     // Bytes
     case 0x04:
         return (v1 & ~0xFF)      |  (v2 & 0xFF);        //  3  2  1 d0
