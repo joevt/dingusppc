@@ -64,34 +64,34 @@ CmdIdeCtrl::CmdIdeCtrl(const std::string &dev_name) : PCIDevice(dev_name), HWCom
     });
 }
 
-uint32_t CmdIdeCtrl::pci_cfg_read(uint32_t reg_offs, AccessDetails &details) {
+uint32_t CmdIdeCtrl::pci_cfg_read(uint32_t reg_offs, const AccessDetails details) {
     if (reg_offs < 64)
         return PCIDevice::pci_cfg_read(reg_offs, details);
 
-    if (details.size != 1)
+    if (ACCESSDETAILS_SIZE(details) != 1)
         ABORT_F("%s: non-byte read from PCI config reg 0x%X", this->name.c_str(),
-                reg_offs + details.offset);
+                reg_offs + ACCESSDETAILS_OFFSET(details));
 
     if (reg_offs < 112)
-        return this->read_config_reg(reg_offs + details.offset);
+        return this->read_config_reg(reg_offs + ACCESSDETAILS_OFFSET(details));
 
     LOG_F(WARNING, "%s: reading config reg at 0x%X", this->name.c_str(), reg_offs);
 
     return 0;
 }
 
-void CmdIdeCtrl::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details) {
+void CmdIdeCtrl::pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details) {
     if (reg_offs < 64) {
         PCIDevice::pci_cfg_write(reg_offs, value, details);
         return;
     }
 
-    if (details.size != 1)
+    if (ACCESSDETAILS_SIZE(details) != 1)
         ABORT_F("%s: non-byte write to PCI config reg 0x%X", this->name.c_str(),
-                reg_offs + details.offset);
+                reg_offs + ACCESSDETAILS_OFFSET(details));
 
     if (reg_offs < 112)
-        this->write_config_reg(reg_offs + details.offset, value);
+        this->write_config_reg(reg_offs + ACCESSDETAILS_OFFSET(details), value);
     else
         LOG_F(WARNING, "%s: writing config reg at 0x%X", this->name.c_str(), reg_offs);
 }
