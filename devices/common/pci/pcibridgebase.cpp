@@ -55,7 +55,7 @@ bool PCIBridgeBase::pci_unregister_mmio_region(uint32_t start_addr, uint32_t siz
     return this->host_instance->pci_unregister_mmio_region(start_addr, size, obj);
 }
 
-uint32_t PCIBridgeBase::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
+uint32_t PCIBridgeBase::pci_cfg_read(uint32_t reg_offs, const AccessDetails details)
 {
     switch (reg_offs) {
     case PCI_CFG_PRIMARY_BUS:
@@ -70,7 +70,7 @@ uint32_t PCIBridgeBase::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
     }
 }
 
-void PCIBridgeBase::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details)
+void PCIBridgeBase::pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details)
 {
     switch (reg_offs) {
     case PCI_CFG_PRIMARY_BUS:
