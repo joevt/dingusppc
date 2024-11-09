@@ -77,7 +77,7 @@ const char * bandit_reg_name(uint32_t reg_offs)
     }
 }
 
-uint32_t BanditPciDevice::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
+uint32_t BanditPciDevice::pci_cfg_read(uint32_t reg_offs, const AccessDetails details)
 {
     if (reg_offs < 64) {
         return PCIDevice::pci_cfg_read(reg_offs, details);
@@ -108,7 +108,7 @@ uint32_t BanditPciDevice::pci_cfg_read(uint32_t reg_offs, AccessDetails &details
     return value;
 }
 
-void BanditPciDevice::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details)
+void BanditPciDevice::pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details)
 {
     if (reg_offs < 64) {
         PCIDevice::pci_cfg_write(reg_offs, value, details);
@@ -189,7 +189,7 @@ uint32_t BanditHost::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
         AccessDetails details;
         PCIBase *device;
         cfg_setup(offset, size, bus_num, dev_num, fun_num, reg_offs, details, device);
-        details.flags |= PCI_CONFIG_READ;
+        ACCESSDETAILS_FLAGS_SET(details, PCI_CONFIG_READ);
         if (device) {
             uint32_t value = device->pci_cfg_read(reg_offs, details);
             // bytes 4 to 7 are random on bandit but
@@ -244,14 +244,14 @@ void BanditHost::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, 
         AccessDetails details;
         PCIBase *device;
         cfg_setup(offset, size, bus_num, dev_num, fun_num, reg_offs, details, device);
-        details.flags |= PCI_CONFIG_WRITE;
+        ACCESSDETAILS_FLAGS_SET(details, PCI_CONFIG_WRITE);
         if (device) {
-            if (size == 4 && !details.offset) { // aligned DWORD writes -> fast path
+            if (size == 4 && !ACCESSDETAILS_OFFSET(details)) { // aligned DWORD writes -> fast path
                 device->pci_cfg_write(reg_offs, BYTESWAP_32(value), details);
                 return;
             }
             // otherwise perform necessary data transformations -> slow path
-            uint32_t old_val = details.size == 4 ? 0 : device->pci_cfg_read(reg_offs, details);
+            uint32_t old_val = ACCESSDETAILS_SIZE(details) == 4 ? 0 : device->pci_cfg_read(reg_offs, details);
             uint32_t new_val = pci_conv_wr_data(old_val, value, details);
             device->pci_cfg_write(reg_offs, new_val, details);
             return;
@@ -283,18 +283,16 @@ inline void BanditHost::cfg_setup(uint32_t offset, int size, int &bus_num,
                                   int &dev_num, int &fun_num, uint8_t &reg_offs,
                                   AccessDetails &details, PCIBase *&device)
 {
-    details.size = size;
-    details.offset = offset & 3;
     fun_num = FUN_NUM();
     reg_offs = REG_NUM();
     if (this->config_addr & BANDIT_CAR_TYPE) { // type 1 configuration command
-        details.flags = PCI_CONFIG_TYPE_1;
+        ACCESSDETAILS_SET(details, size, offset, PCI_CONFIG_TYPE_1);
         bus_num = BUS_NUM();
         dev_num = DEV_NUM();
         device = pci_find_device(bus_num, dev_num, fun_num);
         return;
     }
-    details.flags = PCI_CONFIG_TYPE_0;
+    ACCESSDETAILS_SET(details, size, offset, PCI_CONFIG_TYPE_0);
     bus_num = 0; // use dummy value for bus number
     if (is_aspen)
         dev_num = (this->config_addr >> 11) + 11; // IDSEL = 1 << (dev_num + 11)
