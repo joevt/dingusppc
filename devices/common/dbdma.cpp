@@ -331,43 +331,45 @@ void DMAChannel::update_irq() {
     }
 }
 
-uint32_t DMAChannel::reg_read_aligned(uint32_t offset) {
-    uint32_t result = 0;
-
-    switch (offset) {
+uint32_t DMAChannel::reg_read(uint32_t offset, int size) {
+    uint32_t value;
+    switch (offset & ~3) {
     case DMAReg::CH_CTRL:
-        result = 0; // ChannelControl reads as 0 (DBDMA spec 5.5.1, table 74)
+        value = 0; // ChannelControl reads as 0 (DBDMA spec 5.5.1, table 74)
         break;
     case DMAReg::CH_STAT:
-        result = this->ch_stat;
+        value = this->ch_stat;
         break;
     case DMAReg::CMD_PTR_LO:
-        result = this->cmd_ptr;
+        value = this->cmd_ptr;
         break;
     case DMAReg::INT_SELECT:
-        result = this->int_select;
+        value = this->int_select;
         break;
     case DMAReg::BRANCH_SELECT:
-        result = this->branch_select;
+        value = this->branch_select;
         break;
     case DMAReg::WAIT_SELECT:
-        result = this->wait_select;
+        value = this->wait_select;
         break;
     default:
+        value = 0;
         if (!(this->unsupported_register_read & (1LL << offset))) {
             this->unsupported_register_read |= (1LL << offset);
             LOG_F(WARNING, "%s: Unsupported DMA channel register read  @%02x",
                 this->get_name().c_str(), offset);
         }
     }
-    return result;
-}
-
-uint32_t DMAChannel::reg_read(uint32_t offset, int size) {
+    if ((offset & 3) == 0 & size == 4) {
+        [[likely]]
+        return BYTESWAP_32(value);
+    }
+    if (size < 0)
+        return value;
     uint32_t value2 = 0;
-    uint32_t value = reg_read_aligned(offset & ~3);
     if ((offset & 3) + size > 4) {
-        value2 = reg_read_aligned((offset & ~3) + 4);
+        [[unlikely]]
+        value2 = reg_read(offset + 4, -1);
     }
     AccessDetails details;
     ACCESSDETAILS_SET(details, size, offset, 0);
