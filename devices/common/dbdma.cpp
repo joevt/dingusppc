@@ -370,8 +370,7 @@ uint32_t DMAChannel::reg_read(uint32_t offset, int size) {
         value2 = reg_read_aligned((offset & ~3) + 4);
     }
     AccessDetails details;
-    details.size = size;
-    details.offset = offset & 3;
+    ACCESSDETAILS_SET(details, size, offset, 0);
     value = pci_conv_rd_data(value, value2, details);
     return value;
 }
