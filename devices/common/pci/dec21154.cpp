@@ -41,7 +41,7 @@ DecPciBridge::DecPciBridge(const std::string name) : PCIBridge(name), HWComponen
     this->status      = 0x2B0;
 }
 
-uint32_t DecPciBridge::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
+uint32_t DecPciBridge::pci_cfg_read(uint32_t reg_offs, const AccessDetails details)
 {
     if (reg_offs < 64) {
         return PCIBridge::pci_cfg_read(reg_offs, details);
@@ -61,7 +61,7 @@ uint32_t DecPciBridge::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
     return 0;
 }
 
-void DecPciBridge::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details)
+void DecPciBridge::pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details)
 {
     if (reg_offs < 64) {
         PCIBridge::pci_cfg_write(reg_offs, value, details);

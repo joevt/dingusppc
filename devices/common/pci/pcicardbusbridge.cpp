@@ -129,7 +129,7 @@ PCICardbusBridge::PCICardbusBridge(const std::string name)
     };
 }
 
-uint32_t PCICardbusBridge::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
+uint32_t PCICardbusBridge::pci_cfg_read(uint32_t reg_offs, const AccessDetails details)
 {
     switch (reg_offs) {
     case PCI_CFG_BAR0:
@@ -161,7 +161,7 @@ uint32_t PCICardbusBridge::pci_cfg_read(uint32_t reg_offs, AccessDetails &detail
     }
 }
 
-void PCICardbusBridge::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details)
+void PCICardbusBridge::pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details)
 {
     switch (reg_offs) {
     case PCI_CFG_BAR0:

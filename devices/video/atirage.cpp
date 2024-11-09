@@ -199,7 +199,7 @@ void ATIRage::notify_bar_change(int bar_num)
     }
 }
 
-uint32_t ATIRage::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
+uint32_t ATIRage::pci_cfg_read(uint32_t reg_offs, const AccessDetails details)
 {
     if (reg_offs < 64) {
         return PCIDevice::pci_cfg_read(reg_offs, details);
@@ -215,7 +215,7 @@ uint32_t ATIRage::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
     return 0;
 }
 
-void ATIRage::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details)
+void ATIRage::pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details)
 {
     if (reg_offs < 64) {
         PCIDevice::pci_cfg_write(reg_offs, value, details);
