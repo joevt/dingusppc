@@ -142,7 +142,6 @@ protected:
     void update_irq();
     void xfer_from_device();
     void xfer_to_device();
-    uint32_t reg_read_aligned(uint32_t offset);
 
     void start(void);
     void resume(void);
