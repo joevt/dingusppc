@@ -50,8 +50,8 @@ public:
     virtual bool           pci_unregister_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj) override;
 
     // PCIBase methods
-    virtual uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details) override;
-    virtual void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details) override;
+    virtual uint32_t pci_cfg_read(uint32_t reg_offs, const AccessDetails details) override;
+    virtual void pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details) override;
 
     bool supports_io_space() override {
         return true;
