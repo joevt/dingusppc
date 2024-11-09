@@ -72,8 +72,8 @@ public:
     }
 
     // PCIDevice methods
-    uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details) override;
-    void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details) override;
+    uint32_t pci_cfg_read(uint32_t reg_offs, const AccessDetails details) override;
+    void pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details) override;
 
     bool pci_io_read(uint32_t offset, uint32_t size, uint32_t* res) override;
     bool pci_io_write(uint32_t offset, uint32_t value, uint32_t size) override;
