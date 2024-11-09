@@ -226,7 +226,7 @@ void AtiMach64Gx::notify_bar_change(int bar_num)
 }
 
 #if 0
-uint32_t AtiMach64Gx::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
+uint32_t AtiMach64Gx::pci_cfg_read(uint32_t reg_offs, const AccessDetails details)
 {
     if (reg_offs < 64) {
         return PCIDevice::pci_cfg_read(reg_offs, details);
@@ -240,7 +240,7 @@ uint32_t AtiMach64Gx::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
     return 0;
 }
 
-void AtiMach64Gx::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details)
+void AtiMach64Gx::pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details)
 {
     if (reg_offs < 64) {
         PCIDevice::pci_cfg_write(reg_offs, value, details);

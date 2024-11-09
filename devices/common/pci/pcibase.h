@@ -98,8 +98,8 @@ public:
     }
 
     // configuration space access methods
-    virtual uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details);
-    virtual void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details);
+    virtual uint32_t pci_cfg_read(uint32_t reg_offs, const AccessDetails details);
+    virtual void pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details);
 
     // plugin interface for using in the derived classes
     std::function<uint16_t()>       pci_rd_stat;
@@ -192,8 +192,8 @@ protected:
     IntDetails  int_details = { 0 };
 };
 
-inline uint32_t pci_cfg_log(uint32_t value, AccessDetails &details) {
-    switch (details.size << 2 | details.offset) {
+inline uint32_t pci_cfg_log(uint32_t value, const AccessDetails details) {
+    switch (ACCESSDETAILS_SIZE_OFFSET(details)) {
         case 0x04: return (uint8_t) value;
         case 0x05: return (uint8_t)(value >> 8);
         case 0x06: return (uint8_t)(value >> 16);
@@ -214,26 +214,28 @@ inline uint32_t pci_cfg_log(uint32_t value, AccessDetails &details) {
 }
 
 #define LOG_READ_UNIMPLEMENTED_CONFIG_REGISTER() \
-    do { if ((details.flags & PCI_CONFIG_DIRECTION) == PCI_CONFIG_READ) { \
+    do { if ((ACCESSDETAILS_FLAGS(details) & PCI_CONFIG_DIRECTION) == PCI_CONFIG_READ) { \
         VLOG_F( \
-            (~-details.size & details.offset) ? loguru::Verbosity_ERROR : loguru::Verbosity_WARNING, \
+            (~-ACCESSDETAILS_SIZE(details) & ACCESSDETAILS_OFFSET(details)) ? \
+                loguru::Verbosity_ERROR : loguru::Verbosity_WARNING, \
             "%s: read  unimplemented config register @%02x.%c", \
-            this->name.c_str(), reg_offs + details.offset, \
-            SIZE_ARG(details.size) \
+            this->name.c_str(), reg_offs + ACCESSDETAILS_OFFSET(details), \
+            SIZE_ARG(ACCESSDETAILS_SIZE(details)) \
         ); \
     } } while(0)
 
 #define LOG_NAMED_CONFIG_REGISTER(reg_verb, reg_name) \
     VLOG_F( \
-        (~-details.size & details.offset) ? loguru::Verbosity_ERROR : loguru::Verbosity_WARNING, \
+        (~-ACCESSDETAILS_SIZE(details) & ACCESSDETAILS_OFFSET(details)) ? \
+            loguru::Verbosity_ERROR : loguru::Verbosity_WARNING, \
         "%s: %s %s register @%02x.%c = %0*x", \
-        this->name.c_str(), reg_verb, reg_name, reg_offs + details.offset, \
-        SIZE_ARG(details.size), \
-        details.size * 2, pci_cfg_log(value, details) \
+        this->name.c_str(), reg_verb, reg_name, reg_offs + ACCESSDETAILS_OFFSET(details), \
+        SIZE_ARG(ACCESSDETAILS_SIZE(details)), \
+        ACCESSDETAILS_SIZE(details) * 2, pci_cfg_log(value, details) \
     )
 
 #define LOG_READ_NAMED_CONFIG_REGISTER(reg_name) \
-    do { if ((details.flags & PCI_CONFIG_DIRECTION) == PCI_CONFIG_READ) { \
+    do { if ((ACCESSDETAILS_FLAGS(details) & PCI_CONFIG_DIRECTION) == PCI_CONFIG_READ) { \
         LOG_NAMED_CONFIG_REGISTER("read ", reg_name); \
     } } while(0)
 
@@ -250,17 +252,17 @@ inline uint32_t pci_cfg_log(uint32_t value, AccessDetails &details) {
     LOG_F( \
         ERROR, \
         "%s: read attempt from non-existent PCI device %02x:%02x.%x @%02x.%c", \
-        this->name.c_str(), bus_num, dev_num, fun_num, reg_offs + details.offset, \
-        SIZE_ARG(details.size) \
+        this->name.c_str(), bus_num, dev_num, fun_num, reg_offs + ACCESSDETAILS_OFFSET(details), \
+        SIZE_ARG(ACCESSDETAILS_SIZE(details)) \
     )
 
 #define LOG_WRITE_NON_EXISTENT_PCI_DEVICE() \
     LOG_F( \
         ERROR, \
         "%s: write attempt to non-existent PCI device %02x:%02x.%x @%02x.%c = %0*x", \
-        this->name.c_str(), bus_num, dev_num, fun_num, reg_offs + details.offset, \
-        SIZE_ARG(details.size), \
-        details.size * 2, BYTESWAP_SIZED(value, details.size) \
+        this->name.c_str(), bus_num, dev_num, fun_num, reg_offs + ACCESSDETAILS_OFFSET(details), \
+        SIZE_ARG(ACCESSDETAILS_SIZE(details)), \
+        ACCESSDETAILS_SIZE(details) * 2, BYTESWAP_SIZED(value, ACCESSDETAILS_SIZE(details)) \
     )
 
 #endif /* PCI_BASE_H */
