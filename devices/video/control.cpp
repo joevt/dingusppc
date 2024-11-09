@@ -382,8 +382,7 @@ uint32_t ControlVideo::read(uint32_t rgn_start, uint32_t offset, int size)
         }
 
         AccessDetails details;
-        details.size = size;
-        details.offset = offset & 3;
+        ACCESSDETAILS_SET(details, size, offset, 0);
         uint32_t result = pci_conv_rd_data(value, value, details);
         if ((offset & 3) || (size != 4)) {
             LOG_F(WARNING, "%s: read  %s %03x.%c = %08x -> %0*x", this->name.c_str(),
