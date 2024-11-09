@@ -76,7 +76,7 @@ uint32_t MPC106::read(uint32_t rgn_start, uint32_t offset, int size) {
         if (device) {
             uint32_t value = device->pci_cfg_read(reg_offs, details);
             // bytes 0 to 3 repeat
-            return pci_conv_rd_data(value, value, details);
+            return conv_rd_data(value, value, details);
         }
         LOG_READ_NON_EXISTENT_PCI_DEVICE();
         return 0xFFFFFFFFUL; // PCI spec §6.1
@@ -107,7 +107,7 @@ void MPC106::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size
             }
             // otherwise perform necessary data transformations -> slow path
             uint32_t old_val = ACCESSDETAILS_SIZE(details) == 4 ? 0 : device->pci_cfg_read(reg_offs, details);
-            uint32_t new_val = pci_conv_wr_data(old_val, value, details);
+            uint32_t new_val = conv_wr_data(old_val, value, details);
             device->pci_cfg_write(reg_offs, new_val, details);
             return;
         }
