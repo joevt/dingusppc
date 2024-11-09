@@ -77,7 +77,7 @@ PCIBase::PCIBase(const std::string name, PCIHeaderType hdr_type, int num_bars)
     this->pci_notify_bar_change = [](int /*bar_num*/) {};
 }
 
-uint32_t PCIBase::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
+uint32_t PCIBase::pci_cfg_read(uint32_t reg_offs, const AccessDetails details)
 {
     switch (reg_offs) {
     case PCI_CFG_DEV_ID:
@@ -94,7 +94,7 @@ uint32_t PCIBase::pci_cfg_read(uint32_t reg_offs, AccessDetails &details)
     return 0;
 }
 
-void PCIBase::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details)
+void PCIBase::pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details)
 {
     switch (reg_offs) {
     case PCI_CFG_STAT_CMD:

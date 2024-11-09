@@ -99,8 +99,8 @@ public:
     ~BanditPciDevice() = default;
 
     // PCIDevice methods
-    uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details);
-    void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details);
+    uint32_t pci_cfg_read(uint32_t reg_offs, const AccessDetails details);
+    void pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details);
 
 protected:
     void verbose_address_space();
