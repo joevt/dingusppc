@@ -111,6 +111,10 @@ public:
     virtual void ack_int(uint64_t irq_id, uint8_t irq_line_state)     = 0;
     virtual void ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) = 0;
 
+    // logging
+    const char* irq_id_to_name(uint64_t irq_id);
+    const char* int_src_to_name(IntSrc irq_src);
+
 private:
     std::map<IntSrc,uint64_t> int_src_to_irq_id;
     std::map<uint64_t,IntSrc> irq_id_to_int_src;

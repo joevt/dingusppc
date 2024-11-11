@@ -49,6 +49,8 @@ AMIC::AMIC(const std::string &dev_name)
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::INT_CTRL);
 
+    this->setup_intsrc_map();
+
     // connect internal SCSI controller
     this->scsi = dynamic_cast<Sc53C94*>(gMachineObj->get_comp_by_name("Sc53C94"));
     this->curio_dma = std::unique_ptr<AmicScsiDma> (new AmicScsiDma());
@@ -728,6 +730,8 @@ void AMIC::setup_intsrc_map() {
 }
 
 void AMIC::ack_int(uint64_t irq_id, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: ack_int source:%s state:%x",
+        this->irq_id_to_name(irq_id), irq_line_state);
     // dispatch cascaded AMIC interrupts from various sources
     // irq_id format: 00DDCCBBAA where
     // - AA -> CPU interrupts
@@ -745,6 +749,8 @@ void AMIC::ack_int(uint64_t irq_id, uint8_t irq_line_state) {
 }
 
 void AMIC::ack_slot_int(uint8_t slot_int, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: ack_slot_int source:%s state:%x",
+        this->irq_id_to_name(slot_int << SLOT_INT_SHIFT), irq_line_state);
     // CAUTION: reverse logic (0 - true, 1 - false) in the IFR register!
     if (irq_line_state) {
         this->via2_slot_ifr &= ~slot_int;
@@ -768,6 +774,8 @@ void AMIC::update_via2_irq() {
 }
 
 void AMIC::ack_via2_int(uint8_t via2_int, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: ack_via2_int source:%s state:%x",
+        this->irq_id_to_name(via2_int << VIA2_INT_SHIFT), irq_line_state);
     if (irq_line_state) {
         this->via2_ifr |= via2_int;
     } else {
@@ -777,6 +785,8 @@ void AMIC::ack_via2_int(uint8_t via2_int, uint8_t irq_line_state) {
 }
 
 void AMIC::ack_cpu_int(uint8_t cpu_int, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: ack_cpu_int source:%s state:%x",
+        this->irq_id_to_name(cpu_int << CPU_INT_SHIFT), irq_line_state);
     if (this->int_ctrl & CPU_INT_MODE) { // 68k interrupt emulation mode?
         if (irq_line_state) {
             this->dev_irq_lines |= cpu_int;
@@ -786,7 +796,7 @@ void AMIC::ack_cpu_int(uint8_t cpu_int, uint8_t irq_line_state) {
         if (!(this->int_ctrl & CPU_INT_FLAG)) {
             this->int_ctrl |= CPU_INT_FLAG;
             ppc_assert_int();
-            LOG_F(5, "AMIC: CPU INT asserted, source: 0x%02x", cpu_int);
+            LOG_F(5, "AMIC: CPU INT asserted, source:%s", this->irq_id_to_name(cpu_int << CPU_INT_SHIFT));
         } else {
             LOG_F(5, "AMIC: CPU INT already latched");
         }
@@ -797,6 +807,8 @@ void AMIC::ack_cpu_int(uint8_t cpu_int, uint8_t irq_line_state) {
 }
 
 void AMIC::ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: ack_dma_int source:%s state:%x",
+        this->irq_id_to_name(irq_id), irq_line_state);
     if (irq_id >> DMA1_INT_SHIFT) { // DMA Interrupt Flags 1
         irq_id = (irq_id >> DMA1_INT_SHIFT) & 0xFFU;
         if (irq_line_state)

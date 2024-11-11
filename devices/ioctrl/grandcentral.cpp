@@ -602,6 +602,8 @@ void GrandCentral::setup_intsrc_map()
 }
 
 void GrandCentral::ack_int_common(uint64_t irq_id, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_INTERRUPT, "%s: ack_int source:%s state:%d",
+        this->name.c_str(), irq_id_to_name(irq_id), irq_line_state);
     // native mode:   set IRQ bits in int_events on a 0-to-1 transition
     // emulated mode: set IRQ bits in int_events on all transitions
 
@@ -641,7 +643,6 @@ void GrandCentral::signal_cpu_int(uint64_t irq_id) {
         if (!this->cpu_int_latch) {
             this->cpu_int_latch = true;
             ppc_assert_int();
-            LOG_F(5, "%s: CPU INT asserted, source: 0x%08llx", this->name.c_str(), irq_id);
         } else {
             LOG_F(5, "%s: CPU INT already latched", this->name.c_str());
         }
