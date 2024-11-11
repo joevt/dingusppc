@@ -108,6 +108,82 @@ public:
     // acknowledge HW interrupt
     virtual void ack_int(uint64_t irq_id, uint8_t irq_line_state)     = 0;
     virtual void ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) = 0;
+
+    // logging
+    virtual IntSrc irq_id_to_src(uint64_t irq_id) = 0;
+    const char* irq_id_to_name(uint64_t irq_id) { return irq_src_to_name(irq_id_to_src(irq_id)); }
+    const char* irq_src_to_name(IntSrc irq_src) {
+    #define irq_src_to_name(a) case a: return #a;
+    switch (irq_src) {
+        irq_src_to_name(INT_UNKNOWN)
+        irq_src_to_name(VIA_CUDA)
+        irq_src_to_name(VIA2)
+        irq_src_to_name(SCSI_MESH)
+        irq_src_to_name(SCSI_CURIO)
+        irq_src_to_name(SWIM3)
+        irq_src_to_name(ESCC)
+        irq_src_to_name(SCCA)
+        irq_src_to_name(SCCB)
+        irq_src_to_name(ETHERNET)
+        irq_src_to_name(NMI)
+        irq_src_to_name(EXT1)
+        irq_src_to_name(IDE0)
+        irq_src_to_name(IDE1)
+        irq_src_to_name(DAVBUS)
+        irq_src_to_name(PERCH1)
+        irq_src_to_name(PERCH2)
+        irq_src_to_name(PCI_A)
+        irq_src_to_name(PCI_B)
+        irq_src_to_name(PCI_C)
+        irq_src_to_name(PCI_D)
+        irq_src_to_name(PCI_E)
+        irq_src_to_name(PCI_F)
+        irq_src_to_name(PCI_GPU)
+        irq_src_to_name(PCI_PERCH)
+        irq_src_to_name(BANDIT1)
+        irq_src_to_name(BANDIT2)
+        irq_src_to_name(CONTROL)
+        irq_src_to_name(SIXTY6)
+        irq_src_to_name(PLANB)
+        irq_src_to_name(VCI)
+        irq_src_to_name(PLATINUM)
+        irq_src_to_name(DMA_ALL)
+        irq_src_to_name(DMA_SCSI_MESH)
+        irq_src_to_name(DMA_SCSI_CURIO)
+        irq_src_to_name(DMA_SWIM3)
+        irq_src_to_name(DMA_IDE0)
+        irq_src_to_name(DMA_IDE1)
+        irq_src_to_name(DMA_SCCA_Tx)
+        irq_src_to_name(DMA_SCCA_Rx)
+        irq_src_to_name(DMA_SCCB_Tx)
+        irq_src_to_name(DMA_SCCB_Rx)
+        irq_src_to_name(DMA_DAVBUS_Tx)
+        irq_src_to_name(DMA_DAVBUS_Rx)
+        irq_src_to_name(DMA_ETHERNET_Tx)
+        irq_src_to_name(DMA_ETHERNET_Rx)
+        irq_src_to_name(FIREWIRE)
+        irq_src_to_name(PCI_J12)
+        irq_src_to_name(PCI_J11)
+        irq_src_to_name(PCI_J10)
+        irq_src_to_name(PCI_J9)
+        irq_src_to_name(ATA)
+        irq_src_to_name(USB)
+        irq_src_to_name(PIPPIN_E)
+        irq_src_to_name(PIPPIN_F)
+        irq_src_to_name(ZIVA)
+        irq_src_to_name(PCI_CARDBUS)
+        irq_src_to_name(MEDIA_BAY)
+        irq_src_to_name(SLOT_ALL)
+        irq_src_to_name(SLOT_0)
+        irq_src_to_name(SLOT_1)
+        irq_src_to_name(SLOT_2)
+        irq_src_to_name(SLOT_PDS)
+        irq_src_to_name(SLOT_VDS)
+        irq_src_to_name(VBL)
+        #undef irq_src_to_name
+        default: return "unknown";
+        }
+    }
 };
 
 typedef struct {
