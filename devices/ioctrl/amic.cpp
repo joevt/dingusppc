@@ -728,6 +728,8 @@ void AMIC::setup_intsrc_map() {
 }
 
 void AMIC::ack_int(uint64_t irq_id, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: ack_int source:%s state:%x",
+        this->irq_id_to_name(irq_id), irq_line_state);
     // dispatch cascaded AMIC interrupts from various sources
     // irq_id format: 00DDCCBBAA where
     // - AA -> CPU interrupts
@@ -786,7 +788,7 @@ void AMIC::ack_cpu_int(uint8_t cpu_int, uint8_t irq_line_state) {
         if (!(this->int_ctrl & CPU_INT_FLAG)) {
             this->int_ctrl |= CPU_INT_FLAG;
             ppc_assert_int();
-            LOG_F(5, "AMIC: CPU INT asserted, source: 0x%02x", cpu_int);
+            LOG_F(5, "AMIC: CPU INT asserted, source:%s", this->irq_id_to_name(cpu_int << CPU_INT_SHIFT));
         } else {
             LOG_F(5, "AMIC: CPU INT already latched");
         }
@@ -797,6 +799,8 @@ void AMIC::ack_cpu_int(uint8_t cpu_int, uint8_t irq_line_state) {
 }
 
 void AMIC::ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: ack_dma_int source:%s state:%x",
+        this->irq_id_to_name(irq_id), irq_line_state);
     if (irq_id >> DMA1_INT_SHIFT) { // DMA Interrupt Flags 1
         irq_id = (irq_id >> DMA1_INT_SHIFT) & 0xFFU;
         if (irq_line_state)
