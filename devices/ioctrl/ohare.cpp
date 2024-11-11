@@ -458,8 +458,46 @@ uint64_t OHare::register_dma_int(IntSrc src_id)
     return 0;
 }
 
+IntSrc OHare::irq_id_to_src(uint64_t irq_id) {
+    switch(irq_id) {
+    case INT_TO_IRQ_ID(0x0C): return IntSrc::SCSI_MESH;
+    case INT_TO_IRQ_ID(0x0D): return IntSrc::IDE0;
+  //case INT_TO_IRQ_ID(0x0E): return IntSrc::IDE1;
+    case INT_TO_IRQ_ID(0x0F): return IntSrc::SCCA;
+    case INT_TO_IRQ_ID(0x10): return IntSrc::SCCB;
+    case INT_TO_IRQ_ID(0x11): return IntSrc::DAVBUS;
+    case INT_TO_IRQ_ID(0x12): return IntSrc::VIA_CUDA;
+    case INT_TO_IRQ_ID(0x13): return IntSrc::SWIM3;
+    case INT_TO_IRQ_ID(0x14): return IntSrc::NMI;
+  //case INT_TO_IRQ_ID(0x15): return IntSrc::EXT1;
+
+  //case INT_TO_IRQ_ID(0x16): return IntSrc::BANDIT1;
+    case INT_TO_IRQ_ID(0x16): return IntSrc::PCI_E;
+    case INT_TO_IRQ_ID(0x17): return IntSrc::PCI_A;
+    case INT_TO_IRQ_ID(0x18): return IntSrc::PCI_F;
+    case INT_TO_IRQ_ID(0x19): return IntSrc::PCI_B;
+  //case INT_TO_IRQ_ID(0x1A): return IntSrc::???;
+  //case INT_TO_IRQ_ID(0x1B): return IntSrc::???;
+    case INT_TO_IRQ_ID(0x1C): return IntSrc::PCI_C;
+
+    case INT_TO_IRQ_ID(0x00): return IntSrc::DMA_SCSI_MESH;
+    case INT_TO_IRQ_ID(0x01): return IntSrc::DMA_SWIM3;
+    case INT_TO_IRQ_ID(0x02): return IntSrc::DMA_IDE0;
+
+    case INT_TO_IRQ_ID(0x04): return IntSrc::DMA_SCCA_Tx;
+    case INT_TO_IRQ_ID(0x05): return IntSrc::DMA_SCCA_Rx;
+    case INT_TO_IRQ_ID(0x06): return IntSrc::DMA_SCCB_Tx;
+    case INT_TO_IRQ_ID(0x07): return IntSrc::DMA_SCCB_Rx;
+    case INT_TO_IRQ_ID(0x08): return IntSrc::DMA_DAVBUS_Tx;
+    case INT_TO_IRQ_ID(0x09): return IntSrc::DMA_DAVBUS_Rx;
+    }
+    return IntSrc::INT_UNKNOWN;
+}
+
 void OHare::ack_int_common(uint64_t irq_id, uint8_t irq_line_state)
 {
+    VLOG_SCOPE_F(loguru::Verbosity_INTERRUPT, "%s: ack_int source:%s state:%d",
+        this->name.c_str(), irq_id_to_name(irq_id), irq_line_state);
     // native mode:   set IRQ bits in int_events on a 0-to-1 transition
     // emulated mode: set IRQ bits in int_events on all transitions
 #if 0
