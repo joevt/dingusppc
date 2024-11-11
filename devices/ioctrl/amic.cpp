@@ -501,7 +501,7 @@ void AMIC::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int si
 }
 
 // ======================== Interrupt related stuff ==========================
-uint32_t AMIC::register_dev_int(IntSrc src_id) {
+uint64_t AMIC::register_dev_int(IntSrc src_id) {
     switch (src_id) {
     case IntSrc::VIA_CUDA:
         return CPU_INT_VIA1;
@@ -517,12 +517,12 @@ uint32_t AMIC::register_dev_int(IntSrc src_id) {
     return 0;
 }
 
-uint32_t AMIC::register_dma_int(IntSrc /*src_id*/) {
+uint64_t AMIC::register_dma_int(IntSrc /*src_id*/) {
     ABORT_F("AMIC: register_dma_int() not implemented");
     return 0;
 }
 
-void AMIC::ack_int(uint32_t irq_id, uint8_t irq_line_state) {
+void AMIC::ack_int(uint64_t irq_id, uint8_t irq_line_state) {
     // dispatch cascaded AMIC interrupts from various sources
     // irq_id format: 00DDCCBBAA where
     // - AA -> CPU interrupts
@@ -535,11 +535,11 @@ void AMIC::ack_int(uint32_t irq_id, uint8_t irq_line_state) {
     } else if (irq_id < 0x1000000) {
         this->ack_slot_int(irq_id >> 16, irq_line_state);
     } else {
-        ABORT_F("AMIC: unknown interrupt source ID 0x%X", irq_id);
+        ABORT_F("AMIC: unknown interrupt source ID 0x%llX", irq_id);
     }
 }
 
-void AMIC::ack_slot_int(uint32_t irq_id, uint8_t irq_line_state) {
+void AMIC::ack_slot_int(uint64_t irq_id, uint8_t irq_line_state) {
     // CAUTION: reverse logic (0 - true, 1 - false) in the IFR register!
     if (irq_line_state) {
         this->via2_slot_ifr &= ~irq_id;
@@ -562,7 +562,7 @@ void AMIC::update_via2_irq() {
     }
 }
 
-void AMIC::ack_via2_int(uint32_t irq_id, uint8_t irq_line_state) {
+void AMIC::ack_via2_int(uint64_t irq_id, uint8_t irq_line_state) {
     if (irq_line_state) {
         this->via2_ifr |= irq_id;
     } else {
@@ -571,7 +571,7 @@ void AMIC::ack_via2_int(uint32_t irq_id, uint8_t irq_line_state) {
     this->update_via2_irq();
 }
 
-void AMIC::ack_cpu_int(uint32_t irq_id, uint8_t irq_line_state) {
+void AMIC::ack_cpu_int(uint64_t irq_id, uint8_t irq_line_state) {
     if (this->int_ctrl & CPU_INT_MODE) { // 68k interrupt emulation mode?
         if (irq_line_state) {
             this->dev_irq_lines |= irq_id;
@@ -591,7 +591,7 @@ void AMIC::ack_cpu_int(uint32_t irq_id, uint8_t irq_line_state) {
     }
 }
 
-void AMIC::ack_dma_int(uint32_t irq_id, uint8_t irq_line_state) {
+void AMIC::ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) {
     if (irq_id >= 0x100) { // DMA Interrupt Flags 1
         irq_id = (irq_id >> 8) & 0xFFU;
         if (irq_line_state)
