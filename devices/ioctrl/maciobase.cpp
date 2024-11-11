@@ -29,6 +29,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <functional>
 #include <memory>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_INTERRUPT = loguru::Verbosity_9,
+    };
+}
+
 MacIoBase::MacIoBase(std::string name, uint16_t dev_id, uint8_t rev) :
     PCIDevice(name), InterruptCtrl()
 {
@@ -123,6 +129,8 @@ uint64_t MacIoBase::register_dma_int(IntSrc src_id) {
 }
 
 void MacIoBase::ack_int_common(uint64_t irq_id, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_INTERRUPT, "%s: ack_int source:%s state:%d",
+        this->name.c_str(), irq_id_to_name(irq_id), irq_line_state);
     // native mode:   set IRQ bits in int_events on a 0-to-1 transition
     // emulated mode: set IRQ bits in int_events on all transitions
 #if 0
