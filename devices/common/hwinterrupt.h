@@ -92,17 +92,17 @@ public:
     virtual ~InterruptCtrl() = default;
 
     // register interrupt sources for a device
-    virtual uint32_t register_dev_int(IntSrc src_id) = 0;
-    virtual uint32_t register_dma_int(IntSrc src_id) = 0;
+    virtual uint64_t register_dev_int(IntSrc src_id) = 0;
+    virtual uint64_t register_dma_int(IntSrc src_id) = 0;
 
     // acknowledge HW interrupt
-    virtual void ack_int(uint32_t irq_id, uint8_t irq_line_state)     = 0;
-    virtual void ack_dma_int(uint32_t irq_id, uint8_t irq_line_state) = 0;
+    virtual void ack_int(uint64_t irq_id, uint8_t irq_line_state)     = 0;
+    virtual void ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) = 0;
 };
 
 typedef struct {
     InterruptCtrl   *int_ctrl_obj;
-    uint32_t        irq_id;
+    uint64_t        irq_id;
 } IntDetails;
 
 #endif // HW_INTERRUPT_H

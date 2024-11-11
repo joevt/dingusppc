@@ -104,7 +104,7 @@ public:
     DmaPullResult   pull_data(uint32_t req_len, uint32_t *avail_len,
                               uint8_t **p_data);
 
-    void init_interrupts(InterruptCtrl *int_ctrl, uint32_t irq_id) {
+    void init_interrupts(InterruptCtrl *int_ctrl, uint64_t irq_id) {
         this->int_ctrl = int_ctrl;
         this->irq_id   = irq_id;
     };
@@ -120,7 +120,7 @@ private:
     uint32_t        cur_buf_pos;
 
     InterruptCtrl   *int_ctrl = nullptr;
-    uint32_t        irq_id = 0;
+    uint64_t        irq_id = 0;
     uint8_t         irq_level = 0;
 };
 
@@ -288,22 +288,22 @@ public:
     }
 
     // HWComponent methods
-    PostInitResultType device_postinit();
+    PostInitResultType device_postinit() override;
 
     /* MMIODevice methods */
-    uint32_t read(uint32_t rgn_start, uint32_t offset, int size);
-    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size);
+    uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
+    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
     // InterruptCtrl methods
-    uint32_t register_dev_int(IntSrc src_id);
-    uint32_t register_dma_int(IntSrc src_id);
-    void ack_int(uint32_t irq_id, uint8_t irq_line_state);
-    void ack_dma_int(uint32_t irq_id, uint8_t irq_line_state);
+    uint64_t register_dev_int(IntSrc src_id) override;
+    uint64_t register_dma_int(IntSrc src_id) override;
+    void ack_int(uint64_t irq_id, uint8_t irq_line_state) override;
+    void ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) override;
 
 protected:
-    void ack_slot_int(uint32_t irq_id, uint8_t irq_line_state);
-    void ack_via2_int(uint32_t irq_id, uint8_t irq_line_state);
-    void ack_cpu_int(uint32_t irq_id, uint8_t irq_line_state);
+    void ack_slot_int(uint64_t irq_id, uint8_t irq_line_state);
+    void ack_via2_int(uint64_t irq_id, uint8_t irq_line_state);
+    void ack_cpu_int(uint64_t irq_id, uint8_t irq_line_state);
     void update_via2_irq();
 
 private:
