@@ -430,6 +430,66 @@ void MacIoTwo::feature_control(uint32_t value) {
     }
 }
 
+IntSrc MacIoTwo::irq_id_to_src(uint64_t irq_id) {
+    switch(irq_id) {
+    case INT_TO_IRQ_ID(0x0C) : return IntSrc::SCSI_MESH;
+    case INT_TO_IRQ_ID(0x0D) : return IntSrc::IDE0;
+    case INT_TO_IRQ_ID(0x0E) : return IntSrc::IDE1;
+    case INT_TO_IRQ_ID(0x0F) : return IntSrc::SCCA;
+    case INT_TO_IRQ_ID(0x10) : return IntSrc::SCCB;
+    case INT_TO_IRQ_ID(0x11) : return IntSrc::DAVBUS;
+    case INT_TO_IRQ_ID(0x12) : return IntSrc::VIA_CUDA;
+    case INT_TO_IRQ_ID(0x13) : return IntSrc::SWIM3;
+    case INT_TO_IRQ_ID(0x14) : return IntSrc::NMI;
+  //case INT_TO_IRQ_ID(0x15) : return IntSrc::EXT1;
+
+  //case INT_TO_IRQ_ID(0x16) : return IntSrc::BANDIT1;
+  //case INT_TO_IRQ_ID(0x16) : return IntSrc::PCI_E;
+  //case INT_TO_IRQ_ID(0x17) : return IntSrc::PCI_A;
+  //case INT_TO_IRQ_ID(0x18) : return IntSrc::PCI_F;
+  //case INT_TO_IRQ_ID(0x19) : return IntSrc::PCI_B;
+  //case INT_TO_IRQ_ID(0x1A) : return IntSrc::???;
+  //case INT_TO_IRQ_ID(0x1B) : return IntSrc::???;
+  //case INT_TO_IRQ_ID(0x1C) : return IntSrc::PCI_C;
+
+    case INT_TO_IRQ_ID(0x15) : return IntSrc::PERCH2;
+    case INT_TO_IRQ_ID(0x16) : return IntSrc::PCI_GPU;
+  //case INT_TO_IRQ_ID(0x16) : return IntSrc::PCI_CARDBUS;
+    case INT_TO_IRQ_ID(0x17) : return IntSrc::PCI_A;
+    case INT_TO_IRQ_ID(0x18) : return IntSrc::PCI_B;
+  //case INT_TO_IRQ_ID(0x18) : return IntSrc::PCI_E;
+    case INT_TO_IRQ_ID(0x19) : return IntSrc::PCI_C;
+    case INT_TO_IRQ_ID(0x1A) : return IntSrc::PERCH1;
+    case INT_TO_IRQ_ID(0x1C) : return IntSrc::PCI_PERCH;
+
+  //case INT_TO_IRQ_ID(0x15) : return IntSrc::FIREWIRE;
+  //case INT_TO_IRQ_ID(0x16) : return IntSrc::PCI_J12;
+  //case INT_TO_IRQ_ID(0x17) : return IntSrc::PCI_J11;
+  //case INT_TO_IRQ_ID(0x18) : return IntSrc::PCI_J10;
+  //case INT_TO_IRQ_ID(0x19) : return IntSrc::PCI_J9;
+  //case INT_TO_IRQ_ID(0x1A) : return IntSrc::ATA;
+  //case INT_TO_IRQ_ID(0x1A) : return IntSrc::ZIVA;
+  //case INT_TO_IRQ_ID(0x1C) : return IntSrc::USB;
+    case INT_TO_IRQ_ID(0x1D) : return IntSrc::MEDIA_BAY;
+
+    case INT_TO_IRQ_ID(0x2A) : return IntSrc::ETHERNET;
+
+    case INT_TO_IRQ_ID(0x00) : return IntSrc::DMA_SCSI_MESH;
+    case INT_TO_IRQ_ID(0x01) : return IntSrc::DMA_SWIM3;
+    case INT_TO_IRQ_ID(0x02) : return IntSrc::DMA_IDE0;
+    case INT_TO_IRQ_ID(0x03) : return IntSrc::DMA_IDE1;
+    case INT_TO_IRQ_ID(0x04) : return IntSrc::DMA_SCCA_Tx;
+    case INT_TO_IRQ_ID(0x05) : return IntSrc::DMA_SCCA_Rx;
+    case INT_TO_IRQ_ID(0x06) : return IntSrc::DMA_SCCB_Tx;
+    case INT_TO_IRQ_ID(0x07) : return IntSrc::DMA_SCCB_Rx;
+    case INT_TO_IRQ_ID(0x08) : return IntSrc::DMA_DAVBUS_Tx;
+    case INT_TO_IRQ_ID(0x09) : return IntSrc::DMA_DAVBUS_Rx;
+    case INT_TO_IRQ_ID(0x20) : return IntSrc::DMA_ETHERNET_Tx;
+    case INT_TO_IRQ_ID(0x21) : return IntSrc::DMA_ETHERNET_Rx;
+    }
+    return IntSrc::INT_UNKNOWN;
+}
+
 uint64_t MacIoTwo::register_dev_int(IntSrc src_id) {
     if (this->device_id == MIO_DEV_ID_OHARE && src_id == ETHERNET) {
         ABORT_F("%s: attempt to register non-existing Ethernet device int",
