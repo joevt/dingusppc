@@ -31,6 +31,8 @@ EventManager* EventManager::event_manager;
 static int get_sdl_event_key_code(const SDL_KeyboardEvent &event);
 static void toggle_mouse_grab(const SDL_KeyboardEvent &event);
 
+constexpr int KMOD_ALL = KMOD_LSHIFT | KMOD_RSHIFT | KMOD_LCTRL | KMOD_RCTRL | KMOD_LALT | KMOD_RALT | KMOD_LGUI | KMOD_RGUI;
+
 void EventManager::poll_events()
 {
     SDL_Event event;
@@ -56,7 +58,7 @@ void EventManager::poll_events()
         case SDL_KEYUP: {
                 // Internal shortcuts, intentionally not sent to the host.
                 // Control-G: mouse grab
-                if (event.key.keysym.sym == SDLK_g && SDL_GetModState() & KMOD_LCTRL) {
+                if (event.key.keysym.sym == SDLK_g && (SDL_GetModState() & KMOD_ALL) == KMOD_LCTRL) {
                     if (event.type == SDL_KEYUP) {
                         toggle_mouse_grab(event.key);
                         WindowEvent we;
@@ -67,7 +69,7 @@ void EventManager::poll_events()
                     return;
                 }
                 // Control-S: scale quality
-                if (event.key.keysym.sym == SDLK_s && SDL_GetModState() & KMOD_LCTRL) {
+                if (event.key.keysym.sym == SDLK_s && (SDL_GetModState() & KMOD_ALL) == KMOD_LCTRL) {
                     if (event.type == SDL_KEYUP) {
                         WindowEvent we;
                         we.sub_type  = DPPC_WINDOWEVENT_WINDOW_SCALE_QUALITY_TOGGLE;
@@ -77,7 +79,7 @@ void EventManager::poll_events()
                     return;
                 }
                 // Ralt+delete => ctrl+alt+del
-                if (event.key.keysym.sym == SDLK_DELETE && (SDL_GetModState() & KMOD_RALT) != 0) {
+                if (event.key.keysym.sym == SDLK_DELETE && ((SDL_GetModState() & KMOD_ALL) == KMOD_RALT) != 0) {
                     KeyboardEvent ke;
                     ke.key = AdbKey_Control;
 
