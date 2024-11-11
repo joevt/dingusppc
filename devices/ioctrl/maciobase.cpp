@@ -143,6 +143,9 @@ void MacIoBase::setup_intsrc_map() {
 }
 
 void MacIoBase::ack_int_common(uint64_t irq_id, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_INTERRUPT, "%s: ack_int source:%s state:%d",
+        this->name.c_str(), irq_id_to_name(irq_id), irq_line_state);
+
     LOG_F(INTERRUPT, "%s: interrupt events:%08x.%08x levels:%08x.%08x change:%08x.%08x state:%d",
         this->name.c_str(), uint32_t(this->int_events >> 32), uint32_t(this->int_events),
         uint32_t(this->int_levels >> 32), uint32_t(this->int_levels),
