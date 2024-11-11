@@ -124,7 +124,7 @@ public:
     void            end_pull_data();
     void            end_push_data();
 
-    void register_dma_int(InterruptCtrl* int_ctrl_obj, uint32_t irq_id) {
+    void register_dma_int(InterruptCtrl* int_ctrl_obj, uint64_t irq_id) {
         this->int_ctrl = int_ctrl_obj;
         this->irq_id   = irq_id;
     };
@@ -166,7 +166,7 @@ private:
 
     // Interrupt related stuff
     InterruptCtrl* int_ctrl = nullptr;
-    uint32_t       irq_id   = 0;
+    uint64_t       irq_id   = 0;
 
     uint64_t unsupported_register_read = 0;
     uint64_t unsupported_register_write = 0;
