@@ -540,6 +540,32 @@ uint64_t AMIC::register_dma_int(IntSrc /*src_id*/) {
     return 0;
 }
 
+IntSrc AMIC::irq_id_to_src(uint64_t irq_id) {
+    switch(irq_id) {
+    case CPU_INT_VIA1      << CPU_INT_SHIFT  : return IntSrc::VIA_CUDA;
+    case CPU_INT_VIA2      << CPU_INT_SHIFT  : return IntSrc::VIA2;
+    case CPU_INT_ESCC      << CPU_INT_SHIFT  : return IntSrc::ESCC;
+    case CPU_INT_ENET      << CPU_INT_SHIFT  : return IntSrc::ETHERNET;
+    case CPU_INT_ALL_DMA   << CPU_INT_SHIFT  : return IntSrc::DMA_ALL;
+    case CPU_INT_NMI       << CPU_INT_SHIFT  : return IntSrc::NMI;
+
+    case VIA2_INT_SCSI_DRQ << VIA2_INT_SHIFT : return IntSrc::DMA_SCSI_CURIO;
+    case VIA2_INT_ALL_SLOT << VIA2_INT_SHIFT : return IntSrc::SLOT_ALL;
+    case VIA2_INT_SCSI_IRQ << VIA2_INT_SHIFT : return IntSrc::SCSI_CURIO;
+    case VIA2_INT_SOUND    << VIA2_INT_SHIFT : return IntSrc::DAVBUS;
+    case VIA2_INT_SWIM3    << VIA2_INT_SHIFT : return IntSrc::SWIM3;
+
+    case SLOT_INT_SLOT_0   << SLOT_INT_SHIFT : return IntSrc::SLOT_0;
+    case SLOT_INT_SLOT_1   << SLOT_INT_SHIFT : return IntSrc::SLOT_1;
+    case SLOT_INT_SLOT_2   << SLOT_INT_SHIFT : return IntSrc::SLOT_2;
+    case SLOT_INT_SLOT_PDS << SLOT_INT_SHIFT : return IntSrc::SLOT_PDS; // includes SLOT_INT_SLOT_VDS
+    case SLOT_INT_VBL      << SLOT_INT_SHIFT : return IntSrc::VBL;
+
+    case DMA1_INT_SOUND    << DMA1_INT_SHIFT : return IntSrc::DMA_DAVBUS_Tx;
+    }
+    return IntSrc::INT_UNKNOWN;
+}
+
 void AMIC::ack_int(uint64_t irq_id, uint8_t irq_line_state) {
     // dispatch cascaded AMIC interrupts from various sources
     // irq_id format: 00DDCCBBAA where
@@ -599,7 +625,7 @@ void AMIC::ack_cpu_int(uint8_t cpu_int, uint8_t irq_line_state) {
         if (!(this->int_ctrl & CPU_INT_FLAG)) {
             this->int_ctrl |= CPU_INT_FLAG;
             ppc_assert_int();
-            LOG_F(5, "AMIC: CPU INT asserted, source: 0x%02x", cpu_int);
+            LOG_F(5, "AMIC: CPU INT asserted, source:%s", this->irq_src_to_name(this->irq_id_to_src(cpu_int << CPU_INT_SHIFT)));
         } else {
             LOG_F(5, "AMIC: CPU INT already latched");
         }
