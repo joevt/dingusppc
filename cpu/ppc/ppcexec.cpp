@@ -275,7 +275,7 @@ void ppc_fpu_off(uint32_t opcode) {
 void ppc_assert_int() {
     int_pin = true;
     if (ppc_state.msr & MSR::EE) {
-        LOG_F(5, "CPU ExtIntHandler called");
+        VLOG_SCOPE_F(loguru::Verbosity_5, "CPU ExtIntHandler");
         ppc_exception_handler(Except_Type::EXC_EXT_INT, 0);
     } else {
         LOG_F(5, "CPU IRQ ignored!");
