@@ -522,6 +522,16 @@ uint64_t AMIC::register_dma_int(IntSrc /*src_id*/) {
     return 0;
 }
 
+IntSrc AMIC::irq_id_to_src(uint64_t irq_id) {
+    switch(irq_id) {
+    case CPU_INT_VIA1          : return IntSrc::VIA_CUDA;
+    case VIA2_INT_SCSI_IRQ << 8: return IntSrc::SCSI_CURIO;
+    case VIA2_INT_SWIM3 << 8   : return IntSrc::SWIM3;
+    case CPU_INT_NMI           : return IntSrc::NMI;
+    }
+    return IntSrc::INT_UNKNOWN;
+}
+
 void AMIC::ack_int(uint64_t irq_id, uint8_t irq_line_state) {
     // dispatch cascaded AMIC interrupts from various sources
     // irq_id format: 00DDCCBBAA where

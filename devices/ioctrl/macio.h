@@ -158,6 +158,7 @@ public:
     uint64_t register_dma_int(IntSrc src_id) override;
     void ack_int(uint64_t irq_id, uint8_t irq_line_state) override;
     void ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) override;
+    IntSrc irq_id_to_src(uint64_t irq_id) override;
 
 protected:
     void notify_bar_change(int bar_num);
@@ -226,6 +227,7 @@ public:
     uint64_t register_dma_int(IntSrc src_id) override;
     void ack_int(uint64_t irq_id, uint8_t irq_line_state) override;
     void ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) override;
+    IntSrc irq_id_to_src(uint64_t irq_id) override;
 
 protected:
     void notify_bar_change(int bar_num);
@@ -385,6 +387,7 @@ public:
     uint64_t register_dma_int(IntSrc src_id) override;
     void ack_int(uint64_t irq_id, uint8_t irq_line_state) override;
     void ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) override;
+    IntSrc irq_id_to_src(uint64_t irq_id) override;
 
 protected:
     uint32_t dma_read(uint32_t offset, int size);
