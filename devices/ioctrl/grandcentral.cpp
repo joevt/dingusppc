@@ -605,6 +605,8 @@ void GrandCentral::setup_intsrc_map()
 }
 
 void GrandCentral::ack_int_common(uint64_t irq_id, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_INTERRUPT, "%s: ack_int source:%s state:%d",
+        this->name.c_str(), irq_id_to_name(irq_id), irq_line_state);
     // native mode:   set IRQ bits in int_events on a 0-to-1 transition
     // emulated mode: set IRQ bits in int_events on all transitions
 
