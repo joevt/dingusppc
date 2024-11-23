@@ -141,6 +141,8 @@ InterruptCtrl *PCIHost::get_interrupt_controller() {
 
 bool PCIHost::register_pci_int(PCIBase* dev_instance) {
     int dev_fun_num = dev_instance->unit_address;
+    if (!this->my_irq_map.count(dev_fun_num))
+        dev_fun_num &= DEV_FUN(0x1F,0);
     if (this->my_irq_map.count(dev_fun_num)) {
         auto& irq = this->my_irq_map[dev_fun_num];
         IntDetails new_int_detail;
