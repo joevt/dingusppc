@@ -118,7 +118,7 @@ HWComponent* IdeChannel::add_device(int32_t unit_address, HWComponent* dev_obj, 
     return HWComponent::add_device(unit_address, dev_obj, name);
 }
 
-int32_t IdeChannel::parse_child_unit_address_string(const std::string unit_address_string) {
+int32_t IdeChannel::parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) {
     return AtaBaseDevice::parse_unit_address_string(unit_address_string);
 }
 

@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <devices/common/hwcomponent.h>
 #include <devices/common/hwinterrupt.h>
+#include <devices/common/pci/pcidevice.h>
 #include <devices/video/display.h>
 
 #include <cinttypes>
@@ -45,7 +46,7 @@ public:
 
     // HWComponent methods
 
-    int32_t parse_child_unit_address_string(const std::string unit_address_string) override;
+    int32_t parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) override;
     HWComponent* add_device(int32_t unit_address, HWComponent *dev_obj, const std::string &name = "") override;
 
     // VideoCtrlBase methods
@@ -139,6 +140,16 @@ protected:
 
 private:
     Display display;
+};
+
+class PCIVideoCtrl : public PCIDevice, public VideoCtrlBase {
+public:
+    PCIVideoCtrl(const std::string name)
+        : PCIDevice(name), VideoCtrlBase(), HWComponent(name) {}
+    ~PCIVideoCtrl() = default;
+
+    // HWComponent methods
+    int32_t parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) override;
 };
 
 #endif // VIDEO_CTRL_H

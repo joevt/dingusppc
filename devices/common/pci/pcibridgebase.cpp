@@ -93,3 +93,10 @@ void PCIBridgeBase::pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetai
 PostInitResultType PCIBridgeBase::device_postinit() {
     return this->pcihost_device_postinit();
 }
+
+int32_t PCIBridgeBase::parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) {
+    int32_t result = PCIHost::parse_child_unit_address_string(unit_address_string, hwc);
+    if (result < 0)
+        result = PCIBase::parse_child_unit_address_string(unit_address_string, hwc);
+    return result;
+}

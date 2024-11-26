@@ -578,8 +578,9 @@ bool MachineFactory::find_path(std::string path, HWComponent *&hwc, int32_t &uni
                     return true;
             } else if (search_type == 1 && cs->stack_item_type == ConfigStackItem::HWC_WITH_UNIT_ADDRESS) {
                 if (cs->hwc->path_match(results[1], true)) {
-                    if (cs->hwc->parse_child_unit_address_string(results[3]) == cs->unit_address) {
-                        hwc = cs->hwc;
+                    HWComponent *it = cs->hwc;
+                    if (cs->hwc->parse_child_unit_address_string(results[3], it) == cs->unit_address) {
+                        hwc = it;
                         unit_address = cs->unit_address;
                         is_leaf_match = true;
                         return true;
