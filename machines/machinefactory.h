@@ -44,6 +44,7 @@ typedef std::function<std::optional<std::string>(const std::string&)> GetSetting
 typedef enum {
     PropertyDevice,
     PropertyMachine,
+    PropertyDevOnce,
 } PropScope;
 
 typedef struct {
