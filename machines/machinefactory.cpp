@@ -78,27 +78,27 @@ const map<string, PropHelpItem> gPropHelp = {
     {"pci",             {PropertyDevice,  "inserts PCI device into a free slot"}},
     {"vci",             {PropertyDevice,  "inserts PCI device into a free slot of VCI"}},
     {"pci_dev_max",     {PropertyMachine, "specifies the maximum PCI device number for PCI bridges"}},
-    {"pci_GPU",         {PropertyMachine, "specifies PCI device for Beige G3 grackle device @12"}},
-    {"pci_J12",         {PropertyMachine, "inserts PCI device into 32-bit 66MHz slot J12"}},
-    {"pci_J11",         {PropertyMachine, "inserts PCI device into 64-bit 33MHz slot J11"}},
-    {"pci_J10",         {PropertyMachine, "inserts PCI device into 64-bit 33MHz slot J10"}},
-    {"pci_J9",          {PropertyMachine, "inserts PCI device into 64-bit 33MHz slot J9"}},
-    {"pci_FireWire",    {PropertyMachine, "inserts PCI device into PCI slot reserved for Yosemite FireWire"}},
-    {"pci_UltraATA",    {PropertyMachine, "inserts PCI device into PCI slot reserved for Yosemite Ultra ATA"}},
-    {"pci_USB",         {PropertyMachine, "inserts PCI device into PCI slot reserved for Yosemite USB"}},
-    {"pci_PERCH",       {PropertyMachine, "inserts PCI device into PERCH slot"}},
-    {"pci_CARDBUS",     {PropertyMachine, "inserts PCI device into PCI slot reserved for Lombard CardBus"}},
-    {"pci_ZIVA",        {PropertyMachine, "inserts PCI device into PCI slot reserved for Lombard DVD Decoder"}},
-    {"pci_A1",          {PropertyMachine, "inserts PCI device into slot A1"}},
-    {"pci_B1",          {PropertyMachine, "inserts PCI device into slot B1"}},
-    {"pci_C1",          {PropertyMachine, "inserts PCI device into slot C1"}},
-    {"pci_E1",          {PropertyMachine, "inserts PCI device into slot E1"}},
-    {"pci_F1",          {PropertyMachine, "inserts PCI device into slot F1"}},
-    {"pci_D2",          {PropertyMachine, "inserts PCI device into slot D2"}},
-    {"pci_E2",          {PropertyMachine, "inserts PCI device into slot E2"}},
-    {"pci_F2",          {PropertyMachine, "inserts PCI device into slot F2"}},
-    {"vci_D",           {PropertyMachine, "inserts VCI device 0x0D"}},
-    {"vci_E",           {PropertyMachine, "inserts VCI device 0x0E"}},
+    {"pci_GPU",         {PropertyDevOnce, "specifies PCI device for Beige G3 grackle device @12"}},
+    {"pci_J12",         {PropertyDevOnce, "inserts PCI device into 32-bit 66MHz slot J12"}},
+    {"pci_J11",         {PropertyDevOnce, "inserts PCI device into 64-bit 33MHz slot J11"}},
+    {"pci_J10",         {PropertyDevOnce, "inserts PCI device into 64-bit 33MHz slot J10"}},
+    {"pci_J9",          {PropertyDevOnce, "inserts PCI device into 64-bit 33MHz slot J9"}},
+    {"pci_FireWire",    {PropertyDevOnce, "inserts PCI device into PCI slot reserved for Yosemite FireWire"}},
+    {"pci_UltraATA",    {PropertyDevOnce, "inserts PCI device into PCI slot reserved for Yosemite Ultra ATA"}},
+    {"pci_USB",         {PropertyDevOnce, "inserts PCI device into PCI slot reserved for Yosemite USB"}},
+    {"pci_PERCH",       {PropertyDevOnce, "inserts PCI device into PERCH slot"}},
+    {"pci_CARDBUS",     {PropertyDevOnce, "inserts PCI device into PCI slot reserved for Lombard CardBus"}},
+    {"pci_ZIVA",        {PropertyDevOnce, "inserts PCI device into PCI slot reserved for Lombard DVD Decoder"}},
+    {"pci_A1",          {PropertyDevOnce, "inserts PCI device into slot A1"}},
+    {"pci_B1",          {PropertyDevOnce, "inserts PCI device into slot B1"}},
+    {"pci_C1",          {PropertyDevOnce, "inserts PCI device into slot C1"}},
+    {"pci_E1",          {PropertyDevOnce, "inserts PCI device into slot E1"}},
+    {"pci_F1",          {PropertyDevOnce, "inserts PCI device into slot F1"}},
+    {"pci_D2",          {PropertyDevOnce, "inserts PCI device into slot D2"}},
+    {"pci_E2",          {PropertyDevOnce, "inserts PCI device into slot E2"}},
+    {"pci_F2",          {PropertyDevOnce, "inserts PCI device into slot F2"}},
+    {"vci_D",           {PropertyDevOnce, "inserts VCI device 0x0D"}},
+    {"vci_E",           {PropertyDevOnce, "inserts VCI device 0x0E"}},
     {"serial_backend",  {PropertyDevice , "specifies the backend for the serial port"}},
     {"emmo",            {PropertyMachine, "enables/disables factory HW tests during startup"}},
     {"cpu",             {PropertyMachine, "specifies CPU"}},
@@ -636,11 +636,11 @@ void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope,
 
         auto phelp = gPropHelp.find(p.first);
         if (phelp != gPropHelp.end()) {
-            if (phelp->second.property_scope != scope)
+            if ((phelp->second.property_scope == PropertyMachine) != (scope == PropertyMachine))
                 continue;
             help = phelp->second.property_description;
         } else {
-            if (scope != PropertyDevice)
+            if (scope == PropertyMachine)
                 continue;
             help = "";
         }
@@ -692,7 +692,7 @@ void MachineFactory::register_settings(const std::string& dev_name, const PropMa
         }
 
         auto& phelp = gPropHelp.at(p.first);
-        if (phelp.property_scope != PropertyMachine)
+        if (phelp.property_scope == PropertyDevice)
             continue;
 
         if (gMachineSettings.count(p.first) == 0) {
