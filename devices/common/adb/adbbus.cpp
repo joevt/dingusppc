@@ -75,7 +75,7 @@ std::string AdbBus::get_child_unit_address_string(int32_t unit_address) {
     return buf;
 }
 
-int32_t AdbBus::parse_child_unit_address_string(const std::string unit_address_string) {
+int32_t AdbBus::parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) {
     return AdbDevice::parse_unit_address_string(unit_address_string);
 }
 
