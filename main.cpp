@@ -259,11 +259,19 @@ int main(int argc, char** argv) {
         std::string value;
         sa.add_option("--" + name, value)->expected(0,1);
         try {
-            sa.parse(app_args);
+            std::vector<std::string> temp_app_args = app_args;
+            sa.parse(temp_app_args);
         } catch (const CLI::Error& e) {
             ABORT_F("Cannot parse CLI: %s", e.get_name().c_str());
         }
-        app_args = sa.remaining_for_passthrough();
+
+        if (!gPropHelp.count(name) || gPropHelp.at(name).property_scope != PropertyDevOnce) {
+            /*
+                Only remove properties with scope PropertyMachine
+                Properties with scope PropertyDevOnce will be used like PropertyDevice.
+            */
+            app_args = sa.remaining_for_passthrough();
+        }
 
         if (sa.count("--" + name) > 0) {
             return value;
