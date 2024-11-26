@@ -109,7 +109,7 @@ enum {
     VBL_IRQ_STAT = 1 << 2, // VBL interrupt status bit (INT_STATUS)
 };
 
-class ControlVideo : public PCIDevice, public VideoCtrlBase {
+class ControlVideo : public PCIVideoCtrl {
 public:
     ControlVideo();
     ~ControlVideo() = default;

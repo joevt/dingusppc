@@ -42,15 +42,18 @@ public:
     PCIBridgeBase(const std::string name, PCIHeaderType hdr_type, int num_bars);
     ~PCIBridgeBase() = default;
 
+    // HWComponent methods
+    int32_t parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) override;
+    
     // PCIHost methods
-    virtual bool pci_register_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj);
-    virtual bool pci_unregister_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj);
+    virtual bool pci_register_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj) override;
+    virtual bool pci_unregister_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj) override;
 
     // PCIBase methods
-    virtual uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details);
-    virtual void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details);
+    virtual uint32_t pci_cfg_read(uint32_t reg_offs, AccessDetails &details) override;
+    virtual void pci_cfg_write(uint32_t reg_offs, uint32_t value, AccessDetails &details) override;
 
-    bool supports_io_space() {
+    bool supports_io_space() override {
         return true;
     };
 
@@ -69,7 +72,7 @@ public:
     std::function<void(uint16_t)>   pci_wr_bridge_control;
 
     // HWComponent methods
-    virtual PostInitResultType device_postinit();
+    virtual PostInitResultType device_postinit() override;
 
 protected:
     // PCI configuration space state
