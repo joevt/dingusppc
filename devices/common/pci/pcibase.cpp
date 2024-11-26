@@ -348,7 +348,7 @@ int32_t PCIBase::parse_self_unit_address_string(const std::string unit_address_s
 }
 
 int32_t PCIBase::parse_unit_address_string(const std::string unit_address_string) {
-    std::regex unit_address_re("0*(1?[0-9A-F])(?:,(0*[0-7]))?", std::regex_constants::icase);
+    std::regex unit_address_re("0*(1?[0-9A-F])(?:,(?:0*([0-7])))?", std::regex_constants::icase);
     std::smatch results;
     if (std::regex_match(unit_address_string, results, unit_address_re)) {
         int32_t result = int32_t(std::stol(results[1], nullptr, 16)) << 3;
@@ -373,4 +373,27 @@ std::string PCIBase::get_unit_address_string(int32_t unit_address) {
     else
         snprintf(buf, sizeof(buf), "@%X", unit_address >> 3);
     return buf;
+}
+
+int32_t PCIBase::parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) {
+    std::regex unit_address_re(",(?:0*([0-7]))?", std::regex_constants::icase);
+    std::smatch results;
+    if (std::regex_match(unit_address_string, results, unit_address_re)) {
+        int32_t result = this->unit_address & DEV_FUN(0x1F,0);
+        if (results[1].matched) {
+            result |= std::stol(results[1]);
+            if (this->host_instance->dev_map.count(result))
+                return -1;
+            hwc = this->parent;
+            return result;
+        }
+        do {
+            if (!this->host_instance->dev_map.count(result)) {
+                hwc = this->parent;
+                return result;
+            }
+            result += 1;
+        } while (result & 7);
+    }
+    return -1;
 }
