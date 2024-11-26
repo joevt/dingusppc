@@ -248,9 +248,19 @@ PostInitResultType PCIHost::pcihost_device_postinit()
 
     for (auto& slot : this->my_irq_map) {
         if (slot.second.slot_name) {
-            pci_dev_name = GET_STR_PROP(slot.second.slot_name);
-            if (!pci_dev_name.empty()) {
-                this->attach_pci_device(pci_dev_name, slot.first);
+            if (gMachineSettings.count(slot.second.slot_name)) {
+                auto &s = gMachineSettings[slot.second.slot_name];
+                if (s->value_commandline == s->value_not_inited) {
+                    /*
+                        Only add devices that are not specified by command line. PCI devices
+                        specified by command line are handled by set_property below so that
+                        they can participate in the config stack explicitly.
+                    */
+                    pci_dev_name = dynamic_cast<StrProperty*>(s->property.get())->get_string();
+                    if (!pci_dev_name.empty()) {
+                        this->attach_pci_device(pci_dev_name, slot.first);
+                    }
+                }
             }
         }
     }
@@ -267,8 +277,27 @@ int32_t PCIHost::parse_child_unit_address_string(const std::string unit_address_
 }
 
 HWComponent* PCIHost::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    int dev_fun;
+
+    if (unit_address == -1) {
+        for (auto& slot : this->my_irq_map) {
+            dev_fun = slot.first;
+            if (slot.second.slot_name && !this->dev_map.count(dev_fun)) {
+                if (property == slot.second.slot_name) {
+                    if (value.empty()) {
+                        if (this->dev_map.count(dev_fun))
+                            this->remove_device(dev_fun);
+                        return this;
+                    } else {
+                        PCIBase *dev_instance = this->attach_pci_device(value, dev_fun);
+                        return dev_instance;
+                    }
+                }
+            }
+        }
+    }
+
     if (property == "pci") {
-        int dev_fun;
         int max_dev = GET_INT_PROP("pci_dev_max");
 
         if (unit_address == -1) {
