@@ -32,7 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <memory>
 
-class AtiMach64Gx : public PCIDevice, public VideoCtrlBase {
+class AtiMach64Gx : public PCIVideoCtrl {
 public:
     AtiMach64Gx(const std::string &dev_name);
     ~AtiMach64Gx() = default;
