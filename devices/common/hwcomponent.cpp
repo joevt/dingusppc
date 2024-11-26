@@ -245,7 +245,7 @@ int32_t HWComponent::parse_self_unit_address_string(const std::string unit_addre
     }
 }
 
-int32_t HWComponent::parse_child_unit_address_string(const std::string unit_address_string) {
+int32_t HWComponent::parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) {
     return parse_self_unit_address_string(unit_address_string);
 }
 
@@ -379,7 +379,7 @@ HWComponent *HWComponent::find_path(
         this->iterate(
             [&](HWComponent *it, int depth) {
                 if (!results[1].matched || it->path_match(results[1], allow_partial_match)) {
-                    int32_t result_unit_address = it->parse_child_unit_address_string(results[3]);
+                    int32_t result_unit_address = it->parse_child_unit_address_string(results[3], it);
                     if (result_unit_address != -1 && it->children.count(result_unit_address) == 0) {
                         result = it;
                         if (unit_address)
