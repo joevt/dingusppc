@@ -54,7 +54,7 @@ namespace loguru {
 }
 
 ControlVideo::ControlVideo()
-    : PCIDevice("ControlVideo"), VideoCtrlBase(), HWComponent("ControlVideo")
+    : PCIVideoCtrl("ControlVideo"), HWComponent("ControlVideo")
 {
     supports_types(HWCompType::PCI_DEV | HWCompType::VIDEO_CTRL);
 
