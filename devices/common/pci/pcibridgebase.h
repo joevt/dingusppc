@@ -42,6 +42,9 @@ public:
     PCIBridgeBase(const std::string name, PCIHeaderType hdr_type, int num_bars);
     ~PCIBridgeBase() = default;
 
+    // HWComponent methods
+    int32_t parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) override;
+
     // PCIHost methods
     virtual AddressMapEntry* pci_register_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj) override;
     virtual bool           pci_unregister_mmio_region(uint32_t start_addr, uint32_t size, PCIBase* obj) override;

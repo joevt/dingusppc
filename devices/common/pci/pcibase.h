@@ -143,6 +143,7 @@ public:
     // HWComponent methods
 
     int32_t parse_self_unit_address_string(const std::string unit_address_string) override;
+    int32_t parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) override;
     static int32_t parse_unit_address_string(const std::string unit_address_string);
     std::string get_self_unit_address_string(int32_t unit_address) override;
     static std::string get_unit_address_string(int32_t unit_address);
