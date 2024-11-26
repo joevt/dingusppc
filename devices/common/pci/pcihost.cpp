@@ -260,7 +260,7 @@ std::string PCIHost::get_child_unit_address_string(int32_t unit_address) {
     return PCIBase::get_unit_address_string(unit_address);
 }
 
-int32_t PCIHost::parse_child_unit_address_string(const std::string unit_address_string) {
+int32_t PCIHost::parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) {
     return PCIBase::parse_unit_address_string(unit_address_string);
 }
 

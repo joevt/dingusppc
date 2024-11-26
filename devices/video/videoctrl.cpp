@@ -455,7 +455,7 @@ void VideoCtrlBase::convert_frame_32bpp(uint8_t *dst_buf, int dst_pitch, bool sw
 template void VideoCtrlBase::convert_frame_32bpp<VideoCtrlBase::BE>(uint8_t *dst_buf, int dst_pitch, bool swapper);
 template void VideoCtrlBase::convert_frame_32bpp<VideoCtrlBase::LE>(uint8_t *dst_buf, int dst_pitch, bool swapper);
 
-int32_t VideoCtrlBase::parse_child_unit_address_string(const std::string unit_address_string)
+int32_t VideoCtrlBase::parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc)
 {
     std::regex unit_address_re("0*(0)", std::regex_constants::icase);
     std::smatch results;
@@ -472,5 +472,12 @@ HWComponent* VideoCtrlBase::add_device(int32_t unit_address, HWComponent *dev_ob
     DisplayID * disp_id = dynamic_cast<DisplayID*>(dev_obj);
     if (disp_id)
         disp_id->set_video_ctrl(this);
+    return result;
+}
+
+int32_t PCIVideoCtrl::parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) {
+    int32_t result = VideoCtrlBase::parse_child_unit_address_string(unit_address_string, hwc);
+    if (result < 0)
+        result = PCIBase::parse_child_unit_address_string(unit_address_string, hwc);
     return result;
 }

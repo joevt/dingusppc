@@ -42,7 +42,7 @@ enum {
     PLL_EXT_CNTL    = 11,
 };
 
-class ATIRage : public PCIDevice, public VideoCtrlBase {
+class ATIRage : public PCIVideoCtrl {
 public:
     ATIRage(const std::string &dev_name, uint16_t dev_id);
     ~ATIRage() = default;
