@@ -58,7 +58,7 @@ public:
     virtual HWComponent* add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name = "") override;
     virtual bool remove_device(int32_t unit_address) override;
     virtual std::string get_child_unit_address_string(int32_t unit_address) override;
-    int32_t parse_child_unit_address_string(const std::string unit_address_string) override;
+    int32_t parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) override;
 
     // AdbBus methods
 

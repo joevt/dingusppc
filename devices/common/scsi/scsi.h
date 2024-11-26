@@ -297,7 +297,7 @@ public:
 
     HWComponent* add_device(int32_t unit_address, HWComponent* dev_obj, const std::string &name) override;
     virtual HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
-    int32_t parse_child_unit_address_string(const std::string unit_address_string) override;
+    int32_t parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc) override;
 
     // ScsiBus methods
 
