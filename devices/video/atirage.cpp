@@ -96,8 +96,8 @@ static const std::map<uint16_t, std::string> mach64_reg_names = {
     one_reg_name(SETUP_CNTL),
 };
 
-ATIRage::ATIRage(const std::string &dev_name, uint16_t dev_id) : VideoCtrlBase(),
-        PCIDevice(dev_name), HWComponent(dev_name)
+ATIRage::ATIRage(const std::string &dev_name, uint16_t dev_id) :
+    PCIVideoCtrl(dev_name), HWComponent(dev_name)
 {
     uint8_t asic_id;
 
