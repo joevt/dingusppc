@@ -129,7 +129,7 @@ public:
     );
     std::string get_name_and_unit_address();
     virtual int32_t parse_self_unit_address_string(const std::string unit_address_string);
-    virtual int32_t parse_child_unit_address_string(const std::string unit_address_string);
+    virtual int32_t parse_child_unit_address_string(const std::string unit_address_string, HWComponent*& hwc);
     virtual std::string get_child_unit_address_string(int32_t unit_address);
     virtual std::string get_self_unit_address_string(int32_t unit_address);
     std::string get_self_unit_address_string();
