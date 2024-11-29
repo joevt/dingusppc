@@ -55,7 +55,7 @@ HWComponent* ScsiCdrom::set_property(const std::string &property, const std::str
 
 void ScsiCdrom::process_command()
 {
-    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: process_command 0x%X", this->name.c_str(), cmd_buf[0]);
+    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: process_command 0x%X", this->get_name_and_unit_address().c_str(), cmd_buf[0]);
 
     uint32_t lba;
 
@@ -101,7 +101,7 @@ void ScsiCdrom::process_command()
     case ScsiCommand::READ_10:
         lba = READ_DWORD_BE_U(&cmd[2]);
         if (cmd[1] & 1) {
-            ABORT_F("%s: RelAdr bit set in READ_10", this->name.c_str());
+            ABORT_F("%s: RelAdr bit set in READ_10", this->get_name_and_unit_address().c_str());
         }
         read(lba, READ_WORD_BE_U(&cmd[7]), 10);
         break;
@@ -128,7 +128,7 @@ void ScsiCdrom::process_command()
         this->read(cdda_start, cdda_len, 12);
         break;
     default:
-        LOG_F(ERROR, "%s: unsupported command 0x%X", this->name.c_str(), cmd[0]);
+        LOG_F(ERROR, "%s: unsupported command 0x%X", this->get_name_and_unit_address().c_str(), cmd[0]);
         this->illegal_command(cmd);
     }
 }
@@ -143,10 +143,10 @@ bool ScsiCdrom::prepare_data()
         this->data_size = 0;
         break;
     case ScsiPhase::STATUS:
-        LOG_F(ERROR, "%s: ScsiPhase::STATUS do we need to return a status byte?", this->name.c_str());
+        LOG_F(ERROR, "%s: ScsiPhase::STATUS do we need to return a status byte?", this->get_name_and_unit_address().c_str());
         break;
     default:
-        LOG_F(WARNING, "%s: unexpected phase %d in prepare_data", this->name.c_str(), this->cur_phase);
+        LOG_F(WARNING, "%s: unexpected phase %d in prepare_data", this->get_name_and_unit_address().c_str(), this->cur_phase);
         return false;
     }
     return true;
@@ -188,21 +188,21 @@ uint32_t ScsiCdrom::inquiry(uint8_t *cmd_ptr, uint8_t *data_ptr) {
     int alloc_len = cmd_ptr[4];
 
     if (page_num) {
-        ABORT_F("%s: invalid page number in INQUIRY", this->name.c_str());
+        ABORT_F("%s: invalid page number in INQUIRY", this->get_name_and_unit_address().c_str());
     }
 
     if (alloc_len > 36) {
-        LOG_F(WARNING, "%s: more than 36 bytes requested in INQUIRY", this->name.c_str());
+        LOG_F(WARNING, "%s: more than 36 bytes requested in INQUIRY", this->get_name_and_unit_address().c_str());
     }
 
     int lun;
     if (this->last_selection_has_attention) {
-        LOG_F(INFO, "%s: INQUIRY (%d bytes) with ATN LUN = %02x & 7", this->name.c_str(),
+        LOG_F(INFO, "%s: INQUIRY (%d bytes) with ATN LUN = %02x & 7", this->get_name_and_unit_address().c_str(),
             alloc_len, this->last_selection_message);
         lun = this->last_selection_message & 7;
     }
     else {
-        LOG_F(INFO, "%s: INQUIRY (%d bytes) with NO ATN LUN = %02x >> 5", this->name.c_str(),
+        LOG_F(INFO, "%s: INQUIRY (%d bytes) with NO ATN LUN = %02x >> 5", this->get_name_and_unit_address().c_str(),
             alloc_len, cmd_ptr[1]);
         lun = cmd_ptr[1] >> 5;
     }
@@ -222,7 +222,7 @@ uint32_t ScsiCdrom::inquiry(uint8_t *cmd_ptr, uint8_t *data_ptr) {
     //etc.
 
     if (alloc_len < 36) {
-        LOG_F(ERROR, "%s: allocation length too small: %d", this->name.c_str(),
+        LOG_F(ERROR, "%s: allocation length too small: %d", this->get_name_and_unit_address().c_str(),
             alloc_len);
     }
     else {
@@ -275,7 +275,7 @@ void ScsiCdrom::mode_sense_6()
         this->data_buf[17] = 'p';
         break;
     default:
-        LOG_F(WARNING, "%s: unsupported page 0x%02x in MODE_SENSE_6", this->name.c_str(), page_code);
+        LOG_F(WARNING, "%s: unsupported page 0x%02x in MODE_SENSE_6", this->get_name_and_unit_address().c_str(), page_code);
         this->status = ScsiStatus::CHECK_CONDITION;
         this->sense  = ScsiSense::ILLEGAL_REQ;
         this->asc    = ScsiError::INVALID_CDB;
@@ -314,11 +314,11 @@ void ScsiCdrom::read_capacity_10()
     uint32_t lba = READ_DWORD_BE_U(&this->cmd_buf[2]);
 
     if (this->cmd_buf[1] & 1) {
-        ABORT_F("%s: RelAdr bit set in READ_CAPACITY_10", this->name.c_str());
+        ABORT_F("%s: RelAdr bit set in READ_CAPACITY_10", this->get_name_and_unit_address().c_str());
     }
 
     if (!(this->cmd_buf[8] & 1) && lba) {
-        LOG_F(ERROR, "%s: non-zero LBA for PMI=0", this->name.c_str());
+        LOG_F(ERROR, "%s: non-zero LBA for PMI=0", this->get_name_and_unit_address().c_str());
         this->status = ScsiStatus::CHECK_CONDITION;
         this->sense  = ScsiSense::ILLEGAL_REQ;
         this->asc    = ScsiError::INVALID_CDB;
