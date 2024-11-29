@@ -707,7 +707,7 @@ void ViaCuda::autopoll_handler() {
             */
             bool send_time = !(this->last_time & 3);
             if (send_time || this->one_sec_mode < 3) {
-                LOG_F(CUDATICK, "tick: CUDA_GET_REAL_TIME");
+                VLOG_SCOPE_F(loguru::Verbosity_CUDATICK, "tick: CUDA_GET_REAL_TIME");
                 response_header(CUDA_PKT_PSEUDO, 0);
                 this->out_buf[2] = CUDA_GET_REAL_TIME;
                 if (send_time || this->one_sec_mode == 1) {
@@ -715,7 +715,7 @@ void ViaCuda::autopoll_handler() {
                     WRITE_DWORD_BE_U(&this->out_buf[this->out_count += 4], real_time);
                 }
             } else if (this->one_sec_mode == 3) {
-                LOG_F(CUDATICK, "tick");
+                VLOG_SCOPE_F(loguru::Verbosity_CUDATICK, "tick");
                 one_byte_header(CUDA_PKT_TICK);
             }
             this->last_time = this_time;
