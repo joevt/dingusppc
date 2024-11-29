@@ -30,9 +30,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 enum IntSrc : uint32_t {
     INT_UNKNOWN = 0,
     VIA_CUDA,
+    VIA2,
     SCSI_MESH,
     SCSI_CURIO,
     SWIM3,
+    ESCC,
     SCCA,
     SCCB,
     ETHERNET,
@@ -58,6 +60,7 @@ enum IntSrc : uint32_t {
     PLANB,
     VCI,
     PLATINUM,
+    DMA_ALL,
     DMA_SCSI_MESH,
     DMA_SCSI_CURIO,
     DMA_SWIM3,
@@ -83,6 +86,13 @@ enum IntSrc : uint32_t {
     ZIVA,
     PCI_CARDBUS,
     MEDIA_BAY,
+    SLOT_ALL,
+    SLOT_0,
+    SLOT_1,
+    SLOT_2,
+    SLOT_PDS,
+    SLOT_VDS,
+    VBL,
 };
 
 /** Base class for interrupt controllers. */
