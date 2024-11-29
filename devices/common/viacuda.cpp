@@ -448,7 +448,7 @@ void ViaCuda::update_irq() {
     // let CPU know when irq_state is "1" or it changes from "1" to "0"
     if (irq_state || (irq_state != (this->_via_ifr >> 7))) {
         this->_via_ifr = (irq_state << 7) | (this->_via_ifr & 0x7F);
-        LOG_F(CUDA6, "%s: signal IRQ line change to 0x%X, IFR=0x%02X",
+        VLOG_SCOPE_F(loguru::Verbosity_CUDA6, "%s: signal IRQ line change to 0x%X, IFR=0x%02X",
               this->name.c_str(), irq_state, this->_via_ifr);
         this->int_ctrl->ack_int(this->irq_id, irq_state);
     }
