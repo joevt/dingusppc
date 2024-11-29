@@ -85,7 +85,7 @@ HWComponent* ScsiCdrom::set_property(const std::string &property, const std::str
 
 void ScsiCdrom::process_command()
 {
-    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: process_command 0x%X", this->name.c_str(), cmd_buf[0]);
+    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: process_command 0x%X", this->get_name_and_unit_address().c_str(), cmd_buf[0]);
 
     uint32_t lba;
 
@@ -130,7 +130,7 @@ void ScsiCdrom::process_command()
     case ScsiCommand::READ_10:
         lba = READ_DWORD_BE_U(&cmd[2]);
         if (cmd[1] & 1) {
-            ABORT_F("%s: RelAdr bit set in READ_10", this->name.c_str());
+            ABORT_F("%s: RelAdr bit set in READ_10", this->get_name_and_unit_address().c_str());
         }
         read(lba, READ_WORD_BE_U(&cmd[7]), 10);
         break;
@@ -214,8 +214,8 @@ void ScsiCdrom::mode_sense_6()
         this->data_buf[17] = 'p';
         break;
     default:
-        LOG_F(WARNING, "%s: unsupported page 0x%02x in MODE_SENSE_6", this->name.c_str(),
-              page_code);
+        LOG_F(WARNING, "%s: unsupported page 0x%02x in MODE_SENSE_6", this->get_name_and_unit_address().c_str(),
+            page_code);
         this->set_field_pointer(2), // error is in the 3rd byte
         this->set_bit_pointer(5),   // starting with bit 5
         this->invalid_cdb();
@@ -252,11 +252,11 @@ void ScsiCdrom::read_capacity_10()
     uint32_t lba = READ_DWORD_BE_U(&this->cmd_buf[2]);
 
     if (this->cmd_buf[1] & 1) {
-        ABORT_F("%s: RelAdr bit set in READ_CAPACITY_10", this->name.c_str());
+        ABORT_F("%s: RelAdr bit set in READ_CAPACITY_10", this->get_name_and_unit_address().c_str());
     }
 
     if (!(this->cmd_buf[8] & 1) && lba) {
-        LOG_F(ERROR, "%s: non-zero LBA for PMI=0", this->name.c_str());
+        LOG_F(ERROR, "%s: non-zero LBA for PMI=0", this->get_name_and_unit_address().c_str());
         this->set_field_pointer(2),
         this->invalid_cdb();
         this->switch_phase(ScsiPhase::STATUS);
