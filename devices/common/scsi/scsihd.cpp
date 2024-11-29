@@ -85,20 +85,20 @@ void ScsiHardDisk::insert_image(std::string filename) {
     //We don't want to store everything in memory, but
     //we want to keep the hard disk available.
     if (!this->disk_img.open(filename))
-        ABORT_F("%s: could not open image file %s", this->name.c_str(), filename.c_str());
+        ABORT_F("%s: could not open image file %s", this->get_name_and_unit_address().c_str(), filename.c_str());
 
     this->img_size = this->disk_img.size();
     uint64_t tb = (this->img_size + this->sector_size - 1) / this->sector_size;
     this->total_blocks = static_cast<int>(tb);
     if (this->total_blocks < 0 || tb != this->total_blocks) {
-        ABORT_F("%s: file size is too large", this->name.c_str());
+        ABORT_F("%s: file size is too large", this->get_name_and_unit_address().c_str());
     }
 }
 
 void ScsiHardDisk::process_command() {
     uint32_t lba;
 
-    VLOG_SCOPE_F(loguru::Verbosity_SCSIHD, "%s: process_command 0x%X", this->name.c_str(), cmd_buf[0]);
+    VLOG_SCOPE_F(loguru::Verbosity_SCSIHD, "%s: process_command 0x%X", this->get_name_and_unit_address().c_str(), cmd_buf[0]);
 
     if (this->verify_cdb() < 0) {
         this->switch_phase(ScsiPhase::STATUS);
@@ -148,7 +148,7 @@ void ScsiHardDisk::process_command() {
     case ScsiCommand::READ_10:
         lba = READ_DWORD_BE_U(&cmd[2]);
         if (cmd[1] & 1) {
-            ABORT_F("%s: RelAdr bit set in READ_10", this->name.c_str());
+            ABORT_F("%s: RelAdr bit set in READ_10", this->get_name_and_unit_address().c_str());
         }
         this->read(lba, READ_WORD_BE_U(&cmd[7]), 10);
         break;
@@ -189,17 +189,17 @@ bool ScsiHardDisk::prepare_data() {
         this->bytes_out = 1;
         this->data_ptr = (uint8_t*)this->data_buf;
         this->data_size = this->bytes_out;
-        LOG_F(SCSIHD, "%s: STATUS %02x", this->name.c_str(), this->data_buf[0]);
+        LOG_F(SCSIHD, "%s: STATUS %02x", this->get_name_and_unit_address().c_str(), this->data_buf[0]);
         break;
     case ScsiPhase::MESSAGE_IN:
         this->data_buf[0] = this->msg_code;
         this->bytes_out = 1;
         this->data_ptr = (uint8_t*)this->data_buf;
         this->data_size = this->bytes_out;
-        LOG_F(SCSIHD, "%s: MESSAGE_IN %02x", this->name.c_str(), this->msg_code);
+        LOG_F(SCSIHD, "%s: MESSAGE_IN %02x", this->get_name_and_unit_address().c_str(), this->msg_code);
         break;
     default:
-        LOG_F(WARNING, "%s: unexpected phase %d in prepare_data", this->name.c_str(), this->cur_phase);
+        LOG_F(WARNING, "%s: unexpected phase %d in prepare_data", this->get_name_and_unit_address().c_str(), this->cur_phase);
         return false;
     }
     return true;
@@ -211,7 +211,8 @@ void ScsiHardDisk::mode_select_6(uint8_t param_len) {
         return;
     }
 
-    LOG_F(ERROR, "%s: Mode Select calling for param length of: %d", this->name.c_str(), param_len);
+    LOG_F(ERROR, "%s: Mode Select calling for param length of: %d", this->get_name_and_unit_address().c_str(),
+        param_len);
     this->incoming_size = param_len;
 
     std::memset(&this->data_buf[0], 0xDD, this->sector_size);
@@ -232,17 +233,17 @@ void ScsiHardDisk::mode_sense_6() {
     uint8_t alloc_len = this->cmd_buf[4];
 
     LOG_F(SCSIHD, "%s: Mode_sense_6 page_ctrl:%d page_code:0x%02x sub_page_code:0x%02x alloc_len:%d",
-        name.c_str(), page_ctrl, page_code, sub_page_code, alloc_len);
+        this->get_name_and_unit_address().c_str(), page_ctrl, page_code, sub_page_code, alloc_len);
 
     if (page_ctrl == 1) {
-        LOG_F(INFO, "%s: page_ctrl 1 CHANGEABLE VALUES is not implemented", this->name.c_str());
+        LOG_F(INFO, "%s: page_ctrl 1 CHANGEABLE VALUES is not implemented", this->get_name_and_unit_address().c_str());
         this->invalid_cdb();
         this->switch_phase(ScsiPhase::STATUS);
         return;
     }
 
     if (page_ctrl == 3) {
-        LOG_F(INFO, "%s: page_ctrl 3 SAVED VALUES is not implemented", this->name.c_str());
+        LOG_F(INFO, "%s: page_ctrl 3 SAVED VALUES is not implemented", this->get_name_and_unit_address().c_str());
         this->set_field_pointer(2), // error in the 3rd byte
         this->set_bit_pointer(7),   // starting with bit 7
         this->illegal_request(ScsiError::SAVING_NOT_SUPPORTED, 0);
@@ -316,13 +317,13 @@ void ScsiHardDisk::mode_sense_6() {
     }
 
     if (!(got_page || page_code == 0x3f)) { // not any of the supported pages or all pages
-        LOG_F(WARNING, "%s: unsupported page 0x%02x in MODE_SENSE_6", this->name.c_str(), page_code);
+        LOG_F(WARNING, "%s: unsupported page 0x%02x in MODE_SENSE_6", this->get_name_and_unit_address().c_str(), page_code);
         this->invalid_cdb();
         this->switch_phase(ScsiPhase::STATUS);
         return;
     bad_sub_page:
         LOG_F(WARNING, "%s: unsupported page/subpage %02xh/%02xh in MODE_SENSE_6",
-              this->name.c_str(), page_code, sub_page_code);
+            this->get_name_and_unit_address().c_str(), page_code, sub_page_code);
         this->set_field_pointer(2),
         this->invalid_cdb();
         this->switch_phase(ScsiPhase::STATUS);
@@ -341,11 +342,11 @@ void ScsiHardDisk::read_capacity_10() {
     uint32_t lba = READ_DWORD_BE_U(&this->cmd_buf[2]);
 
     if (this->cmd_buf[1] & 1) {
-        ABORT_F("%s: RelAdr bit set in READ_CAPACITY_10", this->name.c_str());
+        ABORT_F("%s: RelAdr bit set in READ_CAPACITY_10", this->get_name_and_unit_address().c_str());
     }
 
     if (!(this->cmd_buf[8] & 1) && lba) {
-        LOG_F(ERROR, "%s: non-zero LBA for PMI=0", this->name.c_str());
+        LOG_F(ERROR, "%s: non-zero LBA for PMI=0", this->get_name_and_unit_address().c_str());
         this->set_field_pointer(2),
         this->invalid_cdb();
         this->switch_phase(ScsiPhase::STATUS);
@@ -364,10 +365,10 @@ void ScsiHardDisk::read_capacity_10() {
 }
 
 void ScsiHardDisk::format() {
-    LOG_F(WARNING, "%s: attempt to format the disk!", this->name.c_str());
+    LOG_F(WARNING, "%s: attempt to format the disk!", this->get_name_and_unit_address().c_str());
 
     if (this->cmd_buf[1] & 0x10)
-        ABORT_F("%s: defect list isn't supported yet", this->name.c_str());
+        ABORT_F("%s: defect list isn't supported yet", this->get_name_and_unit_address().c_str());
 
     TimerManager::get_instance()->add_oneshot_timer(NS_PER_SEC, [this]() {
         this->switch_phase(ScsiPhase::STATUS);
@@ -375,7 +376,7 @@ void ScsiHardDisk::format() {
 }
 
 void ScsiHardDisk::reassign() {
-    LOG_F(WARNING, "%s: attempt to reassign blocks on the disk!", this->name.c_str());
+    LOG_F(WARNING, "%s: attempt to reassign blocks on the disk!", this->get_name_and_unit_address().c_str());
 
     TimerManager::get_instance()->add_oneshot_timer(
         NS_PER_SEC, [this]() { this->switch_phase(ScsiPhase::STATUS); });
@@ -398,7 +399,7 @@ void ScsiHardDisk::read(uint32_t lba, uint16_t transfer_len, uint8_t cmd_len) {
 
     uint64_t device_offset = (uint64_t)lba * this->sector_size;
 
-    LOG_F(INFO, "%s: read %lld %d", name.c_str(), (long long)device_offset, transfer_size);
+    LOG_F(INFO, "%s: read %lld %d", this->get_name_and_unit_address().c_str(), (long long)device_offset, transfer_size);
     this->disk_img.read(this->data_buf, device_offset, transfer_size);
 
     this->bytes_out = transfer_size;
@@ -424,9 +425,10 @@ void ScsiHardDisk::write(uint32_t lba, uint16_t transfer_len, uint8_t cmd_len) {
 
     this->incoming_size = transfer_size;
 
-    LOG_F(INFO, "%s: write %lld %d", this->name.c_str(), (long long)device_offset, transfer_size);
+    LOG_F(INFO, "%s: write %lld %d", this->get_name_and_unit_address().c_str(), (long long)device_offset, transfer_size);
     this->post_xfer_action = [this, device_offset]() {
-        LOG_F(SCSIHD, "%s: finishing write %lld %d", this->name.c_str(), (long long)device_offset, this->incoming_size);
+        LOG_F(SCSIHD, "%s: finishing write %lld %d",
+            this->get_name_and_unit_address().c_str(), (long long)device_offset, this->incoming_size);
         this->disk_img.write(this->data_buf, device_offset, this->incoming_size);
     };
 
@@ -437,7 +439,7 @@ void ScsiHardDisk::read_long_10(uint64_t lba, uint16_t transfer_len) {
     //bool CORRCT = !!(this->cmd_buf[1] & 2);
     bool PBLOCK = !!(this->cmd_buf[1] & 4);
     if (PBLOCK) {
-        LOG_F(ERROR, "%s: PBLOCK set in READ_LONG_10", this->name.c_str());
+        LOG_F(ERROR, "%s: PBLOCK set in READ_LONG_10", this->get_name_and_unit_address().c_str());
         this->set_field_pointer(1);
         this->invalid_cdb();
         this->switch_phase(ScsiPhase::STATUS);
@@ -447,7 +449,7 @@ void ScsiHardDisk::read_long_10(uint64_t lba, uint16_t transfer_len) {
     uint32_t transfer_size = transfer_len;
 
     if (transfer_len > this->sector_size) {
-        LOG_F(ERROR, "%s: requested too many bytes in READ_LONG_10", this->name.c_str());
+        LOG_F(ERROR, "%s: requested too many bytes in READ_LONG_10", this->get_name_and_unit_address().c_str());
         this->set_field_pointer(7);
         this->invalid_cdb();
         // FIXME: there should be a way to set the VALID and ILI bits in the returned SENSE data.
@@ -457,7 +459,7 @@ void ScsiHardDisk::read_long_10(uint64_t lba, uint16_t transfer_len) {
 
     uint64_t device_offset = (uint64_t)lba * this->sector_size;
 
-    LOG_F(INFO, "%s: read-long %lld %d", this->name.c_str(), (long long)device_offset, transfer_size);
+    LOG_F(INFO, "%s: read-long %lld %d", this->get_name_and_unit_address().c_str(), (long long)device_offset, transfer_size);
     this->disk_img.read(this->data_buf, device_offset, transfer_size);
 
     this->bytes_out = transfer_size;
@@ -475,7 +477,7 @@ void ScsiHardDisk::read_buffer() {
         WRITE_DWORD_BE_A(&this->data_buf[0], 0x10000); // report buffer size of 64K
         break;
     default:
-        ABORT_F("%s: unsupported mode %d in READ_BUFFER", this->name.c_str(), mode);
+        ABORT_F("%s: unsupported mode %d in READ_BUFFER", this->get_name_and_unit_address().c_str(), mode);
     }
 
     this->bytes_out = alloc_len;
