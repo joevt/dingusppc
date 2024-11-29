@@ -43,7 +43,8 @@ namespace Swim3 { class Swim3Ctrl; }
 /** Interrupt related constants. */
 
 /** CPU interrupt register bits. */
-enum : uint8_t {
+enum : uint64_t {
+    CPU_INT_SHIFT   = 0,
     CPU_INT_VIA1    = 1 << 0, // (R) VIA1 interrupts
     CPU_INT_VIA2    = 1 << 1, // (R) pseudo VIA2 interrupts
     CPU_INT_ESCC    = 1 << 2, // (R) ESCC interrupt
@@ -56,7 +57,8 @@ enum : uint8_t {
 };
 
 /** Pseudo VIA2 interrupt flag/enable register bits. */
-enum : uint8_t {
+enum : uint64_t {
+    VIA2_INT_SHIFT      = 8,
     VIA2_INT_SCSI_DRQ   = 1 << 0, // (R) SCSI DRQ interrupt
     VIA2_INT_ALL_SLOT   = 1 << 1, // (R) all slot interrupts are signalled here
     VIA2_INT_SCSI_IRQ   = 1 << 3, // (R) SCSI IRQ interrupt
@@ -66,13 +68,21 @@ enum : uint8_t {
 };
 
 /** Slot interrupt flag/enable register bits. */
-enum : uint8_t {
+enum : uint64_t {
+    SLOT_INT_SHIFT      = 16,
     SLOT_INT_SLOT_0     = 1 << 2, // (R) ColdFusion NuBus slot 0 interrupt
     SLOT_INT_SLOT_1     = 1 << 3, // (R) ColdFusion NuBus slot 1 interrupt
     SLOT_INT_SLOT_2     = 1 << 4, // (R) ColdFusion NuBus slot 2 interrupt
     SLOT_INT_SLOT_VDS   = 1 << 5, // (R) ColdFusion video direct slot interrupt
     SLOT_INT_SLOT_PDS   = 1 << 5, // (R) PDM processor direct slot interrupt
     SLOT_INT_VBL        = 1 << 6, // (R) built-in video VBL interrupt
+};
+
+/** DMA interrupt bits. */
+enum : uint64_t {
+    DMA0_INT_SHIFT      = 24,
+    DMA1_INT_SHIFT      = 32,
+        DMA1_INT_SOUND  = 1 << 1,
 };
 
 /** AMIC sound buffers are located at fixed offsets from DMA base. */
@@ -106,7 +116,7 @@ public:
 
     void init_interrupts(InterruptCtrl *int_ctrl, uint64_t irq_id) {
         this->int_ctrl = int_ctrl;
-        this->irq_id   = irq_id;
+        this->snd_dma_irq_id = irq_id;
     };
 
 private:
@@ -120,7 +130,7 @@ private:
     uint32_t        cur_buf_pos;
 
     InterruptCtrl   *int_ctrl = nullptr;
-    uint64_t        irq_id = 0;
+    uint64_t        snd_dma_irq_id = 0;
     uint8_t         irq_level = 0;
 };
 
@@ -302,9 +312,9 @@ public:
     IntSrc irq_id_to_src(uint64_t irq_id) override;
 
 protected:
-    void ack_slot_int(uint64_t irq_id, uint8_t irq_line_state);
-    void ack_via2_int(uint64_t irq_id, uint8_t irq_line_state);
-    void ack_cpu_int(uint64_t irq_id, uint8_t irq_line_state);
+    void ack_slot_int(uint8_t slot_int, uint8_t irq_line_state);
+    void ack_via2_int(uint8_t via2_int, uint8_t irq_line_state);
+    void ack_cpu_int(uint8_t cpu_int, uint8_t irq_line_state);
     void update_via2_irq();
 
 private:
