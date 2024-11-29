@@ -117,9 +117,11 @@ public:
     switch (irq_src) {
         irq_src_to_name(INT_UNKNOWN)
         irq_src_to_name(VIA_CUDA)
+        irq_src_to_name(VIA2)
         irq_src_to_name(SCSI_MESH)
         irq_src_to_name(SCSI_CURIO)
         irq_src_to_name(SWIM3)
+        irq_src_to_name(ESCC)
         irq_src_to_name(SCCA)
         irq_src_to_name(SCCB)
         irq_src_to_name(ETHERNET)
@@ -145,6 +147,7 @@ public:
         irq_src_to_name(PLANB)
         irq_src_to_name(VCI)
         irq_src_to_name(PLATINUM)
+        irq_src_to_name(DMA_ALL)
         irq_src_to_name(DMA_SCSI_MESH)
         irq_src_to_name(DMA_SCSI_CURIO)
         irq_src_to_name(DMA_SWIM3)
@@ -170,6 +173,13 @@ public:
         irq_src_to_name(ZIVA)
         irq_src_to_name(PCI_CARDBUS)
         irq_src_to_name(MEDIA_BAY)
+        irq_src_to_name(SLOT_ALL)
+        irq_src_to_name(SLOT_0)
+        irq_src_to_name(SLOT_1)
+        irq_src_to_name(SLOT_2)
+        irq_src_to_name(SLOT_PDS)
+        irq_src_to_name(SLOT_VDS)
+        irq_src_to_name(VBL)
         #undef irq_src_to_name
         default: return "unknown";
         }
