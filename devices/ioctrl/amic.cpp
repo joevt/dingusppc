@@ -55,6 +55,7 @@ AMIC::AMIC(const std::string &dev_name)
     this->curio_dma->connect(this->scsi);
     this->scsi->connect(this->curio_dma.get());
     this->scsi->set_drq_callback([this](const uint8_t drq_state) {
+        VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: drq_callback drq_state:%x", drq_state);
         if (drq_state & 1)
             via2_ifr |= VIA2_INT_SCSI_DRQ;
         else
@@ -357,6 +358,7 @@ void AMIC::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int si
     case AMICReg::VIA2_Slot_IFR:
         if (value & SLOT_INT_VBL) {
             // clear pending VBL int
+            VLOG_SCOPE_F(loguru::Verbosity_5, "clear SLOT_INT_VBL");
             this->ack_slot_int(SLOT_INT_VBL, 0);
         }
         break;
@@ -364,6 +366,7 @@ void AMIC::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int si
         // if bit 7 is set, clear the corresponding IRQ bit for each "1" in value
         // writing any value to VIA2_IFR with bit 7 cleared has no effect
         if (value & 0x80) {
+            VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: bit 7 of VIA2_IFR is set");
             this->via2_ifr &= ~(value & 0x7F);
             this->update_via2_irq();
         }
@@ -377,11 +380,14 @@ void AMIC::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int si
     case AMICReg::VIA2_IER:
     case AMICReg::VIA2_IER_RBV:
         if (value & 0x80) {
+            VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: VIA2_IER_RBV set %02x", value & 0x7F);
             this->via2_ier |= value & 0x7F;
+            this->update_via2_irq();
         } else {
+            VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: VIA2_IER_RBV clear %02x", value);
             this->via2_ier &= ~value;
+            this->update_via2_irq();
         }
-        this->update_via2_irq();
         break;
     case AMICReg::Ariel_Clut_Index:
         this->def_vid->set_clut_index(value);
@@ -415,10 +421,10 @@ void AMIC::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int si
     case AMICReg::Int_Ctrl:
         // reset CPU interrupt bit if requested
         if (value & CPU_INT_CLEAR) {
+            VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: CPU INT latch cleared %d", !!(this->int_ctrl & CPU_INT_FLAG));
             if (this->int_ctrl & CPU_INT_FLAG) {
                 this->int_ctrl &= ~CPU_INT_FLAG;
                 ppc_release_int();
-                LOG_F(5, "AMIC: CPU INT latch cleared");
             }
         }
         // keep interrupt mode bit
@@ -567,6 +573,8 @@ IntSrc AMIC::irq_id_to_src(uint64_t irq_id) {
 }
 
 void AMIC::ack_int(uint64_t irq_id, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: ack_int source:%s state:%x",
+        this->irq_src_to_name(this->irq_id_to_src(irq_id)), irq_line_state);
     // dispatch cascaded AMIC interrupts from various sources
     // irq_id format: 00DDCCBBAA where
     // - AA -> CPU interrupts
@@ -584,6 +592,8 @@ void AMIC::ack_int(uint64_t irq_id, uint8_t irq_line_state) {
 }
 
 void AMIC::ack_slot_int(uint8_t slot_int, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: ack_slot_int source:%s state:%x",
+        this->irq_src_to_name(this->irq_id_to_src(slot_int << SLOT_INT_SHIFT)), irq_line_state);
     // CAUTION: reverse logic (0 - true, 1 - false) in the IFR register!
     if (irq_line_state) {
         this->via2_slot_ifr &= ~slot_int;
@@ -607,6 +617,8 @@ void AMIC::update_via2_irq() {
 }
 
 void AMIC::ack_via2_int(uint8_t via2_int, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: ack_via2_int source:%s state:%x",
+        this->irq_src_to_name(this->irq_id_to_src(via2_int << VIA2_INT_SHIFT)), irq_line_state);
     if (irq_line_state) {
         this->via2_ifr |= via2_int;
     } else {
@@ -616,6 +628,8 @@ void AMIC::ack_via2_int(uint8_t via2_int, uint8_t irq_line_state) {
 }
 
 void AMIC::ack_cpu_int(uint8_t cpu_int, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: ack_cpu_int source:%s state:%x",
+        this->irq_src_to_name(this->irq_id_to_src(cpu_int << CPU_INT_SHIFT)), irq_line_state);
     if (this->int_ctrl & CPU_INT_MODE) { // 68k interrupt emulation mode?
         if (irq_line_state) {
             this->dev_irq_lines |= cpu_int;
@@ -636,6 +650,8 @@ void AMIC::ack_cpu_int(uint8_t cpu_int, uint8_t irq_line_state) {
 }
 
 void AMIC::ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) {
+    VLOG_SCOPE_F(loguru::Verbosity_5, "AMIC: ack_dma_int source:%s state:%x",
+        this->irq_src_to_name(this->irq_id_to_src(irq_id)), irq_line_state);
     if (irq_id >> DMA1_INT_SHIFT) { // DMA Interrupt Flags 1
         irq_id = (irq_id >> DMA1_INT_SHIFT) & 0xFFU;
         if (irq_line_state)
