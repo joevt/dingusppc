@@ -38,20 +38,20 @@ void ScsiDevice::notify(ScsiNotification notif_type, int param)
     if (notif_type == ScsiNotification::BUS_PHASE_CHANGE) {
         switch (param) {
         case ScsiPhase::RESET:
-            LOG_F(SCSIDEVICE, "%s: bus reset aknowledged", this->get_name().c_str());
+            LOG_F(SCSIDEVICE, "%s: bus reset aknowledged", this->get_name_and_unit_address().c_str());
             break;
         case ScsiPhase::SELECTION:
-            LOG_F(SCSIDEVICE, "%s: checking selected for %d", this->get_name().c_str(), scsi_id);
+            LOG_F(SCSIDEVICE, "%s: checking selected for %d", this->get_name_and_unit_address().c_str(), scsi_id);
             // check if something tries to select us
             if (this->bus_obj->get_data_lines() & (1 << scsi_id)) {
-                LOG_F(SCSIDEVICE, "%s selected", this->get_name().c_str());
+                LOG_F(SCSIDEVICE, "%s selected", this->get_name_and_unit_address().c_str());
                 TimerManager::get_instance()->add_oneshot_timer(
                     BUS_SETTLE_DELAY,
                     [this]() {
                         // don't confirm selection if BSY or I/O are asserted
                         if (this->bus_obj->test_ctrl_lines(SCSI_CTRL_BSY | SCSI_CTRL_IO))
                             return;
-                        LOG_F(SCSIDEVICE, "%s: assert SCSI_CTRL_BSY", this->get_name().c_str());
+                        LOG_F(SCSIDEVICE, "%s: assert SCSI_CTRL_BSY", this->get_name_and_unit_address().c_str());
                         this->bus_obj->assert_ctrl_line(this->scsi_id, SCSI_CTRL_BSY);
                         this->bus_obj->confirm_selection(this->scsi_id);
                         this->seq_steps = nullptr;
@@ -67,11 +67,12 @@ void ScsiDevice::notify(ScsiNotification notif_type, int param)
             }
             break;
         default:
-            LOG_F(SCSIDEVICE, "%s: ScsiMsg::BUS_PHASE_CHANGE unhandled phase %d", this->get_name().c_str(), param);
+            LOG_F(SCSIDEVICE, "%s: ScsiMsg::BUS_PHASE_CHANGE unhandled phase %d",
+                this->get_name_and_unit_address().c_str(), param);
         }
     }
     else {
-        LOG_F(SCSIDEVICE, "%s: unhandled notification type %d", this->get_name().c_str(), notif_type);
+        LOG_F(SCSIDEVICE, "%s: unhandled notification type %d", this->get_name_and_unit_address().c_str(), notif_type);
     }
 }
 
@@ -114,7 +115,7 @@ void ScsiDevice::next_step()
     switch (this->cur_phase) {
     case ScsiPhase::DATA_OUT:
         LOG_F(SCSIDEVICE, "%s: DATA_OUT data_size:%d incoming_size:%d in %s",
-            this->get_name().c_str(), this->data_size, this->incoming_size, __func__);
+            this->get_name_and_unit_address().c_str(), this->data_size, this->incoming_size, __func__);
         if (this->data_size >= this->incoming_size) {
             if (this->post_xfer_action != nullptr) {
                 this->post_xfer_action();
@@ -148,13 +149,13 @@ void ScsiDevice::next_step()
         break;
     case ScsiPhase::MESSAGE_IN:
     case ScsiPhase::BUS_FREE:
-        LOG_F(SCSIDEVICE, "%s: release all", this->get_name().c_str());
+        LOG_F(SCSIDEVICE, "%s: release all", this->get_name_and_unit_address().c_str());
         this->bus_obj->release_ctrl_lines(this->scsi_id);
         this->seq_steps = nullptr;
         this->switch_phase(ScsiPhase::BUS_FREE);
         break;
     default:
-        LOG_F(WARNING, "%s: nothing to do for phase %d", this->get_name().c_str(), this->cur_phase);
+        LOG_F(WARNING, "%s: nothing to do for phase %d", this->get_name_and_unit_address().c_str(), this->cur_phase);
     }
 }
 
@@ -186,7 +187,7 @@ void ScsiDevice::prepare_xfer(ScsiBus* bus_obj, int& bytes_in, int& bytes_out)
     case ScsiPhase::MESSAGE_IN:
         break;
     default:
-        ABORT_F("%s: unhandled phase %d in prepare_xfer()", this->get_name().c_str(), this->cur_phase);
+        ABORT_F("%s: unhandled phase %d in prepare_xfer()", this->get_name_and_unit_address().c_str(), this->cur_phase);
     }
 }
 
@@ -200,13 +201,13 @@ int ScsiDevice::xfer_data() {
         if (this->bus_obj->pull_data(this->initiator_id, this->msg_buf, 1)) {
             if (this->msg_buf[0] & ScsiMessage::IDENTIFY) {
                 LOG_F(9, "%s: IDENTIFY MESSAGE received, code = 0x%X",
-                      this->name.c_str(), this->msg_buf[0]);
+                    this->get_name_and_unit_address().c_str(), this->msg_buf[0]);
             } else {
                 this->process_message();
             }
             if (this->last_selection_has_attention) {
                 this->last_selection_message = this->msg_buf[0];
-                LOG_F(SCSIDEVICE, "%s: received message:0x%02x", this->get_name().c_str(), this->msg_buf[0]);
+                LOG_F(SCSIDEVICE, "%s: received message:0x%02x", this->get_name_and_unit_address().c_str(), this->msg_buf[0]);
             }
         }
         break;
@@ -215,7 +216,7 @@ int ScsiDevice::xfer_data() {
             int cmd_len = CmdGroupLen[this->cmd_buf[0] >> 5];
             if (cmd_len < 0) {
                 ABORT_F("%s: unsupported command received, code = 0x%X",
-                        this->name.c_str(), this->msg_buf[0]);
+                    this->get_name_and_unit_address().c_str(), this->msg_buf[0]);
             }
             if (this->bus_obj->pull_data(this->initiator_id, &this->cmd_buf[1], cmd_len - 1))
                 this->next_step();
@@ -237,7 +238,8 @@ int ScsiDevice::send_data(uint8_t* dst_ptr, const int count)
     int actual_count = std::min(this->data_size, count);
 
     std::memcpy(dst_ptr, this->data_ptr, actual_count);
-    LOG_F(SCSIDEVICE, "%s: send_data data_size:%d -> %d", this->name.c_str(), this->data_size, this->data_size - count);
+    LOG_F(SCSIDEVICE, "%s: send_data data_size:%d -> %d",
+        this->get_name_and_unit_address().c_str(), this->data_size, this->data_size - count);
     this->data_ptr  += actual_count;
     this->data_size -= actual_count;
 
@@ -260,7 +262,8 @@ int ScsiDevice::rcv_data(const uint8_t* src_ptr, const int count)
 {
     // accumulating incoming data in the pre-configured buffer
     std::memcpy(this->data_ptr, src_ptr, count);
-    LOG_F(SCSIDEVICE, "%s: rcv_data data_size:%d -> %d", this->name.c_str(), this->data_size, this->data_size + count);
+    LOG_F(SCSIDEVICE, "%s: rcv_data data_size:%d -> %d",
+        this->get_name_and_unit_address().c_str(), this->data_size, this->data_size + count);
     this->data_ptr  += count;
     this->data_size += count;
 
@@ -272,7 +275,7 @@ int ScsiDevice::rcv_data(const uint8_t* src_ptr, const int count)
 
 bool ScsiDevice::check_lun() {
     if (this->cmd_buf[1] >> 5 != this->lun) {
-        LOG_F(ERROR, "%s: non-matching LUN", this->name.c_str());
+        LOG_F(ERROR, "%s: non-matching LUN", this->get_name_and_unit_address().c_str());
         this->status = ScsiStatus::CHECK_CONDITION;
         this->sense  = ScsiSense::ILLEGAL_REQ;
         this->asc    = ScsiError::INVALID_LUN;
@@ -286,7 +289,7 @@ bool ScsiDevice::check_lun() {
 }
 
 void ScsiDevice::illegal_command(const uint8_t *cmd) {
-    LOG_F(ERROR, "%s: unsupported command: 0x%02x", this->name.c_str(), cmd[0]);
+    LOG_F(ERROR, "%s: unsupported command: 0x%02x", this->get_name_and_unit_address().c_str(), cmd[0]);
     this->status = ScsiStatus::CHECK_CONDITION;
     this->sense  = ScsiSense::ILLEGAL_REQ;
     this->asc    = ScsiError::INVALID_CMD;
