@@ -632,7 +632,7 @@ void AMIC::ack_cpu_int(uint8_t cpu_int, uint8_t irq_line_state) {
             ppc_assert_int();
             LOG_F(5, "AMIC: CPU INT asserted, source:%s", this->irq_src_to_name(this->irq_id_to_src(cpu_int << CPU_INT_SHIFT)));
         } else {
-            LOG_F(5, "AMIC: CPU INT already latched");
+            LOG_F(INFO, "AMIC: CPU INT already latched");
         }
 
     } else {
