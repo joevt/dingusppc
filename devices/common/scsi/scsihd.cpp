@@ -74,10 +74,10 @@ bool ScsiHardDisk::is_ready_for_machine() {
 
 void ScsiHardDisk::insert_image(std::string filename) {
     if (this->set_host_file(filename) < 0)
-        ABORT_F("%s: could not open image file %s", this->name.c_str(), filename.c_str());
+        ABORT_F("%s: could not open image file %s", this->get_name_and_unit_address().c_str(), filename.c_str());
 
     if (this->size_blocks > 0xFFFFFFU)
-        ABORT_F("%s: image file too large", this->name.c_str());
+        ABORT_F("%s: image file too large", this->get_name_and_unit_address().c_str());
 
     this->is_writeable = true;
 
@@ -122,7 +122,7 @@ void ScsiHardDisk::mode_select_6(uint8_t param_len) {
         return;
     }
 
-    LOG_F(ERROR, "%s: Mode Select calling for param length of: %d", this->name.c_str(), param_len);
+    LOG_F(ERROR, "%s: Mode Select calling for param length of: %d", this->get_name_and_unit_address().c_str(), param_len);
     phy_impl->set_xfer_len(param_len);
 
     std::memset(&this->data_buf[0], 0xDD, this->block_size);
@@ -193,10 +193,10 @@ int ScsiHardDisk::get_rigid_geometry_page(uint8_t ctrl, uint8_t subpage, uint8_t
 }
 
 void ScsiHardDisk::format() {
-    LOG_F(WARNING, "%s: attempt to format the disk!", this->name.c_str());
+    LOG_F(WARNING, "%s: attempt to format the disk!", this->get_name_and_unit_address().c_str());
 
     if (this->cmd_buf[1] & 0x10)
-        ABORT_F("%s: defect list isn't supported yet", this->name.c_str());
+        ABORT_F("%s: defect list isn't supported yet", this->get_name_and_unit_address().c_str());
 
     TimerManager::get_instance()->add_oneshot_timer(NS_PER_SEC, [this]() {
         this->switch_phase(ScsiPhase::STATUS);
@@ -213,7 +213,7 @@ void ScsiHardDisk::read_buffer() {
         WRITE_DWORD_BE_A(&this->data_buf[0], 0x10000); // report buffer size of 64K
         break;
     default:
-        ABORT_F("%s: unsupported mode %d in READ_BUFFER", this->name.c_str(), mode);
+        ABORT_F("%s: unsupported mode %d in READ_BUFFER", this->get_name_and_unit_address().c_str(), mode);
     }
 
     phy_impl->set_xfer_len(alloc_len);
