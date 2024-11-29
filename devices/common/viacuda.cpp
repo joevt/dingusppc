@@ -437,7 +437,7 @@ void ViaCuda::update_irq()
         uint8_t new_irq = !!active_ints;
         this->_via_ifr  = (active_ints) | (new_irq << 7);
         this->old_ifr = active_ints;
-        LOG_F(CUDA6, "VIA: assert IRQ, IFR=0x%02X", this->_via_ifr);
+        VLOG_SCOPE_F(loguru::Verbosity_CUDA6, "VIA: assert IRQ, IFR=0x%02X", this->_via_ifr);
         this->int_ctrl->ack_int(this->irq_id, new_irq);
     }
 }
