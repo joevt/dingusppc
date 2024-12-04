@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/hwinterrupt.h>
 #include <devices/common/scsi/sc53c94.h>
 #include <devices/deviceregistry.h>
+#include <devices/ioctrl/amic.h>
 #include <loguru.hpp>
 
 #include <cinttypes>
@@ -761,6 +762,17 @@ void Sc53C94::sequencer()
                 this->cur_state = SeqState::SEND_DATA;
                 SCSI_LOG_F(CURIO, "%s: state changed to %s in %s XFER_BEGIN",
                     this->name.c_str(), get_name_sequence(this->cur_state), __func__);
+                AmicScsiDma* dma = dynamic_cast<AmicScsiDma*>(this->dma_ch);
+                if (dma && dma->read_stat() & 2) {
+                    if (dma->read_stat() & (1 << 6)) {
+                        SCSI_LOG_F(CURIO, "%s: DMA - doing out", this->name.c_str());
+                        this->real_dma_xfer_out();
+                    }
+                    else {
+                        SCSI_LOG_F(CURIO, "%s: DMA - doing in", this->name.c_str());
+                        this->real_dma_xfer_in();
+                    }
+                }
                 break;
             }
             this->bus_obj->push_data(this->target_id, this->data_fifo, this->data_fifo_pos);
