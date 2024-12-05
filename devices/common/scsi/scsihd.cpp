@@ -40,7 +40,11 @@ namespace loguru {
 using namespace std;
 
 ScsiHardDisk::ScsiHardDisk(const std::string name)
-    : ScsiDevice(name), HWComponent(name) {
+    : ScsiDevice(name), HWComponent(name)
+{
+    this->data_buf_size = 1 << 22;
+    this->data_buf_obj = std::unique_ptr<uint8_t[]>(new uint8_t[this->data_buf_size]);
+    this->data_buf = this->data_buf_obj.get();
 }
 
 HWComponent* ScsiHardDisk::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
@@ -498,14 +502,21 @@ void ScsiHardDisk::read(uint32_t lba, uint16_t transfer_len, uint8_t cmd_len) {
 
     uint32_t transfer_size = transfer_len;
 
-    std::memset(this->data_buf, 0, sizeof(this->data_buf));
-
     if (cmd_len == 6 && transfer_len == 0) {
         transfer_size = 256;
     }
 
     transfer_size *= this->sector_size;
     uint64_t device_offset = (uint64_t)lba * this->sector_size;
+
+    if (transfer_size > this->data_buf_size) {
+        while (transfer_size > this->data_buf_size)
+            this->data_buf_size <<= 1;
+        this->data_buf_obj = std::unique_ptr<uint8_t[]>(new uint8_t[this->data_buf_size]);
+        this->data_buf = this->data_buf_obj.get();
+    }
+
+    std::memset(this->data_buf, 0, transfer_size);
 
     LOG_F(INFO, "%s: read %lld %d", this->get_name_and_unit_address().c_str(), (long long)device_offset, transfer_size);
     this->disk_img.read(this->data_buf, device_offset, transfer_size);
