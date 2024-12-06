@@ -31,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/ofnvram.h>
 #include <debugger/symbols.h>
 #include <devices/common/hwcomponent.h>
+#include <devices/serial/chario.h>
 #include <machines/machinefactory.h>
 #include <utils/profiler.h>
 #include <main.h>
@@ -345,6 +346,7 @@ int main(int argc, char** argv) {
 
     // if we didn't delete this then delete it now
     delete gMachineObj.release();
+    SocketCache::delete_instance();
 
     cleanup();
 
