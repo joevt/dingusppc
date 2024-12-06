@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 #include <string>
+#include <map>
 
 #ifdef _WIN32
 #else
@@ -106,6 +107,33 @@ private:
     int     acceptfd = -1;
     std::string path;
     int     consecutivechars = 0;
+};
+
+/** Socket cache which servives machine shutdown/restart. */
+class SocketCache {
+public:
+    typedef struct {
+        int sockfd;
+        int acceptfd;
+    } SocketInfo;
+
+    static SocketCache* get_instance() {
+        if (!socketcache_obj) {
+            socketcache_obj = std::unique_ptr<SocketCache>(new SocketCache());
+        }
+        return socketcache_obj.get();
+    }
+
+    static void delete_instance() {
+        delete socketcache_obj.release();
+    }
+
+    ~SocketCache();
+
+    std::map<std::string, SocketInfo> sockets;
+private:
+    inline static std::unique_ptr<SocketCache> socketcache_obj{nullptr};
+    explicit SocketCache(); // private constructor to implement a singleton
 };
 
 #endif // CHAR_IO_H
