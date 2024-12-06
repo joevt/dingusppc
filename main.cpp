@@ -150,6 +150,7 @@ int main(int argc, char** argv) {
     bool              log_to_stderr = false;
     loguru::Verbosity log_verbosity = loguru::Verbosity_INFO;
     bool              log_no_uptime = false;
+    bool              log_thread    = false;
     emu->add_flag("--log-to-stderr", log_to_stderr,
         "Send internal logging to stderr (instead of dingusppc.log)");
     emu->add_flag("--log-verbosity", log_verbosity,
@@ -157,6 +158,8 @@ int main(int argc, char** argv) {
         ->check(CLI::Number);
     emu->add_flag("--log-no-uptime", log_no_uptime,
         "Disable the uptime preamble of logged messages");
+    emu->add_flag("--log-thread", log_thread,
+        "Show thread name in logged messages");
 
     std::vector<std::string> env_vars;
     app.add_option("--setenv", env_vars, "Set Open Firmware variables at startup")
@@ -209,7 +212,7 @@ int main(int argc, char** argv) {
     /* initialize logging */
     loguru::g_preamble_date    = false;
     loguru::g_preamble_time    = false;
-    loguru::g_preamble_thread  = false;
+    loguru::g_preamble_thread  = log_thread;
     loguru::g_preamble_uptime  = !log_no_uptime;
 
     if (execution_mode == interpreter && !log_to_stderr) {
