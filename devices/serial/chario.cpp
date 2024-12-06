@@ -286,7 +286,12 @@ CharIoSocket::CharIoSocket(const std::string &name, const std::string &path) : C
 
     this->path = path;
 
-    do {
+    if (SocketCache::get_instance()->sockets.count(path)) {
+        auto& sockinfo = SocketCache::get_instance()->sockets[path];
+        this->sockfd = sockinfo.sockfd;
+        this->acceptfd = sockinfo.acceptfd;
+        LOG_F(INFO, "using existing socket \"%s\"", path.c_str());
+    } else do {
         rc = unlink(path.c_str());
         if (rc == 0) {
             LOG_F(INFO, "socket \"%s\" unlinked", path.c_str());
@@ -326,19 +331,14 @@ CharIoSocket::CharIoSocket(const std::string &name, const std::string &path) : C
 
         LOG_F(INFO, "socket \"%s\" listen %d", this->path.c_str(), this->sockfd);
 
+        SocketCache::get_instance()->sockets[path].sockfd = this->sockfd;
+        SocketCache::get_instance()->sockets[path].acceptfd = -1;
     } while (0);
 }
 
 
 CharIoSocket::~CharIoSocket() {
-    unlink(path.c_str());
-    if (errno != ENOENT) {
-        LOG_F(INFO, "socket unlink err: %s", strerror(errno));
-    }
-    if (sockfd != -1) {
-        close(sockfd);
-        sockfd = -1;
-    }
+    this->sockfd = -1;
 }
 
 
@@ -435,6 +435,7 @@ bool CharIoSocket::rcv_char_available_now()
                     }
                     else {
                         LOG_F(INFO, "socket \"%s\" accept %d", this->path.c_str(), this->acceptfd);
+                        SocketCache::get_instance()->sockets[this->path].acceptfd = this->acceptfd;
                     }
                 }
             } // if read
@@ -525,6 +526,28 @@ int CharIoSocket::rcv_char(uint8_t *c)
         }
     }
     return 0;
+}
+
+SocketCache::SocketCache()
+{
+    LOG_F(INFO, "Created SocketCache");
+}
+
+SocketCache::~SocketCache()
+{
+    for (auto& it : this->sockets) {
+        unlink(it.first.c_str());
+        if (errno != ENOENT) {
+            LOG_F(INFO, "socket \"%s\" unlink err: %s", it.first.c_str(), strerror(errno));
+        } else {
+            LOG_F(INFO, "socket \"%s\" unlink", it.first.c_str());
+        }
+        if (it.second.sockfd != -1) {
+            close(it.second.sockfd);
+            it.second.sockfd = -1;
+        }
+    }
+    LOG_F(INFO, "Deleted SocketCache");
 }
 
 #endif
