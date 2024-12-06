@@ -104,7 +104,7 @@ private:
     bool    socket_inited = false;
     int     sockfd = -1;
     int     acceptfd = -1;
-    std::string path = "";
+    std::string path;
     int     consecutivechars = 0;
 };
 
