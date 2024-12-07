@@ -79,7 +79,7 @@ OHare::OHare()
     );
 
     // connect SCSI HW and the corresponding DMA channel
-    this->mesh = dynamic_cast<MeshController*>(gMachineObj->get_comp_by_name("MeshHeathrow"));
+    this->mesh = dynamic_cast<MeshController*>(gMachineObj->get_comp_by_name("MeshTnt"));
     this->mesh_dma = std::unique_ptr<DMAChannel> (new DMAChannel("mesh"));
     this->mesh_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCSI_MESH));
     this->mesh_dma->connect(this->mesh);
@@ -566,7 +566,7 @@ void OHare::clear_cpu_int()
 }
 
 static const std::vector<std::string> OHare_Subdevices = {
-    "NVRAM@60000", "ViaCuda@16000", "MeshHeathrow@10000", "Escc@13000", "Swim3@15000", "Ide0@20000"
+    "NVRAM@60000", "ViaCuda@16000", "MeshTnt@10000", "Escc@13000", "Swim3@15000", "Ide0@20000"
 };
 
 static const DeviceDescription OHare_Descriptor = {
