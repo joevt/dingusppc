@@ -55,8 +55,8 @@ uint16_t AtapiBaseDevice::read(const uint8_t reg_addr) {
             this->xfer_cnt -= 2;
             if (this->xfer_cnt <= 0) {
                 #if 0
-                    LOG_F(INFO, "%s: Read completed (%d, %d, %d)", this->name.c_str(),
-                        this->xfer_cnt, r_int_reason & ATAPI_Int_Reason::IO, r_int_reason & ATAPI_Int_Reason::CoD);
+                LOG_F(INFO, "%s: Read completed (%d, %d, %d)", this->get_name_and_unit_address().c_str(),
+                    this->xfer_cnt, r_int_reason & ATAPI_Int_Reason::IO, r_int_reason & ATAPI_Int_Reason::CoD);
                 #endif
                 this->r_status &= ~DRQ;
 
@@ -127,13 +127,13 @@ void AtapiBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
     case ATAPI_Reg::BYTE_COUNT_LO:
         this->r_byte_count = (this->r_byte_count & 0xFF00U) | (value & 0xFFU);
 #if 0
-        LOG_F(WARNING, "%s: setting size %d", this->name.c_str(), this->r_byte_count);
+        LOG_F(WARNING, "%s: setting size %d", this->get_name_and_unit_address().c_str(), this->r_byte_count);
 #endif
         break;
     case ATAPI_Reg::BYTE_COUNT_HI:
         this->r_byte_count = (this->r_byte_count & 0xFFU) | ((value & 0xFFU) << 8);
 #if 0
-        LOG_F(WARNING, "%s: setting size %d", this->name.c_str(), this->r_byte_count);
+        LOG_F(WARNING, "%s: setting size %d", this->get_name_and_unit_address().c_str(), this->r_byte_count);
         dump_backtrace();
 #endif
         break;
@@ -156,7 +156,7 @@ void AtapiBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
 
 int AtapiBaseDevice::perform_command() {
     VLOG_SCOPE_F(this->r_command != ATAPI_PACKET ? loguru::Verbosity_WARNING : 10, "%s: perform_command 0x%X",
-        this->name.c_str(), this->r_command);
+        this->get_name_and_unit_address().c_str(), this->r_command);
 
     this->r_error  &= ~ATA_Error::ABRT;
     this->r_status &= ~ATA_Status::ERR;
@@ -188,12 +188,12 @@ int AtapiBaseDevice::perform_command() {
     case SET_FEATURES:
         switch (this->r_features) {
         case 3: // set transfer mode
-            LOG_F(INFO, "%s: xfer_type=0x%X, mode=0x%X", this->name.c_str(),
+            LOG_F(INFO, "%s: xfer_type=0x%X, mode=0x%X", this->get_name_and_unit_address().c_str(),
                 this->r_sect_count >> 3, this->r_sect_count & 7);
             break;
         default:
             LOG_F(ERROR, "%s: unsupported subcommand 0x%X in SET_FEATURES",
-                this->name.c_str(), this->r_features);
+                this->get_name_and_unit_address().c_str(), this->r_features);
             this->r_error  |= ATA_Error::ABRT;
             this->r_status |= ATA_Status::ERR;
         }
@@ -201,7 +201,7 @@ int AtapiBaseDevice::perform_command() {
         this->update_intrq(1);
         break;
     default:
-        LOG_F(ERROR, "%s: unsupported command 0x%X", this->name.c_str(), this->r_command);
+        LOG_F(ERROR, "%s: unsupported command 0x%X", this->get_name_and_unit_address().c_str(), this->r_command);
         this->r_error  |= ATA_Error::ABRT;
         this->r_status |= ATA_Status::ERR;
     }

@@ -57,7 +57,7 @@ AtapiCdrom::AtapiCdrom(const std::string name) : AtapiBaseDevice(name), HWCompon
 
 void AtapiCdrom::perform_packet_command() {
     VLOG_SCOPE_F(loguru::Verbosity_INFO, "%s: perform_packet_command %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-        this->name.c_str(),
+        this->get_name_and_unit_address().c_str(),
         this->cmd_pkt[0],
         this->cmd_pkt[1],
         this->cmd_pkt[2],
@@ -78,7 +78,7 @@ void AtapiCdrom::perform_packet_command() {
     this->sector_areas = 0;
     if (this->doing_sector_areas) {
         this->doing_sector_areas = false;
-        LOG_F(WARNING, "%s: doing_sector_areas reset", this->name.c_str());
+        LOG_F(WARNING, "%s: doing_sector_areas reset", this->get_name_and_unit_address().c_str());
     }
 
     switch (this->cmd_pkt[0]) {
@@ -115,7 +115,7 @@ void AtapiCdrom::perform_packet_command() {
         this->present_status();
         break;
     case ScsiCommand::PREVENT_ALLOW_MEDIUM_REMOVAL:
-        LOG_F(INFO, "%s: medium removal %s", this->name.c_str(),
+        LOG_F(INFO, "%s: medium removal %s", this->get_name_and_unit_address().c_str(),
             this->cmd_pkt[4] & 1 ? "prevented" : "allowed");
         this->status_good();
         this->present_status();
@@ -236,7 +236,7 @@ void AtapiCdrom::perform_packet_command() {
         this->data_out_phase();
         break;
     case ScsiCommand::SET_CD_SPEED:
-        LOG_F(INFO, "%s: speed set to %d kBps", this->name.c_str(),
+        LOG_F(INFO, "%s: speed set to %d kBps", this->get_name_and_unit_address().c_str(),
               READ_WORD_BE_U(&this->cmd_pkt[2]));
         this->status_good();
         this->present_status();
@@ -259,7 +259,7 @@ void AtapiCdrom::perform_packet_command() {
 
         if (this->cmd_pkt[1] || (this->cmd_pkt[9] & ~0xf8) || ((this->cmd_pkt[9] & 0xf8) == 0) || this->cmd_pkt[10])
             LOG_F(WARNING, "%s: unsupported READ_CD params: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-                this->name.c_str(),
+                this->get_name_and_unit_address().c_str(),
                 this->cmd_pkt[0], this->cmd_pkt[1], this->cmd_pkt[2], this->cmd_pkt[3], this->cmd_pkt[4], this->cmd_pkt[5],
                 this->cmd_pkt[6], this->cmd_pkt[7], this->cmd_pkt[8], this->cmd_pkt[9], this->cmd_pkt[10], this->cmd_pkt[11]
             );
@@ -333,7 +333,7 @@ void AtapiCdrom::perform_packet_command() {
         break;
     }
     default:
-        LOG_F(ERROR, "%s: unsupported ATAPI command 0x%X", this->name.c_str(),
+        LOG_F(ERROR, "%s: unsupported ATAPI command 0x%X", this->get_name_and_unit_address().c_str(),
               this->cmd_pkt[0]);
         this->status_error(ScsiSense::ILLEGAL_REQ, ScsiError::INVALID_CMD);
         this->present_status();
