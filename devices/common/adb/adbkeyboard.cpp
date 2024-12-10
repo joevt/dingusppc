@@ -76,7 +76,7 @@ uint8_t AdbKeyboard::consume_pending_event() {
     } else if (event->flags & KEYBOARD_EVENT_UP) {
         key_state = 1;
     } else {
-        LOG_F(WARNING, "%s: unknown keyboard event flags %x", this->name.c_str(), event->flags);
+        LOG_F(WARNING, "%s: unknown keyboard event flags %x", this->get_name_and_unit_address().c_str(), event->flags);
     }
 
     if (this->dev_handler_id != 3) {
@@ -116,7 +116,7 @@ void AdbKeyboard::set_register_3() {
         }
         break;
     default:
-        LOG_F(WARNING, "%s: unknown handler ID = 0x%X", this->name.c_str(), in_data[1]);
+        LOG_F(WARNING, "%s: unknown handler ID = 0x%X", this->get_name_and_unit_address().c_str(), in_data[1]);
     }
 }
 
