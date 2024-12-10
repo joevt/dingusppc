@@ -52,7 +52,7 @@ void AdbAppleJack::reset() {
     this->buttons_state = 0;
     this->triggers_changed = false;
     this->buttons_changed = false;
-    LOG_F(INFO, "%s: reset; in mouse emulation mode", this->name.c_str());
+    LOG_F(INFO, "%s: reset; in mouse emulation mode", this->get_name_and_unit_address().c_str());
 }
 
 bool AdbAppleJack::get_register_0() {
@@ -87,7 +87,7 @@ void AdbAppleJack::set_register_3() {
     switch (in_data[1]) {
     case APPLEJACK_HANDLER_ID: // switch over to AppleJack protocol
         this->dev_handler_id = in_data[1];
-        LOG_F(INFO, "%s: switched to AppleJack mode", this->name.c_str());
+        LOG_F(INFO, "%s: switched to AppleJack mode", this->get_name_and_unit_address().c_str());
         break;
     default:
         this->AdbMouse::set_register_3();
