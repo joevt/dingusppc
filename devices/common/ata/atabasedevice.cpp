@@ -45,7 +45,7 @@ AtaBaseDevice::AtaBaseDevice(const std::string name, uint8_t type)
 }
 
 void AtaBaseDevice::device_reset(bool is_soft_reset) {
-    LOG_F(INFO, "%s: %s-reset triggered", this->name.c_str(),
+    LOG_F(INFO, "%s: %s-reset triggered", this->get_name_and_unit_address().c_str(),
           is_soft_reset ? "soft" : "hard");
 
     // Diagnostic code
@@ -80,7 +80,7 @@ uint16_t AtaBaseDevice::read(const uint8_t reg_addr) {
                 } else {
                     this->chunk_cnt = std::min(this->xfer_cnt, this->chunk_size);
                     if (this->read_data_timer.active)
-                        LOG_F(ERROR, "%s: read_data_timer is already active", this->get_name().c_str());
+                        LOG_F(ERROR, "%s: read_data_timer is already active", this->get_name_and_unit_address().c_str());
                     TimerManager::get_instance()->add_oneshot_timer(this->read_data_timer,
                         USECS_TO_NSECS(100), [this](uint64_t, uint64_t) {
                             this->read_data_timer.active = 0;
@@ -128,9 +128,9 @@ void AtaBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
                 if (this->xfer_cnt <= 0) { // transfer complete?
                     this->xfer_cnt = 0;
                     this->r_status &= ~DRQ;
-                    //LOG_F(INFO, "%s: write complete", name.c_str());
+                    //LOG_F(INFO, "%s: write complete", this->get_name_and_unit_address().c_str());
                     if (this->write_done_timer.active)
-                        LOG_F(ERROR, "%s: write_done_timer is already active", this->get_name().c_str());
+                        LOG_F(ERROR, "%s: write_done_timer is already active", this->get_name_and_unit_address().c_str());
                     TimerManager::get_instance()->add_oneshot_timer(write_done_timer,
                         USECS_TO_NSECS(100), [this](uint64_t, uint64_t) {
                             write_done_timer.active = 0;
@@ -141,9 +141,9 @@ void AtaBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
                 } else {
                     this->cur_data_ptr = this->data_ptr;
                     this->chunk_cnt = std::min(this->xfer_cnt, this->chunk_size);
-                    //LOG_F(INFO, "%s: write needs more data (left: 0x%x)", name.c_str(), xfer_cnt);
+                    //LOG_F(INFO, "%s: write needs more data (left: 0x%x)", this->get_name_and_unit_address().c_str(), xfer_cnt);
                     if (this->write_more_timer.active)
-                        LOG_F(ERROR, "%s: write_more_timer is already active", this->get_name().c_str());
+                        LOG_F(ERROR, "%s: write_more_timer is already active", this->get_name_and_unit_address().c_str());
                     TimerManager::get_instance()->add_oneshot_timer(this->write_more_timer,
                         USECS_TO_NSECS(100), [this](uint64_t, uint64_t) {
                             this->write_more_timer.active = 0;
@@ -174,7 +174,7 @@ void AtaBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
         break;
     case ATA_Reg::COMMAND:
         if ((this->r_status & BSY) != 0) {
-            LOG_F(ERROR, "%s: tried to perform command %x when busy", name.c_str(), value);
+            LOG_F(ERROR, "%s: tried to perform command %x when busy", this->get_name_and_unit_address().c_str(), value);
             break;
         }
         this->r_command = value;
@@ -198,7 +198,8 @@ void AtaBaseDevice::device_control(const uint8_t new_ctrl) {
             this->device_reset(true);
         } else { // SRST cleared -> phase 1 aka signature and error report
             if (!this->my_dev_id && this->host_obj->is_device1_present()) {
-                LOG_F(ERROR, "%s: changing error from 0x%02x to 0x%02x", this->name.c_str(), this->r_error, this->r_error | 0x80);
+                LOG_F(ERROR, "%s: changing error from 0x%02x to 0x%02x",
+                    this->get_name_and_unit_address().c_str(), this->r_error, this->r_error | 0x80);
                 this->r_error |= 0x80;
             }
             this->device_set_signature();
@@ -237,7 +238,7 @@ int AtaBaseDevice::pull_data(uint8_t *buf, int len) {
         this->is_dma_xfer = false;
         this->data_ptr = nullptr;
         if (this->dma_pull_timer.active)
-            LOG_F(ERROR, "%s: dma_pull_timer is already active", this->get_name().c_str());
+            LOG_F(ERROR, "%s: dma_pull_timer is already active", this->get_name_and_unit_address().c_str());
         TimerManager::get_instance()->add_oneshot_timer(dma_pull_timer, 500, [this](uint64_t, uint64_t) {
             dma_pull_timer.active = 0;
             this->r_status &= ~(BSY | DRQ);
@@ -267,7 +268,7 @@ int AtaBaseDevice::push_data(uint8_t *buf, int len) {
         this->data_ptr = nullptr;
         this->cur_data_ptr = nullptr;
         if (this->dma_push_timer.active)
-            LOG_F(ERROR, "%s: dma_push_timer is already active", this->get_name().c_str());
+            LOG_F(ERROR, "%s: dma_push_timer is already active", this->get_name_and_unit_address().c_str());
         TimerManager::get_instance()->add_oneshot_timer(dma_push_timer, 500, [this](uint64_t, uint64_t) {
             dma_push_timer.active = 0;
             this->r_status &= ~(BSY | DRQ);
