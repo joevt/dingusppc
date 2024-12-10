@@ -144,7 +144,7 @@ void AdbDevice::set_register_3() {
         }
         break;
     default:
-        LOG_F(WARNING, "ADB Device: unknown handler ID = 0x%X", in_data[1]);
+        LOG_F(WARNING, "%s: unknown handler ID = 0x%X", this->get_name_and_unit_address().c_str(), in_data[1]);
     }
 }
 
