@@ -47,7 +47,7 @@ AtaHardDisk::AtaHardDisk(const std::string name)
 
 void AtaHardDisk::insert_image(std::string filename) {
     if (!this->hdd_img.open(filename)) {
-        ABORT_F("%s: could not open image file \"%s\"", this->name.c_str(),
+        ABORT_F("%s: could not open image file \"%s\"", this->get_name_and_unit_address().c_str(),
                 filename.c_str());
     }
 
@@ -55,7 +55,7 @@ void AtaHardDisk::insert_image(std::string filename) {
     uint64_t sectors = this->hdd_img.size() / ATA_HD_SEC_SIZE;
     this->total_sectors = (uint32_t)sectors;
     if (sectors != this->total_sectors) {
-        ABORT_F("%s: image file \"%s\" is too big", this->name.c_str(),
+        ABORT_F("%s: image file \"%s\" is too big", this->get_name_and_unit_address().c_str(),
                 filename.c_str());
     }
     this->calc_chs_params();
@@ -79,7 +79,7 @@ bool AtaHardDisk::is_ready_for_machine() {
 
 int AtaHardDisk::perform_command() {
 
-    //LOG_F(INFO, "%s: running ATA command 0x%X", this->name.c_str(), this->r_command);
+    //LOG_F(INFO, "%s: running ATA command 0x%X", this->get_name_and_unit_address().c_str(), this->r_command);
 
     this->r_status |= BSY;
     this->r_error = 0;
@@ -108,7 +108,7 @@ int AtaHardDisk::perform_command() {
             uint32_t ints_size = ATA_HD_SEC_SIZE;
             if (this->r_command == READ_MULTIPLE) {
                 if (!this->sectors_per_int) {
-                    LOG_F(ERROR, "%s: READ_MULTIPLE disabled", this->name.c_str());
+                    LOG_F(ERROR, "%s: READ_MULTIPLE disabled", this->get_name_and_unit_address().c_str());
                     this->r_status |= ERR;
                     this->r_status &= ~BSY;
                     break;
@@ -140,7 +140,7 @@ int AtaHardDisk::perform_command() {
             uint32_t ints_size = ATA_HD_SEC_SIZE;
             if (this->r_command == WRITE_MULTIPLE) {
                 if (!this->sectors_per_int) {
-                    LOG_F(ERROR, "%s: WRITE_MULTIPLE disabled", this->name.c_str());
+                    LOG_F(ERROR, "%s: WRITE_MULTIPLE disabled", this->get_name_and_unit_address().c_str());
                     this->r_status |= ERR;
                     this->r_status &= ~BSY;
                     break;
@@ -184,11 +184,11 @@ int AtaHardDisk::perform_command() {
         if (!this->r_sect_count || this->r_sect_count > SECTORS_PER_INT ||
             std::bitset<8>(this->r_sect_count).count() != 1) { // power of two?
             LOG_F(ERROR, "%s: invalid parameter %d for SET_MULTIPLE_MODE",
-                  this->name.c_str(), this->r_sect_count);
+                  this->get_name_and_unit_address().c_str(), this->r_sect_count);
             this->r_error  |= ABRT;
             this->r_status |= ERR;
         } else {
-            LOG_F(9, "%s: SET_MULTIPLE_MODE, r_sect_count=%d", this->name.c_str(),
+            LOG_F(9, "%s: SET_MULTIPLE_MODE, r_sect_count=%d", this->get_name_and_unit_address().c_str(),
                   this->r_sect_count);
             this->sectors_per_int  = this->r_sect_count;
         }
@@ -209,36 +209,36 @@ int AtaHardDisk::perform_command() {
         if (this->r_features == 3) {
             switch(this->r_sect_count >> 3) {
             case 0:
-                LOG_F(INFO, "%s: default transfer mode requested", this->name.c_str());
+                LOG_F(INFO, "%s: default transfer mode requested", this->get_name_and_unit_address().c_str());
                 break;
             case 1:
-                LOG_F(INFO, "%s: PIO transfer mode set to 0x%X", this->name.c_str(),
+                LOG_F(INFO, "%s: PIO transfer mode set to 0x%X", this->get_name_and_unit_address().c_str(),
                       this->r_sect_count & 7);
                 break;
             case 4:
-                LOG_F(INFO, "%s: Multiword DMA mode set to 0x%X", this->name.c_str(),
+                LOG_F(INFO, "%s: Multiword DMA mode set to 0x%X", this->get_name_and_unit_address().c_str(),
                       this->r_sect_count & 7);
                 break;
             default:
-                LOG_F(ERROR, "%s: unsupported transfer mode 0x%X", this->name.c_str(),
+                LOG_F(ERROR, "%s: unsupported transfer mode 0x%X", this->get_name_and_unit_address().c_str(),
                       this->r_sect_count);
                 this->r_error  |= ATA_Error::ABRT;
                 this->r_status |= ATA_Status::ERR;
             }
         } else {
             LOG_F(WARNING, "%s: unsupported SET_FEATURES subcommand code 0x%X",
-                  this->name.c_str(), this->r_features);
+                  this->get_name_and_unit_address().c_str(), this->r_features);
         }
         this->r_status &= ~BSY;
         this->update_intrq(1);
         break;
     case STANDBY_IMMEDIATE_E0:
-        LOG_F(INFO, "%s: STANDBY_IMMEDIATE_E0", this->name.c_str());
+        LOG_F(INFO, "%s: STANDBY_IMMEDIATE_E0", this->get_name_and_unit_address().c_str());
         this->r_status &= ~BSY;
         this->update_intrq(1);
         break;
     default:
-        LOG_F(ERROR, "%s: unknown ATA command 0x%x", this->name.c_str(), this->r_command);
+        LOG_F(ERROR, "%s: unknown ATA command 0x%x", this->get_name_and_unit_address().c_str(), this->r_command);
         this->r_status &= ~BSY;
         this->r_status |= ERR;
         return -1;
@@ -286,7 +286,7 @@ uint64_t AtaHardDisk::get_lba() {
         uint8_t  s = this->r_sect_num;
 
         if (!s) {
-            LOG_F(ERROR, "%s: zero sector number is not allowed!", this->name.c_str());
+            LOG_F(ERROR, "%s: zero sector number is not allowed!", this->get_name_and_unit_address().c_str());
             return -1ULL;
         } else
             return (this->heads * c + h) * this->sectors + s - 1;
@@ -296,14 +296,14 @@ uint64_t AtaHardDisk::get_lba() {
 void AtaHardDisk::calc_chs_params() {
     unsigned num_blocks, heads, sectors, max_sectors, cylinders, max_cylinders;
 
-    LOG_F(INFO, "%s: total sectors %d", this->name.c_str(), this->total_sectors);
+    LOG_F(INFO, "%s: total sectors %d", this->get_name_and_unit_address().c_str(), this->total_sectors);
 
     if (this->total_sectors >= REAL_CHS_LIMIT) {
         heads = 16;
         sectors = 255;
         cylinders = 65535;
         LOG_F(WARNING, "%s: exceeds max CHS translation",
-              this->name.c_str());
+              this->get_name_and_unit_address().c_str());
         goto done;
     }
 
@@ -331,13 +331,13 @@ void AtaHardDisk::calc_chs_params() {
     cylinders = (num_blocks + heads * sectors - 1) / (heads * sectors);
 
     LOG_F(WARNING, "%s: could not find a suitable CHS translation; increased sectors to %d",
-          this->name.c_str(), heads * sectors * cylinders);
+          this->get_name_and_unit_address().c_str(), heads * sectors * cylinders);
 
 done:
     this->heads = heads;
     this->sectors = sectors;
     this->cylinders = cylinders;
-    LOG_F(INFO, "%s: C=%d, H=%d, S=%d", this->name.c_str(), cylinders,
+    LOG_F(INFO, "%s: C=%d, H=%d, S=%d", this->get_name_and_unit_address().c_str(), cylinders,
           heads, sectors);
 }
 
