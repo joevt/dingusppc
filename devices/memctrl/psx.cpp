@@ -79,6 +79,7 @@ void PsxCtrl::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int
     case PsxReg::Page3_Mapping:
     case PsxReg::Page4_Mapping:
     case PsxReg::Page5_Mapping:
+        LOG_F(INFO, "PSX: write Page %d Mapping @%02x.%c = %0*x", (offset >> 3) - PsxReg::Page1_Mapping + 1, offset, SIZE_ARG(size), size * 2, value);
         this->pages_cfg[(offset >> 3) - PsxReg::Page1_Mapping] = value;
         break;
     default:
