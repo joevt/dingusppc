@@ -55,7 +55,7 @@ AtapiCdrom::AtapiCdrom(const std::string name) : AtapiBaseDevice(name), HWCompon
 
 void AtapiCdrom::perform_packet_command() {
     VLOG_SCOPE_F(loguru::Verbosity_INFO, "%s: perform_packet_command %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-        this->name.c_str(),
+        this->get_name_and_unit_address().c_str(),
         this->cmd_pkt[0],
         this->cmd_pkt[1],
         this->cmd_pkt[2],
@@ -76,7 +76,7 @@ void AtapiCdrom::perform_packet_command() {
     this->sector_areas = 0;
     if (this->doing_sector_areas) {
         this->doing_sector_areas = false;
-        LOG_F(WARNING, "%s: doing_sector_areas reset", this->name.c_str());
+        LOG_F(WARNING, "%s: doing_sector_areas reset", this->get_name_and_unit_address().c_str());
     }
 
     // Assume successful command execution
@@ -107,7 +107,7 @@ void AtapiCdrom::perform_packet_command() {
 
         if (this->cmd_pkt[1] || (this->cmd_pkt[9] & ~0xf8) || ((this->cmd_pkt[9] & 0xf8) == 0) || this->cmd_pkt[10])
             LOG_F(WARNING, "%s: unsupported READ_CD params: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-                this->name.c_str(),
+                this->get_name_and_unit_address().c_str(),
                 this->cmd_pkt[0], this->cmd_pkt[1], this->cmd_pkt[2], this->cmd_pkt[3], this->cmd_pkt[4], this->cmd_pkt[5],
                 this->cmd_pkt[6], this->cmd_pkt[7], this->cmd_pkt[8], this->cmd_pkt[9], this->cmd_pkt[10], this->cmd_pkt[11]
             );
