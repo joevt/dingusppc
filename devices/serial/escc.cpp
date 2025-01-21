@@ -216,7 +216,7 @@ void EsccChannel::attach_backend(int id)
         break;
 #endif
     default:
-        LOG_F(ERROR, "%s: unknown backend ID %d, using NULL instead", this->name.c_str(), id);
+        LOG_F(ERROR, "%s: unknown backend ID %d, using NULL instead", this->get_name_and_unit_address().c_str(), id);
         this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoNull(this->get_name() + "_CharIoNull"));
     }
 }
@@ -273,17 +273,17 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
         if ((this->write_regs[WR3] ^ value) & WR3_ENTER_HUNT_MODE) {
             this->write_regs[WR3] |= WR3_ENTER_HUNT_MODE;
             this->read_regs[RR0] |= RR0_SYNC_HUNT;
-            LOG_F(9, "%s: Hunt mode entered.", this->name.c_str());
+            LOG_F(9, "%s: Hunt mode entered.", this->get_name_and_unit_address().c_str());
         }
         if ((this->write_regs[WR3] ^ value) & WR3_RX_ENABLE) {
             if (value & WR3_RX_ENABLE) {
                 this->write_regs[WR3] |= WR3_RX_ENABLE;
                 this->chario->rcv_enable();
-                LOG_F(9, "%s: receiver enabled.", this->name.c_str());
+                LOG_F(9, "%s: receiver enabled.", this->get_name_and_unit_address().c_str());
             } else {
                 this->write_regs[WR3] ^= WR3_RX_ENABLE;
                 this->chario->rcv_disable();
-                LOG_F(9, "%s: receiver disabled.", this->name.c_str());
+                LOG_F(9, "%s: receiver disabled.", this->get_name_and_unit_address().c_str());
                 this->write_regs[WR3] |= WR3_ENTER_HUNT_MODE;
                 this->read_regs[RR0] |= RR0_SYNC_HUNT;
             }
@@ -329,11 +329,11 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
             break;
         }
         if (value & (WR14_LOCAL_LOOPBACK | WR14_AUTO_ECHO | WR14_DTR_REQUEST_FUNCTION)) {
-            LOG_F(WARNING, "%s: unexpected value in WR14 = 0x%X", this->name.c_str(), value);
+            LOG_F(WARNING, "%s: unexpected value in WR14 = 0x%X", this->get_name_and_unit_address().c_str(), value);
         }
         if (this->brg_active ^ (value & WR14_BR_GENERATOR_ENABLE)) {
             this->brg_active = value & WR14_BR_GENERATOR_ENABLE;
-            LOG_F(9, "%s: BRG %s", this->name.c_str(), this->brg_active ? "enabled" : "disabled");
+            LOG_F(9, "%s: BRG %s", this->get_name_and_unit_address().c_str(), this->brg_active ? "enabled" : "disabled");
         }
         return;
     }
@@ -391,13 +391,16 @@ void EsccChannel::set_enh_reg(uint8_t value)
     uint8_t changed_bits = value ^ this->enh_reg;
     if (changed_bits & 0x10) {
         if (value & 0x10)
-            LOG_F(ERROR, "%s: CTS connected to GPIO; DCD connected to GND", this->name.c_str());
+            LOG_F(ERROR, "%s: CTS connected to GPIO; DCD connected to GND",
+                this->get_name_and_unit_address().c_str());
         else
-            LOG_F(INFO, "%s: CTS connected to TRXC_In_l; DCD connected to GPIO", this->name.c_str());
+            LOG_F(INFO, "%s: CTS connected to TRXC_In_l; DCD connected to GPIO",
+                this->get_name_and_unit_address().c_str());
         this->enh_reg = value & 0x10;
     } else if (changed_bits & ~0x10) {
         if (value & ~0x10)
-            LOG_F(ERROR, "%s: Ignoring attempt to set Enh_Reg bits 0x%02x", this->name.c_str(), value & ~0x10);
+            LOG_F(ERROR, "%s: Ignoring attempt to set Enh_Reg bits 0x%02x",
+                this->get_name_and_unit_address().c_str(), value & ~0x10);
     }
 }
 
@@ -429,7 +432,7 @@ void EsccChannel::dma_stop_rx()
 
 void EsccChannel::dma_in_tx()
 {
-    LOG_F(ERROR, "%s: Unexpected DMA INPUT command for transmit.", this->name.c_str());
+    LOG_F(ERROR, "%s: Unexpected DMA INPUT command for transmit.", this->get_name_and_unit_address().c_str());
 }
 
 void EsccChannel::dma_in_rx()
@@ -467,7 +470,7 @@ void EsccChannel::dma_out_tx()
 
 void EsccChannel::dma_out_rx()
 {
-    LOG_F(ERROR, "%s: Unexpected DMA OUTPUT command for receive.", this->name.c_str());
+    LOG_F(ERROR, "%s: Unexpected DMA OUTPUT command for receive.", this->get_name_and_unit_address().c_str());
 }
 
 void EsccChannel::dma_flush_tx()
