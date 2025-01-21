@@ -35,6 +35,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_ESCCCHANNEL_CRC_RESET_CODES = loguru::Verbosity_ERROR,
+        Verbosity_ESCCCHANNEL_COMMAND_CODES = loguru::Verbosity_ERROR,
+        Verbosity_ESCCCHANNEL_RESET_HIGHEST_IUS = loguru::Verbosity_9,
+    };
+}
+
 /** Remap the compatible addressing scheme to MacRISC one. */
 const uint8_t compat_to_macrisc[6] = {
     EsccReg::Port_B_Cmd,    EsccReg::Port_A_Cmd,
@@ -217,7 +225,7 @@ void EsccChannel::attach_backend(int id)
         break;
 #endif
     default:
-        LOG_F(ERROR, "%s: unknown backend ID %d, using NULL instead", this->name.c_str(), id);
+        LOG_F(ERROR, "%s: unknown backend ID %d, using NULL instead", this->get_name_and_unit_address().c_str(), id);
         this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoNull(this->get_name() + "_CharIoNull"));
     }
 }
@@ -273,33 +281,42 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
     case WR0:
         switch(value & WR0_CRC_RESET_CODES) {
             case WR0_RESET_RX_CRC_CHECKER:
-                LOG_F(ERROR, "%s: Reset Rx CRC Checker.", this->name.c_str());
+                LOG_F(ESCCCHANNEL_CRC_RESET_CODES, "%s: Reset Rx CRC Checker.",
+                    this->get_name_and_unit_address().c_str());
                 break;
             case WR0_RESET_TX_CRC_GENERATOR:
-                LOG_F(ERROR, "%s: Reset Tx CRC Generator.", this->name.c_str());
+                LOG_F(ESCCCHANNEL_CRC_RESET_CODES, "%s: Reset Tx CRC Generator.",
+                    this->get_name_and_unit_address().c_str());
                 break;
             case WR0_RESET_TX_UNDERRUN_EOM_LATCH:
-                LOG_F(ERROR, "%s: Reset Tx Underrun/EOM Latch.", this->name.c_str());
+                LOG_F(ESCCCHANNEL_CRC_RESET_CODES, "%s: Reset Tx Underrun/EOM Latch.",
+                    this->get_name_and_unit_address().c_str());
                 break;
         }
         switch(value & WR0_COMMAND_CODES) {
             case WR0_COMMAND_RESET_EXT_STATUS_INTERRUPTS:
-                LOG_F(ERROR, "%s: Reset EXT/Status Interrupts.", this->name.c_str());
+                LOG_F(ESCCCHANNEL_COMMAND_CODES, "%s: Reset EXT/Status Interrupts.",
+                    this->get_name_and_unit_address().c_str());
                 break;
             case WR0_COMMAND_SEND_ABORT_SDLC:
-                LOG_F(ERROR, "%s: Send Abort (SDLC).", this->name.c_str());
+                LOG_F(ESCCCHANNEL_COMMAND_CODES, "%s: Send Abort (SDLC).",
+                    this->get_name_and_unit_address().c_str());
                 break;
             case WR0_COMMAND_ENABLE_INT_ON_NEXT_RX_CHARACTER:
-                LOG_F(ERROR, "%s: Enable INT On Next Rx Character.", this->name.c_str());
+                LOG_F(ESCCCHANNEL_COMMAND_CODES, "%s: Enable INT On Next Rx Character.",
+                    this->get_name_and_unit_address().c_str());
                 break;
             case WR0_COMMAND_RESET_TXINT_PENDING:
-                LOG_F(ERROR, "%s: Reset TxINT Pending.", this->name.c_str());
+                LOG_F(ESCCCHANNEL_COMMAND_CODES, "%s: Reset TxINT Pending.",
+                    this->get_name_and_unit_address().c_str());
                 break;
             case WR0_COMMAND_ERROR_RESET:
-                LOG_F(ERROR, "%s: Error Reset.", this->name.c_str());
+                LOG_F(ESCCCHANNEL_COMMAND_CODES, "%s: Error Reset.",
+                    this->get_name_and_unit_address().c_str());
                 break;
             case WR0_COMMAND_RESET_HIGHEST_IUS:
-                LOG_F(ERROR, "%s: Reset Highest IUS.", this->name.c_str());
+                LOG_F(ESCCCHANNEL_RESET_HIGHEST_IUS, "%s: Reset Highest IUS.",
+                    this->get_name_and_unit_address().c_str());
                 break;
         }
         break;
@@ -307,17 +324,17 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
         if ((this->write_regs[WR3] ^ value) & WR3_ENTER_HUNT_MODE) {
             this->write_regs[WR3] |= WR3_ENTER_HUNT_MODE;
             this->read_regs[RR0] |= RR0_SYNC_HUNT;
-            LOG_F(9, "%s: Hunt mode entered.", this->name.c_str());
+            LOG_F(9, "%s: Hunt mode entered.", this->get_name_and_unit_address().c_str());
         }
         if ((this->write_regs[WR3] ^ value) & WR3_RX_ENABLE) {
             if (value & WR3_RX_ENABLE) {
                 this->write_regs[WR3] |= WR3_RX_ENABLE;
                 this->chario->rcv_enable();
-                LOG_F(9, "%s: receiver enabled.", this->name.c_str());
+                LOG_F(9, "%s: receiver enabled.", this->get_name_and_unit_address().c_str());
             } else {
                 this->write_regs[WR3] ^= WR3_RX_ENABLE;
                 this->chario->rcv_disable();
-                LOG_F(9, "%s: receiver disabled.", this->name.c_str());
+                LOG_F(9, "%s: receiver disabled.", this->get_name_and_unit_address().c_str());
                 this->write_regs[WR3] |= WR3_ENTER_HUNT_MODE;
                 this->read_regs[RR0] |= RR0_SYNC_HUNT;
             }
@@ -363,11 +380,11 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
             break;
         }
         if (value & (WR14_LOCAL_LOOPBACK | WR14_AUTO_ECHO | WR14_DTR_REQUEST_FUNCTION)) {
-            LOG_F(WARNING, "%s: unexpected value in WR14 = 0x%X", this->name.c_str(), value);
+            LOG_F(WARNING, "%s: unexpected value in WR14 = 0x%X", this->get_name_and_unit_address().c_str(), value);
         }
         if (this->brg_active ^ (value & WR14_BR_GENERATOR_ENABLE)) {
             this->brg_active = value & WR14_BR_GENERATOR_ENABLE;
-            LOG_F(9, "%s: BRG %s", this->name.c_str(), this->brg_active ? "enabled" : "disabled");
+            LOG_F(9, "%s: BRG %s", this->get_name_and_unit_address().c_str(), this->brg_active ? "enabled" : "disabled");
         }
         break;
     }
@@ -425,13 +442,16 @@ void EsccChannel::set_enh_reg(uint8_t value)
     uint8_t changed_bits = value ^ this->enh_reg;
     if (changed_bits & 0x10) {
         if (value & 0x10)
-            LOG_F(ERROR, "%s: CTS connected to GPIO; DCD connected to GND", this->name.c_str());
+            LOG_F(ERROR, "%s: CTS connected to GPIO; DCD connected to GND",
+                this->get_name_and_unit_address().c_str());
         else
-            LOG_F(INFO, "%s: CTS connected to TRXC_In_l; DCD connected to GPIO", this->name.c_str());
+            LOG_F(INFO, "%s: CTS connected to TRXC_In_l; DCD connected to GPIO",
+                this->get_name_and_unit_address().c_str());
         this->enh_reg = value & 0x10;
     } else if (changed_bits & ~0x10) {
         if (value & ~0x10)
-            LOG_F(ERROR, "%s: Ignoring attempt to set Enh_Reg bits 0x%02x", this->name.c_str(), value & ~0x10);
+            LOG_F(ERROR, "%s: Ignoring attempt to set Enh_Reg bits 0x%02x",
+                this->get_name_and_unit_address().c_str(), value & ~0x10);
     }
 }
 
@@ -463,7 +483,7 @@ void EsccChannel::dma_stop_rx()
 
 void EsccChannel::dma_in_tx()
 {
-    LOG_F(ERROR, "%s: Unexpected DMA INPUT command for transmit.", this->name.c_str());
+    LOG_F(ERROR, "%s: Unexpected DMA INPUT command for transmit.", this->get_name_and_unit_address().c_str());
 }
 
 void EsccChannel::dma_in_rx()
@@ -501,7 +521,7 @@ void EsccChannel::dma_out_tx()
 
 void EsccChannel::dma_out_rx()
 {
-    LOG_F(ERROR, "%s: Unexpected DMA OUTPUT command for receive.", this->name.c_str());
+    LOG_F(ERROR, "%s: Unexpected DMA OUTPUT command for receive.", this->get_name_and_unit_address().c_str());
 }
 
 void EsccChannel::dma_flush_tx()
