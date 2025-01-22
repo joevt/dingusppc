@@ -835,11 +835,11 @@ void dppc_interpreter::ppc_mtmsr(uint32_t opcode) {
     }
     uint32_t reg_s = (opcode >> 21) & 0x1F;
     uint32_t old_msr_val = ppc_state.msr;
-    ppc_state.msr = ppc_state.gpr[reg_s];
+    uint32_t new_msr_val = ppc_state.gpr[reg_s];
     if (!is_601) {
-        ppc_change_endian((ppc_state.msr & MSR::LE) != 0);
+        ppc_change_endian((new_msr_val & MSR::LE) != 0);
     }
-    ppc_msr_did_change(old_msr_val);
+    ppc_msr_did_change(old_msr_val, new_msr_val);
 
 #ifdef DBG_MMU_MODE_CHANGE
     uint8_t cur_mode = CurITLBMode;
@@ -1502,11 +1502,11 @@ void dppc_interpreter::ppc_rfi(uint32_t opcode) {
     uint32_t old_msr_val    = ppc_state.msr;
     uint32_t new_srr1_val   = (ppc_state.spr[SPR::SRR1] & 0x87C0FF73UL);
     uint32_t new_msr_val    = (ppc_state.msr & ~0x87C0FF73UL);
-    ppc_state.msr           = (new_msr_val | new_srr1_val) & 0xFFFBFFFFUL;
+    new_msr_val             = (new_msr_val | new_srr1_val) & 0xFFFBFFFFUL;
     if (!is_601) {
-        ppc_change_endian((ppc_state.msr & MSR::LE) != 0);
+        ppc_change_endian((new_msr_val & MSR::LE) != 0);
     }
-    ppc_msr_did_change(old_msr_val);
+    ppc_msr_did_change(old_msr_val, new_msr_val);
 
 #ifdef DBG_MMU_MODE_CHANGE
     uint8_t cur_mode = CurITLBMode;

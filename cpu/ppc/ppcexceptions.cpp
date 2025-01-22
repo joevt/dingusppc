@@ -120,14 +120,14 @@ void ppc_exception_handler(Except_Type exception_type, uint32_t srr1_bits) {
 
     ppc_state.spr[SPR::SRR1] = (ppc_state.msr & 0x0000FF73) | srr1_bits;
     uint32_t old_msr_val = ppc_state.msr;
-    ppc_state.msr &= 0xFFFB1041;
+    uint32_t new_msr_val = old_msr_val & 0xFFFB1041;
     /* copy MSR[ILE] to MSR[LE] */
     if (!is_601) {
-        ppc_state.msr = (ppc_state.msr & ~MSR::LE) | !!(ppc_state.msr & MSR::ILE);
-        ppc_change_endian((ppc_state.msr & MSR::LE) != 0);
+        new_msr_val = (new_msr_val & ~MSR::LE) | !!(new_msr_val & MSR::ILE);
+        ppc_change_endian((new_msr_val & MSR::LE) != 0);
     }
     // Don't clobber the ppc_next_instruction_address value
-    ppc_msr_did_change(old_msr_val, false);
+    ppc_msr_did_change(old_msr_val, new_msr_val, false);
 
     if (ppc_state.msr & MSR::IP) {
         ppc_next_instruction_address |= 0xFFF00000;
