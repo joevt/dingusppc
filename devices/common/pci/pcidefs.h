@@ -57,6 +57,8 @@ enum : uint32_t {
                                   (SUBCLASS_PCI2PCI_BRIDGE << 16),
     DEVTYPE_VGA_COMPAT_VIDCTRL  = (DEVCLASS_DISPLAY_CTRL << 24) |
                                   (SUBCLASS_VGA_COMPAT << 16),
+    DEVTYPE_NON_VGA_VIDCTRL     = (DEVCLASS_DISPLAY_CTRL << 24) |
+                                  (SUBCLASS_NON_VGA << 16),
     DEVTYPE_IDE_CTRL_BUS_MASTER = (DEVCLASS_MASS_STORAGE_CTRL << 24) |
                                   (SUBCLASS_IDE_CTRL << 16) | (PROGIF_BUS_MASTER << 8),
     DEVTYPE_USB_OHCI_CTRL       = (DEVCLASS_SERIAL_BUS_CTRL << 24) |
@@ -80,6 +82,7 @@ enum : uint16_t {
     PCI_VENDOR_SILICON_IMAGE    = 0x1095,
     PCI_VENDOR_NVIDIA           = 0x10DE,
     PCI_VENDOR_IXMICRO          = 0x10E0, // also known as Integrated Micro Solutions
+    PCI_VENDOR_DINGUSPPC        = 0xD15C,
 };
 
 #endif // PCI_DEFS_H
