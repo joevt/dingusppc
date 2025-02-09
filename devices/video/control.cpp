@@ -799,6 +799,7 @@ static std::unique_ptr<HWComponent> ControlDisplay_create(const std::string &dev
 
 static const PropMap ControlDisplay_Properties = {
     {"mon_id", new StrProperty("AppleVision1710")},
+    {"edid"  , new StrProperty("")},
 };
 
 static const DeviceDescription ControlDisplay_Descriptor = {
