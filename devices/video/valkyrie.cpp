@@ -301,6 +301,7 @@ static std::unique_ptr<HWComponent> ValkyrieDisplay_create(const std::string &de
 
 static const PropMap ValkyrieDisplay_Properties = {
     {"mon_id", new StrProperty("HiRes12-14in")},
+    {"edid"  , new StrProperty("")},
 };
 
 static const DeviceDescription ValkyrieDisplay_Descriptor = {
