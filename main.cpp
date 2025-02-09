@@ -350,7 +350,7 @@ int main(int argc, char** argv) {
 void run_machine(uint32_t execution_mode,
     uint32_t
 #ifdef CPU_PROFILING
-     profiling_interval_ms
+    profiling_interval_ms
 #endif
 ) {
     uint32_t deterministic_timer;
