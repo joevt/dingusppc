@@ -34,34 +34,28 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 DisplayID::DisplayID(const std::string name) : HWComponent(name)
 {
     supports_types(HWCompType::DISPLAY);
-
-    /* Initialize DDC I2C bus */
-    this->next_state = I2CState::STOP;
-    this->prev_state = I2CState::STOP;
-    this->last_sda   = 1;
-    this->last_scl   = 1;
-    this->data_ptr   = 0;
-    this->data_pos   = 0;
 }
 
 HWComponent* DisplayID::set_property(const std::string &property, const std::string &value, int32_t unit_address)
 {
     if (unit_address == -1 || unit_address == 0) {
         if (this->override_property(property, value)) {
+
+            std::smatch results;
+
             if (property == "mon_id") {
-                // assume a DDC monitor is connected by default
-                this->id_kind = Disp_Id_Kind::DDC2B;
-                std_sense_code = 0;
-                ext_sense_code = 0;
+                std::string mon_id = this->get_property_str("mon_id");
+
+                bool is_apple_sense = false;
+                bool is_other = false;
 
                 do {
-                    std::string mon_id = this->get_property_str("mon_id");
-
                     if (mon_id.empty()) {
                         this->set_name("Display_DDC");
+                        is_other = true;
                         break;
                     }
-                    
+
                     if (MonitorAliasToId.count(mon_id)) {
                         mon_id = MonitorAliasToId.at(mon_id);
                     }
@@ -70,11 +64,9 @@ HWComponent* DisplayID::set_property(const std::string &property, const std::str
                         this->std_sense_code = monitor.std_sense_code;
                         this->ext_sense_code = monitor.ext_sense_code;
                         this->set_name("Display_" + mon_id);
-                        this->id_kind = Disp_Id_Kind::AppleSense;
+                        is_apple_sense = true;
                         break;
                     }
-
-                    std::smatch results;
 
                     std::regex standard_sense_re("([0-7])", std::regex_constants::icase);
                     if (std::regex_match(mon_id, results, standard_sense_re)) {
@@ -84,7 +76,7 @@ HWComponent* DisplayID::set_property(const std::string &property, const std::str
                         char buf[20];
                         snprintf(buf, sizeof(buf), "Display_%d.%02X", this->std_sense_code, this->ext_sense_code);
                         this->set_name(buf);
-                        this->id_kind = Disp_Id_Kind::AppleSense;
+                        is_apple_sense = true;
                         break;
                     }
 
@@ -95,19 +87,54 @@ HWComponent* DisplayID::set_property(const std::string &property, const std::str
                         char buf[20];
                         snprintf(buf, sizeof(buf), "Display_%d.%02X", this->std_sense_code, this->ext_sense_code);
                         this->set_name(buf);
-                        this->id_kind = Disp_Id_Kind::AppleSense;
+                        is_apple_sense = true;
                         break;
                     }
                 } while(0);
 
-                if (this->id_kind == Disp_Id_Kind::AppleSense) {
-                    LOG_F(INFO, "DisplayID mode set to AppleSense");
+                if (is_apple_sense) {
+                    this->id_kind |= Disp_Id_Kind::AppleSense;
+                    LOG_F(INFO, "Added Apple Sense");
                     LOG_F(INFO, "Standard sense code: %d", this->std_sense_code);
                     LOG_F(INFO, "Extended sense code: 0x%02X", this->ext_sense_code);
+                    video_ctrl->update_display_connection();
+                    return this;
+                } else if (is_other) {
+                    return this;
+                } else {
+                    LOG_F(ERROR, "Ignored invalid Apple Sense: \"%s\"", mon_id.c_str());
                 }
+            }
+            else
+            if (property == "edid") {
+                std::string hex = this->get_property_str("edid");
 
-                video_ctrl->update_display_connection();
-                return this;
+                std::regex edid_re("(?:[0-9A-F]{256}){0,255}", std::regex_constants::icase);
+                if (std::regex_match(hex, results, edid_re)) {
+                    this->edid_length = (uint16_t)(hex.length() / 2);
+                    if (edid_length) {
+                        this->edid = std::unique_ptr<uint8_t[]>(new uint8_t[edid_length]);
+                        for (int i = 0; i < edid_length; i++) {
+                            this->edid[i] = (((hex[i*2  ] & 15) + (hex[i*2  ] > '9' ? 9 : 0)) << 4) +
+                                             ((hex[i*2+1] & 15) + (hex[i*2+1] > '9' ? 9 : 0));
+                        }
+                        this->id_kind |= Disp_Id_Kind::DDC2B;
+                        this->id_kind |= Disp_Id_Kind::DDC1;
+                        if (edid_length > 256)
+                            this->id_kind |= Disp_Id_Kind::EDDC;
+                        LOG_F(INFO, "Added EDID");
+                    } else if (this->edid) {
+                        this->edid.reset();
+                        this->id_kind &= ~Disp_Id_Kind::DDC2B;
+                        this->id_kind &= ~Disp_Id_Kind::DDC1;
+                        this->id_kind &= ~Disp_Id_Kind::EDDC;
+                        LOG_F(INFO, "Removed EDID");
+                    }
+                    video_ctrl->update_display_connection();
+                    return this;
+                } else {
+                    LOG_F(ERROR, "Ignored invalid EDID");
+                }
             }
         }
     }
@@ -116,33 +143,56 @@ HWComponent* DisplayID::set_property(const std::string &property, const std::str
 
 uint8_t DisplayID::read_monitor_sense(uint8_t levels, uint8_t dirs)
 {
-    uint8_t scl, sda;
+    levels = apply_sense(levels, dirs, true);
 
-    switch(this->id_kind) {
-    case Disp_Id_Kind::DDC2B:
+    uint8_t target_levels = 0b0'111;
+    if (this->id_kind & Disp_Id_Kind::DDC2B) {
+        uint8_t scl, sda;
         /* If GPIO pins are in the output mode, pick up their levels.
            In the input mode, GPIO pins will be read "high" */
-        scl = (dirs & 2) ? !!(levels & 2) : 1;
-        sda = (dirs & 4) ? !!(levels & 4) : 1;
+        scl = !!(levels & 0b0'010);
+        sda = !!(levels & 0b0'100);
 
-        return update_ddc_i2c(sda, scl);
-    case Disp_Id_Kind::AppleSense:
-        switch ((dirs << 3) | levels) {
-        case 0b0'100'011: // Sense line 2 pulled low; get sense line 1 and 0
-            LOG_F(INFO, "Sense line 2 pulled low; get sense line 1 and 0");
-            return  ((this->ext_sense_code & 0b0'11'00'00) >> 4);               // -> 0__
-        case 0b0'010'101: // Sense line 1 pulled low; get sense line 2 and 0
-            LOG_F(INFO, "Sense line 1 pulled low; get sense line 2 and 0");
-            return (((this->ext_sense_code & 0b0'00'10'00) >> 1) |  // -> _00
-                    ((this->ext_sense_code & 0b0'00'01'00) >> 2));  // -> 00_   // -> _0_
-        case 0b0'001'110: // Sense line 0 pulled low; get sense line 2 and 1
-            LOG_F(INFO, "Sense line 0 pulled low; get sense line 2 and 1");
-            return  ((this->ext_sense_code & 0b0'00'00'11) << 1);               // -> __0
-        default:
-            LOG_F(INFO, "dirs:%d levels:%d", dirs, levels);
-            return this->std_sense_code;
+        target_levels = update_ddc_i2c(sda, scl);
+        levels &= 0b0'001 | target_levels;
+
+        levels = apply_sense(levels, dirs, false);
+    }
+
+    return levels;
+}
+
+uint8_t DisplayID::apply_sense(uint8_t levels, uint8_t dirs, bool host)
+{
+    /* If GPIO pins are in the output mode (dir=1), pick up their levels.
+       In the input mode (dir=0), GPIO pins will be read "high" unless grounded by Apple monitor sense. */
+    if (host) {
+        uint8_t new_levels = ((dirs ^ 7) | (dirs & levels)) & this->std_sense_code;
+        if (new_levels != levels) {
+            levels = new_levels;
         }
     }
+    else {
+        uint8_t new_levels = levels & this->std_sense_code;
+        if (new_levels != levels) {
+            levels = new_levels;
+        }
+    }
+
+    uint8_t other[3][2] = { {2,1}, {2,0}, {1,0} }; // other sense lines for sense line 0, 1, 2
+    for (int i = 1; i >= 0; i--) {
+        for (int sense = 2; sense >= 0; sense--) { // loop sense line 2 to 0
+            if ( ((1 << sense) & dirs) && !((1 << sense) & levels) ) { // if the sense line is driven low
+                uint8_t new_levels = levels;
+                new_levels &= ~( ((~this->ext_sense_code >> (sense * 2 + 1)) & 1) << other[sense][0] );
+                new_levels &= ~( ((~this->ext_sense_code >> (sense * 2 + 0)) & 1) << other[sense][1] );
+                if (new_levels != levels) {
+                    levels = new_levels;
+                }
+            }
+        }
+    }
+    return levels;
 }
 
 uint8_t DisplayID::set_result(uint8_t sda, uint8_t scl)
@@ -155,11 +205,11 @@ uint8_t DisplayID::set_result(uint8_t sda, uint8_t scl)
     data_out = 0;
 
     if (scl) {
-        data_out |= 2;
+        data_out |= 0b0'010;
     }
 
     if (sda) {
-        data_out |= 4;
+        data_out |= 0b0'100;
     }
 
     return data_out;
@@ -213,7 +263,7 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
             }
             if (this->dev_addr & 1) {
                 this->next_state = I2CState::DATA;
-                this->data_ptr   = this->edid;
+                this->data_ptr   = &this->edid[0];
                 this->data_pos   = 0;
                 this->byte       = this->data_ptr[this->data_pos++];
             } else {
@@ -278,7 +328,10 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
     return set_result(sda, scl);
 }
 
-static const PropMap Display_Properties = {{"mon_id", new StrProperty("")},};
+static const PropMap Display_Properties = {
+    {"mon_id", new StrProperty("")},
+    {"edid"  , new StrProperty("")},
+};
 
 static const DeviceDescription Display_Descriptor = {
     DisplayID::create, {}, Display_Properties, HWCompType::DISPLAY
