@@ -75,6 +75,7 @@ const map<string, PropHelpItem> gPropHelp = {
     {"hdd_config",      {PropertyMachine, "HD device path in [bus]:[device#] format"}},
     {"cdr_img",         {PropertyDevice , "specifies path to CD-ROM image"}},
     {"mon_id",          {PropertyDevice , "specifies which monitor to emulate"}},
+    {"edid",            {PropertyDevice , "specifies an EDID for a display"}},
     {"pci",             {PropertyDevice,  "inserts PCI device into a free slot"}},
     {"vci",             {PropertyDevice,  "inserts PCI device into a free slot of VCI"}},
     {"pci_dev_max",     {PropertyMachine, "specifies the maximum PCI device number for PCI bridges"}},
