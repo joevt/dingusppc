@@ -699,6 +699,7 @@ static std::unique_ptr<HWComponent> PlatinumDisplay_create(const std::string &de
 
 static const PropMap PlatinumDisplay_Properties = {
     {"mon_id", new StrProperty("HiRes12-14in")},
+    {"edid"  , new StrProperty("")},
 };
 
 static const DeviceDescription PlatinumDisplay_Descriptor = {
