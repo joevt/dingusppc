@@ -377,6 +377,7 @@ static const std::vector<std::string> PDMBuiltinMonitorIDs = {
 
 static const PropMap PdmDisplay_Properties = {
     {"mon_id", new StrProperty("HiRes12-14in", PDMBuiltinMonitorIDs)},
+    {"edid"  , new StrProperty("")},
 };
 
 static const DeviceDescription PdmDisplay_Descriptor = {
