@@ -32,6 +32,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cstring>
 #include <regex>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_DDC = loguru::Verbosity_INFO,
+        Verbosity_LEVELS = loguru::Verbosity_INFO,
+    };
+}
+
 DisplayID::DisplayID(const std::string name) : HWComponent(name)
 {
     supports_types(HWCompType::DISPLAY);
@@ -144,6 +151,7 @@ HWComponent* DisplayID::set_property(const std::string &property, const std::str
 
 uint8_t DisplayID::read_monitor_sense(uint8_t levels, uint8_t dirs)
 {
+    LOG_F(LEVELS, "dirs:%d levels:%d", dirs, levels);
     levels = apply_sense(levels, dirs, true);
 
     uint8_t target_levels = 0b0'111;
@@ -156,6 +164,7 @@ uint8_t DisplayID::read_monitor_sense(uint8_t levels, uint8_t dirs)
 
         target_levels = update_ddc_i2c(sda, scl);
         levels &= 0b0'001 | target_levels;
+        LOG_F(LEVELS, "levels (i2c):%d", levels);
 
         levels = apply_sense(levels, dirs, false);
     }
@@ -171,12 +180,14 @@ uint8_t DisplayID::apply_sense(uint8_t levels, uint8_t dirs, bool host)
         uint8_t new_levels = ((dirs ^ 7) | (dirs & levels)) & this->std_sense_code;
         if (new_levels != levels) {
             levels = new_levels;
+            LOG_F(LEVELS, "levels (host):%d", levels);
         }
     }
     else {
         uint8_t new_levels = levels & this->std_sense_code;
         if (new_levels != levels) {
             levels = new_levels;
+            LOG_F(LEVELS, "levels (target):%d", levels);
         }
     }
 
@@ -189,6 +200,7 @@ uint8_t DisplayID::apply_sense(uint8_t levels, uint8_t dirs, bool host)
                 new_levels &= ~( ((~this->ext_sense_code >> (sense * 2 + 0)) & 1) << other[sense][1] );
                 if (new_levels != levels) {
                     levels = new_levels;
+                    LOG_F(LEVELS, "levels (ext):%d", levels);
                 }
             }
         }
@@ -220,6 +232,8 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
 {
     bool clk_gone_high = false;
 
+    LOG_F(DDC, "update_ddc_i2c: SDA:%d->%d SCA:%d->%d", sda, this->last_sda, scl, this->last_scl);
+
     if (scl != this->last_scl) {
         this->last_scl = scl;
         if (scl) {
@@ -232,11 +246,11 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
         /* STOP  = SDA goes low to high while SCL is high */
         if (this->last_scl) {
             if (!sda) {
-                LOG_F(9, "DDC-I2C: START condition detected!");
+                LOG_F(DDC, "DDC-I2C: START condition detected! next_state:DEV_ADDR");
                 this->next_state = I2CState::DEV_ADDR;
                 this->bit_count  = 0;
             } else {
-                LOG_F(9, "DDC-I2C: STOP condition detected!");
+                LOG_F(DDC, "DDC-I2C: STOP condition detected!");
                 this->next_state = I2CState::STOP;
             }
         }
@@ -249,6 +263,7 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
 
     switch (this->next_state) {
     case I2CState::STOP:
+        LOG_F(DDC, "DDC-I2C: STOP");
         break;
 
     case I2CState::ACK:
@@ -256,7 +271,9 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
         this->byte      = 0;
         switch (this->prev_state) {
         case I2CState::DEV_ADDR:
+            LOG_F(DDC, "DDC-I2C: ACK DEV_ADDR");
             if ((dev_addr & 0xFE) == 0xA0) {
+                LOG_F(DDC, "DDC-I2C: got address 0x%X", this->dev_addr);
                 sda = 0; /* send ACK */
             } else {
                 LOG_F(ERROR, "DDC-I2C: unknown device address 0x%X", this->dev_addr);
@@ -272,6 +289,7 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
             }
             break;
         case I2CState::REG_ADDR:
+            LOG_F(DDC, "DDC-I2C: ACK REG_ADDR");
             this->next_state = I2CState::DATA;
             if (!this->reg_addr) {
                 sda = 0; /* send ACK */
@@ -281,6 +299,7 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
             }
             break;
         case I2CState::DATA:
+            LOG_F(DDC, "DDC-I2C: ACK DATA");
             this->next_state = I2CState::DATA;
             if (dev_addr & 1) {
                 if (!sda) {
@@ -289,6 +308,7 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
                         this->byte = this->data_ptr[this->data_pos++];
                     else
                         this->byte = 0;
+                    LOG_F(DDC, "DDC-I2C: byte[%02X]:%02X", this->data_pos - 1, this->byte);
                 } else {
                     LOG_F(ERROR, "DDC-I2C: Oops! NACK received");
                 }
@@ -296,21 +316,25 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
                 sda = 0; /* send ACK */
             }
             break;
+        default:
+            LOG_F(DDC, "DDC-I2C: ACK STATE:%d", this->prev_state);
         }
         break;
 
     case I2CState::DEV_ADDR:
     case I2CState::REG_ADDR:
         this->byte = (this->byte << 1) | this->last_sda;
+        LOG_F(DDC, "DDC-I2C: %s bit:%d byte:%02X",
+            this->next_state == I2CState::DEV_ADDR ? "DEV_ADDR" : "REGADDR", this->bit_count, this->byte);
         if (this->bit_count++ >= 7) {
             this->bit_count  = 0;
             this->prev_state = this->next_state;
             this->next_state = I2CState::ACK;
             if (this->prev_state == I2CState::DEV_ADDR) {
-                LOG_F(9, "DDC-I2C: device address received, addr=0x%X", this->byte);
+                LOG_F(DDC, "DDC-I2C: device address received, addr=0x%X", this->byte);
                 this->dev_addr = this->byte;
             } else {
-                LOG_F(9, "DDC-I2C: register address received, addr=0x%X", this->byte);
+                LOG_F(DDC, "DDC-I2C: register address received, addr=0x%X", this->byte);
                 this->reg_addr = this->byte;
             }
         }
@@ -318,12 +342,15 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
 
     case I2CState::DATA:
         sda = (this->byte >> (7 - this->bit_count)) & 1;
+        LOG_F(DDC, "DDC-I2C: DATA bit:%d byte:%02X", this->bit_count, this->byte);
         if (this->bit_count++ >= 7) {
             this->bit_count  = 0;
             this->prev_state = this->next_state;
             this->next_state = I2CState::ACK;
         }
         break;
+    default:
+        LOG_F(DDC, "DDC-I2C: STATE:%d", this->next_state);
     }
 
     return set_result(sda, scl);
