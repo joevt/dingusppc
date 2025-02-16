@@ -221,7 +221,8 @@ void ppc_msr_did_change(uint32_t old_msr_val, uint32_t new_msr_val, bool set_nex
     if ((old_msr_val ^ new_msr_val) & MSR::FP) {
         bool newFP = (new_msr_val & MSR::FP) != 0;
         ppc_opcode_grabber = newFP ? OpcodeGrabber : OpcodeGrabberNoFPU;
-        //LOG_F(INFO, "changed FP to %s", newFP ? "yes" : "no");
+        //LOG_F(INFO, "changed FP to %s at %08x", newFP ? "yes" : "no", ppc_state.pc);
+        //dump_backtrace();
 #if 1
         exec_flags |= EXEF_OPC_DECODER;
         if (set_next_instruction_address) {
