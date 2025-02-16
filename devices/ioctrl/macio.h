@@ -238,7 +238,7 @@ private:
     bool        cpu_int_latch = false;
 
     // IOBus devices
-    IobusDevice*    iobus_devs[6] = { nullptr };
+    IobusDevice*     iobus_devs[6] = { nullptr };
     NvramAddrHiDev*  nvram_addr_hi_dev = nullptr;
     NvramDev*        nvram_dev = nullptr;
 
