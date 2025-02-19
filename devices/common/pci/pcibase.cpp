@@ -397,3 +397,21 @@ int32_t PCIBase::parse_child_unit_address_string(const std::string unit_address_
     }
     return -1;
 }
+
+HWComponent* PCIBase::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    if (unit_address == -1) {
+        if (property == "rom") {
+            if (this->override_property(property, value)) {
+                if (!value.empty()) {
+                    // declare expansion ROM which may contain FCode and Mac OS drivers
+                    if (this->attach_exp_rom_image(value)) {
+                        LOG_F(WARNING, "%s: could not load ROM \"%s\"",
+                              this->name.c_str(), value.c_str());
+                    }
+                }
+                return this;
+            }
+        }
+    }
+    return nullptr;
+}

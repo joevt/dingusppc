@@ -100,3 +100,11 @@ int32_t PCIBridgeBase::parse_child_unit_address_string(const std::string unit_ad
         result = PCIBase::parse_child_unit_address_string(unit_address_string, hwc);
     return result;
 }
+
+HWComponent* PCIBridgeBase::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
+    HWComponent* result = PCIBase::set_property(property, value, unit_address);
+    if (result)
+        return result;
+    result = PCIHost::set_property(property, value, unit_address);
+    return result;
+}
