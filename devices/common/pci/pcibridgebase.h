@@ -73,6 +73,7 @@ public:
 
     // HWComponent methods
     virtual PostInitResultType device_postinit() override;
+    virtual HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
 
 protected:
     // PCI configuration space state
