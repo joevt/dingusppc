@@ -100,6 +100,7 @@ const map<string, PropHelpItem> gPropHelp = {
     {"pci_F2",          {PropertyDevOnce, "inserts PCI device into slot F2"}},
     {"vci_D",           {PropertyDevOnce, "inserts VCI device 0x0D"}},
     {"vci_E",           {PropertyDevOnce, "inserts VCI device 0x0E"}},
+    {"rom",             {PropertyDevice , "specifies path to NuBus or PCI ROM image"}},
     {"serial_backend",  {PropertyDevice , "specifies the backend for the serial port"}},
     {"emmo",            {PropertyMachine, "enables/disables factory HW tests during startup"}},
     {"cpu",             {PropertyMachine, "specifies CPU"}},
