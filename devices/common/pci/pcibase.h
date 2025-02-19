@@ -147,6 +147,7 @@ public:
     static int32_t parse_unit_address_string(const std::string unit_address_string);
     std::string get_self_unit_address_string(int32_t unit_address) override;
     static std::string get_unit_address_string(int32_t unit_address);
+    virtual HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
 
 protected:
     void set_bar_value(int bar_num, uint32_t value);
