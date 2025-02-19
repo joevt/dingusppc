@@ -162,12 +162,6 @@ AtiMach64Gx::AtiMach64Gx(const std::string &dev_name)
         this->notify_bar_change(bar_num);
     };
 
-    // declare expansion ROM containing FCode and Mac OS drivers
-    if (this->attach_exp_rom_image(std::string("113-32900-004_Apple_MACH64.bin"))) {
-        LOG_F(WARNING, "%s: could not load ROM - this device may not work properly!",
-              this->name.c_str());
-    }
-
     // set up RAMDAC identification
     this->regs[ATI_CONFIG_STAT0] = 1 << 9;
 
@@ -194,6 +188,7 @@ HWComponent* AtiMach64Gx::set_property(const std::string &property, const std::s
                 return this;
             }
         }
+        return PCIVideoCtrl::set_property(property, value, unit_address);
     }
     return nullptr;
 }
@@ -1101,6 +1096,8 @@ void AtiMach64Gx::rgb514_write_ind_reg(uint8_t reg_addr, uint8_t value)
 static const PropMap AtiMach64gx_Properties = {
     {"gfxmem_size",
         new IntProperty(  2, std::vector<uint32_t>({2, 4, 6}))},
+    {"rom",
+        new StrProperty("113-32900-004_Apple_MACH64.bin")},
 };
 
 static const DeviceDescription AtiMach64Gx_Descriptor = {
