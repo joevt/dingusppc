@@ -141,6 +141,7 @@ HWComponent* ControlVideo::set_property(const std::string &property, const std::
                 return this;
             }
         }
+        return PCIVideoCtrl::set_property(property, value, unit_address);
     }
     return nullptr;
 }

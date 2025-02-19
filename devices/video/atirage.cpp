@@ -156,6 +156,7 @@ HWComponent* ATIRage::set_property(const std::string &property, const std::strin
                 return this;
             }
         }
+        return PCIVideoCtrl::set_property(property, value, unit_address);
     }
     return nullptr;
 }
@@ -1064,6 +1065,8 @@ void ATIRage::update_display_connection()
 static const PropMap AtiRage_Properties = {
     {"gfxmem_size",
         new IntProperty(2, std::vector<uint32_t>({2, 4, 6, 8}))},
+    {"rom",
+        new StrProperty("")},
 };
 
 static const DeviceDescription AtiRageGT_Descriptor = {
