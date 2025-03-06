@@ -25,7 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define SCSI_HD_H
 
 #include <devices/common/scsi/scsi.h>
-#include <utils/imgfile.h>
+#include <utils/metaimgfile.h>
 
 #include <cinttypes>
 #include <memory>
@@ -71,7 +71,7 @@ protected:
     void read_long_10(uint64_t lba, uint16_t transfer_len);
 
 private:
-    ImgFile         disk_img;
+    MetaImgFile     disk_img;
     uint64_t        img_size = 0;
     int             total_blocks;
     uint64_t        file_offset = 0;
