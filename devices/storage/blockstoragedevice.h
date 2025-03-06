@@ -24,7 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef BLOCK_STORAGE_DEVICE_H
 #define BLOCK_STORAGE_DEVICE_H
 
-#include <utils/imgfile.h>
+#include <utils/metaimgfile.h>
 
 #include <cinttypes>
 #include <memory>
@@ -50,7 +50,7 @@ public:
 protected:
     void fill_cache(const int nblocks);
 
-    ImgFile         img_file;
+    MetaImgFile     img_file;
     uint64_t        size_bytes   = 0;   // image file size in bytes
     uint64_t        size_blocks  = 0;   // image file size in blocks
     uint64_t        max_blocks   = 0;   // maximum number of blocks supported
