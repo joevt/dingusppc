@@ -57,6 +57,12 @@ HWComponent* ScsiHardDisk::set_property(const std::string &property, const std::
             }
         }
     }
+    else if (property == "hdd_part") {
+        if (!value.empty()) {
+            this->insert_image(value);
+            return this;
+        }
+    }
     return nullptr;
 }
 
