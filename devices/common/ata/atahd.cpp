@@ -70,6 +70,12 @@ HWComponent* AtaHardDisk::set_property(const std::string &property, const std::s
         } else
             return nullptr;
     }
+    else if (property == "hdd_part") {
+        if (!value.empty()) {
+            this->insert_image(value);
+            return this;
+        }
+    }
     return nullptr;
 }
 
