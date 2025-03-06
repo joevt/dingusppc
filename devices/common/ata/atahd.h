@@ -25,7 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define ATA_HARD_DISK_H
 
 #include <devices/common/ata/atabasedevice.h>
-#include <utils/imgfile.h>
+#include <utils/metaimgfile.h>
 
 #include <string>
 
@@ -65,7 +65,7 @@ protected:
     void        calc_chs_params();
 
 private:
-    ImgFile     hdd_img;
+    MetaImgFile hdd_img;
     uint64_t    img_size = 0;
     uint32_t    total_sectors = 0;
     uint64_t    cur_fpos = 0;
