@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <memaccess.h>
 #include <loguru.hpp>
 
+#include <fstream>
 #include <limits>
 
 // ================================================================================================
@@ -562,14 +563,17 @@ void MetaImgFile::append_chunk(std::unique_ptr<FileMetaChunk> file)
 void MetaImgFile::reserve_partitions(int partitions_to_reserve)
 {
     if (this->max_partitions == 0) {
-        ImgFile partitions;
-        if (!partitions.open("apm_all_drivers.bin")) {
+        std::ifstream partitions;
+        partitions.open("apm_all_drivers.bin", std::ios::in | std::ios::binary);
+        if (partitions.fail()) {
             ABORT_F("MetaImgFile: Missing file \"apm_all_drivers.bin\"");
             return;
         }
-        uint64_t partitions_size = partitions.size();
+        partitions.seekg(0, std::ios::end);
+        size_t partitions_size = partitions.tellg();
         auto data = std::unique_ptr<uint8_t[]>(new uint8_t[partitions_size]);
-        partitions.read(&data[0], 0, partitions_size);
+        partitions.seekg(0, std::ios::beg);
+        partitions.read((char*)data.get(), partitions_size);
         partitions.close();
 
         Partition part = *(Partition*)&data[this->block_size];
