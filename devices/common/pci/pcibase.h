@@ -137,7 +137,7 @@ public:
 
     // MMIODevice methods
 
-    virtual uint32_t read(uint32_t /*rgn_start*/, uint32_t /*offset*/, int /*size*/) override { return 0; }
+    virtual uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
     virtual void write(uint32_t /*rgn_start*/, uint32_t /*offset*/, uint32_t /*value*/, int /*size*/) override {}
 
     // HWComponent methods
