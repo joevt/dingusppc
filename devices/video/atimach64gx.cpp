@@ -657,16 +657,7 @@ uint32_t AtiMach64Gx::read(uint32_t rgn_start, uint32_t offset, int size)
         return 0;
     }
 
-    // memory mapped expansion ROM region
-    if (rgn_start == this->exp_rom_addr) {
-        if (offset < this->exp_rom_size)
-            return read_mem(&this->exp_rom_data[offset], size);
-        LOG_F(WARNING, "%s: read  unmapped ROM region %08x.%c", this->name.c_str(), offset, SIZE_ARG(size));
-        return 0;
-    }
-
-    LOG_F(WARNING, "%s: read  unmapped aperture region %08x.%c", this->name.c_str(), offset, SIZE_ARG(size));
-    return 0;
+    return PCIBase::read(rgn_start, offset, size);
 }
 
 void AtiMach64Gx::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
