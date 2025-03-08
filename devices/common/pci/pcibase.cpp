@@ -325,6 +325,22 @@ void PCIBase::pci_wr_exp_rom_bar(uint32_t data)
     }
 }
 
+uint32_t PCIBase::read(uint32_t rgn_start, uint32_t offset, int size)
+{
+    // memory mapped expansion ROM region
+    if (this->exp_rom_addr && rgn_start == this->exp_rom_addr) {
+        if (offset < this->exp_rom_size)
+            return read_mem(&this->exp_rom_data[offset], size);
+        LOG_F(WARNING, "%s: read  unmapped ROM region %08x.%c",
+            this->get_name_and_unit_address().c_str(), offset, SIZE_ARG(size));
+        return 0;
+    }
+
+    LOG_F(WARNING, "%s: read  unmapped aperture region %08x.%c",
+        this->get_name_and_unit_address().c_str(), offset, SIZE_ARG(size));
+    return 0;
+}
+
 void PCIBase::pci_interrupt(uint8_t irq_line_state) {
     if (!(this->command & 0x0400)) {
         if (!this->int_details.int_ctrl_obj)
