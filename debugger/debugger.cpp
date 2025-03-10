@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/dbdma.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/common/ofnvram.h>
+#include <devices/floppy/swim3.h>
 #include <debugger/backtrace.h>
 #include "memaccess.h"
 #include <utils/profiler.h>
@@ -104,6 +105,9 @@ static void show_help() {
     cout << "                    T can be b(byte), w(word), d(double)," << endl;
     cout << "                    q(quad) or c(character)." << endl;
     cout << "  regions        -- dump memory regions" << endl;
+    cout << "  fdd [D,][W,]P  -- insert floppy into drive D (1 = default, 2), with" << endl;
+    cout << "                    writable flag W (r = readonly (default), w = writable)," << endl;
+    cout << "                    and path P" << endl;
     cout << "  profile C N    -- run subcommand C on profile N" << endl;
     cout << "                    supported subcommands:" << endl;
     cout << "                    'show' - show profile report" << endl;
@@ -587,6 +591,51 @@ static void patch_mem(string& params) {
         mem_write_dbg(addr, value, value_size);
     } catch (invalid_argument& exc) {
         cout << exc.what() << endl;
+    }
+}
+
+static void fdd(string params) {
+    string path_str;
+    string param;
+    size_t separator_pos;
+    bool fd_write_prot = true;
+    int drive = 1;
+
+    while (1) {
+        separator_pos = params.find_first_of(",");
+        if (separator_pos == std::string::npos) {
+            path_str = params;
+            break;
+        }
+        else {
+            param = params.substr(0, separator_pos);
+            params = params.substr(separator_pos + 1);
+
+            if (param == "w") {
+                fd_write_prot = false;
+            }
+            else if (param == "r") {
+                fd_write_prot = true;
+            }
+            else if (param == "1") {
+                drive = 1;
+            }
+            else if (param == "2") {
+                drive = 2;
+            }
+            else {
+                cout << "Invalid parameter " << param << endl;
+                return;
+            }
+        }
+    }
+
+    Swim3::Swim3Ctrl *swim3 = dynamic_cast<Swim3::Swim3Ctrl*>(gMachineObj->get_comp_by_name_optional("Swim3"));
+    if (swim3) {
+        swim3->insert_disk(drive, path_str, fd_write_prot);
+    }
+    else {
+        cout << "Floppy controller doesn't exist." << endl;
     }
 }
 
@@ -1302,6 +1351,11 @@ void DppcDebugger::enter_debugger() {
             cmd = "";
             if (mem_ctrl_instance)
                 mem_ctrl_instance->dump_regions();
+        } else if (cmd == "fdd") {
+            cmd = "";
+            std::istream::sentry se(ss); // skip white space
+            getline(ss, expr_str); // get everything up to eol
+            fdd(expr_str);
         } else if (cmd == "printenv") {
             cmd = "";
             if (ofnvram->init())
