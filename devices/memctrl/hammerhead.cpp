@@ -42,7 +42,7 @@ HammerheadCtrl::HammerheadCtrl()
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV);
 
     // add MMIO region for the configuration and status registers
-    add_mmio_region(0xF8000000, 0x500, this);
+    this->add_mmio_region(0xF8000000, 0x500, this);
 }
 
 uint32_t HammerheadCtrl::read(uint32_t /*rgn_start*/, uint32_t offset, int size)

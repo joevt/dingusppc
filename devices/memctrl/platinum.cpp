@@ -45,10 +45,10 @@ PlatinumCtrl::PlatinumCtrl()
     supports_types(HWCompType::MEM_CTRL | HWCompType::MMIO_DEV | HWCompType::VIDEO_CTRL);
 
     // add MMIO region for VRAM
-    add_mmio_region(VRAM_REGION_BASE, 0x01000000, this);
+    this->add_mmio_region(VRAM_REGION_BASE, 0x01000000, this);
 
     // add MMIO region for the configuration and status registers
-    add_mmio_region(PLATINUM_IOREG_BASE, 0x500, this);
+    this->add_mmio_region(PLATINUM_IOREG_BASE, 0x500, this);
 
     // initialize the CPUID register with the following CPU:
     // PowerPC 601 @ 90 MHz, bus frequency: 45 MHz

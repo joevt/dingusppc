@@ -39,10 +39,10 @@ MPC106::MPC106(const std::string &name)
                    HWCompType::PCI_HOST);
 
     // add PCI/ISA I/O space, 64K for now
-    add_mmio_region(0xFE000000, 0x10000, this);
+    this->add_mmio_region(0xFE000000, 0x10000, this);
 
     // add memory mapped I/O region for MPC106 registers
-    add_mmio_region(0xFEC00000, 0x300000, this);
+    this->add_mmio_region(0xFEC00000, 0x300000, this);
 }
 
 PostInitResultType MPC106::device_postinit()
