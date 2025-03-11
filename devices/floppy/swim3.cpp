@@ -94,11 +94,32 @@ int Swim3Ctrl::device_postinit()
     // if a floppy image was given "insert" it into the virtual superdrive
     std::string fd_image_path = GET_STR_PROP("fdd_img");
     int fd_write_prot = GET_BIN_PROP("fdd_wr_prot");
-    if (!fd_image_path.empty()) {
-        this->drive_1->insert_disk(fd_image_path, fd_write_prot);
-    }
+    this->insert_disk(1, fd_image_path, fd_write_prot);
 
     return 0;
+}
+
+void Swim3Ctrl::insert_disk(int drive, std::string& img_path, int write_flag = 0)
+{
+    MacSuperdrive::MacSuperDrive *the_drive = nullptr;
+    switch (drive) {
+    case 1:
+        if (this->drive_1)
+            the_drive = this->drive_1.get();
+        break;
+    default:
+        LOG_F(ERROR, "SWIM3: %d is not a valid drive number", drive);
+        return;
+    }
+
+    if (the_drive) {
+        if (!img_path.empty()) {
+            the_drive->insert_disk(img_path, write_flag);
+        }
+    }
+    else {
+        LOG_F(ERROR, "SWIM3: Drive %d is not connected", drive);
+    }
 }
 
 uint8_t Swim3Ctrl::read(uint8_t reg_offset)
