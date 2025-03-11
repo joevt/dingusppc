@@ -95,6 +95,8 @@ public:
 
     int device_postinit();
 
+    void    insert_disk(int drive, std::string& img_path, int write_flag);
+
     // SWIM3 registers access
     uint8_t read(uint8_t reg_offset);
     void    write(uint8_t reg_offset, uint8_t value);
