@@ -110,21 +110,23 @@ public:
         default:
             throw std::invalid_argument(std::string("Unsupported capacity!"));
         }
-        LOG_F(INFO, "SDRAM capacity set to %dMB, I2C addr = 0x%X", capacity_megs, this->dev_addr);
+        LOG_F(INFO, "%s: capacity set to %dMB, I2C addr = 0x%X", get_name_and_unit_address().c_str(),
+            capacity_megs, this->dev_addr);
     }
 
     void start_transaction() {
+        LOG_F(INFO, "%s: start transaction", get_name_and_unit_address().c_str());
         this->pos = 0;
     }
 
     bool send_subaddress(uint8_t sub_addr) {
         this->pos = sub_addr;
-        LOG_F(9, "SDRAM subaddress set to 0x%X", sub_addr);
+        LOG_F(INFO, "%s: subaddress set to 0x%X", get_name_and_unit_address().c_str(), sub_addr);
         return true;
     }
 
     bool send_byte(uint8_t data) {
-        LOG_F(9, "SDRAM byte 0x%X received", data);
+        LOG_F(9, "%s: byte 0x%X received", get_name_and_unit_address().c_str(), data);
         return true;
     }
 
@@ -132,7 +134,7 @@ public:
         if (this->pos >= this->eeprom_data[0]) {
             this->pos = 0; /* attempt to read past SPD data should wrap around */
         }
-        LOG_F(9, "SDRAM sending EEPROM byte 0x%X", this->eeprom_data[this->pos]);
+        LOG_F(9, "%s: sending EEPROM byte 0x%X", get_name_and_unit_address().c_str(), this->eeprom_data[this->pos]);
         *p_data = this->eeprom_data[this->pos++];
         return true;
     }
