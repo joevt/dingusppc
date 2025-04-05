@@ -124,7 +124,7 @@ int32_t IdeChannel::parse_child_unit_address_string(const std::string unit_addre
 
 void IdeChannel::register_device(int id, AtaInterface* dev_obj) {
     if (id < 0 || id >= 2)
-        ABORT_F("%s: invalid device ID", this->name.c_str());
+        ABORT_F("%s: invalid device ID", this->get_name_and_unit_address().c_str());
 
     this->devices[id] = dev_obj;
 
@@ -133,7 +133,8 @@ void IdeChannel::register_device(int id, AtaInterface* dev_obj) {
 
 uint32_t IdeChannel::read(const uint8_t reg_addr, const int size) {
     uint32_t value = this->devices[this->cur_dev]->read(reg_addr);
-    LOG_F(IDE_CHANNEL, "%s: read  @%02x.%c = %0*x", this->name.c_str(), reg_addr, SIZE_ARG(size), size * 2, value);
+    LOG_F(IDE_CHANNEL, "%s: read  @%02x.%c = %0*x", this->get_name_and_unit_address().c_str(),
+        reg_addr, SIZE_ARG(size), size * 2, value);
     return value;
 }
 
@@ -143,13 +144,14 @@ void IdeChannel::write(const uint8_t reg_addr, const uint32_t val, const int siz
     if (reg_addr == DEVICE_HEAD) {
         this->cur_dev = (val >> 4) & 1;
         AtaBaseDevice* base = dynamic_cast<AtaBaseDevice*>(this->devices[this->cur_dev]);
-        LOG_F(IDE_CHANNEL, "%s: cur_dev = %d (%s)",
-            this->name.c_str(), this->cur_dev, base ? base->get_name().c_str() : "AtaNullDevice");
+        LOG_F(IDE_CHANNEL, "%s: cur_dev = %d (%s)", this->get_name_and_unit_address().c_str(),
+            this->cur_dev, base ? base->get_name_and_unit_address().c_str() : "AtaNullDevice");
     }
 
     // redirect register writes to both devices
     for (auto& dev : this->devices) {
-        LOG_F(IDE_CHANNEL, "%s: write @%02x.%c = %0*x", this->name.c_str(), reg_addr, SIZE_ARG(size), size * 2, val);
+        LOG_F(IDE_CHANNEL, "%s: write @%02x.%c = %0*x", this->get_name_and_unit_address().c_str(),
+            reg_addr, SIZE_ARG(size), size * 2, val);
         dev->write(reg_addr, val);
     }
 }
@@ -186,7 +188,7 @@ uint32_t MacioIdeChannel::read(const uint8_t reg_addr, const int size)
 {
     if (reg_addr == TIME_CONFIG) {
         if (size != 4) {
-            LOG_F(WARNING, "%s: non-DWORD read from TIME_CONFIG", this->name.c_str());
+            LOG_F(WARNING, "%s: non-DWORD read from TIME_CONFIG", this->get_name_and_unit_address().c_str());
         }
         return this->ch_config;
     } else
@@ -197,7 +199,7 @@ void MacioIdeChannel::write(const uint8_t reg_addr, const uint32_t val, const in
 {
     if (reg_addr == TIME_CONFIG) {
         if (size != 4) {
-            LOG_F(WARNING, "%s: non-DWORD write to TIME_CONFIG", this->name.c_str());
+            LOG_F(WARNING, "%s: non-DWORD write to TIME_CONFIG", this->get_name_and_unit_address().c_str());
         }
         this->ch_config = val;
     } else
