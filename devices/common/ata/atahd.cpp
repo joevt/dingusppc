@@ -35,6 +35,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace loguru {
     enum : Verbosity {
+        Verbosity_ATA_COMMAND = loguru::Verbosity_INFO,
         Verbosity_READWRITE = loguru::Verbosity_INFO
     };
 }
@@ -85,7 +86,7 @@ bool AtaHardDisk::is_ready_for_machine() {
 
 int AtaHardDisk::perform_command() {
 
-    //LOG_F(INFO, "%s: running ATA command 0x%X", this->get_name_and_unit_address().c_str(), this->r_command);
+    LOG_F(ATA_COMMAND, "%s: running ATA command 0x%X", this->get_name_and_unit_address().c_str(), this->r_command);
 
     this->r_status |= BSY;
     this->r_error = 0;
