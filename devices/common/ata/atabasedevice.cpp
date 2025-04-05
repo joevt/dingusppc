@@ -113,6 +113,9 @@ void AtaBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
     switch (reg_addr) {
     case ATA_Reg::DATA:
         if (is_selected() && this->has_data()) {
+            if (!this->cur_data_ptr) {
+                LOG_F(ERROR, "cur_data_ptr is null!");
+            }
             *this->cur_data_ptr++ = BYTESWAP_16(value);
             this->chunk_cnt -= 2;
             if (this->chunk_cnt <= 0) {
