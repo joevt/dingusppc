@@ -36,6 +36,7 @@ VideoCtrlBase::VideoCtrlBase(int width, int height) : HWComponent("VideoCtrlBase
     EventManager::get_instance()->add_window_handler(this, &VideoCtrlBase::handle_events);
 
     this->create_display_window(width, height);
+    this->display.set_video_ctrl(this);
 }
 
 VideoCtrlBase::~VideoCtrlBase()
@@ -77,7 +78,7 @@ void VideoCtrlBase::update_screen()
         this->get_cursor_position(cursor_x, cursor_y);
     }
 
-    if (draw_fb) {
+    if (this->draw_fb) {
         if (this->cursor_dirty) {
             this->setup_hw_cursor();
             this->cursor_dirty = false;
@@ -89,6 +90,14 @@ void VideoCtrlBase::update_screen()
     } else if (this->draw_fb_is_dynamic) {
         this->display.update_skipped();
     }
+}
+
+void VideoCtrlBase::set_draw_fb() {
+    this->draw_fb = true;
+}
+
+void VideoCtrlBase::set_cursor_dirty() {
+    this->cursor_dirty = true;
 }
 
 void VideoCtrlBase::start_refresh_task() {
