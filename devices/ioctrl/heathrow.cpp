@@ -98,9 +98,18 @@ HeathrowIC::HeathrowIC()
 
     // connect serial HW
     this->escc = dynamic_cast<EsccController*>(gMachineObj->get_comp_by_name("Escc"));
-
-    // connect DBDMA
-    this->escc_b_rcv_dma = std::unique_ptr<DMAChannel>(new DMAChannel("DBDMABRx"));
+    this->escc_a_tx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_a_tx"));
+    this->escc_a_rx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_a_rx"));
+    this->escc_b_tx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_b_tx"));
+    this->escc_b_rx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_b_rx"));
+    this->escc_a_tx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCA_Tx));
+    this->escc_a_rx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCA_Rx));
+    this->escc_b_tx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCB_Tx));
+    this->escc_b_rx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCB_Rx));
+    this->escc->set_dma_channel(0, this->escc_a_tx_dma.get());
+    this->escc->set_dma_channel(1, this->escc_a_rx_dma.get());
+    this->escc->set_dma_channel(2, this->escc_b_tx_dma.get());
+    this->escc->set_dma_channel(3, this->escc_b_rx_dma.get());
 
     // connect floppy disk HW and initialize its DMA channel
     this->swim3 = dynamic_cast<Swim3::Swim3Ctrl*>(gMachineObj->get_comp_by_name("Swim3"));
@@ -415,7 +424,8 @@ uint32_t HeathrowIC::dma_read(uint32_t offset, int size) {
         value = 0;
         break;
     case MIO_OHARE_DMA_ESCC_B_RCV:
-        value = this->escc_b_rcv_dma->reg_read(offset & 0xFF, size);
+        value = 0;
+        //value = this->escc_b_rx_dma->reg_read(offset & 0xFF, size);
         break;
     case MIO_OHARE_DMA_AUDIO_OUT:
         value = this->snd_out_dma->reg_read(offset & 0xFF, size);
@@ -454,7 +464,7 @@ void HeathrowIC::dma_write(uint32_t offset, uint32_t value, int size) {
         //this->enet_rcv_dma->reg_write(offset & 0xFF, value, size);
         break;
     case MIO_OHARE_DMA_ESCC_B_RCV:
-        this->escc_b_rcv_dma->reg_write(offset & 0xFF, value, size);
+        //this->escc_b_rx_dma->reg_write(offset & 0xFF, value, size);
         break;
     case MIO_OHARE_DMA_AUDIO_OUT:
         this->snd_out_dma->reg_write(offset & 0xFF, value, size);

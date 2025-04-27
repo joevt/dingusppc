@@ -274,7 +274,10 @@ private:
     // DMA channels
     std::unique_ptr<DMAChannel>     mesh_dma;
     std::unique_ptr<DMAChannel>     floppy_dma;
-    std::unique_ptr<DMAChannel>     escc_b_rcv_dma;
+    std::unique_ptr<DMAChannel>     escc_a_tx_dma;
+    std::unique_ptr<DMAChannel>     escc_a_rx_dma;
+    std::unique_ptr<DMAChannel>     escc_b_tx_dma;
+    std::unique_ptr<DMAChannel>     escc_b_rx_dma;
     std::unique_ptr<DMAChannel>     snd_out_dma;
 
     uint16_t unsupported_dma_channel_read = 0;
@@ -449,7 +452,10 @@ private:
     std::unique_ptr<DMAChannel>     floppy_dma;
     std::unique_ptr<DMAChannel>     enet_xmit_dma;
     std::unique_ptr<DMAChannel>     enet_rcv_dma;
-    std::unique_ptr<DMAChannel>     escc_b_rcv_dma;
+    std::unique_ptr<DMAChannel>     escc_a_tx_dma;
+    std::unique_ptr<DMAChannel>     escc_a_rx_dma;
+    std::unique_ptr<DMAChannel>     escc_b_tx_dma;
+    std::unique_ptr<DMAChannel>     escc_b_rx_dma;
     std::unique_ptr<DMAChannel>     snd_out_dma;
 
     uint16_t unsupported_dma_channel_read = 0;
