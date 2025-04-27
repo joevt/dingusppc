@@ -265,6 +265,11 @@ uint32_t OHare::mio_ctrl_read(uint32_t offset, int size) {
     case MIO_INT_LEVELS1:
         value = this->int_levels;
         break;
+    case MIO_INT_CLEAR1:
+        // some Mac OS drivers read from this write-only registers
+        // so we return zero here as real HW does
+        value = 0;
+        break;
     case MIO_OHARE_ID: // FIXME: HACK: no clue what this register is supposed to contain
         value = ~0x00004000; // 1<<14
         LOG_F(ERROR, "%s: read  OHARE_ID @%02x.%c = %0*x",
