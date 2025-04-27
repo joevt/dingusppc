@@ -91,6 +91,9 @@ OHare::OHare() : PCIDevice("mac-io_ohare"), InterruptCtrl()
     // connect serial HW
     this->escc = dynamic_cast<EsccController*>(gMachineObj->get_comp_by_name("Escc"));
 
+    // connect DBDMA
+    this->escc_b_rcv_dma = std::unique_ptr<DMAChannel>(new DMAChannel("DBDMABRx"));
+
     // connect floppy disk HW and initialize its DMA channel
     this->swim3 = dynamic_cast<Swim3::Swim3Ctrl*>(gMachineObj->get_comp_by_name("Swim3"));
     this->floppy_dma = std::unique_ptr<DMAChannel> (new DMAChannel("floppy"));
@@ -337,6 +340,9 @@ uint32_t OHare::dma_read(uint32_t offset, int size)
     case MIO_OHARE_DMA_FLOPPY:
         value = this->floppy_dma->reg_read(offset & 0xFF, size);
         break;
+    case MIO_OHARE_DMA_ESCC_B_RCV:
+        value = this->escc_b_rcv_dma->reg_read(offset & 0xFF, size);
+        break;
     case MIO_OHARE_DMA_AUDIO_OUT:
         value = this->snd_out_dma->reg_read(offset & 0xFF, size);
         break;
@@ -362,6 +368,9 @@ void OHare::dma_write(uint32_t offset, uint32_t value, int size)
         break;
     case MIO_OHARE_DMA_FLOPPY:
         this->floppy_dma->reg_write(offset & 0xFF, value, size);
+        break;
+    case MIO_OHARE_DMA_ESCC_B_RCV:
+        this->escc_b_rcv_dma->reg_write(offset & 0xFF, value, size);
         break;
     case MIO_OHARE_DMA_AUDIO_OUT:
         this->snd_out_dma->reg_write(offset & 0xFF, value, size);
