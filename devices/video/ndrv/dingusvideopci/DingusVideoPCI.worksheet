@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CurrentWorkingDirectory</key>
+	<string>/Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci</string>
+	<key>WorksheetContents</key>
+	<string>#=========================================================================================
+# (1) Setup
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/joevt/Library/Python/2.7/bin:/opt/X11/bin:/Library/Apple/usr/bin:/Volumes/Updates/Docs/Open_Firmware_and_Forth/OpenBIOS/joevt-OpenBIOSStuff/detok/obj-amd64:/Volumes/Updates/Docs/Open_Firmware_and_Forth/OpenBIOS/joevt-OpenBIOSStuff/toke/obj-amd64:/Volumes/Updates/Docs/Open_Firmware_and_Forth/OpenBIOS/joevt-OpenBIOSStuff/macOS
+source "/Volumes/Work/Open Firmware and Name Registry/ROM PowerPC Mac/decompressrom.sh"
+
+command -v DumpPCIRom.sh
+/Volumes/Updates/Docs/Open_Firmware_and_Forth/OpenBIOS/joevt-OpenBIOSStuff/macOS/DumpPCIRom.sh
+
+command -v detok
+/Volumes/Updates/Docs/Open_Firmware_and_Forth/OpenBIOS/joevt-OpenBIOSStuff/detok/obj-amd64/detok
+
+#=========================================================================================
+# Make the ROM
+
+cd "/Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci"
+toke -v -o "DingusVideoPCI.rom" "DingusVideoPCI.of" &gt; "/tmp/toke.log.txt" || cat "/tmp/toke.log.txt"
+xxd "DingusVideoPCI.rom" &gt; "DingusVideoPCI.xxd.txt"
+
+#=========================================================================================
+# Verify the results
+
+cd "/Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci"
+mkdir -p "Reverse"
+DumpPCIRom.sh -a -v "DingusVideoPCI.rom" &gt; "Reverse/DingusVideoPCI.of" 2&gt; "Reverse/DingusVideoPCI.errs"
+
+toke -v -o "Reverse/DingusVideoPCI.rom" "Reverse/DingusVideoPCI.of" &gt; "/tmp/toke2.log.txt" || cat "/tmp/toke2.log.txt"
+DumpPCIRom.sh -a -v "Reverse/DingusVideoPCI.rom" &gt; "Reverse/DingusVideoPCI2.of" 2&gt; "Reverse/DingusVideoPCI2.errs"
+sleep 1
+bbdiff "Reverse/DingusVideoPCI.of" "Reverse/DingusVideoPCI2.of"
+bbdiff "Reverse/DingusVideoPCI.rom" "DingusVideoPCI.rom"
+
+#=========================================================================================
+# View results
+
+xxd "Reverse/DingusVideoPCI.rom" &gt; "Reverse/DingusVideoPCI2.xxd.txt"
+bbedit "Reverse/DingusVideoPCI.of"
+bbedit "DingusVideoPCI.xxd.txt"
+
+
+/Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci/Reverse/DingusVideoPCI2.of and /Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci/Reverse/DingusVideoPCI.of are identical.
+/Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci/DingusVideoPCI.rom and /Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci/Reverse/DingusVideoPCI.rom are identical.
+#=========================================================================================
+
+
+detok -help
+Welcome to the OpenBIOS detokenizer v0.6
+detok Copyright(c) 2001-2003 by Stefan Reinauer.
+Written by Stefan Reinauer, &lt;stepan@openbios.org&gt;
+This program is free software; you may redistribute it under the terms of
+the GNU General Public License.  This program has absolutely no warranty.
+Compiled 22:19:55 May 11 2025
+
+usage: detok [OPTION]... [FCODE-FILE]...
+
+         -v, --verbose          print fcode numbers
+         -h, --help             print this help text
+         -a, --all              don't stop at end0
+         -i, --ignorelen        do entire file, ingnoring length in start fcode
+         -n, --linenumbers      print line numbers
+         -o, --offsets          print byte offsets
+         -t, --tabs             use tabs for indenting instead of spaces
+         -m, --macrom [1,2,4,8,256] file is from a Macintosh ROM (1=Power Mac 8600, 2=Beige G3, 4=Power Mac G5, 8=B&amp;W G3, 256=Development)
+         -s, --startoffset      start offset of rom dump
+         -d, --debugcapstone    output capstone info for macrom disassembly
+</string>
+</dict>
+</plist>
