@@ -51,3 +51,4 @@ cpu/ppc/test/risu-dppc/risu
 * Data
 *.ndrv
 *.ndrv.xSYM
+Reverse
