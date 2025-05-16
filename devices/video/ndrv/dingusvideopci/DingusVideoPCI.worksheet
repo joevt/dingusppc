@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CurrentWorkingDirectory</key>
+	<string>/Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci</string>
+	<key>WorksheetContents</key>
+	<string>#=========================================================================================
+# (1) Setup
+
+OpenBIOSStuff="/Volumes/Updates/Docs/Open_Firmware_and_Forth/OpenBIOS/joevt-OpenBIOSStuff"
+PATH="$OpenBIOSStuff"/detok/obj-amd64:"$OpenBIOSStuff"/toke/obj-amd64:"$OpenBIOSStuff"/macOS:/Volumes/Work/Programming/lzss/joevt-lzss:/usr/local/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/joevt/Library/Python/2.7/bin:/opt/X11/bin:/Library/Apple/usr/bin
+source "/Volumes/Work/Open Firmware and Name Registry/ROM PowerPC Mac/decompressrom.sh"
+
+#=========================================================================================
+# Make the ROM
+
+cd "/Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci"
+mkdir -p "Build"
+toke -l -v -o "Build/DingusVideoPCI.rom" "DingusVideoPCI.of" &gt; "/tmp/toke.log.txt"
+theerr=$?
+if (($theerr)) || grep -qi "WARNING" "/tmp/toke.log.txt" ; then
+	cat "/tmp/toke.log.txt"
+else
+	echo "# no errors"
+fi
+xxd "Build/DingusVideoPCI.rom" &gt; "Build/DingusVideoPCI.xxd.txt"
+# no errors
+
+#=========================================================================================
+# Verify the results
+
+cd "/Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci"
+mkdir -p "Reverse"
+DumpPCIRom.sh -a -v "Build/DingusVideoPCI.rom" &gt; "Reverse/DingusVideoPCI.of" 2&gt; "Reverse/DingusVideoPCI.errs"
+bbedit "Reverse/DingusVideoPCI.of"
+
+toke -l -v -o "Reverse/DingusVideoPCI.rom" "Reverse/DingusVideoPCI.of" &gt; "/tmp/toke2.log.txt" || cat "/tmp/toke2.log.txt"
+DumpPCIRom.sh -a -v "Reverse/DingusVideoPCI.rom" &gt; "Reverse/DingusVideoPCI2.of" 2&gt; "Reverse/DingusVideoPCI2.errs"
+sleep 1
+bbedit "Reverse/DingusVideoPCI.of" "Reverse/DingusVideoPCI2.of"
+bbdiff "Reverse/DingusVideoPCI.of" "Reverse/DingusVideoPCI2.of"
+bbdiff "Reverse/DingusVideoPCI.rom" "Build/DingusVideoPCI.rom"
+
+#=========================================================================================
+# View results
+
+xxd "Reverse/DingusVideoPCI.rom" &gt; "Reverse/DingusVideoPCI2.xxd.txt"
+bbedit "Reverse/DingusVideoPCI.of"
+bbedit "DingusVideoPCI.xxd.txt"
+
+#=========================================================================================
+# Tests in Open Firmware
+
+dev pci/@10
+d# 2288 d# 1830 d# 123 edid-gtf-mode if .timing then
+d# 264 d# 108 d# 88 edid-gtf-mode if .timing then
+d# 968 d# 726 d# 100 edid-gtf-mode if .timing then
+test-gtf-timings
+
+" pci1/@D/@0" 2dup find-device open-dev dup . to my-self \ 7500-9600
+" pci/@C/@0"  2dup find-device open-dev dup . to my-self \ Beige G3
+" pci/@10/@0" 2dup find-device open-dev dup . to my-self \ B&amp;W G3
+" pci/@10/@1" 2dup find-device open-dev dup . to my-self \ B&amp;W G3
+" pci/@10/@2" 2dup find-device open-dev dup . to my-self \ B&amp;W G3
+test-pattern
+
+dev pci1/@D
+cr d# 304 d# 243 d# 123 0 false 0 d# 460 false edid-cvt-mode . .timing
+cr d# 264 d# 148 d# 60 1 false 0 d# 460 false edid-cvt-mode . .timing
+test-cvt-timings
+
+clear-screen
+d# 15 0 do d# 100 0 do j d# 32 j + i j 2* + i 1 fill-rectangle loop loop
+
+d# 645 set-mode
+test-pattern
+
+d# 32 set-depth test-pattern
+d# 16 set-depth test-pattern
+d# 8 set-depth test-pattern
+d# 4 set-depth test-pattern
+d# 2 set-depth test-pattern
+d# 1 set-depth test-pattern
+
+" pci1/@D/@0" output
+
+clear-screen
+5 value pos
+20 1 do
+	5 pos pos i i fill-rectangle
+	6 pos pos i i fill-ellipse
+	i pos + to pos
+loop
+
+0 d# 416 10 d# 400 100 fill-rectangle
+d# 100 1 do
+	i d# 15 u/mod drop d# 416 i 2* + 10 d# 400 i 4 * - 100 fill-ellipse
+loop
+
+#=========================================================================================
+# Convert an ICN# to Open Firmware hex 8-bit per pixel, 16 colors.
+# see example output above.
+
+for color in 00:0f 0000:7fff 00000000:00ffffff; do
+	depth=$(( (${#color} - 1) / 2 * 4 ))
+	foreground_color=${color:0:${depth}/4}
+	background_color=${color:${depth}/4 + 1}
+	derez -only "'ICN#'(-3993)" "/Volumes/Classic/System Folder/System" | \
+	perl -nE 'if (/\$"(.*?)"/) { print $1 }' | xxd -p -r | dd bs=128 count=1 2&gt; /dev/null | xxd -g 4 -c 4 -b | \
+	sed -E '
+/^.{8}: ([01]+)  .*$/s//\1/;s/0/x/g;s/1/y/g;s/x/'"$background_color"'/g;s/y/'"$foreground_color"'/g;s/(.*)/" "(\1)" encode-bytes encode+/;1 i\
+" " encode-bytes
+'
+	printf "constant icon-%d-length\nconstant icon-%d-start\n\n" "$depth" "$depth"
+done
+
+" " encode-bytes
+" "(0f0f0f0f0f0f0f0f000000000f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f0f0f0f0f0f0000000f0f0000000f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f0f0f0f0000000000000f0f0f000000000f0f0f0f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f0f0000000f0f000f0000000f0f000f000000000f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0000000f0f0f0f0000000f000f0f000f0f0f0000000f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(000f0f0f0f0f0f0f0f0f0f000f0000000f0f0f00000f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(000f0f0f0f0f0f0f0f0f0f00000000000f0f0f00000f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(00000f0f0f0f0f0f0f0f0f0f0f00000f0f0f0f00000f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0000000f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0000000f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(00000000000f0f0f0f0f0f0f0f0f0f0000000000000f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(00000f000f000f0f0f0f0f0f0000000000000000000f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0000000f000f0f000f000f000f000f0000000000000f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f000000000f0f0f000f000f000f0000000000000f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f000f0f00000f000000000000000000000000000f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f000f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0000000f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f000f000f0f0f0f000f0f0f0f000f0f000000000f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f000f000f0f0f000f0f0f0f000f000f000f00000f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f000f000f0f0f000f0f0f0f00000f0f000000000f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f000f000f0f0f000f0f0f0f000f000f000f00000f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f000f000f0f0f000f0f0f0f00000f0f000000000f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f000f000f0f0f000f0f0f0f000f000f000f00000000000f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f000f000f0f0f000f0f0f0f00000f0f0000000000000000000f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f000f000f0f0f000f0f0f0f000f000f000f0000000000000000000f0f0f0f0f)" encode-bytes encode+
+" "(0f000f000f0f0f000f0f0f0f00000f0f00000000000000000000000f0f0f0f0f)" encode-bytes encode+
+" "(0f000f000f0f0f000f0f0f0f000f000f000f0000000000000000000f0f0f0f0f)" encode-bytes encode+
+" "(0f000f000f0f0f000f0f0f0f00000f0f00000000000000000000000f0f0f0f0f)" encode-bytes encode+
+" "(0f000f0f0f0f0f000f0f0f0f000f000f00000000000000000000000f0f0f0f0f)" encode-bytes encode+
+" "(0f000f0f0f0f0f000f0f0f0f00000f0f000000000000000000000f0f0f0f0f0f)" encode-bytes encode+
+" "(0f000f0f0f0f0f0f000f0f0f0f000f0f0000000000000000000f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f0000000f0f0f0f0f0f0f0f0f0f0f0000000000000000000f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f0f0f0000000f0f0f0f0f0f0f000000000000000000000f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+" "(0f0f0f0f0f0000000000000000000000000000000f0f0f0f0f0f0f0f0f0f0f0f)" encode-bytes encode+
+constant icon-8-length
+constant icon-8-start
+
+" " encode-bytes
+" "(7fff7fff7fff7fff7fff7fff7fff7fff00000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff7fff7fff7fff7fff7fff0000000000007fff7fff0000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff7fff7fff7fff0000000000000000000000007fff7fff7fff00000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff7fff0000000000007fff7fff00007fff0000000000007fff7fff00007fff00000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(0000000000007fff7fff7fff7fff0000000000007fff00007fff7fff00007fff7fff7fff0000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(00007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff00007fff0000000000007fff7fff7fff000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(00007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff000000000000000000007fff7fff7fff000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff000000007fff7fff7fff7fff000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(0000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff0000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(000000000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff0000000000000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(000000007fff00007fff00007fff7fff7fff7fff7fff7fff0000000000000000000000000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(0000000000007fff00007fff7fff00007fff00007fff00007fff00007fff0000000000000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00000000000000007fff7fff7fff00007fff00007fff00007fff0000000000000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff7fff000000007fff00000000000000000000000000000000000000000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff0000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff00007fff7fff7fff7fff00007fff7fff7fff7fff00007fff7fff00000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff00007fff7fff7fff00007fff7fff7fff7fff00007fff00007fff00007fff000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff00007fff7fff7fff00007fff7fff7fff7fff000000007fff7fff00000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff00007fff7fff7fff00007fff7fff7fff7fff00007fff00007fff00007fff000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff00007fff7fff7fff00007fff7fff7fff7fff000000007fff7fff00000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff00007fff7fff7fff00007fff7fff7fff7fff00007fff00007fff00007fff000000000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff00007fff7fff7fff00007fff7fff7fff7fff000000007fff7fff0000000000000000000000000000000000007fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff00007fff7fff7fff00007fff7fff7fff7fff00007fff00007fff00007fff0000000000000000000000000000000000007fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff00007fff7fff7fff00007fff7fff7fff7fff000000007fff7fff000000000000000000000000000000000000000000007fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff00007fff7fff7fff00007fff7fff7fff7fff00007fff00007fff00007fff0000000000000000000000000000000000007fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff00007fff7fff7fff00007fff7fff7fff7fff000000007fff7fff000000000000000000000000000000000000000000007fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff7fff7fff7fff7fff00007fff7fff7fff7fff00007fff00007fff000000000000000000000000000000000000000000007fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff7fff7fff7fff7fff00007fff7fff7fff7fff000000007fff7fff00000000000000000000000000000000000000007fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff00007fff7fff7fff7fff7fff7fff00007fff7fff7fff7fff00007fff7fff0000000000000000000000000000000000007fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff0000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff0000000000000000000000000000000000007fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff7fff7fff0000000000007fff7fff7fff7fff7fff7fff7fff00000000000000000000000000000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+" "(7fff7fff7fff7fff7fff0000000000000000000000000000000000000000000000000000000000007fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff7fff)" encode-bytes encode+
+constant icon-16-length
+constant icon-16-start
+
+" " encode-bytes
+" "(00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff0000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00000000000000000000000000ffffff00ffffff00000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff00ffffff00ffffff00ffffff00000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff0000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff00ffffff00000000000000000000000000ffffff00ffffff0000000000ffffff00000000000000000000000000ffffff00ffffff0000000000ffffff0000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00000000000000000000000000ffffff00ffffff00ffffff00ffffff00000000000000000000000000ffffff0000000000ffffff00ffffff0000000000ffffff00ffffff00ffffff00000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(0000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff0000000000ffffff00000000000000000000000000ffffff00ffffff00ffffff000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(0000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff000000000000000000000000000000000000000000ffffff00ffffff00ffffff000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff000000000000000000ffffff00ffffff00ffffff00ffffff000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(000000000000000000ffffff0000000000ffffff0000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00000000000000000000000000ffffff0000000000ffffff00ffffff0000000000ffffff0000000000ffffff0000000000ffffff0000000000ffffff00000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000000000000000000000000000ffffff00ffffff00ffffff0000000000ffffff0000000000ffffff0000000000ffffff00000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff00ffffff000000000000000000ffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff0000000000ffffff00ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff0000000000ffffff00ffffff0000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff0000000000ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff0000000000ffffff0000000000ffffff0000000000ffffff000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff0000000000ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff000000000000000000ffffff00ffffff0000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff0000000000ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff0000000000ffffff0000000000ffffff0000000000ffffff000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff0000000000ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff000000000000000000ffffff00ffffff0000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff0000000000ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff0000000000ffffff0000000000ffffff0000000000ffffff000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff0000000000ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff000000000000000000ffffff00ffffff00000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff0000000000ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff0000000000ffffff0000000000ffffff0000000000ffffff00000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff0000000000ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff000000000000000000ffffff00ffffff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff0000000000ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff0000000000ffffff0000000000ffffff0000000000ffffff00000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff0000000000ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff000000000000000000ffffff00ffffff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff00ffffff00ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff0000000000ffffff0000000000ffffff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff00ffffff00ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff000000000000000000ffffff00ffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff0000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff0000000000ffffff00ffffff00ffffff00ffffff0000000000ffffff00ffffff00000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff00000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff00ffffff00ffffff00000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+" "(00ffffff00ffffff00ffffff00ffffff00ffffff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff00ffffff)" encode-bytes encode+
+constant icon-32-length
+constant icon-32-start
+
+#=========================================================================================
+# More Tests in Open Firmware
+
+: animate-icon
+	dimensions d# 31 d# 31 d-
+	0 do dup 0 do
+		icon-start i j d# 32 d# 32 draw-rectangle
+	loop d# 32 +loop drop
+	;
+
+: animate-icon-32
+	dimensions d# 31 d# 31 d-
+	0 do dup 0 do
+		icon-32-start i j d# 32 d# 32 draw-rectangle
+	loop d# 32 +loop drop
+	;
+
+#=========================================================================================
+</string>
+</dict>
+</plist>
