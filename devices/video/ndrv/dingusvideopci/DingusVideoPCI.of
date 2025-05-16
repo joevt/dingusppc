@@ -1,0 +1,1911 @@
+\ ========================================================================================
+\ PCI header
+
+tokenizer[ D15C 0001 038000 ]tokenizer pci-header
+
+\ the evaluate word might use fcode numbers starting from 0x800 so we'll start at 0x820.
+tokenizer[ 820 next-fcode ]tokenizer
+
+fcode-version2
+
+hex
+
+\ external
+headerless
+
+
+0 value indent
+: .dbg ( str len -- )
+	over c@ [char] ] = if					\ str len
+		indent ?dup if 1- to indent then	\ str len
+	then									\ str len
+	indent 2* spaces						\ str len
+	2dup type								\ str len
+	drop									\ str
+	c@ [char] [ = if						\ 
+		indent 1+ to indent
+	then
+	;
+
+" [ DingusVideoParent" .dbg cr
+
+	\ ====================================================================================
+	\ Debugging utilities
+
+	: .stack " stack: " .dbg .s ;
+	.stack
+
+	0 value save-depth
+	: save-stack[ depth to save-depth ;
+	: ]restore-stack depth save-depth ?do drop loop ;
+	: .saved-stack depth save-depth - begin dup while dup pick . 1- repeat drop cr ;
+
+	\ ====================================================================================
+	\ Open Firmware fixes
+
+	" fix $find" .dbg cr
+	.stack
+
+	\ $find in Open Firmware 1.0.5 incorrectly returns 4 items on the stack instead of 3 for not found result
+	: ($find) ( str len -- xt true | str len false )
+		$find		\ xt true | str len false
+		dup 0= if	\ pstr str len false
+			3 roll	\ str len false pstr
+			drop	\ str len false
+		then
+		;
+
+	defer $def-find
+	save-stack[
+		" " $find
+		depth save-depth - 4 = if
+			" $find has problem" .dbg cr
+			['] ($find)
+		else
+			" $find is ok" .dbg cr
+			['] $find
+		then to $def-find
+	]restore-stack
+
+	.stack
+
+	\ ====================================================================================
+	\ Debug logging
+
+	save-stack[ my-address " my-address: " .dbg .saved-stack ]restore-stack \ ( -- phys.lo ... )			0 0
+	save-stack[ my-space   " my-space: "   .dbg .saved-stack ]restore-stack \ ( -- phys.hi )				6800		(for PCI slot @D)
+	save-stack[ my-unit    " my-unit: "    .dbg .saved-stack ]restore-stack \ ( -- phys.lo ... phys.hi )	0 0 0
+	save-stack[ my-args    " my-args: "    .dbg .saved-stack ]restore-stack \ ( -- arg-str arg-len )		0 0
+
+	\ ====================================================================================
+	\ Structs
+
+	" [ structs" .dbg cr
+
+	struct
+		/l field >M.num-displays
+	constant /meta-regs
+
+	struct \ display-regs
+		/l field >D.hactive
+		/l field >D.hsyncbegin
+		/l field >D.hsyncend
+		/l field >D.htotal
+		/l field >D.vactive
+		/l field >D.vsyncbegin
+		/l field >D.vsyncend
+		/l field >D.vtotal
+		/l field >D.mon-sense
+		/l field >D.timing-flags
+		/l field >D.immediate-flags
+		/l field >D.pixel-clock
+		/l field >D.pixel-depth
+		/l field >D.framebuffer-base
+		/l field >D.framebuffer-rowbytes
+		/l field >D.int-enable
+		/l field >D.int-status
+		/l field >D.hwcursor-base
+		/l field >D.hwcursor-width
+		/l field >D.hwcursor-pos
+		/l field >D.color-index
+		/l field >D.color-data
+	constant /display-regs
+
+	struct \ display-timing
+		/l field >T.pixel-clock
+
+		/w field >T.display-timing-number
+		/w field >T.width
+		/w field >T.height
+
+		/w field >T.hactive
+		/w field >T.hsyncbegin
+		/w field >T.hsyncend
+		/w field >T.htotal
+
+		/w field >T.vactive
+		/w field >T.vsyncbegin
+		/w field >T.vsyncend
+		/w field >T.vtotal
+
+		/c field >T.hpolarity
+		/c field >T.vpolarity
+		/c field >T.interlaced
+		/c field >T.csyncdisabled
+
+		d# 10 field >T.note
+		3 + -4 and
+	constant /display-timing \ 40 bytes
+
+	struct \ display-info
+		/display-timing field >I.current-timing
+		/l field >I.display-regs
+		/l field >I.fb-base
+		/l field >I.fb-address-phys
+		/l field >I.fb-address
+		/l field >I.im-flags-to-set
+		/l field >I.open-count
+		/l field >I.edid
+		/w field >I.edid-size
+		/w field >I.sense-code
+		/c field >I.mono-mode?
+		/c field >I.pixel-depth
+		/c field >I.display-number
+	constant /display-info
+
+	struct \ vic-entry
+		/l field >V.display-timing
+		/l field >V.vic
+	constant /vic-entry
+
+	struct \ sense-code-entry
+		/w field >S.sense-code
+		/w field >S.monochrome
+		/l field >S.display-timing-list
+	constant /sense-code
+
+	" ] structs" .dbg cr
+
+	\ ====================================================================================
+	\ Dictionary
+
+	\ this differs from the one in ROM since it will check for zero length
+	: $c, bounds ?do i c@ c, loop ;
+
+	\ ====================================================================================
+	\ Data
+
+	" [ timings" .dbg cr
+
+	decimal
+
+	defer timing-proc ( display-timing display-info -- )
+
+	false constant N
+	true  constant P
+	: mode, d# 18 0 do i roll loop                l,   w,    w,    w,    w,    w,    w,    w,     w,    w,    w,    w, c, c, c,     c,     over $c, d# 10 swap ?do 0 c, loop ;
+
+	create kDisplay_512x384i_60Hz_NTSC       654400  100   512   384   512   488   528   544    384   385   388   393  N  P  true   false  " NTSC"         mode, \ not accurate (calculated using GTF)
+	create kDisplay_640x480i_50Hz_PAL        835000  102   640   480   640   600   656   672    480   481   484   489  N  P  true   false  " PAL"          mode, \ not accurate (calculated using GTF)
+	create kDisplay_768x576i_50Hz_PAL       1261400  108   768   576   768   744   808   848    576   577   580   586  N  P  true   false  " PAL"          mode, \ not accurate (calculated using GTF)
+	create kDisplay_640x480_120Hz           5240600  106   640   480   640   680   744   848    480   481   484   515  N  P  false  false  0 0             mode,
+	create kDisplay_640x480i_60Hz_NTSC      1227000  200   640   480   640   664   724   780    480   486   492   525  0  0  true   false  " NTSC"         mode,
+	create kDisplay_512x342_60Hz            1566720  201   512   342   512   526   529   704    342   343   347   370  0  0  false  false  0 0             mode,
+	create kDisplay_512x384_60Hz            1566720  202   512   384   512   528   560   640    384   385   388   407  0  0  false  false  0 0             mode,
+	create kDisplay_560x384_60Hz            1723400  203   560   384   560   592   624   704    384   385   388   407  0  0  false  false  0 0             mode,
+	create kDisplay_640x400_67Hz            3024000  205   640   400   640   704   768   864    400   443   446   525  0  0  false  false  0 0             mode,
+	create kDisplay_640x870_75Hz            5728320  218   640   870   640   672   752   832    870   873   876   918  0  0  false  false  0 0             mode,
+	create kDisplay_1024x768_75Hz           8000000  223  1024   768  1024  1056  1152  1328    768   771   774   804  0  0  false  false  0 0             mode,
+	create kDisplay_1280x960_75Hz          12600000  228  1280   960  1280  1296  1440  1680    960   961   964  1000  0  0  false  false  0 0             mode,
+	create kDisplay_720x400_70Hz            2832000  300   720   400   720   738   846   900    400   421   423   449  N  P  false  false  0 0             mode,
+	create kDisplay_720x400_88Hz            3550000  301   720   400   720   738   846   900    400   412   414   449  N  P  false  false  0 0             mode,
+	create kDisplay_640x480_67Hz            3024000  303   640   480   640   704   768   864    480   483   486   525  N  N  false  false  0 0             mode,
+	create kDisplay_832x624_75Hz            5728320  310   832   624   832   864   928  1152    624   625   628   667  N  N  false  false  0 0             mode,
+	create kDisplay_1152x870_75Hz          10000000  316  1152   870  1152  1184  1312  1456    870   873   876   915  P  P  false  false  0 0             mode,
+	create kDisplay_640x350_85Hz            3150000  401   640   350   640   672   736   832    350   382   385   445  P  N  false  false  0 0             mode,
+	create kDisplay_640x400_85Hz            3150000  402   640   400   640   672   736   832    400   401   404   445  N  P  false  false  0 0             mode,
+	create kDisplay_720x400_85Hz            3550000  403   720   400   720   756   828   936    400   401   404   446  N  P  false  false  0 0             mode,
+	create kDisplay_640x480_60Hz_VGA        2517500  404   640   480   640   656   752   800    480   490   492   525  N  N  false  false  " VGA"          mode,
+	create kDisplay_640x480_72Hz            3150000  405   640   480   640   664   704   832    480   489   492   520  N  N  false  false  0 0             mode,
+	create kDisplay_640x480_75Hz            3150000  406   640   480   640   656   720   840    480   481   484   500  N  N  false  false  0 0             mode,
+	create kDisplay_640x480_85Hz            3600000  407   640   480   640   696   752   832    480   481   484   509  N  N  false  false  0 0             mode,
+	create kDisplay_800x600_56Hz_VGA        3600000  408   800   600   800   824   896  1024    600   601   603   625  P  P  false  false  " VGA"          mode,
+	create kDisplay_800x600_60Hz_VGA        4000000  409   800   600   800   840   968  1056    600   601   605   628  P  P  false  false  " VGA"          mode,
+	create kDisplay_800x600_72Hz_VGA        5000000  410   800   600   800   856   976  1040    600   637   643   666  P  P  false  false  " VGA"          mode,
+	create kDisplay_800x600_75Hz_VGA        4950000  411   800   600   800   816   896  1056    600   601   604   625  P  P  false  false  " VGA"          mode,
+	create kDisplay_800x600_85Hz            5625000  412   800   600   800   832   896  1048    600   601   604   631  P  P  false  false  0 0             mode,
+	create kDisplay_800x600_120Hz           7325000  413   800   600   800   848   880   960    600   603   607   636  P  N  false  false  0 0             mode,
+	create kDisplay_848x480_60Hz            3375000  414   848   480   848   864   976  1088    480   486   494   517  P  P  false  false  0 0             mode,
+	create kDisplay_1024x768i_87Hz          4490000  415  1024   768  1024  1032  1208  1264    768   769   777   817  P  P  true   false  0 0             mode,
+	create kDisplay_1024x768_60Hz_VGA       6500000  416  1024   768  1024  1048  1184  1344    768   771   777   806  N  N  false  false  " VGA"          mode,
+	create kDisplay_1024x768_70Hz           7500000  417  1024   768  1024  1048  1184  1328    768   771   777   806  N  N  false  false  0 0             mode,
+	create kDisplay_1024x768_75Hz_VGA       7875000  418  1024   768  1024  1040  1136  1312    768   769   772   800  P  P  false  false  " VGA"          mode,
+	create kDisplay_1024x768_85Hz           9450000  419  1024   768  1024  1072  1168  1376    768   769   772   808  P  P  false  false  0 0             mode,
+	create kDisplay_1024x768_120Hz         11550000  420  1024   768  1024  1072  1104  1184    768   771   775   813  P  N  false  false  0 0             mode,
+	create kDisplay_1152x864_75Hz          10800000  421  1152   864  1152  1216  1344  1600    864   865   868   900  P  P  false  false  0 0             mode,
+	create kDisplay_1280x720_60Hz           7425000  422  1280   720  1280  1390  1430  1650    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_1280x768_60Hz_RB        6825000  423  1280   768  1280  1328  1360  1440    768   771   778   790  P  N  false  false  " RB"           mode,
+	create kDisplay_1280x768_59_87Hz        7950000  424  1280   768  1280  1344  1472  1664    768   771   778   798  N  P  false  false  0 0             mode,
+	create kDisplay_1280x768_75Hz          10225000  425  1280   768  1280  1360  1488  1696    768   771   778   805  N  P  false  false  0 0             mode,
+	create kDisplay_1280x768_85Hz          11750000  426  1280   768  1280  1360  1496  1712    768   771   778   809  N  P  false  false  0 0             mode,
+	create kDisplay_1280x768_120Hz         14025000  427  1280   768  1280  1328  1360  1440    768   771   778   813  P  N  false  false  0 0             mode,
+	create kDisplay_1280x800_60Hz_RB        7100000  428  1280   800  1280  1328  1360  1440    800   803   809   823  P  N  false  false  " RB"           mode,
+	create kDisplay_1280x800_60Hz           8350000  429  1280   800  1280  1352  1480  1680    800   803   809   831  N  P  false  false  0 0             mode,
+	create kDisplay_1280x800_75Hz          10650000  430  1280   800  1280  1360  1488  1696    800   803   809   838  N  P  false  false  0 0             mode,
+	create kDisplay_1280x800_85Hz          12250000  431  1280   800  1280  1360  1496  1712    800   803   809   843  N  P  false  false  0 0             mode,
+	create kDisplay_1280x800_120Hz         14625000  432  1280   800  1280  1328  1360  1440    800   803   809   847  P  N  false  false  0 0             mode,
+	create kDisplay_1280x960_60Hz          10800000  433  1280   960  1280  1376  1488  1800    960   961   964  1000  P  P  false  false  0 0             mode,
+	create kDisplay_1280x960_85Hz          14850000  434  1280   960  1280  1344  1504  1728    960   961   964  1011  P  P  false  false  0 0             mode,
+	create kDisplay_1280x960_120Hz         17550000  435  1280   960  1280  1328  1360  1440    960   963   967  1017  P  N  false  false  0 0             mode,
+	create kDisplay_1280x1024_60Hz         10800000  436  1280  1024  1280  1328  1440  1688   1024  1025  1028  1066  P  P  false  false  0 0             mode,
+	create kDisplay_1280x1024_75Hz         13500000  437  1280  1024  1280  1296  1440  1688   1024  1025  1028  1066  P  P  false  false  0 0             mode,
+	create kDisplay_1280x1024_85Hz         15750000  438  1280  1024  1280  1344  1504  1728   1024  1025  1028  1072  P  P  false  false  0 0             mode,
+	create kDisplay_1280x1024_120Hz        18725000  439  1280  1024  1280  1328  1360  1440   1024  1027  1034  1084  P  N  false  false  0 0             mode,
+	create kDisplay_1360x768_60Hz           8550000  440  1360   768  1360  1424  1536  1792    768   771   777   795  P  P  false  false  0 0             mode,
+	create kDisplay_1360x768_120Hz         14825000  441  1360   768  1360  1408  1440  1520    768   771   776   813  P  N  false  false  0 0             mode,
+	create kDisplay_1366x768_60Hz           8550000  442  1366   768  1366  1436  1579  1792    768   771   774   798  P  P  false  false  0 0             mode,
+	create kDisplay_1366x768_60Hz_RB        7200000  443  1366   768  1366  1380  1436  1500    768   769   772   800  P  P  false  false  " RB"           mode,
+	create kDisplay_1400x1050_60Hz_RB      10100000  444  1400  1050  1400  1448  1480  1560   1050  1053  1057  1080  P  N  false  false  " RB"           mode,
+	create kDisplay_1400x1050_60Hz         12175000  445  1400  1050  1400  1488  1632  1864   1050  1053  1057  1089  N  P  false  false  0 0             mode,
+	create kDisplay_1400x1050_75Hz         15600000  446  1400  1050  1400  1504  1648  1896   1050  1053  1057  1099  N  P  false  false  0 0             mode,
+	create kDisplay_1400x1050_85Hz         17950000  447  1400  1050  1400  1504  1656  1912   1050  1053  1057  1105  N  P  false  false  0 0             mode,
+	create kDisplay_1400x1050_120Hz        20800000  448  1400  1050  1400  1448  1480  1560   1050  1053  1057  1112  P  N  false  false  0 0             mode,
+	create kDisplay_1440x900_60Hz_RB        8875000  449  1440   900  1440  1488  1520  1600    900   903   909   926  P  N  false  false  " RB"           mode,
+	create kDisplay_1440x900_60Hz          10650000  450  1440   900  1440  1520  1672  1904    900   903   909   934  N  P  false  false  0 0             mode,
+	create kDisplay_1440x900_75Hz          13675000  451  1440   900  1440  1536  1688  1936    900   903   909   942  N  P  false  false  0 0             mode,
+	create kDisplay_1440x900_85Hz          15700000  452  1440   900  1440  1544  1696  1952    900   903   909   948  N  P  false  false  0 0             mode,
+	create kDisplay_1440x900_120Hz         18275000  453  1440   900  1440  1488  1520  1600    900   903   909   953  P  N  false  false  0 0             mode,
+	create kDisplay_1600x900_60Hz          10800000  454  1600   900  1600  1624  1704  1800    900   901   904  1000  P  P  false  false  0 0             mode,
+	create kDisplay_1600x1200_60Hz         16200000  455  1600  1200  1600  1664  1856  2160   1200  1201  1204  1250  P  P  false  false  0 0             mode,
+	create kDisplay_1600x1200_65Hz         17550000  456  1600  1200  1600  1664  1856  2160   1200  1201  1204  1250  P  P  false  false  0 0             mode,
+	create kDisplay_1600x1200_70Hz         18900000  457  1600  1200  1600  1664  1856  2160   1200  1201  1204  1250  P  P  false  false  0 0             mode,
+	create kDisplay_1600x1200_75Hz         20250000  458  1600  1200  1600  1664  1856  2160   1200  1201  1204  1250  P  P  false  false  0 0             mode,
+	create kDisplay_1600x1200_85Hz         22950000  459  1600  1200  1600  1664  1856  2160   1200  1201  1204  1250  P  P  false  false  0 0             mode,
+	create kDisplay_1600x1200_120Hz        26825000  460  1600  1200  1600  1648  1680  1760   1200  1203  1207  1271  P  N  false  false  0 0             mode,
+	create kDisplay_1680x1050_60Hz_RB      11900000  461  1680  1050  1680  1728  1760  1840   1050  1053  1059  1080  P  N  false  false  " RB"           mode,
+	create kDisplay_1680x1050_60Hz         14625000  462  1680  1050  1680  1784  1960  2240   1050  1053  1059  1089  N  P  false  false  0 0             mode,
+	create kDisplay_1680x1050_75Hz         18700000  463  1680  1050  1680  1800  1976  2272   1050  1053  1059  1099  N  P  false  false  0 0             mode,
+	create kDisplay_1680x1050_85Hz         21475000  464  1680  1050  1680  1808  1984  2288   1050  1053  1059  1105  N  P  false  false  0 0             mode,
+	create kDisplay_1680x1050_120Hz        24550000  465  1680  1050  1680  1728  1760  1840   1050  1053  1059  1112  P  N  false  false  0 0             mode,
+	create kDisplay_1792x1344_60Hz         20475000  466  1792  1344  1792  1920  2120  2448   1344  1345  1348  1394  N  P  false  false  0 0             mode,
+	create kDisplay_1792x1344_75Hz         26100000  467  1792  1344  1792  1888  2104  2456   1344  1345  1348  1417  N  P  false  false  0 0             mode,
+	create kDisplay_1792x1344_120Hz        33325000  468  1792  1344  1792  1840  1872  1952   1344  1347  1351  1423  P  N  false  false  0 0             mode,
+	create kDisplay_1856x1392_60Hz         21825000  469  1856  1392  1856  1952  2176  2528   1392  1393  1396  1439  N  P  false  false  0 0             mode,
+	create kDisplay_1856x1392_75Hz         28800000  470  1856  1392  1856  1984  2208  2560   1392  1393  1396  1500  N  P  false  false  0 0             mode,
+	create kDisplay_1856x1392_120Hz        35650000  471  1856  1392  1856  1904  1936  2016   1392  1395  1399  1473  P  N  false  false  0 0             mode,
+	create kDisplay_1920x1080_60Hz         14850000  472  1920  1080  1920  2008  2052  2200   1080  1084  1089  1125  P  P  false  false  0 0             mode,
+	create kDisplay_1920x1200_60Hz_RB      15400000  473  1920  1200  1920  1968  2000  2080   1200  1203  1209  1235  P  N  false  false  " RB"           mode,
+	create kDisplay_1920x1200_60Hz         19325000  474  1920  1200  1920  2056  2256  2592   1200  1203  1209  1245  N  P  false  false  0 0             mode,
+	create kDisplay_1920x1200_75Hz         24525000  475  1920  1200  1920  2056  2264  2608   1200  1203  1209  1255  N  P  false  false  0 0             mode,
+	create kDisplay_1920x1200_85Hz         28125000  476  1920  1200  1920  2064  2272  2624   1200  1203  1209  1262  N  P  false  false  0 0             mode,
+	create kDisplay_1920x1200_120Hz        31700000  477  1920  1200  1920  1968  2000  2080   1200  1203  1209  1271  P  N  false  false  0 0             mode,
+	create kDisplay_1920x1440_60Hz         23400000  478  1920  1440  1920  2048  2256  2600   1440  1441  1444  1500  N  P  false  false  0 0             mode,
+	create kDisplay_1920x1440_75Hz         29700000  479  1920  1440  1920  2064  2288  2640   1440  1441  1444  1500  N  P  false  false  0 0             mode,
+	create kDisplay_1920x1440_120Hz        38050000  480  1920  1440  1920  1968  2000  2080   1440  1442  1445  1523  P  N  false  false  0 0             mode,
+	create kDisplay_2048x1152_60Hz         16200000  481  2048  1152  2048  2074  2154  2250   1152  1153  1156  1200  P  P  false  false  0 0             mode,
+	create kDisplay_2560x1600_60Hz_RB      26850000  482  2560  1600  2560  2608  2640  2720   1600  1603  1609  1646  P  N  false  false  " RB"           mode,
+	create kDisplay_2560x1600_60Hz         34850000  483  2560  1600  2560  2752  3032  3504   1600  1603  1609  1658  N  P  false  false  0 0             mode,
+	create kDisplay_2560x1600_75Hz         44325000  484  2560  1600  2560  2768  3048  3536   1600  1603  1609  1672  N  P  false  false  0 0             mode,
+	create kDisplay_2560x1600_85Hz         50525000  485  2560  1600  2560  2768  3048  3536   1600  1603  1609  1682  N  P  false  false  0 0             mode,
+	create kDisplay_2560x1600_120Hz        55275000  486  2560  1600  2560  2608  2640  2720   1600  1603  1609  1694  P  N  false  false  0 0             mode,
+	create kDisplay_4096x2160_60Hz_RB      55674400  487  4096  2160  4096  4104  4136  4176   2160  2208  2216  2222  P  N  false  false  " RB"           mode,
+	create kDisplay_4096x2160_59_94Hz      55618800  488  4096  2160  4096  4104  4136  4176   2160  2208  2216  2222  P  N  false  false  0 0             mode,
+	create kDisplay_720x480_60Hz            2700000  502   720   480   720   736   798   858    480   489   495   525  N  N  false  false  0 0             mode,
+	create kDisplay_1920x1080i_60Hz         7425000  505  1920  1080  1920  2008  2052  2200   1080  1082  1087  1103  P  P  true   false  0 0             mode,
+	create kDisplay_1440x480i_60Hz          2700000  506  1440   480  1440  1478  1602  1716    480   484   487   503  N  N  true   false  0 0             mode,
+	create kDisplay_1440x240_60Hz           2700000  508  1440   240  1440  1478  1602  1716    240   244   247   262  N  N  false  false  0 0             mode,
+	create kDisplay_2880x480i_60Hz          5400000  510  2880   480  2880  2956  3204  3432    480   484   487   503  N  N  true   false  0 0             mode,
+	create kDisplay_2880x240_60Hz           5400000  512  2880   240  2880  2956  3204  3432    240   244   247   262  N  N  false  false  0 0             mode,
+	create kDisplay_1440x480_60Hz           5400000  514  1440   480  1440  1472  1596  1716    480   489   495   525  N  N  false  false  0 0             mode,
+	create kDisplay_720x576_50Hz            2700000  517   720   576   720   732   796   864    576   581   586   625  N  N  false  false  0 0             mode,
+	create kDisplay_1280x720_50Hz           7425000  519  1280   720  1280  1720  1760  1980    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_1920x1080i_50Hz         7425000  520  1920  1080  1920  2448  2492  2640   1080  1082  1087  1103  P  P  true   false  0 0             mode,
+	create kDisplay_1440x576i_50Hz          2700000  521  1440   576  1440  1464  1590  1728    576   578   581   601  N  N  true   false  0 0             mode,
+	create kDisplay_1440x288_50Hz           2700000  523  1440   288  1440  1464  1590  1728    288   290   293   312  N  N  false  false  0 0             mode,
+	create kDisplay_2880x576i_50Hz          5400000  525  2880   576  2880  2928  3180  3456    576   578   581   601  N  N  true   false  0 0             mode,
+	create kDisplay_2880x288_50Hz           5400000  527  2880   288  2880  2928  3180  3456    288   290   293   312  N  N  false  false  0 0             mode,
+	create kDisplay_1440x576_50Hz           5400000  529  1440   576  1440  1464  1592  1728    576   581   586   625  N  N  false  false  0 0             mode,
+	create kDisplay_1920x1080_50Hz         14850000  531  1920  1080  1920  2448  2492  2640   1080  1084  1089  1125  P  P  false  false  0 0             mode,
+	create kDisplay_1920x1080_24Hz          7425000  532  1920  1080  1920  2558  2602  2750   1080  1084  1089  1125  P  P  false  false  0 0             mode,
+	create kDisplay_1920x1080_25Hz          7425000  533  1920  1080  1920  2448  2492  2640   1080  1084  1089  1125  P  P  false  false  0 0             mode,
+	create kDisplay_1920x1080_30Hz          7425000  534  1920  1080  1920  2008  2052  2200   1080  1084  1089  1125  P  P  false  false  0 0             mode,
+	create kDisplay_2880x480_60Hz          10800000  535  2880   480  2880  2944  3192  3432    480   489   495   525  N  N  false  false  0 0             mode,
+	create kDisplay_2880x576_50Hz          10800000  537  2880   576  2880  2928  3184  3456    576   581   586   625  N  N  false  false  0 0             mode,
+	create kDisplay_1920x1080i_50Hz_72MHz   7200000  539  1920  1080  1920  1952  2120  2304   1080  1103  1108  1165  P  N  true   false  " 72 MHz"       mode,
+	create kDisplay_1920x1080i_100Hz       14850000  540  1920  1080  1920  2448  2492  2640   1080  1082  1087  1103  P  P  true   false  0 0             mode,
+	create kDisplay_1280x720_100Hz         14850000  541  1280   720  1280  1720  1760  1980    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_720x576_100Hz           5400000  542   720   576   720   732   796   864    576   581   586   625  N  N  false  false  0 0             mode,
+	create kDisplay_1440x576i_100Hz         5400000  544  1440   576  1440  1464  1590  1728    576   578   581   601  N  N  true   false  0 0             mode,
+	create kDisplay_1920x1080i_120Hz       14850000  546  1920  1080  1920  2008  2052  2200   1080  1082  1087  1103  P  P  true   false  0 0             mode,
+	create kDisplay_1280x720_120Hz         14850000  547  1280   720  1280  1390  1430  1650    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_720x480_120Hz           5400000  548   720   480   720   736   798   858    480   489   495   525  N  N  false  false  0 0             mode,
+	create kDisplay_1440x480i_120Hz         5400000  550  1440   480  1440  1478  1602  1716    480   484   487   503  N  N  true   false  0 0             mode,
+	create kDisplay_720x576_200Hz          10800000  552   720   576   720   732   796   864    576   581   586   625  N  N  false  false  0 0             mode,
+	create kDisplay_1440x576i_200Hz        10800000  554  1440   576  1440  1464  1590  1728    576   578   581   601  N  N  true   false  0 0             mode,
+	create kDisplay_720x480_240Hz          10800000  556   720   480   720   736   798   858    480   489   495   525  N  N  false  false  0 0             mode,
+	create kDisplay_1440x480i_240Hz        10800000  558  1440   480  1440  1478  1602  1716    480   484   487   503  N  N  true   false  0 0             mode,
+	create kDisplay_1280x720_24Hz           5940000  560  1280   720  1280  3040  3080  3300    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_1280x720_25Hz           7425000  561  1280   720  1280  3700  3740  3960    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_1280x720_30Hz           7425000  562  1280   720  1280  3040  3080  3300    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_1920x1080_120Hz        29700000  563  1920  1080  1920  2008  2052  2200   1080  1084  1089  1125  P  P  false  false  0 0             mode,
+	create kDisplay_1920x1080_100Hz        29700000  564  1920  1080  1920  2448  2492  2640   1080  1084  1089  1125  P  P  false  false  0 0             mode,
+	create kDisplay_1680x720_24Hz           5940000  579  1680   720  1680  3040  3080  3300    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_1680x720_25Hz           5940000  580  1680   720  1680  2908  2948  3168    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_1680x720_30Hz           5940000  581  1680   720  1680  2380  2420  2640    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_1680x720_50Hz           8250000  582  1680   720  1680  1940  1980  2200    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_1680x720_60Hz           9900000  583  1680   720  1680  1940  1980  2200    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_1680x720_100Hz         16500000  584  1680   720  1680  1740  1780  2000    720   725   730   825  P  P  false  false  0 0             mode,
+	create kDisplay_1680x720_120Hz         19800000  585  1680   720  1680  1740  1780  2000    720   725   730   825  P  P  false  false  0 0             mode,
+	create kDisplay_2560x1080_24Hz          9900000  586  2560  1080  2560  3558  3602  3750   1080  1084  1089  1100  P  P  false  false  0 0             mode,
+	create kDisplay_2560x1080_25Hz          9000000  587  2560  1080  2560  3008  3052  3200   1080  1084  1089  1125  P  P  false  false  0 0             mode,
+	create kDisplay_2560x1080_30Hz         11880000  588  2560  1080  2560  3328  3372  3520   1080  1084  1089  1125  P  P  false  false  0 0             mode,
+	create kDisplay_2560x1080_50Hz         18562500  589  2560  1080  2560  3108  3152  3300   1080  1084  1089  1125  P  P  false  false  0 0             mode,
+	create kDisplay_2560x1080_60Hz         19800000  590  2560  1080  2560  2808  2852  3000   1080  1084  1089  1100  P  P  false  false  0 0             mode,
+	create kDisplay_2560x1080_100Hz        37125000  591  2560  1080  2560  2778  2822  2970   1080  1084  1089  1250  P  P  false  false  0 0             mode,
+	create kDisplay_2560x1080_120Hz        49500000  592  2560  1080  2560  3108  3152  3300   1080  1084  1089  1250  P  P  false  false  0 0             mode,
+	create kDisplay_3840x2160_24Hz         29700000  593  3840  2160  3840  5116  5204  5500   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_3840x2160_25Hz         29700000  594  3840  2160  3840  4896  4984  5280   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_3840x2160_30Hz         29700000  595  3840  2160  3840  4016  4104  4400   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_3840x2160_50Hz         59400000  596  3840  2160  3840  4896  4984  5280   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_3840x2160_60Hz         59400000  597  3840  2160  3840  4016  4104  4400   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_4096x2160_24Hz         29700000  598  4096  2160  4096  5116  5204  5500   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_4096x2160_25Hz         29700000  599  4096  2160  4096  5064  5152  5280   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_4096x2160_30Hz         29700000  600  4096  2160  4096  4184  4272  4400   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_4096x2160_50Hz         59400000  601  4096  2160  4096  5064  5152  5280   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_4096x2160_60Hz         59400000  602  4096  2160  4096  4184  4272  4400   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_1280x720_48Hz           9000000  608  1280   720  1280  2240  2280  2500    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_1680x720_48Hz           9900000  610  1680   720  1680  2490  2530  2750    720   725   730   750  P  P  false  false  0 0             mode,
+	create kDisplay_1920x1080_48Hz         14850000  611  1920  1080  1920  2558  2602  2750   1080  1084  1089  1125  P  P  false  false  0 0             mode,
+	create kDisplay_2560x1080_48Hz         19800000  613  2560  1080  2560  3558  3602  3750   1080  1084  1089  1100  P  P  false  false  0 0             mode,
+	create kDisplay_3840x2160_48Hz         59400000  614  3840  2160  3840  5116  5204  5500   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_4096x2160_48Hz         59400000  615  4096  2160  4096  5116  5204  5500   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_3840x2160_100Hz       118800000  617  3840  2160  3840  4896  4984  5280   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_3840x2160_120Hz       118800000  618  3840  2160  3840  4016  4104  4400   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_5120x2160_24Hz         39600000  621  5120  2160  5120  7116  7204  7500   2160  2168  2178  2200  P  P  false  false  0 0             mode,
+	create kDisplay_5120x2160_25Hz         39600000  622  5120  2160  5120  6816  6904  7200   2160  2168  2178  2200  P  P  false  false  0 0             mode,
+	create kDisplay_5120x2160_30Hz         39600000  623  5120  2160  5120  5784  5872  6000   2160  2168  2178  2200  P  P  false  false  0 0             mode,
+	create kDisplay_5120x2160_48Hz         74250000  624  5120  2160  5120  5866  5954  6250   2160  2168  2178  2475  P  P  false  false  0 0             mode,
+	create kDisplay_5120x2160_50Hz         74250000  625  5120  2160  5120  6216  6304  6600   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_5120x2160_60Hz         74250000  626  5120  2160  5120  5284  5372  5500   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_5120x2160_100Hz       148500000  627  5120  2160  5120  6216  6304  6600   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_5120x2160_120Hz       148500000  628  5120  2160  5120  5284  5372  5500   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_7680x4320_24Hz        118800000  629  7680  4320  7680 10232 10408 11000   4320  4336  4356  4500  P  P  false  false  0 0             mode,
+	create kDisplay_7680x4320_25Hz        118800000  630  7680  4320  7680 10032 10208 10800   4320  4336  4356  4400  P  P  false  false  0 0             mode,
+	create kDisplay_7680x4320_30Hz        118800000  631  7680  4320  7680  8232  8408  9000   4320  4336  4356  4400  P  P  false  false  0 0             mode,
+	create kDisplay_7680x4320_48Hz        237600000  632  7680  4320  7680 10232 10408 11000   4320  4336  4356  4500  P  P  false  false  0 0             mode,
+	create kDisplay_7680x4320_50Hz        237600000  633  7680  4320  7680 10032 10208 10800   4320  4336  4356  4400  P  P  false  false  0 0             mode,
+	create kDisplay_7680x4320_60Hz        237600000  634  7680  4320  7680  8232  8408  9000   4320  4336  4356  4400  P  P  false  false  0 0             mode,
+	create kDisplay_7680x4320_100Hz       475200000  635  7680  4320  7680  9792  9968 10560   4320  4336  4356  4500  P  P  false  false  0 0             mode,
+	create kDisplay_7680x4320_120Hz       475200000  636  7680  4320  7680  8032  8208  8800   4320  4336  4356  4500  P  P  false  false  0 0             mode,
+	create kDisplay_10240x4320_24Hz       148500000  645 10240  4320 10240 11732 11908 12500   4320  4336  4356  4950  P  P  false  false  0 0             mode,
+	create kDisplay_10240x4320_25Hz       148500000  646 10240  4320 10240 12732 12908 13500   4320  4336  4356  4400  P  P  false  false  0 0             mode,
+	create kDisplay_10240x4320_30Hz       148500000  647 10240  4320 10240 10528 10704 11000   4320  4336  4356  4500  P  P  false  false  0 0             mode,
+	create kDisplay_10240x4320_48Hz       297000000  648 10240  4320 10240 11732 11908 12500   4320  4336  4356  4950  P  P  false  false  0 0             mode,
+	create kDisplay_10240x4320_50Hz       297000000  649 10240  4320 10240 12732 12908 13500   4320  4336  4356  4400  P  P  false  false  0 0             mode,
+	create kDisplay_10240x4320_60Hz       297000000  650 10240  4320 10240 10528 10704 11000   4320  4336  4356  4500  P  P  false  false  0 0             mode,
+	create kDisplay_10240x4320_100Hz      594000000  651 10240  4320 10240 12432 12608 13200   4320  4336  4356  4500  P  P  false  false  0 0             mode,
+	create kDisplay_10240x4320_120Hz      594000000  652 10240  4320 10240 10528 10704 11000   4320  4336  4356  4500  P  P  false  false  0 0             mode,
+	create kDisplay_4096x2160_100Hz       118800000  653  4096  2160  4096  4896  4984  5280   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_4096x2160_120Hz       118800000  654  4096  2160  4096  4184  4272  4400   2160  2168  2178  2250  P  P  false  false  0 0             mode,
+	create kDisplay_Temp                          0  700     0     0     0     0     0     0      0     0     0     0  P  P  false  false  0 0             mode,
+	0 0 l, w,
+
+	" ] timings" .dbg cr
+	" [ all-display-timings" .dbg cr
+
+ 	create all-display-timings
+		kDisplay_640x480i_60Hz_NTSC    l,
+		kDisplay_512x342_60Hz          l,
+		kDisplay_512x384_60Hz          l,
+		kDisplay_560x384_60Hz          l,
+		kDisplay_640x400_67Hz          l,
+		kDisplay_640x870_75Hz          l,
+		kDisplay_1024x768_75Hz         l,
+		kDisplay_1280x960_75Hz         l,
+		kDisplay_720x400_70Hz          l,
+		kDisplay_720x400_88Hz          l,
+		kDisplay_640x480_67Hz          l,
+		kDisplay_832x624_75Hz          l,
+		kDisplay_1152x870_75Hz         l,
+		kDisplay_640x350_85Hz          l,
+		kDisplay_640x400_85Hz          l,
+		kDisplay_720x400_85Hz          l,
+		kDisplay_640x480_60Hz_VGA      l,
+		kDisplay_640x480_72Hz          l,
+		kDisplay_640x480_75Hz          l,
+		kDisplay_640x480_85Hz          l,
+		kDisplay_800x600_56Hz_VGA      l,
+		kDisplay_800x600_60Hz_VGA      l,
+		kDisplay_800x600_72Hz_VGA      l,
+		kDisplay_800x600_75Hz_VGA      l,
+		kDisplay_800x600_85Hz          l,
+		kDisplay_800x600_120Hz         l,
+		kDisplay_848x480_60Hz          l,
+		kDisplay_1024x768i_87Hz        l,
+		kDisplay_1024x768_60Hz_VGA     l,
+		kDisplay_1024x768_70Hz         l,
+		kDisplay_1024x768_75Hz_VGA     l,
+		kDisplay_1024x768_85Hz         l,
+		kDisplay_1024x768_120Hz        l,
+		kDisplay_1152x864_75Hz         l,
+		kDisplay_1280x720_60Hz         l,
+		kDisplay_1280x768_60Hz_RB      l,
+		kDisplay_1280x768_59_87Hz      l,
+		kDisplay_1280x768_75Hz         l,
+		kDisplay_1280x768_85Hz         l,
+		kDisplay_1280x768_120Hz        l,
+		kDisplay_1280x800_60Hz_RB      l,
+		kDisplay_1280x800_60Hz         l,
+		kDisplay_1280x800_75Hz         l,
+		kDisplay_1280x800_85Hz         l,
+		kDisplay_1280x800_120Hz        l,
+		kDisplay_1280x960_60Hz         l,
+		kDisplay_1280x960_85Hz         l,
+		kDisplay_1280x960_120Hz        l,
+		kDisplay_1280x1024_60Hz        l,
+		kDisplay_1280x1024_75Hz        l,
+		kDisplay_1280x1024_85Hz        l,
+		kDisplay_1280x1024_120Hz       l,
+		kDisplay_1360x768_60Hz         l,
+		kDisplay_1360x768_120Hz        l,
+		kDisplay_1366x768_60Hz         l,
+		kDisplay_1366x768_60Hz_RB      l,
+		kDisplay_1400x1050_60Hz_RB     l,
+		kDisplay_1400x1050_60Hz        l,
+		kDisplay_1400x1050_75Hz        l,
+		kDisplay_1400x1050_85Hz        l,
+		kDisplay_1400x1050_120Hz       l,
+		kDisplay_1440x900_60Hz_RB      l,
+		kDisplay_1440x900_60Hz         l,
+		kDisplay_1440x900_75Hz         l,
+		kDisplay_1440x900_85Hz         l,
+		kDisplay_1440x900_120Hz        l,
+		kDisplay_1600x900_60Hz         l,
+		kDisplay_1600x1200_60Hz        l,
+		kDisplay_1600x1200_65Hz        l,
+		kDisplay_1600x1200_70Hz        l,
+		kDisplay_1600x1200_75Hz        l,
+		kDisplay_1600x1200_85Hz        l,
+		kDisplay_1600x1200_120Hz       l,
+		kDisplay_1680x1050_60Hz_RB     l,
+		kDisplay_1680x1050_60Hz        l,
+		kDisplay_1680x1050_75Hz        l,
+		kDisplay_1680x1050_85Hz        l,
+		kDisplay_1680x1050_120Hz       l,
+		kDisplay_1792x1344_60Hz        l,
+		kDisplay_1792x1344_75Hz        l,
+		kDisplay_1792x1344_120Hz       l,
+		kDisplay_1856x1392_60Hz        l,
+		kDisplay_1856x1392_75Hz        l,
+		kDisplay_1856x1392_120Hz       l,
+		kDisplay_1920x1080_60Hz        l,
+		kDisplay_1920x1200_60Hz_RB     l,
+		kDisplay_1920x1200_60Hz        l,
+		kDisplay_1920x1200_75Hz        l,
+		kDisplay_1920x1200_85Hz        l,
+		kDisplay_1920x1200_120Hz       l,
+		kDisplay_1920x1440_60Hz        l,
+		kDisplay_1920x1440_75Hz        l,
+		kDisplay_1920x1440_120Hz       l,
+		kDisplay_2048x1152_60Hz        l,
+		kDisplay_2560x1600_60Hz_RB     l,
+		kDisplay_2560x1600_60Hz        l,
+		kDisplay_2560x1600_75Hz        l,
+		kDisplay_2560x1600_85Hz        l,
+		kDisplay_2560x1600_120Hz       l,
+		kDisplay_4096x2160_60Hz_RB     l,
+		kDisplay_4096x2160_59_94Hz     l,
+		kDisplay_720x480_60Hz          l,
+		kDisplay_1920x1080i_60Hz       l,
+		kDisplay_1440x480i_60Hz        l,
+		kDisplay_1440x240_60Hz         l,
+		kDisplay_2880x480i_60Hz        l,
+		kDisplay_2880x240_60Hz         l,
+		kDisplay_1440x480_60Hz         l,
+		kDisplay_720x576_50Hz          l,
+		kDisplay_1280x720_50Hz         l,
+		kDisplay_1920x1080i_50Hz       l,
+		kDisplay_1440x576i_50Hz        l,
+		kDisplay_1440x288_50Hz         l,
+		kDisplay_2880x576i_50Hz        l,
+		kDisplay_2880x288_50Hz         l,
+		kDisplay_1440x576_50Hz         l,
+		kDisplay_1920x1080_50Hz        l,
+		kDisplay_1920x1080_24Hz        l,
+		kDisplay_1920x1080_25Hz        l,
+		kDisplay_1920x1080_30Hz        l,
+		kDisplay_2880x480_60Hz         l,
+		kDisplay_2880x576_50Hz         l,
+		kDisplay_1920x1080i_50Hz_72MHz l,
+		kDisplay_1920x1080i_100Hz      l,
+		kDisplay_1280x720_100Hz        l,
+		kDisplay_720x576_100Hz         l,
+		kDisplay_1440x576i_100Hz       l,
+		kDisplay_1920x1080i_120Hz      l,
+		kDisplay_1280x720_120Hz        l,
+		kDisplay_720x480_120Hz         l,
+		kDisplay_1440x480i_120Hz       l,
+		kDisplay_720x576_200Hz         l,
+		kDisplay_1440x576i_200Hz       l,
+		kDisplay_720x480_240Hz         l,
+		kDisplay_1440x480i_240Hz       l,
+		kDisplay_1280x720_24Hz         l,
+		kDisplay_1280x720_25Hz         l,
+		kDisplay_1280x720_30Hz         l,
+		kDisplay_1920x1080_120Hz       l,
+		kDisplay_1920x1080_100Hz       l,
+		kDisplay_1680x720_24Hz         l,
+		kDisplay_1680x720_25Hz         l,
+		kDisplay_1680x720_30Hz         l,
+		kDisplay_1680x720_50Hz         l,
+		kDisplay_1680x720_60Hz         l,
+		kDisplay_1680x720_100Hz        l,
+		kDisplay_1680x720_120Hz        l,
+		kDisplay_2560x1080_24Hz        l,
+		kDisplay_2560x1080_25Hz        l,
+		kDisplay_2560x1080_30Hz        l,
+		kDisplay_2560x1080_50Hz        l,
+		kDisplay_2560x1080_60Hz        l,
+		kDisplay_2560x1080_100Hz       l,
+		kDisplay_2560x1080_120Hz       l,
+		kDisplay_3840x2160_24Hz        l,
+		kDisplay_3840x2160_25Hz        l,
+		kDisplay_3840x2160_30Hz        l,
+		kDisplay_3840x2160_50Hz        l,
+		kDisplay_3840x2160_60Hz        l,
+		kDisplay_4096x2160_24Hz        l,
+		kDisplay_4096x2160_25Hz        l,
+		kDisplay_4096x2160_30Hz        l,
+		kDisplay_4096x2160_50Hz        l,
+		kDisplay_4096x2160_60Hz        l,
+		kDisplay_1280x720_48Hz         l,
+		kDisplay_1680x720_48Hz         l,
+		kDisplay_1920x1080_48Hz        l,
+		kDisplay_2560x1080_48Hz        l,
+		kDisplay_3840x2160_48Hz        l,
+		kDisplay_4096x2160_48Hz        l,
+		kDisplay_3840x2160_100Hz       l,
+		kDisplay_3840x2160_120Hz       l,
+		kDisplay_5120x2160_24Hz        l,
+		kDisplay_5120x2160_25Hz        l,
+		kDisplay_5120x2160_30Hz        l,
+		kDisplay_5120x2160_48Hz        l,
+		kDisplay_5120x2160_50Hz        l,
+		kDisplay_5120x2160_60Hz        l,
+		kDisplay_5120x2160_100Hz       l,
+		kDisplay_5120x2160_120Hz       l,
+		kDisplay_7680x4320_24Hz        l,
+		kDisplay_7680x4320_25Hz        l,
+		kDisplay_7680x4320_30Hz        l,
+		kDisplay_7680x4320_48Hz        l,
+		kDisplay_7680x4320_50Hz        l,
+		kDisplay_7680x4320_60Hz        l,
+		kDisplay_7680x4320_100Hz       l,
+		kDisplay_7680x4320_120Hz       l,
+		kDisplay_10240x4320_24Hz       l,
+		kDisplay_10240x4320_25Hz       l,
+		kDisplay_10240x4320_30Hz       l,
+		kDisplay_10240x4320_48Hz       l,
+		kDisplay_10240x4320_50Hz       l,
+		kDisplay_10240x4320_60Hz       l,
+		kDisplay_10240x4320_100Hz      l,
+		kDisplay_10240x4320_120Hz      l,
+		kDisplay_4096x2160_100Hz       l,
+		kDisplay_4096x2160_120Hz       l,
+		0 l,
+
+	" ] all-display-timings" .dbg cr
+	" [ established-timings-i-and-ii" .dbg cr
+
+	create established-timings-i-and-ii
+		kDisplay_720x400_70Hz          l,
+		kDisplay_720x400_88Hz          l,
+		kDisplay_640x480_60Hz_VGA      l,
+		kDisplay_640x480_67Hz          l,
+		kDisplay_640x480_72Hz          l,
+		kDisplay_640x480_75Hz          l,
+		kDisplay_800x600_56Hz_VGA      l,
+		kDisplay_800x600_60Hz_VGA      l,
+		kDisplay_800x600_72Hz_VGA      l,
+		kDisplay_800x600_75Hz_VGA      l,
+		kDisplay_832x624_75Hz          l,
+		kDisplay_1024x768i_87Hz        l,
+		kDisplay_1024x768_60Hz_VGA     l,
+		kDisplay_1024x768_70Hz         l,
+		kDisplay_1024x768_75Hz_VGA     l,
+		kDisplay_1280x1024_75Hz        l,
+		kDisplay_1152x870_75Hz         l,
+		0 l,
+
+	" ] established-timings-i-and-ii" .dbg cr
+	" [ established-timings-iii" .dbg cr
+
+	create established-timings-iii
+		kDisplay_640x350_85Hz          l,
+		kDisplay_640x400_85Hz          l,
+		kDisplay_720x400_85Hz          l,
+		kDisplay_640x480_85Hz          l,
+		kDisplay_848x480_60Hz          l,
+		kDisplay_800x600_85Hz          l,
+		kDisplay_1024x768_85Hz         l,
+		kDisplay_1152x864_75Hz         l,
+		kDisplay_1280x768_60Hz_RB      l,
+		kDisplay_1280x768_59_87Hz      l,
+		kDisplay_1280x768_75Hz         l,
+		kDisplay_1280x768_85Hz         l,
+		kDisplay_1280x960_60Hz         l,
+		kDisplay_1280x960_85Hz         l,
+		kDisplay_1280x1024_60Hz        l,
+		kDisplay_1280x1024_85Hz        l,
+		kDisplay_1360x768_60Hz         l,
+		kDisplay_1440x900_60Hz_RB      l,
+		kDisplay_1440x900_60Hz         l,
+		kDisplay_1440x900_75Hz         l,
+		kDisplay_1440x900_85Hz         l,
+		kDisplay_1400x1050_60Hz_RB     l,
+		kDisplay_1400x1050_60Hz        l,
+		kDisplay_1400x1050_75Hz        l,
+		kDisplay_1400x1050_85Hz        l,
+		kDisplay_1680x1050_60Hz_RB     l,
+		kDisplay_1680x1050_60Hz        l,
+		kDisplay_1680x1050_75Hz        l,
+		kDisplay_1680x1050_85Hz        l,
+		kDisplay_1600x1200_60Hz        l,
+		kDisplay_1600x1200_65Hz        l,
+		kDisplay_1600x1200_70Hz        l,
+		kDisplay_1600x1200_75Hz        l,
+		kDisplay_1600x1200_85Hz        l,
+		kDisplay_1792x1344_60Hz        l,
+		kDisplay_1792x1344_75Hz        l,
+		kDisplay_1856x1392_60Hz        l,
+		kDisplay_1856x1392_75Hz        l,
+		kDisplay_1920x1200_60Hz_RB     l,
+		kDisplay_1920x1200_60Hz        l,
+		kDisplay_1920x1200_75Hz        l,
+		kDisplay_1920x1200_85Hz        l,
+		kDisplay_1920x1440_60Hz        l,
+		kDisplay_1920x1440_75Hz        l,
+		0 l,
+
+	create dmt-display-monitor-timings
+		kDisplay_640x350_85Hz          l,
+		kDisplay_640x400_85Hz          l,
+		kDisplay_720x400_85Hz          l,
+		kDisplay_640x480_60Hz_VGA      l,
+		kDisplay_640x480_72Hz          l,
+		kDisplay_640x480_75Hz          l,
+		kDisplay_640x480_85Hz          l,
+		kDisplay_800x600_56Hz_VGA      l,
+		kDisplay_800x600_60Hz_VGA      l,
+		kDisplay_800x600_72Hz_VGA      l,
+		kDisplay_800x600_75Hz_VGA      l,
+		kDisplay_800x600_85Hz          l,
+		kDisplay_800x600_120Hz         l,
+		kDisplay_848x480_60Hz          l,
+		kDisplay_1024x768i_87Hz        l,
+		kDisplay_1024x768_60Hz_VGA     l,
+		kDisplay_1024x768_70Hz         l,
+		kDisplay_1024x768_75Hz_VGA     l,
+		kDisplay_1024x768_85Hz         l,
+		kDisplay_1024x768_120Hz        l,
+		kDisplay_1152x864_75Hz         l,
+		kDisplay_1280x720_60Hz         l,
+		kDisplay_1280x768_60Hz_RB      l,
+		kDisplay_1280x768_59_87Hz      l,
+		kDisplay_1280x768_75Hz         l,
+		kDisplay_1280x768_85Hz         l,
+		kDisplay_1280x768_120Hz        l,
+		kDisplay_1280x800_60Hz_RB      l,
+		kDisplay_1280x800_60Hz         l,
+		kDisplay_1280x800_75Hz         l,
+		kDisplay_1280x800_85Hz         l,
+		kDisplay_1280x800_120Hz        l,
+		kDisplay_1280x960_60Hz         l,
+		kDisplay_1280x960_85Hz         l,
+		kDisplay_1280x960_120Hz        l,
+		kDisplay_1280x1024_60Hz        l,
+		kDisplay_1280x1024_75Hz        l,
+		kDisplay_1280x1024_85Hz        l,
+		kDisplay_1280x1024_120Hz       l,
+		kDisplay_1360x768_60Hz         l,
+		kDisplay_1360x768_120Hz        l,
+		kDisplay_1366x768_60Hz         l,
+		kDisplay_1366x768_60Hz_RB      l,
+		kDisplay_1400x1050_60Hz_RB     l,
+		kDisplay_1400x1050_60Hz        l,
+		kDisplay_1400x1050_75Hz        l,
+		kDisplay_1400x1050_85Hz        l,
+		kDisplay_1400x1050_120Hz       l,
+		kDisplay_1440x900_60Hz_RB      l,
+		kDisplay_1440x900_60Hz         l,
+		kDisplay_1440x900_75Hz         l,
+		kDisplay_1440x900_85Hz         l,
+		kDisplay_1440x900_120Hz        l,
+		kDisplay_1600x900_60Hz         l,
+		kDisplay_1600x1200_60Hz        l,
+		kDisplay_1600x1200_65Hz        l,
+		kDisplay_1600x1200_70Hz        l,
+		kDisplay_1600x1200_75Hz        l,
+		kDisplay_1600x1200_85Hz        l,
+		kDisplay_1600x1200_120Hz       l,
+		kDisplay_1680x1050_60Hz_RB     l,
+		kDisplay_1680x1050_60Hz        l,
+		kDisplay_1680x1050_75Hz        l,
+		kDisplay_1680x1050_85Hz        l,
+		kDisplay_1680x1050_120Hz       l,
+		kDisplay_1792x1344_60Hz        l,
+		kDisplay_1792x1344_75Hz        l,
+		kDisplay_1792x1344_120Hz       l,
+		kDisplay_1856x1392_60Hz        l,
+		kDisplay_1856x1392_75Hz        l,
+		kDisplay_1856x1392_120Hz       l,
+		kDisplay_1920x1080_60Hz        l,
+		kDisplay_1920x1200_60Hz_RB     l,
+		kDisplay_1920x1200_60Hz        l,
+		kDisplay_1920x1200_75Hz        l,
+		kDisplay_1920x1200_85Hz        l,
+		kDisplay_1920x1200_120Hz       l,
+		kDisplay_1920x1440_60Hz        l,
+		kDisplay_1920x1440_75Hz        l,
+		kDisplay_1920x1440_120Hz       l,
+		kDisplay_2048x1152_60Hz        l,
+		kDisplay_2560x1600_60Hz_RB     l,
+		kDisplay_2560x1600_60Hz        l,
+		kDisplay_2560x1600_75Hz        l,
+		kDisplay_2560x1600_85Hz        l,
+		kDisplay_2560x1600_120Hz       l,
+		kDisplay_4096x2160_60Hz_RB     l,
+		kDisplay_4096x2160_59_94Hz     l,
+		0 l,
+
+	" ] established-timings-iii" .dbg cr
+	" [ vic-timings" .dbg cr
+
+	: vic, swap l, l, ;
+	create vic-timings
+		kDisplay_640x480_60Hz_VGA        1  vic,
+		kDisplay_720x480_60Hz            2  vic,
+		kDisplay_720x480_60Hz            3  vic,
+		kDisplay_1280x720_60Hz           4  vic,
+		kDisplay_1920x1080i_60Hz         5  vic,
+		kDisplay_1440x480i_60Hz          6  vic,
+		kDisplay_1440x480i_60Hz          7  vic,
+		kDisplay_1440x240_60Hz           8  vic,
+		kDisplay_1440x240_60Hz           9  vic,
+		kDisplay_2880x480i_60Hz         10  vic,
+		kDisplay_2880x480i_60Hz         11  vic,
+		kDisplay_2880x240_60Hz          12  vic,
+		kDisplay_2880x240_60Hz          13  vic,
+		kDisplay_1440x480_60Hz          14  vic,
+		kDisplay_1440x480_60Hz          15  vic,
+		kDisplay_1920x1080_60Hz         16  vic,
+		kDisplay_720x576_50Hz           17  vic,
+		kDisplay_720x576_50Hz           18  vic,
+		kDisplay_1280x720_50Hz          19  vic,
+		kDisplay_1920x1080i_50Hz        20  vic,
+		kDisplay_1440x576i_50Hz         21  vic,
+		kDisplay_1440x576i_50Hz         22  vic,
+		kDisplay_1440x288_50Hz          23  vic,
+		kDisplay_1440x288_50Hz          24  vic,
+		kDisplay_2880x576i_50Hz         25  vic,
+		kDisplay_2880x576i_50Hz         26  vic,
+		kDisplay_2880x288_50Hz          27  vic,
+		kDisplay_2880x288_50Hz          28  vic,
+		kDisplay_1440x576_50Hz          29  vic,
+		kDisplay_1440x576_50Hz          30  vic,
+		kDisplay_1920x1080_50Hz         31  vic,
+		kDisplay_1920x1080_24Hz         32  vic,
+		kDisplay_1920x1080_25Hz         33  vic,
+		kDisplay_1920x1080_30Hz         34  vic,
+		kDisplay_2880x480_60Hz          35  vic,
+		kDisplay_2880x480_60Hz          36  vic,
+		kDisplay_2880x576_50Hz          37  vic,
+		kDisplay_2880x576_50Hz          38  vic,
+		kDisplay_1920x1080i_50Hz_72MHz  39  vic,
+		kDisplay_1920x1080i_100Hz       40  vic,
+		kDisplay_1280x720_100Hz         41  vic,
+		kDisplay_720x576_100Hz          42  vic,
+		kDisplay_720x576_100Hz          43  vic,
+		kDisplay_1440x576i_100Hz        44  vic,
+		kDisplay_1440x576i_100Hz        45  vic,
+		kDisplay_1920x1080i_120Hz       46  vic,
+		kDisplay_1280x720_120Hz         47  vic,
+		kDisplay_720x480_120Hz          48  vic,
+		kDisplay_720x480_120Hz          49  vic,
+		kDisplay_1440x480i_120Hz        50  vic,
+		kDisplay_1440x480i_120Hz        51  vic,
+		kDisplay_720x576_200Hz          52  vic,
+		kDisplay_720x576_200Hz          53  vic,
+		kDisplay_1440x576i_200Hz        54  vic,
+		kDisplay_1440x576i_200Hz        55  vic,
+		kDisplay_720x480_240Hz          56  vic,
+		kDisplay_720x480_240Hz          57  vic,
+		kDisplay_1440x480i_240Hz        58  vic,
+		kDisplay_1440x480i_240Hz        59  vic,
+		kDisplay_1280x720_24Hz          60  vic,
+		kDisplay_1280x720_25Hz          61  vic,
+		kDisplay_1280x720_30Hz          62  vic,
+		kDisplay_1920x1080_120Hz        63  vic,
+		kDisplay_1920x1080_100Hz        64  vic,
+		kDisplay_1280x720_24Hz          65  vic,
+		kDisplay_1280x720_25Hz          66  vic,
+		kDisplay_1280x720_30Hz          67  vic,
+		kDisplay_1280x720_50Hz          68  vic,
+		kDisplay_1280x720_60Hz          69  vic,
+		kDisplay_1280x720_100Hz         70  vic,
+		kDisplay_1280x720_120Hz         71  vic,
+		kDisplay_1920x1080_24Hz         72  vic,
+		kDisplay_1920x1080_25Hz         73  vic,
+		kDisplay_1920x1080_30Hz         74  vic,
+		kDisplay_1920x1080_50Hz         75  vic,
+		kDisplay_1920x1080_60Hz         76  vic,
+		kDisplay_1920x1080_100Hz        77  vic,
+		kDisplay_1920x1080_120Hz        78  vic,
+		kDisplay_1680x720_24Hz          79  vic,
+		kDisplay_1680x720_25Hz          80  vic,
+		kDisplay_1680x720_30Hz          81  vic,
+		kDisplay_1680x720_50Hz          82  vic,
+		kDisplay_1680x720_60Hz          83  vic,
+		kDisplay_1680x720_100Hz         84  vic,
+		kDisplay_1680x720_120Hz         85  vic,
+		kDisplay_2560x1080_24Hz         86  vic,
+		kDisplay_2560x1080_25Hz         87  vic,
+		kDisplay_2560x1080_30Hz         88  vic,
+		kDisplay_2560x1080_50Hz         89  vic,
+		kDisplay_2560x1080_60Hz         90  vic,
+		kDisplay_2560x1080_100Hz        91  vic,
+		kDisplay_2560x1080_120Hz        92  vic,
+		kDisplay_3840x2160_24Hz         93  vic,
+		kDisplay_3840x2160_25Hz         94  vic,
+		kDisplay_3840x2160_30Hz         95  vic,
+		kDisplay_3840x2160_50Hz         96  vic,
+		kDisplay_3840x2160_60Hz         97  vic,
+		kDisplay_4096x2160_24Hz         98  vic,
+		kDisplay_4096x2160_25Hz         99  vic,
+		kDisplay_4096x2160_30Hz        100  vic,
+		kDisplay_4096x2160_50Hz        101  vic,
+		kDisplay_4096x2160_60Hz        102  vic,
+		kDisplay_3840x2160_24Hz        103  vic,
+		kDisplay_3840x2160_25Hz        104  vic,
+		kDisplay_3840x2160_30Hz        105  vic,
+		kDisplay_3840x2160_50Hz        106  vic,
+		kDisplay_3840x2160_60Hz        107  vic,
+		kDisplay_1280x720_48Hz         108  vic,
+		kDisplay_1280x720_48Hz         109  vic,
+		kDisplay_1680x720_48Hz         110  vic,
+		kDisplay_1920x1080_48Hz        111  vic,
+		kDisplay_1920x1080_48Hz        112  vic,
+		kDisplay_2560x1080_48Hz        113  vic,
+		kDisplay_3840x2160_48Hz        114  vic,
+		kDisplay_4096x2160_48Hz        115  vic,
+		kDisplay_3840x2160_48Hz        116  vic,
+		kDisplay_3840x2160_100Hz       117  vic,
+		kDisplay_3840x2160_120Hz       118  vic,
+		kDisplay_3840x2160_100Hz       119  vic,
+		kDisplay_3840x2160_120Hz       120  vic,
+		kDisplay_5120x2160_24Hz        121  vic,
+		kDisplay_5120x2160_25Hz        122  vic,
+		kDisplay_5120x2160_30Hz        123  vic,
+		kDisplay_5120x2160_48Hz        124  vic,
+		kDisplay_5120x2160_50Hz        125  vic,
+		kDisplay_5120x2160_60Hz        126  vic,
+		kDisplay_5120x2160_100Hz       127  vic,
+		kDisplay_5120x2160_120Hz       193  vic,
+		kDisplay_7680x4320_24Hz        194  vic,
+		kDisplay_7680x4320_25Hz        195  vic,
+		kDisplay_7680x4320_30Hz        196  vic,
+		kDisplay_7680x4320_48Hz        197  vic,
+		kDisplay_7680x4320_50Hz        198  vic,
+		kDisplay_7680x4320_60Hz        199  vic,
+		kDisplay_7680x4320_100Hz       200  vic,
+		kDisplay_7680x4320_120Hz       201  vic,
+		kDisplay_7680x4320_24Hz        202  vic,
+		kDisplay_7680x4320_25Hz        203  vic,
+		kDisplay_7680x4320_30Hz        204  vic,
+		kDisplay_7680x4320_48Hz        205  vic,
+		kDisplay_7680x4320_50Hz        206  vic,
+		kDisplay_7680x4320_60Hz        207  vic,
+		kDisplay_7680x4320_100Hz       208  vic,
+		kDisplay_7680x4320_120Hz       209  vic,
+		kDisplay_10240x4320_24Hz       210  vic,
+		kDisplay_10240x4320_25Hz       211  vic,
+		kDisplay_10240x4320_30Hz       212  vic,
+		kDisplay_10240x4320_48Hz       213  vic,
+		kDisplay_10240x4320_50Hz       214  vic,
+		kDisplay_10240x4320_60Hz       215  vic,
+		kDisplay_10240x4320_100Hz      216  vic,
+		kDisplay_10240x4320_120Hz      217  vic,
+		kDisplay_4096x2160_100Hz       218  vic,
+		kDisplay_4096x2160_120Hz       219  vic,
+		0 l,
+
+	" ] vic-timings" .dbg cr
+	" [ sense codes" .dbg cr
+
+	hex
+	create kSense_MacColor21in   kDisplay_1152x870_75Hz l, 0 l,
+	create kSense_PortraitGS     kDisplay_640x870_75Hz l, 0 l,
+	create kSense_MacRGB12in     kDisplay_512x384_60Hz l, 0 l,
+	create kSense_Radius21in     kDisplay_1152x870_75Hz l, 0 l,
+	create kSense_Radius21inGS   kDisplay_1152x870_75Hz l, 0 l,
+	create kSense_TwoPageGS      kDisplay_1152x870_75Hz l, 0 l,
+	create kSense_NTSC           kDisplay_512x384i_60Hz_NTSC l, kDisplay_640x480i_60Hz_NTSC l, 0 l,
+	create kSense_MacRGB15in     kDisplay_640x870_75Hz l, 0 l,
+	create kSense_Multiscan15in  kDisplay_640x480_67Hz l, kDisplay_832x624_75Hz l, 0 l,
+	create kSense_Multiscan17in  kDisplay_640x480_67Hz l, kDisplay_832x624_75Hz l, kDisplay_1024x768_75Hz l, 0 l,
+	create kSense_Multiscan20in  kDisplay_640x480_67Hz l, kDisplay_640x480_120Hz l, kDisplay_832x624_75Hz l, kDisplay_1024x768_75Hz l, kDisplay_1152x870_75Hz l, kDisplay_1280x960_75Hz l, kDisplay_1280x1024_75Hz l, 0 l,
+	create kSense_HiRes12-14in   kDisplay_640x480_67Hz l, 0 l,
+	create kSense_PALEncoder     kDisplay_640x480i_50Hz_PAL l, kDisplay_768x576i_50Hz_PAL l, 0 l,
+	create kSense_NTSCEncoder    kDisplay_512x384i_60Hz_NTSC l, kDisplay_640x480i_60Hz_NTSC l, 0 l,
+	create kSense_VGA-SVGA       kDisplay_640x480_60Hz_VGA l, kDisplay_640x480_120Hz l, kDisplay_800x600_60Hz_VGA l, kDisplay_800x600_72Hz_VGA l, kDisplay_800x600_75Hz_VGA l, kDisplay_1024x768_60Hz_VGA l, kDisplay_1024x768_70Hz l, kDisplay_1024x768_75Hz_VGA l, kDisplay_1280x960_75Hz l, kDisplay_1280x1024_75Hz l, 0 l,
+	create kSense_MacRGB16in     kDisplay_832x624_75Hz l, 0 l,
+	create kSense_PAL            kDisplay_640x480i_50Hz_PAL l, kDisplay_768x576i_50Hz_PAL l, 0 l,
+	create kSense_MacRGB19in     kDisplay_1024x768_75Hz l, 0 l,
+	create kSense_DDC            0 l,
+	create kSense_NotConnected   0 l,
+
+	" ] sense codes" .dbg cr
+	" [ sense-codes-list" .dbg cr
+
+	: sm,
+		d# 3 0 do i roll loop w, w, l,
+		;
+
+	create sense-codes-list
+		000  false  kSense_MacColor21in   sm,
+		114  true   kSense_PortraitGS     sm,
+		221  false  kSense_MacRGB12in     sm,
+		331  false  kSense_Radius21in     sm,
+		334  true   kSense_Radius21inGS   sm,
+		335  true   kSense_TwoPageGS      sm,
+		40A  false  kSense_NTSC           sm,
+		51E  false  kSense_MacRGB15in     sm,
+		603  false  kSense_Multiscan15in  sm,
+		60B  false  kSense_Multiscan17in  sm,
+		623  false  kSense_Multiscan20in  sm,
+		62B  false  kSense_HiRes12-14in   sm,
+		700  false  kSense_PALEncoder     sm,
+		714  false  kSense_NTSCEncoder    sm,
+		717  false  kSense_VGA-SVGA       sm,
+		72D  false  kSense_MacRGB16in     sm,
+		730  false  kSense_PAL            sm,
+		73A  false  kSense_MacRGB19in     sm,
+		73E  false  kSense_DDC            sm,
+		73F  false  kSense_NotConnected   sm,
+	here sense-codes-list - /sense-code / constant sense-codes-count
+
+	" ] sense-codes-list" .dbg cr
+
+	: get-sense-code-entry ( sense -- get-sense-code-entry|0 )
+		sense-codes-list swap		\ sense-code-entry sense
+		sense-codes-count 0 do
+			over w@					\ sense-code-entry sense sense-code-entry->sense
+			over =					\ sense-code-entry sense (sense-code-entry->sense == sense)
+			if						\ sense-code-entry sense
+				drop				\ sense-code-entry
+				unloop exit			\ sense-code-entry
+			then					\ sense-code-entry sense
+			swap					\ sense sense-code-entry 
+			/sense-code +			\ sense (sense-code-entry+=sense-code-size)
+			swap					\ sense sense-code-entry
+		loop						\ sense sense-code-entry
+		2drop 0						\ 0
+		;
+
+	: loop-timings-sense-code ( sense display-info -- )
+		" [ loop-timings-sense-code 0x" .dbg dup 3 u.r cr
+		.stack
+
+		swap						\ display-info sense
+		get-sense-code-entry		\ display-info entry
+		.stack
+		
+		?dup						\ display-info entry entry | 0
+		if							\ display-info entry |
+			" got sense entry " .dbg dup 8 u.r cr
+			.stack
+			>S.display-timing-list	\ display-info @entry->display-timing-list
+			l@						\ display-info list
+			begin					\ display-info list
+				dup					\ display-info list list
+				l@					\ display-info list display-timing
+				?dup				\ display-info list display-timing display-timing
+			while					\ display-info list display-timing
+				.stack
+				2 pick 				\ display-info list display-timing display-info
+				timing-proc ( display-timing display-info -- ) \ display-info list
+				.stack
+				la1+				\ display-info list+=4
+			repeat					\ display-info list
+			" loop end" .dbg cr
+			.stack
+			2drop					\
+		then						\
+
+		.stack
+		" ] loop-timings-sense-code" .dbg cr
+		;
+
+	: loop-timings-edid ( edid-addr edid-size display-info -- )
+		3drop
+		;
+
+	: dump-display-timing ( entry -- )
+		base @ decimal swap										\ base entry
+		." ("
+		dup    >T.display-timing-number w@ 0 <# #s #> type
+		." ) "
+		dup    >T.pixel-clock l@								\ base entry entry.pixel_clock^
+		over   >T.interlaced c@									\ base entry entry.pixel_clock^ interlaced?
+		if d# 2000 else d# 1000 then							\ base entry entry.pixel_clock^ 1000|2000
+		um* 													\ base entry entry.pixel_clock^*10*100 hi
+		2 pick >T.hactive w@ 0 <# #s #> type ."  x "			\ base entry entry.pixel_clock^*10*100 hi
+		2 pick >T.vactive w@ 0 <# #s #> type					\ base entry entry.pixel_clock^*10*100 hi
+		2 pick >T.interlaced c@ if ." i" then					\ base entry entry.pixel_clock^*10*100 hi
+		."  @ "													\ base entry entry.pixel_clock^*10*100 hi
+		2 pick >T.htotal w@										\ base entry entry.pixel_clock^*10*100 hi htotal
+		3 pick >T.vtotal w@										\ base entry entry.pixel_clock^*10*100 hi htotal vtotal
+		*														\ base entry entry.pixel_clock^*10*100 hi htotal*vtotal
+		dup >r													\ base entry entry.pixel_clock^*10*100 hi htotal*vtotal \ R: htotal*vtotal
+		um/mod													\ base entry remainder (entry.pixel_clock^*10*100/(htotal*vtotal)) \ R: htotal*vtotal
+		swap 2* r> >= negate +									\ base entry refresh_rate_hundredths+((remainder*2)>=(htotal*vtotal))
+		0														\ base entry refresh_rate_hundredths_double
+		\ digits are pictured from right to left			
+		<# # # [char] . hold # #s #> type						\ base entry
+		."  Hz"													\ base entry
+		>T.note 												\ base note
+		dup c@ if 												\ base note
+			."  ("												\ base note
+			begin												\ base note
+				dup c@ ?dup										\ base note *note
+			while
+				emit											\ base note
+				1+												\ base note++
+			repeat												\ base note
+			." )"												\ base note
+		then 													\ base note
+		drop 													\ base
+		base !													\ base
+		;
+	
+	: dump-display-timing-cr ( display-timing display-info -- )
+		drop dump-display-timing cr ;
+	
+
+	\ ====================================================================================
+	\ Words
+
+	: map-in    " map-in"    $call-parent ; ( phys.low phys.mid phys.hi size -- virt )
+	: map-out   " map-out"   $call-parent ; ( virt size -- )
+	: config-l@ " config-l@" $call-parent ; ( config-addr -- data )
+	: config-l! " config-l!" $call-parent ; ( data config-addr -- )
+
+	: my-config-l@ ( reg -- x )
+		my-space + config-l@ ;
+
+	: my-config-l! ( x reg -- )
+		my-space + config-l! ;
+
+	\ Get the BAR value, check the size, and restore the BAR value
+	: get-bar-size ( bar -- size )
+		my-space + dup config-l@ swap -1 over config-l! dup config-l@ -10 and negate -rot config-l! ;
+
+	\ ====================================================================================
+	\ DingusVideo parent
+
+	" get bar sizes" .dbg cr
+
+	10 get-bar-size constant vram-size
+	30 get-bar-size constant rombar-size
+
+	" map-in memory space" .dbg cr
+	\ relocatable, prefetchable, 32-bit memory space
+	\ I/O shouldn't be prefetchable but we're an emulated device so we don't care
+	my-address h# 42000010 my-space + vram-size map-in value vram-base
+	vram-base >M.num-displays l@ constant num-displays
+	vram-base vram-size map-out
+	-1 to vram-base
+
+	num-displays /display-regs * /meta-regs + h# FFF + h# -1000 and constant all-regs-size
+	vram-size all-regs-size - h# -1000 and constant vram-per-display
+
+	" rombar-size: " .dbg rombar-size . cr
+	" vram-size: " .dbg vram-size . cr
+	" num-displays: " .dbg num-displays . cr
+	" meta-regs-size: " .dbg /meta-regs . cr
+	" display-regs-size: " .dbg /display-regs . cr
+	" all-regs-size: " .dbg all-regs-size . cr
+	" vram-per-display: " .dbg vram-per-display . cr
+
+	" setting reg" .dbg cr
+	.stack
+
+	my-address my-space               encode-phys         0 encode-int encode+ 0           encode-int encode+ \ config space
+	my-address my-space h# 42000010 + encode-phys encode+ 0 encode-int encode+ vram-size   encode-int encode+ \ relocatable, prefetchable, 32-bit memory space
+	my-address my-space h# 02000030 + encode-phys encode+ 0 encode-int encode+ rombar-size encode-int encode+ \ relocatable, 32-bit memory space
+	" reg" property
+
+	30 my-config-l@ value rombar-old
+	" old rombar: " .dbg rombar-old 8 u.r cr
+
+	" map-in rom" .dbg cr
+	my-address h# 02000030 my-space + rombar-size map-in value rom-base
+	30 my-config-l@ dup " new rombar: " .dbg 8 u.r cr 1 or 30 my-config-l!
+	" [ rom-mapped" .dbg cr
+	.stack
+
+	" rom-base: " .dbg rom-base 8 u.r cr
+	.stack
+
+	\ This is used like this: " findme" byte-load-from-rom
+	\ It will execute the fcode that is preceded by a matching string literal and begins with a start1 fcode (0xF1).
+	: byte-load-from-rom ( str len -- ? )
+		" [ byte-load-from-rom" .dbg cr
+			.stack
+			" rombar-size: " .dbg rombar-size . cr
+			" rom-base: " .dbg rom-base . cr
+
+			rombar-size						\ str len rombar-size
+			over							\ str len rombar-size str
+			-								\ str len rombar-size-str
+			rom-base						\ str len rombar-size-str rom-base
+			swap							\ str len rom-base rombar-size-str
+			bounds							\ str len rom-base+rombar-size-str rom-base
+			?do								\ str len
+				2dup i						\ str len str len i
+				swap						\ str len str i len
+				comp						\ str len (0=equal|not 0=not equal)
+				0=							\ str len equal?
+				over i +					\ str len equal? len+i
+				c@ f1 =						\ str len equal? *(len+i)==f1
+				and							\ str len (equal and followed by f1)
+				if							\ str len
+					" found fcode" .dbg cr
+					nip						\ len
+					i +						\ i+len \ skip bytes for str (len)
+					unloop \ required for exit
+					1 byte-load				\ ( addr xt -- )
+					" ] byte-load-from-rom early exit" .dbg cr
+					exit
+					\ 0 0 leave
+				then						\ str len
+			loop							\ str len
+			2drop							\
+		" ] byte-load-from-rom" .dbg cr
+		;
+
+	defer my-parse-1hex
+	false value has-unit-address
+
+	.stack
+	" looking for parse-1hex" .dbg cr
+
+	" parse-1hex" $def-find if
+		" found it; setting decode-unit" .dbg cr
+		to my-parse-1hex
+		1 encode-int " #address-cells" property
+		0 encode-int " #size-cells" property
+		" : decode-unit parse-1hex ;" evaluate
+		true to has-unit-address
+	else
+		2drop
+	then
+	.stack
+
+\ ========================================================================================
+\ Display words
+
+	: get-mon-sense ( display-info -- )
+		" [ get-mon-sense" .dbg cr
+
+		dup >I.display-regs l@ >D.mon-sense								\ display-info &sense
+		
+		o# 70 over l! \ disable outputs									\ display-info &sense
+		dup l@ 2 << h# 700 and											\ display-info &sense code=(sense<<2)&0x700
+
+		over o# 30 swap l! \ set sense-2 low							\ display-info &sense code=(sense<<2)&0x700
+		over l@ 2 >> b# 110000 and or									\ display-info &sense code=((sense<<2)&0x700)|((sense>>2)&0b110000)
+
+		over o# 50 swap l! \ set sense-1 low							\ display-info &sense code=((sense<<2)&0x700)|((sense>>2)&0b110000)
+		over l@ dup 4 >> b# 000100 and swap 5 >> b# 001000 and or or	\ display-info &sense code=((sense<<2)&0x700)|((sense>>2)&0b110000)|((sense>>4)&0b000100)|((sense>>5)&0b001000)
+
+		over o# 60 swap l! \ set sense-0 low							\ display-info &sense code=((sense<<2)&0x700)|((sense>>2)&0b110000)|((sense>>4)&0b000100)|((sense>>5)&0b001000)
+		over l@ 7 >> b# 000011 and or									\ display-info &sense code=((sense<<2)&0x700)|((sense>>2)&0b110000)|((sense>>4)&0b000100)|((sense>>5)&0b001000)|((sense>>7)&0b000011)
+
+		rot >I.sense-code w!											\ &sense
+
+		o# 70 swap l! \ disable outputs									\
+		" ] get-mon-sense" .dbg cr
+		;
+
+	: loop-timings-all ( display-info -- )
+		all-display-timings		\ display-info modeptr
+		begin
+			dup l@ ?dup			\ display-info modeptr mode mode
+		while					\ display-info modeptr mode
+			2 pick				\ display-info modeptr mode display-info
+			timing-proc			\ display-info modeptr
+			la1+				\ display-info modeptr++
+		repeat					\ display-info modeptr
+		drop					\ display-info
+
+		dup >I.edid l@ if		\ display-info
+\			• \ loop edid custom timings (those with numbers >= 700)
+		then
+		drop					\ display-info
+		;
+
+	: loop-timings-display ( display-info -- )
+\		" [ loop-timings-display" .dbg cr
+
+		dup >I.edid l@ ?dup if											\ display-info display-info.edid
+			over >I.edid-size w@ 2 pick									\ display-info display-info.edid display-info.edid-size display-info
+			loop-timings-edid ( edid-addr edid-size display-info -- )	\ display-info
+\			" ] loop-timings-display EDID" .dbg cr
+			drop														\
+			exit
+		then
+
+		dup >I.sense-code w@ over										\ display-info display-info.sense-code display-info
+		loop-timings-sense-code ( sense-code display-info -- )			\ display-info
+\		" ] loop-timings-display sense" .dbg cr
+		drop															\
+
+		;
+
+	: calc-row-bytes ( width display-info -- )
+		>I.pixel-depth c@ * 8 /
+		7 + -8 and
+\		dup " calc-row-bytes:" .dbg .d cr
+		;
+
+	0 value temp-display-timing
+
+	: valid-timing ( display-timing display-info -- isvalid? )
+		over >T.width w@ swap calc-row-bytes			\ display-timing row-bytes
+		swap >T.height w@ *								\ row-bytes frame-buffer-bytes 
+		\ save 4K for hardware cursor
+		vram-per-display h# 1000 - <					\ (frame-buffer-bytes < vram-per-display)
+		;
+
+	: greatest-display-timing ( display-timing display-info -- )
+		" [ greatest-display-timing display-timing:" .dbg dup dump-display-timing
+		
+		swap																	\ display-info new=display-timing
+		
+		temp-display-timing ?dup if												\ display-info new old
+			\ accept = ( w> | ( w= & (h> | (h= & p< ) ) ) )						
+			over >T.width       w@ over >T.width       w@ 2dup > >r = >r		\ display-info new old \ R: (w> = (new.width>old.width)) (w= = (new.width==old.width))
+			over >T.height      w@ over >T.height      w@ 2dup > >r = >r		\ display-info new old \ R: w> w= (h> = (new.height>old.height)) (h= = (new.height==old.height))
+			over >T.pixel-clock l@ over >T.pixel-clock w@ <						\ display-info new old (p< = new.pixelclock < old.pixelclock) \ R: w> w= h> h=
+			nip																	\ display-info new p< \ R: w> w= h> h=
+			r> and r> or r> and	r> or and										\ display-info (new & ( ( ( ( p< & h= ) | h> ) & w= ) | w> ))
+		then																	\ display-info new|old|null
+		?dup if																	\ display-info new
+			2dup swap valid-timing if											\ display-info new
+				dup to temp-display-timing										\ display-info new
+			then																\ display-info new
+			drop																\ display-info
+		then																	\ display-info
+		drop																	\
+
+		cr " ] greatest-display-timing" .dbg cr
+		;
+
+	\ colors for iso6429-1983-colors have values 0, 1/3, 2/3, 3/3
+	create std-16
+	\		black    blue  green  cyan   red   magenta brown white          - low intensity
+		" "(000000 0000AA 00AA00 00AAAA AA0000 AA00AA AA5500 AAAAAA)" $c,
+	\		grey    blue  green  cyan   red   magenta yellow white			- high intensity
+		" "(555555 5555FF 55FF55 55FFFF FF5555 FF55FF FFFF55 FFFFFF)" $c,
+
+	create std-gamma
+		" "(00 05 09 0B 0E 10 13 15 17 19 1B 1D 1E 20 22 24)" $c,
+		" "(25 27 28 2A 2C 2D 2F 30 31 33 34 36 37 38 3A 3B)" $c,
+		" "(3C 3E 3F 40 42 43 44 45 47 48 49 4A 4B 4D 4E 4F)" $c,
+		" "(50 51 52 54 55 56 57 58 59 5A 5B 5C 5E 5F 60 61)" $c,
+		" "(62 63 64 65 66 67 68 69 6A 6B 6C 6D 6E 6F 70 71)" $c,
+		" "(72 73 74 75 76 77 78 79 7A 7B 7C 7D 7E 7F 80 81)" $c,
+		" "(81 82 83 84 85 86 87 88 89 8A 8B 8C 8C 8D 8E 8F)" $c,
+		" "(90 91 92 93 94 95 95 96 97 98 99 9A 9B 9B 9C 9D)" $c,
+		" "(9E 9F A0 A1 A1 A2 A3 A4 A5 A6 A6 A7 A8 A9 AA AB)" $c,
+		" "(AB AC AD AE AF B0 B0 B1 B2 B3 B4 B4 B5 B6 B7 B8)" $c,
+		" "(B8 B9 BA BB BC BC BD BE BF C0 C0 C1 C2 C3 C3 C4)" $c,
+		" "(C5 C6 C7 C7 C8 C9 CA CA CB CC CD CD CE CF D0 D0)" $c,
+		" "(D1 D2 D3 D3 D4 D5 D6 D6 D7 D8 D9 D9 DA DB DC DC)" $c,
+		" "(DD DE DF DF E0 E1 E1 E2 E3 E4 E4 E5 E6 E7 E7 E8)" $c,
+		" "(E9 E9 EA EB EC EC ED EE EE EF F0 F1 F1 F2 F3 F3)" $c,
+		" "(F4 F5 F5 F6 F7 F8 F8 F9 FA FA FB FC FC FD FE FF)" $c,
+
+	: c@+ ( adr -- adr+1 val )
+		dup 1+ swap c@
+		;
+
+	: c!+ ( adr val -- adr+1 )
+		swap dup 1+ -rot c!
+		;
+
+	: clut@ ( addr -- r g b )
+		l@ 8 << lbflip lbsplit drop	\ 0rgb \ rgb0 \ 0bgr \ r g b 0 \ r g b \
+		;
+
+	: clut!	( r g b addr -- )
+		>r 0 bljoin lbflip 8 >> r> l! \ r g b 0 \ R: addr \ 0bgr \ rgb0 \ 0rgb \ 0rgb addr \
+		;
+
+	: ping-display ( immediate-flags display-info -- )
+		>I.display-regs l@	\ immediate-flags regs
+		>D.immediate-flags	\ immediate-flags &regs.immediate-flags
+		l!					\
+		;
+
+	: reset-display ( display-info -- )
+		" [ reset-display " .dbg cr
+		dup >I.im-flags-to-set l@ h# 2 or swap	\ immediate-flags display-info
+		ping-display
+		" ] reset-display " .dbg cr
+		;
+
+	: enable-display ( display-info -- )
+		" [ enable-display " .dbg cr
+		.stack
+		dup >I.im-flags-to-set l@ h# 40 or swap	\ immediate-flags display-info
+		ping-display
+		.stack
+		" ] enable-display " .dbg cr
+		;
+
+	: init-display ( display-timing display-info -- )
+		" [ init-display " .dbg over dump-display-timing cr
+		dup " display-info:" .dbg 8 u.r cr
+
+		over >I.current-timing /display-timing													\ display-info display-timing display-info.current-timing /display-timing
+		move ( src-addr dest-addr len -- )														\ display-info
+
+		dup >I.display-regs   l@																\ display-info regs
+		dup " regs:" .dbg 8 u.r cr							
+							
+		over >T.pixel-clock   l@ dup " pixclock:" .dbg .d cr over >D.pixel-clock 			l!	\ display-info regs
+		over >T.hactive       w@ dup " hactive:"  .dbg .d cr over >D.hactive     			l!	\ display-info regs
+		over >T.hsyncbegin    w@ dup " hsyncbeg:" .dbg .d cr over >D.hsyncbegin  			l!	\ display-info regs
+		over >T.hsyncend      w@ dup " hsyncend:" .dbg .d cr over >D.hsyncend    			l!	\ display-info regs
+		over >T.htotal        w@ dup " htotal:"   .dbg .d cr over >D.htotal      			l!	\ display-info regs
+		over >T.vactive       w@ dup " vactive:"  .dbg .d cr over >D.vactive     			l!	\ display-info regs
+		over >T.vsyncbegin    w@ dup " vsyncbeg:" .dbg .d cr over >D.vsyncbegin  			l!	\ display-info regs
+		over >T.vsyncend      w@ dup " vsyncend:" .dbg .d cr over >D.vsyncend    			l!	\ display-info regs
+		over >T.vtotal        w@ dup " vtotal:"   .dbg .d cr over >D.vtotal      			l!	\ display-info regs
+
+		over >I.fb-base       l@ dup " fbbase:"   .dbg .d cr over >D.framebuffer-base		l!	\ display-info regs
+		over >I.pixel-depth   c@ dup " depth:"    .dbg .d cr over >D.pixel-depth 			l!	\ display-info regs
+		0                        dup " inten:"    .dbg .d cr over >D.int-enable  			l!	\ display-info regs
+
+		over >T.hpolarity     c@ dup " hpol:"     .dbg .d cr >r									\ display-info regs \ R: hpolarity
+		over >T.vpolarity     c@ dup " vpol:"     .dbg .d cr >r									\ display-info regs \ R: hpolarity vpolarity
+		over >T.interlaced    c@ dup " interlac:" .dbg .d cr >r									\ display-info regs \ R: hpolarity vpolarity interlaced
+		r> if 1 else 0 then																		\ display-info regs interlaced_bit \ R: hpolarity vpolarity
+		r> if 2 else 0 then +																	\ display-info regs interlaced_bit+vpolarity_bit \ R: hpolarity
+		r> if 4 else 0 then +      																\ display-info regs interlaced_bit+vpolarity_bit+hpolarity_bit
+		                         dup " timflgs:"  .dbg .d cr over >D.timing-flags			l!	\ display-info regs
+
+		over >T.width w@ 2 pick																	\ display-info regs width display-info
+		          calc-row-bytes dup " rowbytes:" .dbg .d cr over >D.framebuffer-rowbytes	l!	\ display-info regs
+		drop																					\ display-info
+		dup >T.csyncdisabled  c@ dup " csyncdis:" .dbg .d cr 									\ display-info csyncdisabled
+				if h# 10 else 0 then                         swap >I.im-flags-to-set        l!	\
+
+		" ] init-display " .dbg cr
+		;
+
+	: p-dimensions ( display-info -- width height )
+		dup  >T.width  w@ \ display-info *(display-info.>T.width)
+		swap >T.height w@ \ *(display-info+>T.width) *(display-info.>T.height)
+		;
+
+	: set-standard-gamma ( display-info -- )
+		" [ set-standard-gamma " .dbg cr
+			.stack
+			>I.display-regs l@					\ regs
+			h# 100 over >D.color-index l!		\ regs
+			>D.color-data						\ &color-data
+			100 0 do
+				std-gamma i + c@ dup dup		\ &color-data val val val
+				3 pick clut!					\ &color-data
+			loop								\ &color-data
+			drop
+			.stack
+		" ] set-standard-gamma " .dbg cr
+		;
+
+	: p-set-colors ( adr index #indices display-info -- )
+		" [ p-set-colors " .dbg cr
+		.stack
+		dup >I.display-regs l@					\ adr index #indices display-info regs
+		dup " regs:" .dbg 8 u.r cr
+		3 roll									\ adr #indices display-info regs index
+		over >D.color-index 					\ adr #indices display-info regs index &color-index
+		l!										\ adr #indices display-info regs
+		>D.color-data							\ adr #indices display-info &color-data
+		swap >I.mono-mode? c@					\ adr #indices &color-data mono-mode?
+		2swap									\ &color-data mono-mode? adr #indices
+		( #indices ) 0 ?do						\ &color-data mono-mode? adr
+			over if								\ &color-data mono-mode? adr
+				c@+ h# 4d * >r					\ &color-data mono-mode? adr \ R: r*4d
+				c@+ h# 97 * >r					\ &color-data mono-mode? adr \ R: r*4d g*97
+				c@+ h# 1c * r> + r> + 8 >>		\ &color-data mono-mode? adr luminance=(b*1c+g*97+r*4d)>>8
+				dup 							\ &color-data mono-mode? adr r=luminance g=luminance
+				dup								\ &color-data mono-mode? adr r=luminance g=luminance b=luminance
+				5 pick							\ &color-data mono-mode? adr r=luminance g=luminance b=luminance &color-data
+				clut!							\ &color-data mono-mode? adr
+			else								\ &color-data mono-mode? adr
+				c@+ >r							\ &color-data mono-mode? adr \ R: r
+				c@+ >r							\ &color-data mono-mode? adr \ R: r g
+				c@+	r> swap r> -rot				\ &color-data mono-mode? adr r g b
+				5 pick							\ &color-data mono-mode? adr r g b &color-data
+				clut! 	 						\ &color-data mono-mode? adr
+			then	 	 						\ &color-data mono-mode? adr
+		loop 	 								\ &color-data mono-mode? adr
+		3drop									\
+		.stack
+		" ] p-set-colors " .dbg cr
+		;
+
+	: p-get-colors ( adr index #indices display-info -- )
+		>I.display-regs l@						\ adr index #indices regs
+		dup >D.color-index						\ adr index #indices regs &color-index
+		3 roll l!								\ adr #indices regs
+		>D.color-data							\ adr #indices &color-data
+		-rot									\ &color-data adr #indices
+		( #indices ) 0 ?do						\ &color-data adr
+			dup clut@  >r  >r					\ &color-data adr r | R: b g
+			c!+ r> c!+ r> c!+					\ &color-data adr
+		loop									\ &color-data adr
+		2drop									\
+		;
+
+	variable rgb-temp
+
+	: p-color! ( r g b index display-info -- )
+		>r >r 									\ r g b \ R: display-info index
+		rgb-temp 2+ c!	
+		rgb-temp 1+ c!	
+		rgb-temp c!								\ R: display-info index
+		rgb-temp r> 1 r> 						\ adr index 1 display-info 
+		p-set-colors
+		;
+
+	: p-color@ ( index display-info -- r g b )
+		>r rgb-temp swap 1 r>					\ adr index 1 display-info
+		p-get-colors							\
+		rgb-temp c@+ swap c@+ swap c@			\ r g b
+		;
+
+	: rect-setup ( adr|index x y w h display-info -- w row-bytes adr|index xy-adr h )
+		rot over >I.pixel-depth c@ tuck * swap		\ adr|index x y h display-info w*depth depth
+		rot dup >T.width w@	over calc-row-bytes		\ adr|index x y h w*depth depth display-info row-bytes
+		swap >I.fb-address l@						\ adr|index x y h w*depth depth row-bytes fbaddress
+		over 6 roll * +								\ adr|index x h w*depth depth row-bytes fbaddress+row-bytes*y
+		rot 5 roll * 8 / +							\ adr|index h w*depth row-bytes fbaddress+row-bytes*y+depth*x/8
+		3 roll 4 roll -rot							\ w*depth row-bytes adr|index fbaddress+row-bytes*y+depth*x/8 h
+		;
+
+	: p-draw-rectangle ( adr x y w h display-info -- )
+		rect-setup								\ w row-bytes adr xy-adr h
+		( h ) 0 ?do								\ w row-bytes adr xy-adr
+			2dup 5 pick							\ w row-bytes adr xy-adr adr xy-adr w
+			move ( src-addr dest-addr len -- ) 	\ w row-bytes adr xy-adr
+			2over d+							\ w row-bytes adr+w xy-adr+row-bytes
+		loop									\ w row-bytes adr xy-adr
+		2drop 2drop								\
+		;
+
+	: p-fill-rectangle ( index x y w h display-info -- )
+		dup >I.pixel-depth c@ case
+		8 of
+			rect-setup								\ w row-bytes index xy-adr h
+			( h ) 0 ?do								\ w row-bytes index xy-adr
+				dup 4 pick 3 pick					\ w row-bytes index xy-adr xy-adr w index
+				fill ( addr len byte -- )			\ w row-bytes index xy-adr
+				2 pick +							\ w row-bytes index xy-adr+=row-bytes
+			loop									\ w row-bytes index xy-adr
+			2drop 2drop								\
+			endof
+		d# 16 of
+			rect-setup								\ w row-bytes index xy-adr h
+			( h ) 0 ?do								\ w row-bytes index xy-adr
+				dup 4 pick bounds ?do				\ w row-bytes index xy-adr
+					over i w! /w
+				+loop
+				2 pick +							\ w row-bytes index xy-adr+=row-bytes
+			loop									\ w row-bytes index xy-adr
+			2drop 2drop								\
+			endof
+		d# 32 of
+			rect-setup								\ w row-bytes index xy-adr h
+			( h ) 0 ?do								\ w row-bytes index xy-adr
+				dup 4 pick bounds ?do				\ w row-bytes index xy-adr
+					over i l! /l
+				+loop
+				2 pick +							\ w row-bytes index xy-adr+=row-bytes
+			loop									\ w row-bytes index xy-adr
+			2drop 2drop								\
+			endof
+			drop 2drop 2drop
+		endcase
+		;
+
+	: p-read-rectangle ( adr x y w h display-info -- )
+		rect-setup								\ w row-bytes adr xy-adr h
+		>r >r >r swap r> r> swap r>				\ row-bytes w xy-adr adr h
+		( h ) 0 ?do								\ row-bytes w xy-adr adr
+			2dup 5 pick							\ row-bytes w xy-adr adr xy-adr adr w
+			move ( src-addr dest-addr len -- ) 	\ row-bytes w xy-adr adr 
+			2over pick d+						\ row-bytes w xy-adr+row-bytes adr+w
+			loop								\ row-bytes w xy-adr adr
+		2drop 2drop								\
+		;
+
+	: p-test-pattern ( display-info -- )
+		dup p-dimensions 				\ display-info width height 
+		swap d# 16 /					\ display-info height width/16
+		swap d# 16 /					\ display-info width/16 height/16
+		d# 16 0 do						\ display-info y=i
+			d# 16 0 do					\ display-info x=j
+				i j + F and				\ display-info width/16 height/16 color
+				3 pick >I.pixel-depth c@ case
+					16 of
+						3 * std-16 + c@+ 3 >> d# 10 << swap c@+ 3 >> 5 << swap c@ 3 >> or or
+					endof
+					32 of
+						3 * std-16 + c@+ d# 16 << swap c@+ 8 << swap c@ or or
+					endof
+				endcase
+				
+				2 pick j *				\ display-info width/16 height/16 color x
+				2 pick i *				\ display-info width/16 height/16 color x y
+				4 pick					\ display-info width/16 height/16 color x y w
+				4 pick					\ display-info width/16 height/16 color x y w h
+				7 pick					\ display-info width/16 height/16 color x y w h display-info
+				p-fill-rectangle		\ display-info width/16 height/16
+			loop
+		loop
+		3drop							\
+		;
+
+	: p-show-modes-all ( display-info -- )
+		cr
+		['] dump-display-timing-cr to timing-proc
+		loop-timings-all ( display-info -- )
+		;
+
+	: p-show-modes ( display-info -- )
+		cr
+		['] dump-display-timing-cr to timing-proc
+		loop-timings-display ( display-info -- )
+		;
+
+	0 value timing-number-to-find
+
+	: find-mode ( display-timing display-info -- )
+		over >T.display-timing-number w@ timing-number-to-find = if			\ display-timing display-info
+			2dup valid-timing ( display-timing display-info -- isvalid? )	\ display-timing display-info
+			if
+				over to temp-display-timing									\ display-timing display-info
+			then
+		then																\ display-timing display-info
+		2drop
+		;
+
+	: p-set-best-mode ( display-info -- )
+		" [ get-best-mode" .dbg cr
+		0 to temp-display-timing
+		['] greatest-display-timing to timing-proc
+		.stack
+		loop-timings-display ( display-info -- )
+		.stack
+		temp-display-timing ?dup
+		if
+			 " best mode:" .dbg dup dump-display-timing cr
+			over																\ display-info display-timing display-info
+			init-display ( display-timing display-info -- )						\ display-info
+		else
+			" no mode - aborting" .dbg cr
+			.stack
+			abort
+		then
+		.stack
+		" ] get-best-mode" .dbg cr
+		;
+
+	: p-set-mode ( mode display-info -- )
+		" [ set-mode" .dbg cr
+		swap to timing-number-to-find			\ display-info
+		0 to temp-display-timing
+		['] find-mode to timing-proc			\ display-info
+		.stack
+		loop-timings-all ( display-info -- )	\
+		.stack
+		temp-display-timing ?dup
+		if
+			 " found mode:" .dbg dup dump-display-timing cr
+			over																\ display-info display-timing display-info
+			init-display ( display-timing display-info -- )						\ display-info
+		else
+			." mode not found" .dbg cr
+		then
+		.stack
+		" ] set-mode" .dbg cr
+		;
+
+	: calc-framebytes
+		;
+
+	: p-set-depth ( depth display-info -- )
+		" [ set-depth" .dbg cr
+		thedepth thewidth theheight is-valid-frame-bytes? if
+		
+		then
+		
+		" ] set-depth" .dbg cr
+		;
+
+	-1 value vram-base-phys
+	0 value parent-open-count
+
+	: p-my-open ( display-info -- )
+		" [ open #" .dbg dup >I.display-number c@ .d ." count: " dup >I.open-count l@ .d cr
+
+		" check open count" .dbg cr
+
+		dup >I.open-count l@ 0= if												\ display-info
+			
+			dup >I.display-number c@ /display-regs * /meta-regs + vram-base +	\ display-info display-regs
+			dup " set display-regs:" .dbg 8 u.r cr
+			over >I.display-regs l!
+
+			dup >I.display-number c@ vram-per-display * all-regs-size + 		\ display-info base
+			dup " set framebuffer-base:" .dbg 8 u.r cr
+			2dup swap >I.fb-base l! 											\ display-info base
+
+			vram-base +															\ display-info base+vram-base
+			dup " set fb-address-phys:" .dbg 8 u.r cr
+			over >I.fb-address-phys l!											\ display-info
+
+			.stack
+			" reset-display" .dbg cr
+			dup reset-display ( display-info -- )								\ display-info
+							
+			dup get-mon-sense ( display-info -- )								\ display-info
+			dup >I.sense-code w@ 												\ display-info sense-code
+			dup encode-int " sense-code" property								\ display-info sense-code
+			get-sense-code-entry ?dup if										\ display-info entry
+				>S.monochrome w@												\ display-info mono
+				over >I.mono-mode? c!											\ display-info
+			then							
+							
+\			dup get-edid ( display-info -- )									\ display-info
+			
+			dup p-set-best-mode ( display-info -- )								\ display-info display-timing
+
+			std-16 0 d# 16 3 pick p-set-colors ( adr index #indices display-info -- )
+			dup set-standard-gamma
+			dup enable-display
+	
+			dup >I.fb-address-phys l@ 0 my-space h# 02000000 or					\ display-info fb-address-phys 0 my-space|2000000
+\			3 pick >T.width w@ 4 pick calc-row-bytes 4 pick >T.height w@ *		\ display-info fb-address-phys 0 my-space|2000000 row-bytes*height
+			vram-per-display													\ display-info fb-address-phys 0 my-space|2000000 vram-per-display
+			.stack
+			" map-in" .dbg cr
+			map-in ( phys.lo ... phys.hi size -- virt )							\ display-info fb-address
+			over >I.fb-address l!												\ display-info
+	
+			\ clear screen mem to white. (Need VRAM state machine on!)
+			" fill" .dbg cr
+			dup >I.fb-address l@ over >T.width w@ 2 pick calc-row-bytes 2 pick >T.height w@ * d# 15	\ display-info fb-address row-bytes*height 15
+			fill ( addr len byte -- )																\ display-info
+
+			default-font set-font
+
+			h# 168 get-token drop \ foreground-color
+			['] ferror
+			<> if
+				\ set iso6429-1983-colors before fb8-install so fb8-install will know to set
+				\ foreground-color to 0 (black) and background color to 15 (white) instead of 
+				\ foreground-color to 255 and background color to 0.
+				0 0 " iso6429-1983-colors" property
+			then
+
+			dup >T.width w@ over >T.height w@ over 20 - char-width / over 20 - char-height /	\ display-info width height (width-20)/char-width (height-20)/char-height
+			.stack
+			" fb8-install" .dbg cr
+			fb8-install ( width height #columns #lines -- )										\ display-info
+			
+			dup >T.width w@ #columns char-width * - 2/											\ display-info (width-(#columns * char-width))/2
+			" window-left     :" .dbg dup . cr
+			to window-left																		\ display-info
+			 
+			dup >T.height w@ #lines char-height * - 2/											\ display-info (height-(#lines * char-height))/2
+			" window-top      :" .dbg dup . cr
+			to window-top																		\ display-info
+			
+			dup >I.fb-address l@
+			" frame-buffer-adr: " .dbg dup 8 u.r cr
+			to frame-buffer-adr											\ display-info
+	
+			dup >T.width  w@                     encode-int " width"     property				\ display-info
+			dup >T.height w@                     encode-int " height"    property				\ display-info
+			dup >T.width  w@ over calc-row-bytes encode-int " linebytes" property				\ display-info
+			8                                    encode-int " depth"     property				\ display-info
+		else
+			" skip display-regs" .dbg cr
+		then
+
+		dup >I.open-count dup l@ 1+ swap l!														\ display-info
+
+		" display-regs    : " .dbg dup >I.display-regs     l@ 8 u.r cr
+		" fb-address-phys : " .dbg dup >I.fb-address-phys  l@ 8 u.r cr
+		" fb-address      : " .dbg dup >I.fb-address       l@ 8 u.r cr
+		" im-flags-to-set : " .dbg dup >I.im-flags-to-set  l@ 8 u.r cr
+		" width           : " .dbg dup >T.width            w@ .d cr
+		" height          : " .dbg dup >T.height           w@ .d cr
+		" display-number  : " .dbg dup >I.display-number   c@ .d cr
+		" mono-mode?      : " .dbg dup >I.mono-mode?       c@ .d cr
+
+		" ] open #" .dbg dup >I.display-number c@ .d ." count: " dup >I.open-count l@ .d cr
+
+		drop
+		.stack
+		;
+
+	: p-my-close ( display-info -- )
+
+		" [ close #" .dbg dup >I.display-number c@ .d ." count: " dup >I.open-count l@ .d cr
+
+		dup >I.open-count l@ if																		\ display-info
+			dup >I.open-count l@ 1 = if																\ display-info
+				dup >I.fb-address l@																\ display-info fb-address
+\				over >T.height w@ 2 pick >T.width w@ 3 pick calc-row-bytes *						\ display-info fb-address height*row-bytes 
+				vram-per-display																	\ display-info fb-address vram-per-display
+				map-out ( virt size -- )															\ display-info
+			then																					\ display-info
+			dup >I.open-count dup l@ 1- swap l!														\ display-info
+		then																						\ display-info
+
+		" ] close #" .dbg dup >I.display-number c@ .d ." count: " dup >I.open-count l@ .d cr
+		drop																						\ display-info
+		.stack																				
+		;
+
+	: open-parent
+		cr
+		" [ open count: " .dbg parent-open-count .d cr
+
+		parent-open-count 0= if													\
+			" assigned-addresses" get-my-property ( name-str name-len -- true | prop-addr prop-len false )
+			" abort"" no REG property""" eval								\ prop-addr prop-len
+			begin															\ prop-addr prop-len
+				dup 0>														\ prop-addr prop-len (prop-len > 0)
+			while															\ prop-addr prop-len
+				decode-int h# FF and >r decode-int drop decode-int >r		\ prop-addr prop-len \ R: BAR=(int0 & 0xff) phys
+				8 - swap 8 + swap ( prop-adr prop-len )						\ prop-addr+=8 prop-len-=8 \ skip size
+				r> r> case													\ prop-addr prop-len phys BAR
+					h# 10 of												\ prop-addr prop-len phys
+						to vram-base-phys									\ prop-addr prop-len 
+					endof													\ prop-addr prop-len 
+					swap drop												\ prop-addr prop-len BAR 
+					endcase													\ prop-addr prop-len
+				repeat														\ prop-addr prop-len
+			2drop															\
+
+			vram-base-phys 0 my-space h# 42000000 or all-regs-size			\ vram-base-phys 0 my-space|42000000 regs-size
+			map-in to vram-base												
+			parent-open-count 1+ to parent-open-count										
+		then																
+
+		" ] open count: " .dbg parent-open-count .d cr
+		;
+
+	: close-parent
+		" [ close count: " .dbg parent-open-count .d cr
+
+		parent-open-count if
+			parent-open-count 1 = if
+				vram-base all-regs-size map-out ( virt size -- )					
+			then																	
+			parent-open-count 1- to parent-open-count												
+		then																		
+
+		" ] close count: " .dbg parent-open-count .d cr
+		;
+
+	['] open-parent is-install
+	['] close-parent is-remove
+
+\ ========================================================================================
+\ DingusVideo children
+
+	: create-displays
+		\ this has to be done from compiled code because OF 1.0.5
+		num-displays 0 ?do
+			i new-device " fcode_DingusVideo" byte-load-from-rom finish-device
+		loop
+		;
+	create-displays
+
+\ ========================================================================================
+\ Parent Epilogue
+
+	30 my-config-l@ dup " rombar: " .dbg 8 u.r cr -2 and 30 my-config-l!
+	rom-base rombar-size map-out
+	rombar-old 30 my-config-l!
+
+	0 to rom-base
+	" ] rom-mapped" .dbg cr
+
+	" DingusVideoParent" device-name
+
+	.stack
+" ] DingusVideoParent" .dbg cr
+
+fcode-end
+
+\ ========================================================================================
+
+" fcode_DingusVideo"
+fcode-version2 ( display-number -- )
+
+	" [ DingusVideo #" .dbg dup . cr
+	.stack
+
+	/display-info buffer: display-info
+	  display-info >I.display-number c!
+	8 display-info >I.pixel-depth c!
+
+	" making new device" .dbg cr
+	.stack
+
+	" DingusVideo_A" encode-string 2dup + 2- 41 display-info >I.display-number c@ + swap c! " name" property
+	" DingusVideo" encode-string " compatible" property
+
+	has-unit-address if
+		" making new device reg" .dbg cr
+		display-info >I.display-number c@ encode-int " reg" property
+	then
+
+	external
+
+	: dimensions     ( -- width height )       	display-info p-dimensions     ;
+	: set-colors     ( adr index #indices )    	display-info p-set-colors     ;
+	: get-colors     ( adr index #indices -- ) 	display-info p-get-colors     ;
+	: color!         ( r g b index -- )        	display-info p-color!         ;
+	: color@         ( index -- r g b )        	display-info p-color@         ;
+	: draw-rectangle ( adr x y w h -- )        	display-info p-draw-rectangle ;
+	: fill-rectangle ( index x y w h -- )      	display-info p-fill-rectangle ;
+	: read-rectangle ( adr x y w h -- )        	display-info p-read-rectangle ;
+
+	: test-pattern   ( -- )                    	display-info p-test-pattern   ;
+	: show-modes-all ( -- )						display-info p-show-modes-all ;
+	: show-modes     ( -- )						display-info p-show-modes     ;
+	: set-best-mode  ( -- )						display-info p-set-best-mode  ;
+	: set-mode       ( mode -- )				display-info p-set-mode       ;
+	: set-depth      ( depth -- )				display-info p-set-depth      ;
+
+	headerless
+
+	: my-open  ( -- )
+		display-info p-my-open
+		;
+
+	: my-close ( -- )
+		display-info p-my-close
+		;
+
+	['] my-open  is-install
+	['] my-close is-remove
+
+	.stack
+	" ] DingusVideo #" .dbg display-info >I.display-number c@ . cr
+fcode-end
+
+\ ========================================================================================
+
+pci-end
