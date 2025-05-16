@@ -2,7 +2,9 @@ include_directories("${PROJECT_SOURCE_DIR}"
                     "${PROJECT_SOURCE_DIR}/thirdparty/loguru/"
                     )
 
-platform_glob(SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+platform_glob(SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+                      "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
+                      )
 
 add_library(core OBJECT ${SOURCES})
 if (EMSCRIPTEN)
