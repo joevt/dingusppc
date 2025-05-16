@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CurrentWorkingDirectory</key>
+	<string>/Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci</string>
+	<key>WorksheetContents</key>
+	<string>#=========================================================================================
+# (1) Setup
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/joevt/Library/Python/2.7/bin:/opt/X11/bin:/Library/Apple/usr/bin:/Volumes/Updates/Docs/Open_Firmware_and_Forth/OpenBIOS/joevt-OpenBIOSStuff/detok/obj-amd64:/Volumes/Updates/Docs/Open_Firmware_and_Forth/OpenBIOS/joevt-OpenBIOSStuff/toke/obj-amd64:/Volumes/Updates/Docs/Open_Firmware_and_Forth/OpenBIOS/joevt-OpenBIOSStuff/macOS
+source "/Volumes/Work/Open Firmware and Name Registry/ROM PowerPC Mac/decompressrom.sh"
+
+command -v DumpPCIRom.sh
+/Volumes/Updates/Docs/Open_Firmware_and_Forth/OpenBIOS/joevt-OpenBIOSStuff/macOS/DumpPCIRom.sh
+
+command -v detok
+/Volumes/Updates/Docs/Open_Firmware_and_Forth/OpenBIOS/joevt-OpenBIOSStuff/detok/obj-amd64/detok
+
+#=========================================================================================
+# Make the ROM
+
+cd "/Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci"
+mkdir -p "Build"
+toke -l -v -o "Build/DingusVideoPCI.rom" "DingusVideoPCI.of" &gt; "/tmp/toke.log.txt" &amp;&amp; echo "# no errors"|| cat "/tmp/toke.log.txt"
+xxd "Build/DingusVideoPCI.rom" &gt; "Build/DingusVideoPCI.xxd.txt"
+
+#=========================================================================================
+# Verify the results
+
+cd "/Volumes/Work/Programming/dingusppc/joevt-dingusppc/devices/video/ndrv/dingusvideopci"
+mkdir -p "Reverse"
+DumpPCIRom.sh -a -v "DingusVideoPCI.rom" &gt; "Reverse/DingusVideoPCI.of" 2&gt; "Reverse/DingusVideoPCI.errs"
+
+toke -v -o "Reverse/DingusVideoPCI.rom" "Reverse/DingusVideoPCI.of" &gt; "/tmp/toke2.log.txt" || cat "/tmp/toke2.log.txt"
+DumpPCIRom.sh -a -v "Reverse/DingusVideoPCI.rom" &gt; "Reverse/DingusVideoPCI2.of" 2&gt; "Reverse/DingusVideoPCI2.errs"
+sleep 1
+bbdiff "Reverse/DingusVideoPCI.of" "Reverse/DingusVideoPCI2.of"
+bbdiff "Reverse/DingusVideoPCI.rom" "DingusVideoPCI.rom"
+
+#=========================================================================================
+# View results
+
+xxd "Reverse/DingusVideoPCI.rom" &gt; "Reverse/DingusVideoPCI2.xxd.txt"
+bbedit "Reverse/DingusVideoPCI.of"
+bbedit "DingusVideoPCI.xxd.txt"
+
+#=========================================================================================
+# Test in Open Firmware
+
+" pci1/@D/@0" 2dup find-device open-dev dup . to my-self
+
+#=========================================================================================
+</string>
+</dict>
+</plist>
