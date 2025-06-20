@@ -82,7 +82,7 @@ uint32_t MacIoTwo::read(uint32_t rgn_start, uint32_t offset, int size) {
         value = this->mesh->read((offset >> 4) & 0xF);
         break;
     case 0x11: // Ethernet
-        value = BYTESWAP_SIZED(this->bmac->read(offset & 0xFFFU), size);
+        value = this->bmac ? BYTESWAP_SIZED(this->bmac->read(offset & 0xFFFU), size) : 0;
         break;
     case 0x12: // ESCC compatible addressing
         if ((offset & 0xFF) < 0x0C) {
@@ -145,7 +145,8 @@ void MacIoTwo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int si
         this->mesh->write((offset >> 4) & 0xF, value);
         break;
     case 0x11: // Ethernet
-        this->bmac->write(offset & 0xFFFU, BYTESWAP_SIZED(value, size));
+        if (this->bmac)
+            this->bmac->write(offset & 0xFFFU, BYTESWAP_SIZED(value, size));
         break;
     case 0x12: // ESCC compatible addressing
         if ((offset & 0xFF) < 0x0C) {
@@ -214,9 +215,9 @@ uint32_t MacIoTwo::dma_read(uint32_t offset, int size) {
     case MIO_OHARE_DMA_FLOPPY:
         return this->floppy_dma->reg_read(offset & 0xFF, size);
     case MIO_OHARE_DMA_ETH_XMIT:
-        return this->enet_xmit_dma->reg_read(offset & 0xFF, size);
+        return this->enet_xmit_dma ? this->enet_xmit_dma->reg_read(offset & 0xFF, size) : 0;
     case MIO_OHARE_DMA_ETH_RCV:
-        return this->enet_rcv_dma->reg_read(offset & 0xFF, size);
+        return this->enet_rcv_dma ? this->enet_rcv_dma->reg_read(offset & 0xFF, size) : 0;
     case MIO_OHARE_DMA_ESCC_B_RCV:
         return 0;
         //return this->escc_b_rx_dma->reg_read(offset & 0xFF, size);
@@ -248,10 +249,12 @@ void MacIoTwo::dma_write(uint32_t offset, uint32_t value, int size) {
         this->floppy_dma->reg_write(offset & 0xFF, value, size);
         break;
     case MIO_OHARE_DMA_ETH_XMIT:
-        this->enet_xmit_dma->reg_write(offset & 0xFF, value, size);
+        if (this->enet_xmit_dma)
+            this->enet_xmit_dma->reg_write(offset & 0xFF, value, size);
         break;
     case MIO_OHARE_DMA_ETH_RCV:
-        this->enet_rcv_dma->reg_write(offset & 0xFF, value, size);
+        if (this->enet_rcv_dma)
+            this->enet_rcv_dma->reg_write(offset & 0xFF, value, size);
         break;
     case MIO_OHARE_DMA_ESCC_B_RCV:
         this->escc_b_rx_dma->reg_write(offset & 0xFF, value, size);
