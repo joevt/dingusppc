@@ -26,6 +26,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/adb/adbbus.h>
 #include <regex>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_ADBDEVICE = loguru::Verbosity_9
+    };
+}
+
 AdbDevice::AdbDevice(const std::string name) : HWComponent(name) {
     this->supports_types(HWCompType::ADB_DEV);
 }
@@ -59,11 +65,19 @@ std::string AdbDevice::get_self_unit_address_string(int32_t unit_address) {
     return buf;
 }
 
+extern std::string hex_string(const uint8_t *p, int len);
+
 uint8_t AdbDevice::poll() {
     if (!this->srq_flag) {
         return 0;
     }
     bool has_data = this->get_register_0();
+
+    if (has_data) {
+        LOG_F(ADBDEVICE, "%s: poll   %x.%d %d %s", this->get_name_and_unit_address().c_str(), this->my_addr, 0, has_data,
+            hex_string(this->host_obj->get_output_buf(), this->host_obj->get_output_count()).c_str());
+    }
+
     if (!has_data) {
         return 0;
     }
@@ -75,32 +89,46 @@ uint8_t AdbDevice::poll() {
 }
 
 bool AdbDevice::talk(const uint8_t dev_addr, const uint8_t reg_num) {
+    bool result;
+
     if (dev_addr == this->my_addr && !this->got_collision) {
         // see if another device already responded to this command
         if (this->host_obj->already_answered()) {
             this->got_collision = true;
-            return false;
+            result = false;
+            LOG_F(ADBDEVICE, "%s: talk   %x.%d collision detected", this->get_name_and_unit_address().c_str(), dev_addr, reg_num);
         }
-
-        switch(reg_num & 3) {
-        case 0:
-            return this->get_register_0();
-        case 1:
-            return this->get_register_1();
-        case 2:
-            return this->get_register_2();
-        case 3:
-            return this->get_register_3();
-        default:
-            return false;
+        else {
+            switch(reg_num & 3) {
+            case 0:
+                result = this->get_register_0();
+                break;
+            case 1:
+                result = this->get_register_1();
+                break;
+            case 2:
+                result = this->get_register_2();
+                break;
+            case 3:
+                result = this->get_register_3();
+                break;
+            default:
+                result = false;
+            }
+            LOG_F(ADBDEVICE, "%s: talk   %x.%d %d %s", this->get_name_and_unit_address().c_str(), dev_addr, reg_num, result,
+                hex_string(this->host_obj->get_output_buf(), this->host_obj->get_output_count()).c_str());
         }
     } else {
-        return false;
+        result = false;
+        LOG_F(ADBDEVICE, "%s: talk   %x.%d ignore collision", this->get_name_and_unit_address().c_str(), dev_addr, reg_num);
     }
+    return result;
 }
 
 void AdbDevice::listen(const uint8_t dev_addr, const uint8_t reg_num) {
     if (dev_addr == this->my_addr) {
+        LOG_F(ADBDEVICE, "%s: listen %x.%d   %s", this->get_name_and_unit_address().c_str(), dev_addr, reg_num,
+            hex_string(this->host_obj->get_input_buf(), this->host_obj->get_input_count()).c_str());
         switch(reg_num & 3) {
         case 0:
             this->set_register_0();
