@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <cpu/ppc/ppcemu.h>
+#include <cpu/ppc/ppcmmu.h>
 #include <devices/common/hwcomponent.h>
 #include <devices/common/nvram.h>
 #include <devices/common/ofnvram.h>
@@ -67,6 +68,22 @@ void NVram::write_byte(uint32_t offset, uint8_t val) {
     this->storage[offset] = val;
 }
 
+void NVram::prepare_read() {
+    if (this->copland_nvram_host) {
+        OfConfigHdrAppl *hdr_copland = (OfConfigHdrAppl *)this->copland_nvram_host;
+        if (OfConfigAppl::validate_header(*hdr_copland))
+            memcpy(this->storage.get(), this->copland_nvram_host, this->ram_size);
+    }
+}
+
+void NVram::finish_write() {
+    if (this->copland_nvram_host) {
+        OfConfigHdrAppl *hdr_copland = (OfConfigHdrAppl *)this->copland_nvram_host;
+        if (OfConfigAppl::validate_header(*hdr_copland))
+            memcpy(this->copland_nvram_host, this->storage.get(), this->ram_size);
+    }
+}
+
 void NVram::init() {
     char sig[sizeof(NVRAM_FILE_ID)];
     uint16_t data_size;
@@ -89,6 +106,9 @@ void NVram::save() {
         LOG_F(INFO, "Skipping NVRAM write to \"%s\" in deterministic mode", this->file_name.c_str());
         return;
     }
+
+    this->prepare_read();
+
     ofstream f(this->file_name, ios::out | ios::binary);
 
     /* write file identification */
@@ -101,6 +121,24 @@ void NVram::save() {
     f.close();
 }
 
+void NVram::set_copland_nvram(uint32_t phys) {
+    MapDmaResult res = mmu_map_dma_mem(phys, this->ram_size, false);
+    this->copland_nvram_host = res.host_va;
+    OfConfigHdrAppl *hdr_dingus = (OfConfigHdrAppl *)this->storage.get();
+
+    if (OfConfigAppl::validate_header(*hdr_dingus)) {
+        if (std::memcmp(this->storage.get(), this->copland_nvram_host, ram_size)) {
+            LOG_F(INFO, "DingusPPC overrides Copland NVRAM");
+            std::memcpy(this->copland_nvram_host, this->storage.get(), ram_size);
+        } else {
+            LOG_F(INFO, "DingusPPC and Copland NVRAM are equal");
+        }
+    } else {
+        std::memcpy(this->storage.get(), this->copland_nvram_host, ram_size);
+        LOG_F(INFO, "Copland replaces invalid DingusPPC NVRAM");
+    }
+}
+
 static const DeviceDescription Nvram_Descriptor = {
     NVram::create, {}, {}, HWCompType::NVRAM
 };
@@ -111,3 +149,4 @@ static const DeviceDescription Pram_Descriptor = {
 
 REGISTER_DEVICE(NVRAM, Nvram_Descriptor);
 REGISTER_DEVICE(PRAM, Pram_Descriptor);
+REGISTER_DEVICE(NVRAMCopland, Nvram_Descriptor);
