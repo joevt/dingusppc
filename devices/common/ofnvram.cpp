@@ -72,6 +72,8 @@ bool OfConfigAppl::validate() {
     if (this->nvram_obj == nullptr)
         return false;
 
+    this->nvram_obj->prepare_read();
+
     // read OF partition header
     for (i = 0; i < sizeof(OfConfigHdrAppl); i++) {
         ((uint8_t*)&hdr)[i] = this->nvram_obj->read_byte(this->nvram_obj->get_of_nvram_offset() + i);
@@ -200,6 +202,8 @@ void OfConfigAppl::update_partition() {
     for (int i = 0; i < this->size; i++) {
         this->nvram_obj->write_byte(this->nvram_obj->get_of_nvram_offset() + i, this->buf[i]);
     }
+
+    this->nvram_obj->finish_write();
 }
 
 bool OfConfigAppl::set_var(std::string& var_name, std::string& value) {
@@ -328,6 +332,8 @@ bool OfConfigChrp::validate()
 
     if (this->nvram_obj == nullptr)
         return false;
+
+    this->nvram_obj->prepare_read();
 
     // search the entire 8KB NVRAM for CHRP OF config partition.
     // Bail out if an unknown partition or free space is encountered.
@@ -493,6 +499,8 @@ bool OfConfigChrp::update_partition() {
     for (int i = 0; i < 4096; i++) {
         this->nvram_obj->write_byte(this->data_offset + i, this->buf[i]);
     }
+
+    this->nvram_obj->finish_write();
 
     //cout << "Wrote " << pos << " bytes to nvram." << endl;
     return true;
