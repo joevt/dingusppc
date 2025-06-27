@@ -26,11 +26,86 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 #include <SDL.h>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_HOSTEVENTS = loguru::Verbosity_9
+    };
+}
+
 EventManager* EventManager::event_manager;
 
 static int get_sdl_event_key_code(const SDL_KeyboardEvent& event, uint32_t kbd_locale);
 
 constexpr int KMOD_ALL = KMOD_LSHIFT | KMOD_RSHIFT | KMOD_LCTRL | KMOD_RCTRL | KMOD_LALT | KMOD_RALT | KMOD_LGUI | KMOD_RGUI;
+
+static const char * get_event_name(int32_t x) {
+    switch (x) {
+        #define oneevent(x) case x: return #x ;
+        oneevent(SDL_FIRSTEVENT)
+        oneevent(SDL_QUIT)
+        oneevent(SDL_APP_TERMINATING)
+        oneevent(SDL_APP_LOWMEMORY)
+        oneevent(SDL_APP_WILLENTERBACKGROUND)
+        oneevent(SDL_APP_DIDENTERBACKGROUND)
+        oneevent(SDL_APP_WILLENTERFOREGROUND)
+        oneevent(SDL_APP_DIDENTERFOREGROUND)
+        oneevent(SDL_LOCALECHANGED)
+        oneevent(SDL_DISPLAYEVENT)
+        oneevent(SDL_WINDOWEVENT)
+        oneevent(SDL_SYSWMEVENT)
+        oneevent(SDL_KEYDOWN)
+        oneevent(SDL_KEYUP)
+        oneevent(SDL_TEXTEDITING)
+        oneevent(SDL_TEXTINPUT)
+        oneevent(SDL_KEYMAPCHANGED)
+        oneevent(SDL_TEXTEDITING_EXT)
+        oneevent(SDL_MOUSEMOTION)
+        oneevent(SDL_MOUSEBUTTONDOWN)
+        oneevent(SDL_MOUSEBUTTONUP)
+        oneevent(SDL_MOUSEWHEEL)
+        oneevent(SDL_JOYAXISMOTION)
+        oneevent(SDL_JOYBALLMOTION)
+        oneevent(SDL_JOYHATMOTION)
+        oneevent(SDL_JOYBUTTONDOWN)
+        oneevent(SDL_JOYBUTTONUP)
+        oneevent(SDL_JOYDEVICEADDED)
+        oneevent(SDL_JOYDEVICEREMOVED)
+        oneevent(SDL_JOYBATTERYUPDATED)
+        oneevent(SDL_CONTROLLERAXISMOTION)
+        oneevent(SDL_CONTROLLERBUTTONDOWN)
+        oneevent(SDL_CONTROLLERBUTTONUP)
+        oneevent(SDL_CONTROLLERDEVICEADDED)
+        oneevent(SDL_CONTROLLERDEVICEREMOVED)
+        oneevent(SDL_CONTROLLERDEVICEREMAPPED)
+        oneevent(SDL_CONTROLLERTOUCHPADDOWN)
+        oneevent(SDL_CONTROLLERTOUCHPADMOTION)
+        oneevent(SDL_CONTROLLERTOUCHPADUP)
+        oneevent(SDL_CONTROLLERSENSORUPDATE)
+        oneevent(SDL_CONTROLLERUPDATECOMPLETE_RESERVED_FOR_SDL3)
+        oneevent(SDL_CONTROLLERSTEAMHANDLEUPDATED)
+        oneevent(SDL_FINGERDOWN)
+        oneevent(SDL_FINGERUP)
+        oneevent(SDL_FINGERMOTION)
+        oneevent(SDL_DOLLARGESTURE)
+        oneevent(SDL_DOLLARRECORD)
+        oneevent(SDL_MULTIGESTURE)
+        oneevent(SDL_CLIPBOARDUPDATE)
+        oneevent(SDL_DROPFILE)
+        oneevent(SDL_DROPTEXT)
+        oneevent(SDL_DROPBEGIN)
+        oneevent(SDL_DROPCOMPLETE)
+        oneevent(SDL_AUDIODEVICEADDED)
+        oneevent(SDL_AUDIODEVICEREMOVED)
+        oneevent(SDL_SENSORUPDATE)
+        oneevent(SDL_RENDER_TARGETS_RESET)
+        oneevent(SDL_RENDER_DEVICE_RESET)
+        oneevent(SDL_POLLSENTINEL)
+        oneevent(SDL_USEREVENT)
+        oneevent(SDL_LASTEVENT)
+        #undef oneevent
+        default: return "unknown";
+    }
+}
 
 void EventManager::set_keyboard_locale(uint32_t keyboard_id) {
     this->kbd_locale = keyboard_id;
@@ -44,11 +119,13 @@ void EventManager::poll_events() {
 
         switch (event.type) {
         case SDL_QUIT:
+            LOG_F(HOSTEVENTS, "event: %d = %s", event.type, get_event_name(event.type));
             power_on = false;
             power_off_reason = po_quit;
             break;
 
         case SDL_WINDOWEVENT: {
+                LOG_F(HOSTEVENTS, "event: %d = %s", event.type, get_event_name(event.type));
                 WindowEvent we{};
                 we.sub_type  = event.window.event;
                 we.window_id = event.window.windowID;
@@ -58,6 +135,9 @@ void EventManager::poll_events() {
 
         case SDL_KEYDOWN:
         case SDL_KEYUP: {
+                LOG_F(HOSTEVENTS, "event: %d = %s key:%s repeat:%d",
+                    event.type, get_event_name(event.type), SDL_GetScancodeName(event.key.keysym.scancode), event.key.repeat);
+
                 if (event.key.repeat)
                     break;
 
@@ -185,6 +265,7 @@ void EventManager::poll_events() {
             break;
 
         case SDL_MOUSEMOTION: {
+                LOG_F(HOSTEVENTS, "event: %d = %s", event.type, get_event_name(event.type));
                 MouseEvent me{};
                 me.xrel  = event.motion.xrel;
                 me.yrel  = event.motion.yrel;
@@ -196,6 +277,7 @@ void EventManager::poll_events() {
             break;
 
         case SDL_MOUSEBUTTONDOWN: {
+                LOG_F(HOSTEVENTS, "event: %d = %s", event.type, get_event_name(event.type));
                 MouseEvent me{};
                 Uint8 adb_button;
                 switch (event.button.button) {
@@ -213,6 +295,7 @@ void EventManager::poll_events() {
             break;
 
         case SDL_MOUSEBUTTONUP: {
+                LOG_F(HOSTEVENTS, "event: %d = %s", event.type, get_event_name(event.type));
                 MouseEvent me{};
                 Uint8 adb_button;
                 switch (event.button.button) {
@@ -230,6 +313,7 @@ void EventManager::poll_events() {
             break;
 
         case SDL_CONTROLLERBUTTONDOWN: {
+                LOG_F(HOSTEVENTS, "event: %d = %s", event.type, get_event_name(event.type));
                 GamepadEvent ge{};
                 switch (event.cbutton.button) {
                     case SDL_CONTROLLER_BUTTON_BACK:          ge.button = GamepadButton::FrontLeft;    break;
@@ -253,6 +337,7 @@ void EventManager::poll_events() {
             break;
 
         case SDL_CONTROLLERBUTTONUP: {
+                LOG_F(HOSTEVENTS, "event: %d = %s", event.type, get_event_name(event.type));
                 GamepadEvent ge{};
                 switch (event.cbutton.button) {
                     case SDL_CONTROLLER_BUTTON_BACK:          ge.button = GamepadButton::FrontLeft;    break;
@@ -276,6 +361,7 @@ void EventManager::poll_events() {
             break;
 
         default:
+            LOG_F(HOSTEVENTS, "event: %d = %s", event.type, get_event_name(event.type));
             unhandled_events++;
         }
     }
