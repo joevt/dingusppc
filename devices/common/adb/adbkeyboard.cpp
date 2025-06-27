@@ -99,6 +99,14 @@ uint8_t AdbKeyboard::consume_pending_event() {
     return (key_state << 7) | (event->key & 0x7F);
 }
 
+bool AdbKeyboard::get_register_2() {
+    uint8_t* out_buf = this->host_obj->get_output_buf();
+    out_buf[0] = 0xff;
+    out_buf[1] = 0xff;
+    this->host_obj->set_output_count(2);
+    return true;
+}
+
 void AdbKeyboard::set_register_2() {
 }
 
