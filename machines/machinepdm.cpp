@@ -155,6 +155,8 @@ static const PropMap pm6100_settings = {
         new StrProperty("ScsiCurio/@3")},
     {"emmo",
         new BinProperty(0)},
+    {"debug_copland",
+        new BinProperty(0)},
 };
 
 static std::vector<std::string> pm6100_devices = {
