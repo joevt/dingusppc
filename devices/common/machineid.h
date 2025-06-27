@@ -22,9 +22,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef MACHINE_ID_H
 #define MACHINE_ID_H
 
+#include <cpu/ppc/ppcemu.h>
+#include <cpu/ppc/ppcmmu.h>
+#include <debugger/symbolsopenfirmware.h>
 #include <devices/common/hwcomponent.h>
 #include <devices/common/mmiodevice.h>
+#include <devices/common/ofnvram.h>
 #include <devices/ioctrl/macio.h>
+#include <machines/machinefactory.h>
 
 #include <cinttypes>
 #include <loguru.hpp>
@@ -60,6 +65,40 @@ public:
     ~NubusMacID() = default;
 
     uint32_t read(uint32_t /*rgn_start*/, uint32_t offset, int size) {
+        //LOG_F(INFO, "NubusMacID: read size %d, offset %d", size, offset);
+
+        if (offset == 0 && size == 1) {
+            uint32_t phys_addr;
+            int name_offset;
+            mmu_translate_imem(ppc_state.pc, &phys_addr);
+            std::string name = get_name_OpenFirmware(ppc_state.pc, phys_addr, &name_offset, false);
+            if (!name.empty()) {
+                if (GET_BIN_PROP("debug_copland")) {
+                    power_on = false;
+                    power_off_reason = po_enter_debugger;
+                }
+
+                uint32_t nv_ram_buffer_xtoken;
+                LOG_F(INFO, "Searching for nv-ram-buffer");
+                bool found = lookup_name_OpenFirmware("nv-ram-buffer", nv_ram_buffer_xtoken);
+                if (found) {
+                    uint32_t nv_ram_buffer_phys;
+                    uint32_t nv_ram_buffer = (uint32_t)mem_read_dbg(nv_ram_buffer_xtoken + 8, 4);
+                    mmu_translate_imem(nv_ram_buffer, &nv_ram_buffer_phys);
+                    LOG_F(INFO, "nv-ram-buffer: %08x -> %08x", nv_ram_buffer, nv_ram_buffer_phys);
+
+                    char nvram_name_unit_address[20];
+                    snprintf(nvram_name_unit_address, sizeof(nvram_name_unit_address), "NVRAMCopland@%X", nv_ram_buffer_phys);
+                    NVram* nvram = dynamic_cast<NVram*>(MachineFactory::create_device(
+                        gMachineObj->get_comp_by_type(HWCompType::MACHINE), nvram_name_unit_address));
+                    nvram->set_copland_nvram(nv_ram_buffer_phys);
+                    OfConfigUtils::setenv_from_command_line();
+                }
+                else
+                    LOG_F(INFO, "nv-ram-buffer not found");
+            }
+        }
+
         if (size == 4 && offset == 0) {
             return *(uint32_t*)this->id;
         }
