@@ -46,6 +46,7 @@ public:
     void event_handler(const KeyboardEvent& event);
 
     bool get_register_0() override;
+    bool get_register_2() override;
     void set_register_2() override;
     void set_register_3() override;
 
