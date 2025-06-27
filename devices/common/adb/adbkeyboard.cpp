@@ -27,6 +27,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/hostevents.h>
 #include <loguru.hpp>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_ADBKEYBOARD = loguru::Verbosity_9
+    };
+}
+
 AdbKeyboard::AdbKeyboard(const std::string name)
     : AdbDevice(name), HWComponent(name)
 {
@@ -36,6 +42,8 @@ AdbKeyboard::AdbKeyboard(const std::string name)
 }
 
 void AdbKeyboard::event_handler(const KeyboardEvent& event) {
+    LOG_F(ADBKEYBOARD, "%s: Pending event key:0x%x flags:0x%x",
+        this->get_name_and_unit_address().c_str(), event.key, event.flags);
     // PSW is a wire, so it follows the key immediately; the data-line report below still
     // waits its turn in the queue like every other key.
     if ((event.key & 0x7F) == AdbKey_Power && this->host_obj != nullptr) {
@@ -56,6 +64,7 @@ void AdbKeyboard::reset() {
     this->exc_event_flag = 1;
     this->srq_flag       = 0;    // don't process keyboard service requests yet
     this->led_state      = 7;    // LEDs off (active low)
+    LOG_F(INFO, "%s: Pending events cleared", this->get_name_and_unit_address().c_str());
     this->pending_events.clear();
     this->keys_down.reset();
     // A bus reset drops the power-switch line along with the queued reports.
