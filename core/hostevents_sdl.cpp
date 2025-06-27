@@ -29,6 +29,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 #include <SDL3/SDL.h>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_HOSTEVENTS = loguru::Verbosity_9
+    };
+}
+
 EventManager* EventManager::event_manager;
 
 static int get_sdl_event_key_code(const SDL_KeyboardEvent& event, uint32_t kbd_locale);
@@ -37,6 +43,137 @@ constexpr SDL_Keymod KMOD_ALL = (SDL_Keymod)(
     SDL_KMOD_LSHIFT | SDL_KMOD_RSHIFT | SDL_KMOD_LCTRL | SDL_KMOD_RCTRL |
     SDL_KMOD_LALT | SDL_KMOD_RALT | SDL_KMOD_LGUI | SDL_KMOD_RGUI
 );
+
+static const char * get_event_name(int32_t x) {
+    switch (x) {
+        #define oneevent(x) case x: return #x ;
+        oneevent(SDL_EVENT_FIRST)
+        oneevent(SDL_EVENT_QUIT)
+        oneevent(SDL_EVENT_TERMINATING)
+        oneevent(SDL_EVENT_LOW_MEMORY)
+        oneevent(SDL_EVENT_WILL_ENTER_BACKGROUND)
+        oneevent(SDL_EVENT_DID_ENTER_BACKGROUND)
+        oneevent(SDL_EVENT_WILL_ENTER_FOREGROUND)
+        oneevent(SDL_EVENT_DID_ENTER_FOREGROUND)
+        oneevent(SDL_EVENT_LOCALE_CHANGED)
+        oneevent(SDL_EVENT_SYSTEM_THEME_CHANGED)
+        case 0x150: return "SDL_DISPLAYEVENT";
+        oneevent(SDL_EVENT_DISPLAY_ORIENTATION)
+        oneevent(SDL_EVENT_DISPLAY_ADDED)
+        oneevent(SDL_EVENT_DISPLAY_REMOVED)
+        oneevent(SDL_EVENT_DISPLAY_MOVED)
+        oneevent(SDL_EVENT_DISPLAY_DESKTOP_MODE_CHANGED)
+        oneevent(SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED)
+        oneevent(SDL_EVENT_DISPLAY_CONTENT_SCALE_CHANGED)
+        case 0x158: return "SDL_EVENT_DISPLAY_USABLE_BOUNDS_CHANGED";
+        case 0x200: return "SDL_WINDOWEVENT";
+        case 0x201: return "SDL_SYSWMEVENT";
+        oneevent(SDL_EVENT_WINDOW_SHOWN)
+        oneevent(SDL_EVENT_WINDOW_HIDDEN)
+        oneevent(SDL_EVENT_WINDOW_EXPOSED)
+        oneevent(SDL_EVENT_WINDOW_MOVED)
+        oneevent(SDL_EVENT_WINDOW_RESIZED)
+        oneevent(SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED)
+        oneevent(SDL_EVENT_WINDOW_METAL_VIEW_RESIZED)
+        oneevent(SDL_EVENT_WINDOW_MINIMIZED)
+        oneevent(SDL_EVENT_WINDOW_MAXIMIZED)
+        oneevent(SDL_EVENT_WINDOW_RESTORED)
+        oneevent(SDL_EVENT_WINDOW_MOUSE_ENTER)
+        oneevent(SDL_EVENT_WINDOW_MOUSE_LEAVE)
+        oneevent(SDL_EVENT_WINDOW_FOCUS_GAINED)
+        oneevent(SDL_EVENT_WINDOW_FOCUS_LOST)
+        oneevent(SDL_EVENT_WINDOW_CLOSE_REQUESTED)
+        oneevent(SDL_EVENT_WINDOW_HIT_TEST)
+        oneevent(SDL_EVENT_WINDOW_ICCPROF_CHANGED)
+        oneevent(SDL_EVENT_WINDOW_DISPLAY_CHANGED)
+        oneevent(SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED)
+        oneevent(SDL_EVENT_WINDOW_SAFE_AREA_CHANGED)
+        oneevent(SDL_EVENT_WINDOW_OCCLUDED)
+        oneevent(SDL_EVENT_WINDOW_ENTER_FULLSCREEN)
+        oneevent(SDL_EVENT_WINDOW_LEAVE_FULLSCREEN)
+        oneevent(SDL_EVENT_WINDOW_DESTROYED)
+        oneevent(SDL_EVENT_WINDOW_HDR_STATE_CHANGED)
+        oneevent(SDL_EVENT_KEY_DOWN)
+        oneevent(SDL_EVENT_KEY_UP)
+        oneevent(SDL_EVENT_TEXT_EDITING)
+        oneevent(SDL_EVENT_TEXT_INPUT)
+        oneevent(SDL_EVENT_KEYMAP_CHANGED)
+        oneevent(SDL_EVENT_KEYBOARD_ADDED)
+        oneevent(SDL_EVENT_KEYBOARD_REMOVED)
+        oneevent(SDL_EVENT_TEXT_EDITING_CANDIDATES)
+        case 0x308: return "SDL_EVENT_SCREEN_KEYBOARD_SHOWN";
+        case 0x309: return "SDL_EVENT_SCREEN_KEYBOARD_HIDDEN";
+        oneevent(SDL_EVENT_MOUSE_MOTION)
+        oneevent(SDL_EVENT_MOUSE_BUTTON_DOWN)
+        oneevent(SDL_EVENT_MOUSE_BUTTON_UP)
+        oneevent(SDL_EVENT_MOUSE_WHEEL)
+        oneevent(SDL_EVENT_MOUSE_ADDED)
+        oneevent(SDL_EVENT_MOUSE_REMOVED)
+        oneevent(SDL_EVENT_JOYSTICK_AXIS_MOTION)
+        oneevent(SDL_EVENT_JOYSTICK_BALL_MOTION)
+        oneevent(SDL_EVENT_JOYSTICK_HAT_MOTION)
+        oneevent(SDL_EVENT_JOYSTICK_BUTTON_DOWN)
+        oneevent(SDL_EVENT_JOYSTICK_BUTTON_UP)
+        oneevent(SDL_EVENT_JOYSTICK_ADDED)
+        oneevent(SDL_EVENT_JOYSTICK_REMOVED)
+        oneevent(SDL_EVENT_JOYSTICK_BATTERY_UPDATED)
+        oneevent(SDL_EVENT_JOYSTICK_UPDATE_COMPLETE)
+        oneevent(SDL_EVENT_GAMEPAD_AXIS_MOTION)
+        oneevent(SDL_EVENT_GAMEPAD_BUTTON_DOWN)
+        oneevent(SDL_EVENT_GAMEPAD_BUTTON_UP)
+        oneevent(SDL_EVENT_GAMEPAD_ADDED)
+        oneevent(SDL_EVENT_GAMEPAD_REMOVED)
+        oneevent(SDL_EVENT_GAMEPAD_REMAPPED)
+        oneevent(SDL_EVENT_GAMEPAD_TOUCHPAD_DOWN)
+        oneevent(SDL_EVENT_GAMEPAD_TOUCHPAD_MOTION)
+        oneevent(SDL_EVENT_GAMEPAD_TOUCHPAD_UP)
+        oneevent(SDL_EVENT_GAMEPAD_SENSOR_UPDATE)
+        oneevent(SDL_EVENT_GAMEPAD_UPDATE_COMPLETE)
+        oneevent(SDL_EVENT_GAMEPAD_STEAM_HANDLE_UPDATED)
+        oneevent(SDL_EVENT_FINGER_DOWN)
+        oneevent(SDL_EVENT_FINGER_UP)
+        oneevent(SDL_EVENT_FINGER_MOTION)
+        oneevent(SDL_EVENT_FINGER_CANCELED)
+        case 0x710: return "SDL_EVENT_PINCH_BEGIN";
+        case 0x711: return "SDL_EVENT_PINCH_UPDATE";
+        case 0x712: return "SDL_EVENT_PINCH_END";
+        oneevent(SDL_EVENT_CLIPBOARD_UPDATE)
+        oneevent(SDL_EVENT_DROP_FILE)
+        oneevent(SDL_EVENT_DROP_TEXT)
+        oneevent(SDL_EVENT_DROP_BEGIN)
+        oneevent(SDL_EVENT_DROP_COMPLETE)
+        oneevent(SDL_EVENT_DROP_POSITION)
+        oneevent(SDL_EVENT_AUDIO_DEVICE_ADDED)
+        oneevent(SDL_EVENT_AUDIO_DEVICE_REMOVED)
+        oneevent(SDL_EVENT_AUDIO_DEVICE_FORMAT_CHANGED)
+        oneevent(SDL_EVENT_SENSOR_UPDATE)
+        oneevent(SDL_EVENT_PEN_PROXIMITY_IN)
+        oneevent(SDL_EVENT_PEN_PROXIMITY_OUT)
+        oneevent(SDL_EVENT_PEN_DOWN)
+        oneevent(SDL_EVENT_PEN_UP)
+        oneevent(SDL_EVENT_PEN_BUTTON_DOWN)
+        oneevent(SDL_EVENT_PEN_BUTTON_UP)
+        oneevent(SDL_EVENT_PEN_MOTION)
+        oneevent(SDL_EVENT_PEN_AXIS)
+        oneevent(SDL_EVENT_CAMERA_DEVICE_ADDED)
+        oneevent(SDL_EVENT_CAMERA_DEVICE_REMOVED)
+        oneevent(SDL_EVENT_CAMERA_DEVICE_APPROVED)
+        oneevent(SDL_EVENT_CAMERA_DEVICE_DENIED)
+        oneevent(SDL_EVENT_RENDER_TARGETS_RESET)
+        oneevent(SDL_EVENT_RENDER_DEVICE_RESET)
+        oneevent(SDL_EVENT_RENDER_DEVICE_LOST)
+        oneevent(SDL_EVENT_PRIVATE0)
+        oneevent(SDL_EVENT_PRIVATE1)
+        oneevent(SDL_EVENT_PRIVATE2)
+        oneevent(SDL_EVENT_PRIVATE3)
+        oneevent(SDL_EVENT_POLL_SENTINEL)
+        oneevent(SDL_EVENT_USER)
+        oneevent(SDL_EVENT_LAST)
+        oneevent(SDL_EVENT_ENUM_PADDING)
+        #undef oneevent
+        default: return "unknown";
+    }
+}
 
 bool g_swap_command_option = false;
 
@@ -65,11 +202,14 @@ void EventManager::poll_events() {
 
         switch (event.type) {
         case SDL_EVENT_QUIT:
+            LOG_F(HOSTEVENTS, "event: 0x%X = %s", event.type, get_event_name(event.type));
             power_off(po_quit);
             break;
 
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP: {
+                LOG_F(HOSTEVENTS, "event: 0x%X = %s key:%s repeat:%d",
+                    event.type, get_event_name(event.type), SDL_GetScancodeName(event.key.scancode), event.key.repeat);
                 if (event.key.repeat)
                     break;
 
@@ -252,6 +392,7 @@ void EventManager::poll_events() {
             break;
 
         case SDL_EVENT_MOUSE_MOTION: {
+                LOG_F(HOSTEVENTS, "event: 0x%X = %s", event.type, get_event_name(event.type));
                 MouseEvent me{};
                 me.xrel  = (int32_t)event.motion.xrel;
                 me.yrel  = (int32_t)event.motion.yrel;
@@ -264,6 +405,7 @@ void EventManager::poll_events() {
             break;
 
         case SDL_EVENT_MOUSE_BUTTON_DOWN: {
+                LOG_F(HOSTEVENTS, "event: 0x%X = %s", event.type, get_event_name(event.type));
                 MouseEvent me{};
                 uint8_t adb_button;
                 switch (event.button.button) {
@@ -282,6 +424,7 @@ void EventManager::poll_events() {
             break;
 
         case SDL_EVENT_MOUSE_BUTTON_UP: {
+                LOG_F(HOSTEVENTS, "event: 0x%X = %s", event.type, get_event_name(event.type));
                 MouseEvent me{};
                 uint8_t adb_button;
                 switch (event.button.button) {
@@ -300,6 +443,7 @@ void EventManager::poll_events() {
             break;
 
         case SDL_EVENT_GAMEPAD_BUTTON_DOWN: {
+                LOG_F(HOSTEVENTS, "event: 0x%X = %s", event.type, get_event_name(event.type));
                 GamepadEvent ge{};
                 switch (event.gbutton.button) {
                     case SDL_GAMEPAD_BUTTON_BACK:           ge.button = GamepadButton::FrontLeft;    break;
@@ -325,6 +469,7 @@ void EventManager::poll_events() {
             break;
 
         case SDL_EVENT_GAMEPAD_BUTTON_UP: {
+                LOG_F(HOSTEVENTS, "event: 0x%X = %s", event.type, get_event_name(event.type));
                 GamepadEvent ge{};
                 switch (event.gbutton.button) {
                     case SDL_GAMEPAD_BUTTON_BACK:           ge.button = GamepadButton::FrontLeft;    break;
@@ -377,6 +522,7 @@ void EventManager::poll_events() {
             break;
 
         default:
+            LOG_F(HOSTEVENTS, "event: 0x%X = %s", event.type, get_event_name(event.type));
             if (event.type >= SDL_EVENT_WINDOW_FIRST && event.type <= SDL_EVENT_WINDOW_LAST) {
                 WindowEvent we{};
                 we.sub_type = event.type;
