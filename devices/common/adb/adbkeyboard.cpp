@@ -27,6 +27,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/hostevents.h>
 #include <loguru.hpp>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_ADBKEYBOARD = loguru::Verbosity_9
+    };
+}
+
 AdbKeyboard::AdbKeyboard(const std::string name)
     : AdbDevice(name), HWComponent(name)
 {
@@ -36,6 +42,8 @@ AdbKeyboard::AdbKeyboard(const std::string name)
 }
 
 void AdbKeyboard::event_handler(const KeyboardEvent& event) {
+    LOG_F(ADBKEYBOARD, "%s: Pending event key:0x%x flags:0x%x",
+        this->get_name_and_unit_address().c_str(), event.key, event.flags);
     this->pending_events.push_back(std::make_unique<KeyboardEvent>(event));
 }
 
@@ -44,6 +52,7 @@ void AdbKeyboard::reset() {
     this->dev_handler_id = 2;    // Extended ADB keyboard
     this->exc_event_flag = 1;
     this->srq_flag       = 1;    // enable service requests
+    LOG_F(INFO, "%s: Pending events cleared", this->get_name_and_unit_address().c_str());
     this->pending_events.clear();
 }
 
