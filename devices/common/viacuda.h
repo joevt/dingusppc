@@ -262,6 +262,7 @@ private:
 
     AdbBus* adb_bus_obj = nullptr;
     bool    autopoll_enabled = false;
+    bool    do_post_keyboard_state_events = false;
 
     I2CBus* i2c_bus = nullptr;
 
