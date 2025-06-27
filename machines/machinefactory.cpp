@@ -110,6 +110,7 @@ const map<string, PropHelpItem> gPropHelp = {
     {"pds",             {PropertyMachine, "specify device for the processsor direct slot"}},
     {"has_composite",   {PropertyMachine, "indicates if composite video output is connected"}},
     {"has_svideo",      {PropertyMachine, "indicates if s-video output is connected"}},
+    {"debug_copland",   {PropertyMachine, "enables/disables entry into debugger during Copland Open Firmware initialization"}},
 };
 
 static uint32_t adler32(char *buf, size_t len) {
