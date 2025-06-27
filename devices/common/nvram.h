@@ -47,6 +47,14 @@ public:
         return std::unique_ptr<NVram>(new NVram("pram.bin", 256));
     }
 
+    static std::unique_ptr<HWComponent> create_nvram_copland() {
+        return std::unique_ptr<NVram>(new NVram("nvram_copland.bin", 2048));
+    }
+
+    void set_copland_nvram(uint32_t phys);
+    void prepare_read();
+    void finish_write();
+
     uint8_t read_byte(uint32_t offset);
     void write_byte(uint32_t offset, uint8_t value);
     uint32_t get_of_nvram_offset() { return of_nvram_offset; }
@@ -56,6 +64,7 @@ private:
     uint16_t    ram_size;  // NVRAM size
     std::unique_ptr<uint8_t[]>  storage;
     uint32_t of_nvram_offset = 0;
+    uint8_t* copland_nvram_host = nullptr;
 
     void init();
     void save();
