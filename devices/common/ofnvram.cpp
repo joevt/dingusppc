@@ -57,6 +57,14 @@ static uint32_t str2env(string& num_str) {
     }
 }
 
+bool OfConfigAppl::validate_header(OfConfigHdrAppl &hdr) {
+    if (BYTESWAP_16(hdr.sig) != OF_NVRAM_SIG || hdr.version != 5)
+        return false;
+    if (hdr.num_pages * 256 != OF_CFG_SIZE)
+        return false;
+    return true;
+}
+
 bool OfConfigAppl::validate() {
     int             i;
     OfConfigHdrAppl hdr{};
@@ -69,13 +77,10 @@ bool OfConfigAppl::validate() {
         ((uint8_t*)&hdr)[i] = this->nvram_obj->read_byte(this->nvram_obj->get_of_nvram_offset() + i);
     }
 
-    // validate partition signature and version
-    if (BYTESWAP_16(hdr.sig) != OF_NVRAM_SIG || hdr.version != 5)
-        return false;
-
     this->size = hdr.num_pages * 256;
 
-    if (this->size != OF_CFG_SIZE)
+    // validate partition signature and version
+    if (!this->validate_header(hdr))
         return false;
 
     // read the entire partition into the local buffer
