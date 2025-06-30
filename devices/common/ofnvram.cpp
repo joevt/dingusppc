@@ -543,7 +543,7 @@ bool OfConfigChrp::set_var(std::string& var_name, std::string& value) {
 
 int OfConfigUtils::init()
 {
-    this->nvram_obj = dynamic_cast<NVram*>(gMachineObj->get_comp_by_name("NVRAM"));
+    this->nvram_obj = dynamic_cast<NVram*>(gMachineObj->get_comp_by_type(HWCompType::NVRAM));
     return this->nvram_obj == nullptr;
 }
 
