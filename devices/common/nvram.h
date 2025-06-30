@@ -36,11 +36,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 class NVram : virtual public HWComponent {
 public:
-    NVram(std::string file_name = "nvram.bin", uint32_t ram_size = 8192);
+    NVram(std::string file_name, uint32_t ram_size);
     ~NVram();
 
     static std::unique_ptr<HWComponent> create() {
-        return std::unique_ptr<NVram>(new NVram());
+        return std::unique_ptr<NVram>(new NVram("nvram.bin", 8192));
     }
 
     static std::unique_ptr<HWComponent> create_pram() {
