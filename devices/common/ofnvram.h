@@ -135,6 +135,9 @@ public:
     int  init();
     void printenv();
     bool setenv(std::string var_name, std::string value);
+    static void setenv_from_command_line();
+
+    static std::vector<std::string> env_vars;
 
 protected:
     bool open_container();
