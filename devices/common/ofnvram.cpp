@@ -603,3 +603,29 @@ bool OfConfigUtils::setenv(string var_name, string value)
 
     return this->cfg_impl->set_var(var_name, value);
 }
+
+std::vector<std::string> OfConfigUtils::env_vars;
+
+void OfConfigUtils::setenv_from_command_line() {
+    if (env_vars.empty())
+        return;
+    OfConfigUtils ofnvram;
+    if (!ofnvram.init()) {
+        for (const auto &env_var : OfConfigUtils::env_vars) {
+            auto pos = env_var.find('=');
+            if (pos != std::string::npos) {
+                std::string name = env_var.substr(0, pos);
+                std::string value = env_var.substr(pos + 1);
+                if (ofnvram.setenv(name, value)) {
+                    LOG_F(INFO, "Set Open Firmware variable %s to %s", name.c_str(), value.c_str());
+                } else {
+                    LOG_F(WARNING, "Cannot set Open Firmware variable %s to %s", name.c_str(), value.c_str());
+                }
+            } else {
+                LOG_F(WARNING, "Invalid format for --setenv: %s", env_var.c_str());
+            }
+        }
+    } else {
+        LOG_F(WARNING, "Cannot initialize NVRAM wrapper, will not set Open Firmware variables");
+    }
+}
