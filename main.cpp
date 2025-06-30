@@ -101,7 +101,6 @@ const WorkingDirectoryValidator WorkingDirectory;
 
 void run_machine(
     uint32_t execution_mode,
-    const std::vector<std::string> &env_vars,
     uint32_t profiling_interval_ms
 );
 
@@ -161,8 +160,7 @@ int main(int argc, char** argv) {
     emu->add_flag("--log-thread", log_thread,
         "Show thread name in logged messages");
 
-    std::vector<std::string> env_vars;
-    app.add_option("--setenv", env_vars, "Set Open Firmware variables at startup")
+    app.add_option("--setenv", OfConfigUtils::env_vars, "Set Open Firmware variables at startup")
         ->take_all();
 
     uint32_t profiling_interval_ms = 0;
@@ -329,7 +327,7 @@ int main(int argc, char** argv) {
         MachineFactory::summarize_machine_settings();
         MachineFactory::summarize_device_settings();
 
-        run_machine(execution_mode, env_vars, profiling_interval_ms);
+        run_machine(execution_mode, profiling_interval_ms);
         if (power_off_reason == po_restarting) {
             LOG_F(INFO, "Restarting...");
             power_on = true;
@@ -358,33 +356,12 @@ int main(int argc, char** argv) {
 
 void run_machine(
     uint32_t execution_mode,
-    const std::vector<std::string> &env_vars,
     uint32_t
 #ifdef CPU_PROFILING
     profiling_interval_ms
 #endif
 ) {
-    if (!env_vars.empty()) {
-        OfConfigUtils ofnvram;
-        if (!ofnvram.init()) {
-            for (const auto &env_var : env_vars) {
-                auto pos = env_var.find('=');
-                if (pos != std::string::npos) {
-                    std::string name = env_var.substr(0, pos);
-                    std::string value = env_var.substr(pos + 1);
-                    if (ofnvram.setenv(name, value)) {
-                        LOG_F(INFO, "Set Open Firmware variable %s to %s", name.c_str(), value.c_str());
-                    } else {
-                        LOG_F(WARNING, "Cannot set Open Firmware variable %s to %s", name.c_str(), value.c_str());
-                    }
-                } else {
-                    LOG_F(WARNING, "Invalid format for --setenv: %s", env_var.c_str());
-                }
-            }
-        } else {
-            LOG_F(WARNING, "Cannot initialize NVRAM wrapper, will not set Open Firmware variables");
-        }
-    }
+    OfConfigUtils::setenv_from_command_line();
 
     uint32_t deterministic_timer;
     if (is_deterministic) {
