@@ -91,6 +91,7 @@ public:
     ~OfConfigAppl() = default;
 
     bool validate();
+    static bool validate_header(OfConfigHdrAppl &hdr);
     const config_dict& get_config_vars();
     bool set_var(std::string& var_name, std::string& value);
 
