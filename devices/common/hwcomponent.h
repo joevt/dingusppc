@@ -60,6 +60,7 @@ enum HWCompType : uint64_t {
     MACHINE     = 1ULL << 41, // machine root
     VIDEO_CTRL  = 1ULL << 42, // video controller
     DISPLAY     = 1ULL << 43, // display
+    PRAM        = 1ULL << 44, // parameter RAM
 };
 
 extern std::map<HWCompType, HWCompType> MapBusDev;
