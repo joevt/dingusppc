@@ -41,7 +41,7 @@ static char NVRAM_FILE_ID[] = "DINGUSPPCNVRAM";
 NVram::NVram(const std::string &dev_name, std::string file_name, uint32_t ram_size)
     : HWComponent(dev_name)
 {
-    supports_types(HWCompType::NVRAM);
+    supports_types(ram_size == 256 ? HWCompType::PRAM : HWCompType::NVRAM);
 
     this->file_name = file_name;
     this->ram_size  = ram_size;
@@ -106,7 +106,7 @@ static const DeviceDescription Nvram_Descriptor = {
 };
 
 static const DeviceDescription Pram_Descriptor = {
-    NVram::create, {}, {}, HWCompType::NVRAM
+    NVram::create, {}, {}, HWCompType::PRAM
 };
 
 REGISTER_DEVICE(NVRAM, Nvram_Descriptor);
