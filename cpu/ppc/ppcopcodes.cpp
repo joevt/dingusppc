@@ -1142,6 +1142,7 @@ void dppc_interpreter::ppc_mtspr(uint32_t opcode) {
     case 543:
         ppc_state.spr[ref_spr] = val;
         dbat_update(ref_spr);
+        break;
     case SPR::HID0:
         ppc_state.spr[ref_spr] = val;
         if (is_601) {
