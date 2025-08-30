@@ -33,6 +33,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /** @file Non-volatile RAM implementation.
  */
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_NVRAM_R = loguru::Verbosity_9,
+        Verbosity_NVRAM_W = loguru::Verbosity_9,
+    };
+}
 
 using namespace std;
 
@@ -61,10 +67,13 @@ NVram::~NVram() {
 }
 
 uint8_t NVram::read_byte(uint32_t offset) {
-    return (this->storage[offset]);
+    uint8_t val = this->storage[offset];
+    LOG_F(NVRAM_R, "nvram read  %04x = %02x", offset, val);
+    return (val);
 }
 
 void NVram::write_byte(uint32_t offset, uint8_t val) {
+    LOG_F(NVRAM_W, "nvram write %04x = %02x", offset, val);
     this->storage[offset] = val;
 }
 
