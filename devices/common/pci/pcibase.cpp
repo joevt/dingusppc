@@ -182,11 +182,11 @@ int PCIBase::attach_exp_rom_image(const std::string img_path)
 
         if (exp_rom_image_size == this->exp_rom_size) {
             LOG_F(INFO, "%s: loaded expansion rom (%d bytes).",
-            this->get_name().c_str(), this->exp_rom_size);
+                this->get_name().c_str(), this->exp_rom_size);
         }
         else {
             LOG_F(WARNING, "%s: loaded expansion rom (%d bytes adjusted to %d bytes).",
-            this->get_name().c_str(), (int)exp_rom_image_size, this->exp_rom_size);
+                this->get_name().c_str(), (int)exp_rom_image_size, this->exp_rom_size);
         }
 
         this->exp_bar_cfg  = ~(this->exp_rom_size - 1);
