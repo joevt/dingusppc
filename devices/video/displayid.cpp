@@ -359,7 +359,7 @@ uint8_t DisplayID::update_ddc_i2c(uint8_t sda, uint8_t scl)
             if (dev_addr & 1) {
                 if (!sda) {
                     /* load next data byte */
-                    if (data_pos < 128)
+                    if (data_pos < this->edid_length)
                         this->byte = this->data_ptr[this->data_pos++];
                     else
                         this->byte = 0;
