@@ -30,6 +30,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <map>
 #include <string>
 #include <regex>
+#include <fstream>
 
 namespace loguru {
     enum : Verbosity {
@@ -111,23 +112,80 @@ HWComponent* DisplayID::set_property(const std::string &property, const std::str
                 } else {
                     LOG_F(ERROR, "Ignored invalid Apple Sense: \"%s\"", mon_id.c_str());
                 }
-            }
+            } // if property == "mon_id"
             else
             if (property == "edid") {
-                std::string hex = this->get_property_str("edid");
+                std::string edid_string = this->get_property_str("edid");
+                bool is_edid = false;
+                bool got_edid = false;
 
                 std::regex edid_re("(?:[0-9A-F]{256}){0,255}", std::regex_constants::icase);
-                if (std::regex_match(hex, results, edid_re)) {
-                    this->edid_length = (uint16_t)(hex.length() / 2);
-                    if (edid_length) {
-                        this->edid = std::unique_ptr<uint8_t[]>(new uint8_t[edid_length]);
-                        for (int i = 0; i < edid_length; i++) {
-                            this->edid[i] = (((hex[i*2  ] & 15) + (hex[i*2  ] > '9' ? 9 : 0)) << 4) +
-                                             ((hex[i*2+1] & 15) + (hex[i*2+1] > '9' ? 9 : 0));
+                if (std::regex_match(edid_string, results, edid_re)) {
+                    is_edid = true;
+                    this->edid_length = (uint16_t)(edid_string.length() / 2);
+                    if (this->edid_length) {
+                        this->edid = std::unique_ptr<uint8_t[]>(new uint8_t[this->edid_length]);
+                        for (int i = 0; i < this->edid_length; i++) {
+                            this->edid[i] = (((edid_string[i*2  ] & 15) + (edid_string[i*2  ] > '9' ? 9 : 0)) << 4) +
+                                             ((edid_string[i*2+1] & 15) + (edid_string[i*2+1] > '9' ? 9 : 0));
                         }
+                        got_edid = true;
+                    }
+                } else if (!edid_string.empty()) {
+                    is_edid = true;
+                    std::ifstream edid_file;
+                    try {
+                        edid_file.open(edid_string, std::ios::in | std::ios::binary);
+                        if (edid_file.fail()) {
+                            throw std::runtime_error("could not open specified EDID file");
+                        }
+
+                        // validate EDID file
+                        uint8_t buf[8] = { 0 };
+
+                        edid_file.seekg(0, std::ios::beg);
+                        edid_file.read((char *)buf, sizeof(buf));
+
+                        if (memcmp(buf, "\x00\xFF\xFF\xFF\xFF\xFF\xFF\x00", 8)) {
+                            throw std::runtime_error("invalid EDID header");
+                        }
+
+                        // determine EDID size
+                        edid_file.seekg(0, std::ios::end);
+                        size_t edid_size = edid_file.tellg();
+                        if (edid_size > 256*255) {
+                            throw std::runtime_error("EDID file too large");
+                        }
+                        if (edid_size % 128) {
+                            throw std::runtime_error("EDID file size is not a multiple of 128");
+                        }
+
+                        // EDID ok - go ahead and load it
+                        this->edid_length = edid_size;
+                        this->edid = std::unique_ptr<uint8_t[]>(new uint8_t[this->edid_length]);
+
+                        edid_file.seekg(0, std::ios::beg);
+                        edid_file.read((char *)this->edid.get(), this->edid_length);
+
+                        LOG_F(INFO, "%s: loaded EDID (%d bytes).",
+                            this->get_name().c_str(), this->edid_length);
+                        edid_file.close();
+                        got_edid = true;
+                    }
+                    catch (const std::exception& exc) {
+                        LOG_F(ERROR, "%s: %s", this->get_name().c_str(), exc.what());
+                    }
+                    edid_file.close();
+                }
+                else {
+                    LOG_F(ERROR, "Ignored invalid EDID");
+                }
+
+                if (is_edid) {
+                    if (got_edid) {
                         this->id_kind |= Disp_Id_Kind::DDC2B;
                         this->id_kind |= Disp_Id_Kind::DDC1;
-                        if (edid_length > 256)
+                        if (this->edid_length > 256)
                             this->id_kind |= Disp_Id_Kind::EDDC;
                         LOG_F(INFO, "Added EDID");
                     } else if (this->edid) {
@@ -139,12 +197,10 @@ HWComponent* DisplayID::set_property(const std::string &property, const std::str
                     }
                     video_ctrl->update_display_connection();
                     return this;
-                } else {
-                    LOG_F(ERROR, "Ignored invalid EDID");
                 }
-            }
-        }
-    }
+            } // if property == "edid"
+        } // if override_property
+    } // if unit_address
     return nullptr;
 }
 
