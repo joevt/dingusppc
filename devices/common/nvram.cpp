@@ -19,6 +19,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+/** @file Non-volatile RAM implementation. */
+
 #include <cpu/ppc/ppcemu.h>
 #include <cpu/ppc/ppcmmu.h>
 #include <devices/common/hwcomponent.h>
@@ -31,8 +33,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <fstream>
 #include <loguru.hpp>
 
-/** @file Non-volatile RAM implementation.
- */
 namespace loguru {
     enum : Verbosity {
         Verbosity_NVRAM_RW = loguru::Verbosity_9
