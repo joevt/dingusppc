@@ -122,6 +122,8 @@ public:
     static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
         if (dev_name == "Bandit1"   ) return std::unique_ptr<Bandit>(new Bandit(1, dev_name));
         if (dev_name == "Bandit2"   ) return std::unique_ptr<Bandit>(new Bandit(2, dev_name));
+        if (dev_name == "Bandit1Ans") return std::unique_ptr<Bandit>(new Bandit(1, dev_name));
+        if (dev_name == "Bandit2Ans") return std::unique_ptr<Bandit>(new Bandit(2, dev_name));
         if (dev_name == "PsxPci1"   ) return std::unique_ptr<Bandit>(new Bandit(1, dev_name, 8, 0));
         return nullptr;
     }

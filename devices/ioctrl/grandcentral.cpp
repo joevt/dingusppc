@@ -430,6 +430,11 @@ void GrandCentral::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value
         case 8: // MESH SCSI
             this->mesh->write((offset >> 4) & 0xF, value);
             break;
+/*
+        case 9:
+            // TODO: perform SEC_TO_PRI interrupt for ANS;
+            break;
+*/
         case 0xA: // IOBus device #1 ; Board register 1 and bandit1 PRSNT bits
         case 0xB: // IOBus device #2 ; RaDACal/DACula
         case 0xC: // IOBus device #3 ; chaos or bandit2 PRSNT bits
@@ -586,6 +591,17 @@ uint64_t GrandCentral::register_dev_int(IntSrc src_id) {
     case IntSrc::PIPPIN_F   : return INT_TO_IRQ_ID(0x1D); // EXT9
     case IntSrc::PIPPIN_E   : return INT_TO_IRQ_ID(0x1E); // EXT10
 
+    case IntSrc::ERROR      : return INT_TO_IRQ_ID(0x15); // EXT1
+    case IntSrc::PCI_FW0    : return INT_TO_IRQ_ID(0x16); // EXT2
+    case IntSrc::PCI_SLOT1  : return INT_TO_IRQ_ID(0x17); // EXT3
+    case IntSrc::PCI_SLOT2  : return INT_TO_IRQ_ID(0x18); // EXT4
+    case IntSrc::PCI_SLOT3  : return INT_TO_IRQ_ID(0x19); // EXT5
+    case IntSrc::PCI_FW1    : return INT_TO_IRQ_ID(0x1A); // EXT6
+    case IntSrc::PCI_SLOT4  : return INT_TO_IRQ_ID(0x1B); // EXT7
+    case IntSrc::PCI_SLOT5  : return INT_TO_IRQ_ID(0x1C); // EXT8
+    case IntSrc::PCI_SLOT6  : return INT_TO_IRQ_ID(0x1D); // EXT9
+    case IntSrc::SEC_TO_PRI : return INT_TO_IRQ_ID(0x1E); // EXT10
+
     default:
         ABORT_F("%s: unknown interrupt source %d", this->name.c_str(), src_id);
     }
@@ -723,6 +739,10 @@ static const std::vector<std::string> GrandCentralTnt_Subdevices = {
     "NVRAM", "ViaCuda@16000", "ScreamerSnd@14000", "Escc@13000", "Sc53C94@10000", "Mace@11000", "Swim3@15000", "MeshTnt@18000"
 };
 
+static const std::vector<std::string> GrandCentralAns_Subdevices = {
+    "NVRAM", "ViaCuda@16000", "ScreamerSnd@14000", "Escc@13000", "Sc53C94@10000", "Mace@11000", "Swim3@15000", "LcdAns@1C000"
+};
+
 static const DeviceDescription GrandCentralCatalyst_Descriptor = {
     GrandCentral::create, GrandCentralCatalyst_Subdevices, {},
     HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL
@@ -733,5 +753,11 @@ static const DeviceDescription GrandCentralTnt_Descriptor = {
     HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL
 };
 
+static const DeviceDescription GrandCentralAns_Descriptor = {
+    GrandCentral::create, GrandCentralAns_Subdevices, {},
+    HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL
+};
+
 REGISTER_DEVICE(GrandCentralCatalyst, GrandCentralCatalyst_Descriptor);
 REGISTER_DEVICE(GrandCentralTnt, GrandCentralTnt_Descriptor);
+REGISTER_DEVICE(GrandCentralAns, GrandCentralAns_Descriptor);
