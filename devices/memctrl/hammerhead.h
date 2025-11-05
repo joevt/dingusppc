@@ -33,6 +33,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/hwcomponent.h>
 #include <devices/common/mmiodevice.h>
 #include <devices/memctrl/memctrlbase.h>
+#include <devices/memctrl/bootrom.h>
 
 #include <cinttypes>
 #include <memory>
@@ -136,6 +137,10 @@ private:
     uint8_t     rom_type   = Hammerhead::MBID_BURST_ROM;
     uint8_t     bus_speed  = Hammerhead::BUS_SPEED_40_MHZ;
     uint8_t     arb_config = 0;
+    uint8_t     first_wd   = 8; // 50 MHz burstable
+    uint8_t     burst_rate = 5; // 50 MHz burstable
+    bool        rom_we     = false;
+    BootRom*    boot_rom = nullptr;
 
     uint16_t    bank_base[26] = {};
     uint32_t    bank_size[26] = {};
