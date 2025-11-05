@@ -132,6 +132,36 @@ static void show_help() {
     cout << "Pressing ENTER will repeat last command." << endl;
 }
 
+void mmu_dump_translations() {
+    uint32_t virt_start = 1;
+    uint32_t phys_end;
+    uint32_t virt_addr = 0;
+    uint32_t phys_start;
+    uint32_t phys_addr;
+    for (int i = 0; i <= 0x100000; i++) {
+        bool result = mmu_translate_dbg(virt_addr, phys_addr);
+        if (virt_start != 1 && (!result || uint64_t(phys_addr) != uint64_t(phys_end) + 4096)) {
+            printf ("%08X..%08X -> %08X..%08X\n",
+                virt_start, virt_addr - 1, phys_start, phys_start + virt_addr - 1 - virt_start);
+            if (result) {
+                virt_start = virt_addr;
+                phys_start = phys_addr;
+                phys_end = phys_addr;
+            } else {
+                virt_start = 1;
+                //printf("\n");
+            }
+        } else if (result) {
+            if (virt_start == 1) {
+                virt_start = virt_addr;
+                phys_start = phys_addr;
+            }
+            phys_end = phys_addr;
+        }
+        virt_addr += 4096;
+    }
+}
+
 #ifdef ENABLE_68K_DEBUGGER
 
 typedef struct {
@@ -1361,6 +1391,9 @@ void DppcDebugger::enter_debugger() {
             cmd = "";
             if (mem_ctrl_instance)
                 mem_ctrl_instance->dump_regions();
+        } else if (cmd == "translations") {
+            cmd = "";
+            mmu_dump_translations();
         } else if (cmd == "devices") {
             cmd = "";
             gMachineObj->dump_devices(4);
