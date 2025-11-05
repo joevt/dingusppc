@@ -61,6 +61,8 @@ enum HWCompType : uint64_t {
     VIDEO_CTRL  = 1ULL << 42, // video controller
     DISPLAY     = 1ULL << 43, // display
     PRAM        = 1ULL << 44, // parameter RAM
+    FLASH_CTRL  = 1ULL << 45, // flash chip controller
+    FLASH       = 1ULL << 46, // flash chip
 };
 
 extern std::map<HWCompType, HWCompType> MapBusDev;
