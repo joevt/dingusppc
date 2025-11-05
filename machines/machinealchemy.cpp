@@ -73,12 +73,6 @@ int MachineAlchemy::initialize(const std::string &id) {
 
     PsxCtrl* psx_obj = dynamic_cast<PsxCtrl*>(gMachineObj->get_comp_by_name("Psx"));
 
-    // allocate ROM region
-    if (!psx_obj->add_rom_region(0xFFC00000, 0x400000)) {
-        LOG_F(ERROR, "Could not allocate ROM region!");
-        return -1;
-    }
-
     // insert RAM DIMMs
     psx_obj->insert_ram_dimm(0, GET_INT_PROP("rambank1_size") * DRAM_CAP_1MB);
     psx_obj->insert_ram_dimm(1, GET_INT_PROP("rambank2_size") * DRAM_CAP_1MB);
@@ -128,6 +122,7 @@ static const PropMap pm6400_settings = {
 };
 
 static std::vector<std::string> pm6400_devices = {
+    "BootRomOW@FFC00000",
     "Psx@F8000000", "PsxPci1@F2000000", "ScreamerSnd@14000", "OHare@10", "ValkyrieAlchemy@F1000000"
 };
 

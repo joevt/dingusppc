@@ -67,12 +67,6 @@ int MachineBondi::initialize(const std::string &id) {
 
     grackle_obj->add_device(DEV_FUN(0x10,0), mio_obj);
 
-    // allocate ROM region
-    if (!grackle_obj->add_rom_region(0xFFF00000, 0x100000)) {
-        LOG_F(ERROR, "Could not allocate ROM region!");
-        return -1;
-    }
-
     // configure RAM slots
     // First ram slot is enumerated twice for some reason, the second slot is never
     // enumerated, so make sure both slots have the same RAM.
@@ -107,6 +101,7 @@ static const PropMap bondi_settings = {
 };
 
 static std::vector<std::string> bondi_devices = {
+    "BootRomNW@FFF00000",
     "GrackleBondi@80000000", "BurgundySnd@14000", "Paddington@10"
 };
 
