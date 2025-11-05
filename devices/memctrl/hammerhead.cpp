@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /** Hammerhead Memory Controller emulation. */
 
+#include <cpu/ppc/ppcemu.h>
 #include <devices/deviceregistry.h>
 #include <devices/memctrl/hammerhead.h>
 #include <loguru.hpp>
@@ -43,6 +44,8 @@ HammerheadCtrl::HammerheadCtrl(const std::string &dev_name)
 
     // add MMIO region for the configuration and status registers
     this->add_mmio_region(0xF8000000, 0x500, this);
+    boot_rom = dynamic_cast<BootRom*>(
+        gMachineObj->get_comp_by_type(HWCompType::ROM));
 }
 
 uint32_t HammerheadCtrl::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
@@ -75,6 +78,11 @@ uint32_t HammerheadCtrl::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
     case HammerheadReg::CPU_SPEED:
         value = this->bus_speed << 5;
         LOG_F(HAMMERHEAD, "%s: read CPU_SPEED @%02x.%c = %0*x",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
+        break;
+    case HammerheadReg::ROM_TIMING:
+        value = (this->first_wd << 4) | (this->burst_rate << 1) | (this->rom_we << 0);
+        LOG_F(HAMMERHEAD, "%s: read ROM_TIMING @%02x.%c = %0*x",
             this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case HammerheadReg::ARBITER_CONFIG:
@@ -136,10 +144,26 @@ void HammerheadCtrl::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t val
         LOG_F(HAMMERHEAD, "%s: write REFRESH_TIMING @%02x.%c = %0*x",
             this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
-    case HammerheadReg::ROM_TIMING:
+    case HammerheadReg::ROM_TIMING: {
         LOG_F(HAMMERHEAD, "%s: write ROM_TIMING @%02x.%c = %0*x",
             this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
+        bool new_rom_we = (value >> 0) & 1;
+
+        if (new_rom_we != this->rom_we) {
+            boot_rom->set_rom_write_enable(new_rom_we);
+            #if 1
+            if (new_rom_we) {
+                power_on = false;
+                power_off_reason = po_enter_debugger;
+            }
+            #endif
+        }
+
+        this->first_wd = (value >> 4) & 15;
+        this->burst_rate = (value >> 1) & 7;
+        this->rom_we = new_rom_we;
         break;
+    }
     case HammerheadReg::ARBITER_CONFIG:
         LOG_F(HAMMERHEAD, "%s: write ARBITER_CONFIG @%02x.%c = %0*x",
             this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
