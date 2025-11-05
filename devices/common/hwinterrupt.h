@@ -93,6 +93,16 @@ enum IntSrc : uint32_t {
     SLOT_PDS,
     SLOT_VDS,
     VBL,
+    ERROR,
+    PCI_FW0,
+    PCI_FW1,
+    PCI_SLOT1,
+    PCI_SLOT2,
+    PCI_SLOT3,
+    PCI_SLOT4,
+    PCI_SLOT5,
+    PCI_SLOT6,
+    SEC_TO_PRI,
 };
 
 /** Base class for interrupt controllers. */

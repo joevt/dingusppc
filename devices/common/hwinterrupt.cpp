@@ -117,6 +117,16 @@ const char* InterruptCtrl::int_src_to_name(IntSrc irq_src)
         onesrc(SLOT_PDS)
         onesrc(SLOT_VDS)
         onesrc(VBL)
+        onesrc(ERROR)
+        onesrc(PCI_FW0)
+        onesrc(PCI_FW1)
+        onesrc(PCI_SLOT1)
+        onesrc(PCI_SLOT2)
+        onesrc(PCI_SLOT3)
+        onesrc(PCI_SLOT4)
+        onesrc(PCI_SLOT5)
+        onesrc(PCI_SLOT6)
+        onesrc(SEC_TO_PRI)
         #undef onesrc
         default: return "unknown";
     }
