@@ -103,12 +103,6 @@ int MachineYosemite::initialize(const std::string &id) {
         dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("OptiOhci")));
 #endif
 
-    // allocate ROM region
-    if (!grackle_obj->add_rom_region(0xFFF00000, 0x100000)) {
-        LOG_F(ERROR, "Could not allocate ROM region!");
-        return -1;
-    }
-
     // configure RAM slots
     setup_ram_slot("RAM_DIMM_1", 0x50, GET_INT_PROP("rambank1_size"));
     setup_ram_slot("RAM_DIMM_2", 0x51, GET_INT_PROP("rambank2_size"));
@@ -150,6 +144,7 @@ static const PropMap yosemite_settings = {
 };
 
 static std::vector<std::string> yosemite_devices = {
+    "BootRomNW@FFF00000",
     "GrackleYosemite@80000000",
     "Dec21154Yosemite@D",
     "CmdAta@1",
