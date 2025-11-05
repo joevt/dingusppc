@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <devices/common/hwcomponent.h>
 #include <devices/deviceregistry.h>
+#include <devices/memctrl/bootrom.h>
 #include <devices/memctrl/memctrlbase.h>
 #include <devices/sound/soundserver.h>
 #include <loguru.hpp>
@@ -1090,32 +1091,19 @@ string MachineFactory::machine_name_from_rom(char *rom_data, size_t rom_size) {
 
 /* Read ROM file content and transfer it to the dedicated ROM region */
 int MachineFactory::load_boot_rom(char *rom_data, size_t rom_size) {
-    int      result = 0;
-    uint32_t rom_load_addr;
-    //AddressMapEntry *rom_reg;
-
-    if (rom_size == 0x400000UL) { // Old World ROMs
-        rom_load_addr = 0xFFC00000UL;
-    } else if (rom_size == 0x100000UL) { // New World ROMs
-        rom_load_addr = 0xFFF00000UL;
-    } else {
+    if (rom_size != 0x400000 && rom_size != 0x100000) {
         LOG_F(ERROR, "Unexpected ROM File size: %zu bytes.", rom_size);
-        result = -1;
+        return -1;
     }
 
-    if (!result) {
-        MemCtrlBase* mem_ctrl = dynamic_cast<MemCtrlBase*>(
-            gMachineObj->get_comp_by_type(HWCompType::MEM_CTRL));
-
-        if ((/*rom_reg = */mem_ctrl->find_rom_region())) {
-            mem_ctrl->set_data(rom_load_addr, (uint8_t*)rom_data, (uint32_t)rom_size);
-        } else {
-            LOG_F(ERROR, "Could not locate physical ROM region!");
-            result = -1;
-        }
+    BootRom* boot_rom = dynamic_cast<BootRom*>(
+        gMachineObj->get_comp_by_type(HWCompType::ROM));
+    if (!boot_rom) {
+        LOG_F(ERROR, "Could not locate ROM device!");
+        return -1;
     }
 
-    return result;
+    return boot_rom->set_data((uint8_t*)rom_data, (uint32_t)rom_size);
 }
 
 int MachineFactory::create_machine_for_id(string& id, char *rom_data, size_t rom_size, vector<std::string> &app_args) {
