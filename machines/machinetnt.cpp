@@ -57,6 +57,24 @@ static std::map<int,PciIrqMap> chaos_irq_map = {
     {DEV_FUN(0x0E,0), {"vci_E",  IntSrc::VCI    }},
 };
 
+static std::map<int,PciIrqMap> ans_bandit1_irq_map = {
+    {DEV_FUN(0x0B,0), {nullptr    , IntSrc::ERROR    }},
+    {DEV_FUN(0x0D,0), {"pci_SLOT1", IntSrc::PCI_SLOT1}},
+    {DEV_FUN(0x0E,0), {"pci_SLOT2", IntSrc::PCI_SLOT2}},
+    {DEV_FUN(0x0F,0), {"pci_VIDEO",                  }},
+    {DEV_FUN(0x10,0), {nullptr    ,                  }}, // GrandCentral
+    {DEV_FUN(0x11,0), {"pci_FW0"  , IntSrc::PCI_FW0  }},
+    {DEV_FUN(0x12,0), {"pci_FW1"  , IntSrc::PCI_FW1  }},
+};
+
+static std::map<int,PciIrqMap> ans_bandit2_irq_map = {
+    {DEV_FUN(0x0B,0), {nullptr    , IntSrc::ERROR    }},
+    {DEV_FUN(0x0D,0), {"pci_SLOT3", IntSrc::PCI_SLOT3}},
+    {DEV_FUN(0x0E,0), {"pci_SLOT4", IntSrc::PCI_SLOT4}},
+    {DEV_FUN(0x0F,0), {"pci_SLOT5", IntSrc::PCI_SLOT5}},
+    {DEV_FUN(0x10,0), {"pci_SLOT6", IntSrc::PCI_SLOT6}},
+};
+
 class MachineTnt : public Machine {
 public:
     MachineTnt() : HWComponent("MachineTnt") {}
@@ -66,13 +84,14 @@ public:
 int MachineTnt::initialize(const std::string &id) {
     LOG_F(INFO, "Building machine TNT...");
 
+    bool is_tnt = id != "ans300" && id != "ans500" && id != "ans700";
     HammerheadCtrl* memctrl_obj;
 
-    PCIHost *pci_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name("Bandit1"));
-    pci_host->set_irq_map(bandit1_irq_map);
+    PCIHost *pci_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name(is_tnt ? "Bandit1" : "Bandit1Ans"));
+    pci_host->set_irq_map(is_tnt ? bandit1_irq_map : ans_bandit1_irq_map);
 
     // get (raw) pointer to the I/O controller
-    GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralTnt"));
+    GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
 
     // connect GrandCentral I/O controller to the PCI1 bus
     pci_host->add_device(DEV_FUN(0x10,0), gc_obj);
@@ -86,25 +105,58 @@ int MachineTnt::initialize(const std::string &id) {
             dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("ControlVideo")));
     }
 
-    // attach IOBus Device #1 0xF301A000
-    gc_obj->add_device(0x1A000,
-        new BoardRegister("BoardReg1",
-            0x3F                                                                       | // pull up all PRSNT bits
-            ((GET_BIN_PROP("emmo") ^ 1) << 8)                                          | // factory tests (active low)
-            ((gMachineObj->get_comp_by_name_optional("Sixty6Video") == nullptr) << 13) | // composite video out (active low)
-            ((gMachineObj->get_comp_by_name_optional("MeshTnt") != nullptr) << 14)     | // fast SCSI (active high)
-            0x8000U                                                                      // pull up unused bits
-    ));
+    if (is_tnt) {
+        // attach IOBus Device #1 0xF301A000
+        gc_obj->add_device(0x1A000,
+            new BoardRegister("BoardReg1",
+                0x3F                                                                       | // pull up all PRSNT bits
+                ((GET_BIN_PROP("emmo") ^ 1) << 8)                                          | // factory tests (active low)
+                ((gMachineObj->get_comp_by_name_optional("Sixty6Video") == nullptr) << 13) | // composite video out (active low)
+                ((gMachineObj->get_comp_by_name_optional("MeshTnt") != nullptr) << 14)     | // fast SCSI (active high)
+                0x8000U                                                                      // pull up unused bits
+            )
+        );
+    } else {
+        // attach IOBus Device #1 0xF301A000
+        gc_obj->add_device(0x1A000,
+            new BoardRegister("BoardReg1",
+                0x3F                                                                       | // pull up all PRSNT bits
+                ((GET_BIN_PROP("emmo") ^ 1) << 8)                                          | // factory tests (active low)
+                (GET_INT_PROP("box_id") << 11)                                             | // BoxId0 and BoxId1
+                ((GET_BIN_PROP("keyswitch_service") ^ 1) << 13)                            | // Keyswitch Service (active low)
+                ((GET_BIN_PROP("keyswitch_locked") ^ 1) << 14)                             | // Keyswitch Locked (active low)
+                0x8000U                                                                      // pull up unused bits
+            )
+        );
+    }
 
-    PCIHost *pci2_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name_optional("Bandit2"));
+    PCIHost *pci2_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name_optional(is_tnt ? "Bandit2" : "Bandit2Ans"));
     if (pci2_host) {
-        pci2_host->set_irq_map(bandit2_irq_map);
-        // attach IOBus Device #3 0xF301C000
-        gc_obj->add_device(0x1C000,
-            new BoardRegister("BoardReg2",
-                0x3F                                        | // pull up all PRSNT bits
-                0x8000U                                       // pull up unused bits
-        ));
+        pci2_host->set_irq_map(is_tnt ? bandit2_irq_map : ans_bandit2_irq_map);
+        if (is_tnt) {
+            // attach IOBus Device #3 0xF301C000
+            gc_obj->add_device(0x1C000,
+                new BoardRegister("BoardReg2",
+                    0x3F                                        | // pull up all PRSNT bits
+                    0x8000U                                       // pull up unused bits
+                )
+            );
+        } else {
+            // attach IOBus Device #5 0xF301E000
+            gc_obj->add_device(0x1E000,
+                new BoardRegister("BoardReg2",
+                    0x3F                                        | // pull up all PRSNT bits
+                    (1 << 8)                                    | // FanFailDrive (active low)
+                    (1 << 9)                                    | // FanFailProcessor (active low)
+                    (1 << 10)                                   | // TempFailProcessor (active low)
+                    (1 << 11)                                   | // TempWarnProcessor (active low)
+                    (1 << 12)                                   | // FailPowSupplyLeft (active low)
+                    (1 << 13)                                   | // FailPowSupplyRight (active low)
+                    (1 << 14)                                   | // powSupplyHotLeft (active low)
+                    (1 << 15)                                     // powSupplyHotRight (active low)
+                )
+            );
+        }
     }
 
     // get (raw) pointer to the memory controller
@@ -173,9 +225,23 @@ static const PropMap tnt_settings_ ## cpu = { \
     {"cdr_config", new StrProperty("ScsiMesh/@3")}, \
 };
 
+#define static_const_ans_settings(cpu, supplies) \
+static const PropMap ans_settings_ ## cpu ## _ ## supplies = { \
+    static_const_tnt_common_settings(cpu) \
+    {"hdd_config", new StrProperty("ScsiCurio/@0")}, \
+    {"cdr_config", new StrProperty("ScsiCurio/@3")}, \
+    {"box_id", new IntProperty(1, std::vector<uint32_t>({0,1,2,3}))}, \
+    {"keyswitch_service", new BinProperty(0)}, \
+    {"keyswitch_locked", new BinProperty(0)}, \
+    {"two_supplies", new BinProperty(supplies)}, \
+};
+
 static_const_tnt_settings(601)
 static_const_tnt_settings(604)
 static_const_tnt_settings(604e)
+static_const_ans_settings(604,1)
+static_const_ans_settings(604e,1)
+static_const_ans_settings(604e,2)
 
 static std::vector<std::string> pm7500_devices = {
     "BootRomOW@FFC00000",
@@ -191,6 +257,11 @@ static std::vector<std::string> pm8500_devices = {
 static std::vector<std::string> pm9500_devices = {
     "BootRomOW@FFC00000",
     "Hammerhead@F8000000", "Bandit1@F2000000", "GrandCentralTnt@10", "Bandit2@F4000000",
+};
+
+static std::vector<std::string> pmAns_devices = {
+    "BootRomOW@FFC00000",
+    "Hammerhead@F8000000", "Bandit1Ans@F2000000", "Bandit2Ans@F4000000",
 };
 
 static const DeviceDescription MachineTnt7300_descriptor = {
@@ -228,6 +299,21 @@ static const DeviceDescription MachineTnt9600_descriptor = {
     "Power Macintosh 9600"
 };
 
+static const DeviceDescription MachineAns500_descriptor = {
+    Machine::create<MachineTnt>, pmAns_devices, ans_settings_604_1, HWCompType::MACHINE,
+    "Apple Network Server 500"
+};
+
+static const DeviceDescription MachineAns700_descriptor = {
+    Machine::create<MachineTnt>, pmAns_devices, ans_settings_604e_2, HWCompType::MACHINE,
+    "Apple Network Server 700"
+};
+
+static const DeviceDescription MachineAns300_descriptor = {
+    Machine::create<MachineTnt>, pmAns_devices, ans_settings_604e_1, HWCompType::MACHINE,
+    "Apple Network Server 300"
+};
+
 REGISTER_DEVICE(pm7300, MachineTnt7300_descriptor);
 REGISTER_DEVICE(pm7500, MachineTnt7500_descriptor);
 REGISTER_DEVICE(pm8500, MachineTnt8500_descriptor);
@@ -235,3 +321,6 @@ REGISTER_DEVICE(pm9500, MachineTnt9500_descriptor);
 REGISTER_DEVICE(pm7600, MachineTnt7600_descriptor);
 REGISTER_DEVICE(pm8600, MachineTnt8600_descriptor);
 REGISTER_DEVICE(pm9600, MachineTnt9600_descriptor);
+REGISTER_DEVICE(ans500, MachineAns500_descriptor);
+REGISTER_DEVICE(ans700, MachineAns700_descriptor);
+REGISTER_DEVICE(ans300, MachineAns300_descriptor);
