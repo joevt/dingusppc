@@ -93,6 +93,16 @@ enum IntSrc : uint32_t {
     SLOT_PDS,
     SLOT_VDS,
     VBL,
+    ERROR,
+    PCI_FW0,
+    PCI_FW1,
+    PCI_SLOT1,
+    PCI_SLOT2,
+    PCI_SLOT3,
+    PCI_SLOT4,
+    PCI_SLOT5,
+    PCI_SLOT6,
+    SEC_TO_PRI,
 };
 
 /** Base class for interrupt controllers. */
@@ -180,6 +190,16 @@ public:
         irq_src_to_name(SLOT_PDS)
         irq_src_to_name(SLOT_VDS)
         irq_src_to_name(VBL)
+        irq_src_to_name(ERROR)
+        irq_src_to_name(PCI_FW0)
+        irq_src_to_name(PCI_FW1)
+        irq_src_to_name(PCI_SLOT1)
+        irq_src_to_name(PCI_SLOT2)
+        irq_src_to_name(PCI_SLOT3)
+        irq_src_to_name(PCI_SLOT4)
+        irq_src_to_name(PCI_SLOT5)
+        irq_src_to_name(PCI_SLOT6)
+        irq_src_to_name(SEC_TO_PRI)
         #undef irq_src_to_name
         default: return "unknown";
         }
