@@ -392,6 +392,30 @@ static const PropMap Bandit2_Properties = {
         new StrProperty("")},
 };
 
+static const PropMap Bandit1Ans_Properties = {
+    {"pci_SLOT1",
+        new StrProperty("")},
+    {"pci_SLOT2",
+        new StrProperty("")},
+    {"pci_VIDEO",
+        new StrProperty("")},
+    {"pci_FW0",
+        new StrProperty("")},
+    {"pci_FW1",
+        new StrProperty("")},
+};
+
+static const PropMap Bandit2Ans_Properties = {
+    {"pci_SLOT3",
+        new StrProperty("")},
+    {"pci_SLOT4",
+        new StrProperty("")},
+    {"pci_SLOT5",
+        new StrProperty("")},
+    {"pci_SLOT6",
+        new StrProperty("")},
+};
+
 static const PropMap Chaos_Properties = {
     {"vci_D",
         new StrProperty("")},
@@ -424,6 +448,14 @@ static const DeviceDescription Bandit2_Descriptor = {
     Bandit::create, {}, Bandit2_Properties, HWCompType::PCI_HOST
 };
 
+static const DeviceDescription Bandit1Ans_Descriptor = {
+    Bandit::create, {"GrandCentralAns@10", "Sc53C825Ans@11", "Sc53C825Ans@12"}, Bandit1Ans_Properties, HWCompType::PCI_HOST
+};
+
+static const DeviceDescription Bandit2Ans_Descriptor = {
+    Bandit::create, {}, Bandit2Ans_Properties, HWCompType::PCI_HOST
+};
+
 static const DeviceDescription PsxPci1_Descriptor = {
     Bandit::create, {}, PsxPci1_Properties, HWCompType::PCI_HOST
 };
@@ -438,6 +470,8 @@ static const DeviceDescription AspenPci1_Descriptor = {
 
 REGISTER_DEVICE(Bandit1,    Bandit1_Descriptor);
 REGISTER_DEVICE(Bandit2,    Bandit2_Descriptor);
+REGISTER_DEVICE(Bandit1Ans, Bandit1Ans_Descriptor);
+REGISTER_DEVICE(Bandit2Ans, Bandit2Ans_Descriptor);
 REGISTER_DEVICE(PsxPci1,    PsxPci1_Descriptor);
 REGISTER_DEVICE(AspenPci1,  AspenPci1_Descriptor);
 REGISTER_DEVICE(Chaos,      Chaos_Descriptor);
