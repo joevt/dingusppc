@@ -121,6 +121,7 @@ rom_info rom_identity[] = {
     rom( 0x077d45f2, 0x78f57389, 0x7b8375af2e19914d, "Boot Gossamer 0.", "pmg3dt"  , "Power Mac G3 Beige"         , "Power Mac G3 (v3)"                                 )
     rom( 0x077d45f3, 0x78e842a8, 0x7ce12c8aef3312fe, "Boot Gossamer 0.", "pmg3dt"  , "Power Mac G3 Beige"         , "Power Mac G3 (v4)"                                 )
     rom( 0x077d45f3, 0x78eb4234, 0,                  "Boot Gossamer 0.", "pmg3dt"  , "Power Mac G3 Beige"         , "Power Mac G3 (v4) (no public dump)"                )
+    rom( 0x077d33b4, 0x4266511f, 0x03134cffc7c9fc7e, "Boot OX 0.1.p..]", nullptr   , "CHRP machine"               , "CHRP (Orient Express) 3.3b4"                       )
 
 #undef rom
 
