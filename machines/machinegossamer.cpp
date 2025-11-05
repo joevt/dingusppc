@@ -122,12 +122,6 @@ int MachineGossamer::initialize(const std::string &id) {
     grackle_obj->get_parent()->add_device(0xFF000000, machine_id);
     grackle_obj->add_mmio_region(0xFF000000, 4096, machine_id);
 
-    // allocate ROM region
-    if (!grackle_obj->add_rom_region(0xFFC00000, 0x400000)) {
-        LOG_F(ERROR, "Could not allocate ROM region!");
-        return -1;
-    }
-
     // configure RAM slots
     setup_ram_slot("RAM_DIMM_1", 0x57, GET_INT_PROP("rambank1_size"));
     setup_ram_slot("RAM_DIMM_2", 0x56, GET_INT_PROP("rambank2_size"));
@@ -200,10 +194,12 @@ static const PropMap gossamer_tower_settings = {
 };
 
 static std::vector<std::string> pmg3_devices = {
+    "BootRomOW@FFC00000",
     "GrackleGossamer@80000000", "ScreamerSnd@14000", "Heathrow@10"
 };
 
 static std::vector<std::string> pmg3twr_devices = {
+    "BootRomOW@FFC00000",
     "GrackleGossamer@80000000", "ScreamerSnd@14000", "Heathrow@10"
 };
 

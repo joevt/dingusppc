@@ -64,10 +64,11 @@ class MemCtrlBase {
 public:
     MemCtrlBase() = default;
     virtual ~MemCtrlBase();
-    virtual AddressMapEntry* add_rom_region(uint32_t start_addr, uint32_t size);
-    virtual AddressMapEntry* add_ram_region(uint32_t start_addr, uint32_t size);
+    virtual AddressMapEntry* add_rom_region(uint32_t start_addr, uint32_t size,
+                                            MMIODevice* dev_instance = nullptr);
     virtual AddressMapEntry* add_ram_region(uint32_t start_addr, uint32_t size,
-                                            uint8_t *mem_ptr);
+                                            uint8_t *mem_ptr = nullptr,
+                                            MMIODevice* dev_instance = nullptr);
     virtual AddressMapEntry* add_mem_mirror(uint32_t start_addr, uint32_t dest_addr);
     virtual AddressMapEntry* add_mem_mirror_partial(uint32_t start_addr, uint32_t dest_addr,
                                                     uint32_t offset, uint32_t size);
@@ -95,8 +96,6 @@ public:
     AddressMapEntry* find_range_overlaps(uint32_t addr, uint32_t size);
     bool is_range_free(uint32_t addr, uint32_t size);
 
-    AddressMapEntry* find_rom_region();
-
     uint8_t *get_region_hostmem_ptr(const uint32_t addr);
 
     void dump_regions();
@@ -104,7 +103,7 @@ public:
 protected:
     AddressMapEntry* add_mem_region(
         uint32_t start_addr, uint32_t size, uint32_t dest_addr, uint32_t type,
-        uint8_t  *mem_ptr
+        uint8_t  *mem_ptr, MMIODevice* dev_instance
     );
 
     AddressMapEntry* add_mem_mirror_common(uint32_t start_addr, uint32_t dest_addr,

@@ -77,12 +77,6 @@ int MachineCatalyst::initialize(const std::string &id) {
     // get (raw) pointer to the memory controller
     platinum_obj = dynamic_cast<PlatinumCtrl*>(gMachineObj->get_comp_by_name("Platinum"));
 
-    // allocate ROM region
-    if (!platinum_obj->add_rom_region(0xFFC00000, 0x400000)) {
-        LOG_F(ERROR, "Could not allocate ROM region!");
-        return -1;
-    }
-
     // insert RAM DIMMs
     platinum_obj->insert_ram_dimm(0, GET_INT_PROP("rambank1_size") * DRAM_CAP_1MB);
     platinum_obj->insert_ram_dimm(1, GET_INT_PROP("rambank2_size") * DRAM_CAP_1MB);
@@ -134,6 +128,7 @@ static const PropMap pm7200_settings = {
 };
 
 static std::vector<std::string> pm7200_devices = {
+    "BootRomOW@FFC00000",
     "Platinum@F8000000", "Bandit1@F2000000", "GrandCentralCatalyst@10"
 };
 
