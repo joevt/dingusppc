@@ -101,6 +101,15 @@ const map<string, PropHelpItem> gPropHelp = {
     {"pci_D2",            {PropertyDevOnce, "inserts PCI device into slot D2"}},
     {"pci_E2",            {PropertyDevOnce, "inserts PCI device into slot E2"}},
     {"pci_F2",            {PropertyDevOnce, "inserts PCI device into slot F2"}},
+    {"pci_FW0",           {PropertyDevOnce, "inserts PCI device into PCI slot reserved for Fast-Wide SCSI 0"}},
+    {"pci_FW1",           {PropertyDevOnce, "inserts PCI device into PCI slot reserved for Fast-Wide SCSI 1"}},
+    {"pci_SLOT1",         {PropertyDevOnce, "inserts PCI device into slot SLOT1"}},
+    {"pci_SLOT2",         {PropertyDevOnce, "inserts PCI device into slot SLOT2"}},
+    {"pci_SLOT3",         {PropertyDevOnce, "inserts PCI device into slot SLOT3"}},
+    {"pci_SLOT4",         {PropertyDevOnce, "inserts PCI device into slot SLOT4"}},
+    {"pci_SLOT5",         {PropertyDevOnce, "inserts PCI device into slot SLOT5"}},
+    {"pci_SLOT6",         {PropertyDevOnce, "inserts PCI device into slot SLOT6"}},
+    {"pci_VIDEO",         {PropertyDevOnce, "inserts PCI device into PCI slot reserved for video"}},
     {"vci_D",             {PropertyDevOnce, "inserts VCI device 0x0D"}},
     {"vci_E",             {PropertyDevOnce, "inserts VCI device 0x0E"}},
     {"rom",               {PropertyDevice , "specifies path to NuBus or PCI ROM image"}},
@@ -116,6 +125,10 @@ const map<string, PropHelpItem> gPropHelp = {
     {"has_composite",     {PropertyMachine, "indicates if composite video output is connected"}},
     {"has_svideo",        {PropertyMachine, "indicates if s-video output is connected"}},
     {"debug_copland",     {PropertyMachine, "enables/disables entry into debugger during Copland Open Firmware initialization"}},
+    {"box_id",            {PropertyMachine, "BoxId0 and BoxId1 bits for Apple Network Server"}},
+    {"keyswitch_service", {PropertyMachine, "Apple Network Server key switch is set to Service"}},
+    {"keyswitch_locked",  {PropertyMachine, "Apple Network Server key switch is set to Locked"}},
+    {"two_supplies",      {PropertyMachine, "Apple Network Server has two power supplies"}},
 };
 
 static uint32_t adler32slow(char *buf, size_t len) {
