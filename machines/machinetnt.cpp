@@ -114,21 +114,6 @@ int MachineTnt::initialize(const std::string &id) {
                                     (pci2_host ? Hammerhead::MBID_PCI2_PRESENT : 0));
     memctrl_obj->set_bus_speed(Hammerhead::BUS_SPEED_50_MHZ);
 
-    // allocate ROM region
-    if (!memctrl_obj->add_rom_region(0xFFC00000, 0x400000)) {
-        LOG_F(ERROR, "Could not allocate ROM region!");
-        return -1;
-    }
-
-    // Hammerhead uses the top 16 MB of the address space for ROM.
-    // The installed 4 MB ROM appears four times within that range.
-    for (uint32_t addr : {0xFF000000U, 0xFF400000U, 0xFF800000U}) {
-        if (!memctrl_obj->add_mem_mirror(addr, 0xFFC00000)) {
-            LOG_F(ERROR, "Could not create ROM mirror!");
-            return -1;
-        }
-    }
-
     // populate RAM banks from configuration properties
     for (int bank_num = 0; bank_num <= 12; bank_num++) {
         std::string bn = std::to_string(bank_num);
@@ -211,15 +196,18 @@ static_const_tnt_settings(604)
 static_const_tnt_settings(604e)
 
 static std::vector<std::string> pm7500_devices = {
+    "BootRomOW@FF000000",
     "Hammerhead@F8000000", "Bandit1@F2000000", "GrandCentralTnt@10", "Chaos@F0000000"
 };
 
 static std::vector<std::string> pm8500_devices = {
+    "BootRomOW@FF000000",
     "Hammerhead@F8000000", "Bandit1@F2000000", "GrandCentralTnt@10", "Chaos@F0000000",
     "Sixty6Video@1C000"
 };
 
 static std::vector<std::string> pm9500_devices = {
+    "BootRomOW@FF000000",
     "Hammerhead@F8000000", "Bandit1@F2000000", "GrandCentralTnt@10", "Bandit2@F4000000",
 };
 
