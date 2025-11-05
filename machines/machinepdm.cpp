@@ -68,7 +68,8 @@ void setup_pds(HWComponent *pds_host) {
 class MachinePdm : public Machine {
 public:
     MachinePdm() : HWComponent("MachinePdm") {}
-    int initialize(const std::string &id);
+    int initialize(const std::string &id) override;
+    PostInitResultType device_postinit() override;
 };
 
 int MachinePdm::initialize(const std::string &id) {
@@ -95,18 +96,6 @@ int MachinePdm::initialize(const std::string &id) {
     hmc_obj->add_mmio_region(0x5FFFFFFC, 4, nubus_macid);
     this->add_device(0x5FFFFFFC, nubus_macid);
 
-    // allocate ROM region
-    if (!hmc_obj->add_rom_region(0x40000000, 0x400000)) {
-        LOG_F(ERROR, "Could not allocate ROM region!");
-        return -1;
-    }
-
-    // mirror ROM to 0xFFC00000 for a PowerPC CPU to start
-    if (!hmc_obj->add_mem_mirror(0xFFC00000, 0x40000000)) {
-        LOG_F(ERROR, "Could not create ROM mirror!");
-        return -1;
-    }
-
     uint32_t bank_a_size = GET_INT_PROP("rambank1_size");
     uint32_t bank_b_size = GET_INT_PROP("rambank2_size");
     if (bank_b_size && bank_a_size != bank_b_size) {
@@ -129,6 +118,16 @@ int MachinePdm::initialize(const std::string &id) {
     return 0;
 }
 
+PostInitResultType MachinePdm::device_postinit() {
+    HMC* hmc_obj = dynamic_cast<HMC*>(gMachineObj->get_comp_by_name("HMC"));
+    // mirror ROM to 0xFFC00000 for a PowerPC CPU to start
+    if (!hmc_obj->add_mem_mirror(0xFFC00000, 0x40000000)) {
+        LOG_F(ERROR, "Could not create ROM mirror!");
+        return PI_RETRY;
+    }
+    return PI_SUCCESS;
+}
+
 static const PropMap pm6100_settings = {
     {"rambank1_size",
         new IntProperty(0, std::vector<uint32_t>({0, 2, 4, 8, 16, 32, 64, 128}))},
@@ -147,6 +146,7 @@ static const PropMap pm6100_settings = {
 };
 
 static std::vector<std::string> pm6100_devices = {
+    "BootRomOW@40000000",
     "HMC@50F40000", "Amic@50F00000"
 };
 

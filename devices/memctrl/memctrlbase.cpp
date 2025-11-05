@@ -179,7 +179,8 @@ bool MemCtrlBase::is_range_free(uint32_t addr, uint32_t size) {
 
 AddressMapEntry* MemCtrlBase::add_mem_region(uint32_t start_addr, uint32_t size,
                                              uint32_t dest_addr,  uint32_t type,
-                                             uint8_t  *mem_ptr = nullptr)
+                                             uint8_t  *mem_ptr,
+                                             MMIODevice* dev_instance)
 {
     AddressMapEntry *entry;
 
@@ -200,7 +201,7 @@ AddressMapEntry* MemCtrlBase::add_mem_region(uint32_t start_addr, uint32_t size,
     entry->end     = end;
     entry->mirror  = dest_addr;
     entry->type    = type;
-    entry->devobj  = nullptr;
+    entry->devobj  = dev_instance;
     entry->mem_ptr = mem_ptr;
 
     // Keep address_map sorted, that way the RAM region (which starts at 0 and
@@ -222,18 +223,16 @@ AddressMapEntry* MemCtrlBase::add_mem_region(uint32_t start_addr, uint32_t size,
 }
 
 
-AddressMapEntry* MemCtrlBase::add_rom_region(uint32_t start_addr, uint32_t size) {
-    return add_mem_region(start_addr, size, 0, RT_ROM);
+AddressMapEntry* MemCtrlBase::add_rom_region(uint32_t start_addr, uint32_t size,
+                                             MMIODevice* dev_instance) {
+    return add_mem_region(start_addr, size, 0, RT_ROM, nullptr, dev_instance);
 }
 
-
-AddressMapEntry* MemCtrlBase::add_ram_region(uint32_t start_addr, uint32_t size) {
-    return add_mem_region(start_addr, size, 0, RT_RAM);
-}
 
 AddressMapEntry* MemCtrlBase::add_ram_region(uint32_t start_addr, uint32_t size,
-                                             uint8_t *mem_ptr) {
-    return add_mem_region(start_addr, size, 0, RT_RAM, mem_ptr);
+                                             uint8_t *mem_ptr,
+                                             MMIODevice* dev_instance) {
+    return add_mem_region(start_addr, size, 0, RT_RAM, mem_ptr, dev_instance);
 }
 
 
@@ -417,17 +416,6 @@ bool MemCtrlBase::needs_swap_endian(bool /*is_mmio*/) {
     return false;
 }
 #endif
-
-AddressMapEntry* MemCtrlBase::find_rom_region()
-{
-    for (auto& entry : address_map) {
-        if (entry->type == RT_ROM) {
-            return entry;
-        }
-    }
-
-    return nullptr;
-}
 
 uint8_t *MemCtrlBase::get_region_hostmem_ptr(const uint32_t addr) {
     AddressMapEntry *reg_desc = this->find_range(addr);
