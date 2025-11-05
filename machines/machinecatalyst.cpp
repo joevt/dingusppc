@@ -77,21 +77,6 @@ int MachineCatalyst::initialize(const std::string &id) {
     // get (raw) pointer to the memory controller
     platinum_obj = dynamic_cast<PlatinumCtrl*>(gMachineObj->get_comp_by_name("Platinum"));
 
-    // allocate ROM region
-    if (!platinum_obj->add_rom_region(0xFFC00000, 0x400000)) {
-        LOG_F(ERROR, "Could not allocate ROM region!");
-        return -1;
-    }
-
-    // Platinum uses the top 16 MB of the address space for ROM.
-    // The installed 4 MB ROM appears four times within that range.
-    for (uint32_t addr : {0xFF000000U, 0xFF400000U, 0xFF800000U}) {
-        if (!platinum_obj->add_mem_mirror(addr, 0xFFC00000)) {
-            LOG_F(ERROR, "Could not create ROM mirror!");
-            return -1;
-        }
-    }
-
     // insert RAM DIMMs
     platinum_obj->insert_ram_dimm(0, GET_INT_PROP("rambank1_size") * DRAM_CAP_1MB);
     platinum_obj->insert_ram_dimm(1, GET_INT_PROP("rambank2_size") * DRAM_CAP_1MB);
@@ -154,6 +139,7 @@ static const PropMap pm7200_settings = {
 };
 
 static std::vector<std::string> pm7200_devices = {
+    "BootRomOW@FF000000",
     "Platinum@F8000000", "Bandit1@F2000000", "GrandCentralCatalyst@10"
 };
 
