@@ -61,12 +61,6 @@ int MachinePippin::initialize(const std::string &id) {
     // get (raw) pointer to the memory controller
     AspenCtrl* aspen_obj = dynamic_cast<AspenCtrl*>(gMachineObj->get_comp_by_name("Aspen"));
 
-    // allocate ROM region
-    if (!aspen_obj->add_rom_region(0xFFC00000, 0x400000)) {
-        LOG_F(ERROR, "Could not allocate ROM region!");
-        return -1;
-    }
-
     // configure RAM
     aspen_obj->insert_ram_dimm(0, GET_INT_PROP("rambank1_size")); // soldered onboard RAM
     aspen_obj->insert_ram_dimm(1, GET_INT_PROP("rambank2_size")); // soldered onboard RAM
@@ -101,6 +95,7 @@ static const PropMap Pippin_settings = {
 };
 
 static std::vector<std::string> Pippin_devices = {
+    "BootRomOW@FFC00000",
     "Aspen@F8000000", "AspenPci1@F2000000", "GrandCentralTnt@10", "TaosVideo@F0800000"
 };
 

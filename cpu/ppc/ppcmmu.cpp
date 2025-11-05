@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /** @file PowerPC Memory Management Unit emulation. */
 
+#include <devices/memctrl/bootrom.h>
 #include <devices/memctrl/memctrlbase.h>
 #include <devices/common/mmiodevice.h>
 #include <memaccess.h>
@@ -717,7 +718,16 @@ static TLBEntry* itlb2_refill(uint32_t guest_va)
     AddressMapEntry* rgn_desc = mem_ctrl_instance->find_range(phys_addr);
     if (rgn_desc) {
         if (rgn_desc->type & RT_MMIO) {
-            ABORT_F("Instruction fetch from MMIO region at 0x%08X!\n", phys_addr);
+            if (rgn_desc->devobj && rgn_desc->devobj->supports_type(HWCompType::ROM)) {
+                BootRom *boot_rom = dynamic_cast<BootRom*>(rgn_desc->devobj);
+                boot_rom->identify_rom();
+                LOG_F(ERROR, "Executing ROM while write enabled. Will disable ROM write.");
+                if (boot_rom)
+                    boot_rom->set_rom_write_enable(false);
+            }
+            if (!rgn_desc->mem_ptr) {
+                ABORT_F("Instruction fetch from MMIO region at 0x%08X!\n", phys_addr);
+            }
         }
         // refill the secondary TLB
         const uint32_t tag = guest_va & ~0xFFFUL;
