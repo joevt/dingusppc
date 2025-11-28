@@ -900,6 +900,49 @@ TLBEntry* dtlb2_refill(uint32_t guest_va, int is_write, bool is_dbg)
             && ppc_state.pc != 0xfff04364
             && ppc_state.pc != 0xfff04378
             && ppc_state.pc != 0xfff0437c
+            // ANS 1.1.20.1
+            && ppc_state.pc != 0xfff04594
+            && ppc_state.pc != 0xfff04598
+            && ppc_state.pc != 0xfff0459c
+            && ppc_state.pc != 0xfff045c0
+            && ppc_state.pc != 0xfff045c4
+            && ppc_state.pc != 0xfff045d8
+            && ppc_state.pc != 0xfff045dc
+            // ANS 1.1.22
+            && ppc_state.pc != 0xfff045a0
+            && ppc_state.pc != 0xfff045a4
+            && ppc_state.pc != 0xfff045a8
+            && ppc_state.pc != 0xfff045ac
+            && ppc_state.pc != 0xfff045cc
+            && ppc_state.pc != 0xfff045d0
+            && ppc_state.pc != 0xfff045e4
+            && ppc_state.pc != 0xfff045e8
+            // ANS 2.26B6
+            && ppc_state.pc != 0xfff046ec
+            && ppc_state.pc != 0xfff046f0
+            && ppc_state.pc != 0xfff046f4
+            && ppc_state.pc != 0xfff046f8
+            && ppc_state.pc != 0xfff046fc
+            && ppc_state.pc != 0xfff04700
+            && ppc_state.pc != 0xfff04704
+            && ppc_state.pc != 0xfff04708
+            && ppc_state.pc != 0xfff04724
+            && ppc_state.pc != 0xfff04728
+            && ppc_state.pc != 0xfff0472c
+            && ppc_state.pc != 0xfff04730
+            && ppc_state.pc != 0xfff04750
+            && ppc_state.pc != 0xfff04754
+            && ppc_state.pc != 0xfff04768
+            && ppc_state.pc != 0xfff0476c
+            && ppc_state.pc != 0xfff04790
+            && ppc_state.pc != 0xfff04794
+            && ppc_state.pc != 0xfff064ec
+            // ANS 2.26NT
+            && ppc_state.pc != 0xfff0470c
+            && ppc_state.pc != 0xfff04734
+            && ppc_state.pc != 0xfff04758
+            && ppc_state.pc != 0xfff04770
+            && ppc_state.pc != 0xfff04798
         ) {
             static uint32_t last_phys_addr = -1;
             static uint32_t first_phys_addr = -1;
