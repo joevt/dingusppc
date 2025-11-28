@@ -28,7 +28,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 namespace loguru {
     enum : Verbosity {
         Verbosity_INTERRUPT = loguru::Verbosity_9,
-        Verbosity_DBDMA = loguru::Verbosity_9
+        Verbosity_DBDMA = loguru::Verbosity_9,
+        Verbosity_OHARE_ID = loguru::Verbosity_INFO,
+        Verbosity_OHARE_FEAT_CTRL = loguru::Verbosity_INFO,
     };
 }
 
@@ -351,18 +353,18 @@ uint32_t MacIoTwo::mio_ctrl_read(uint32_t offset, int size) {
     case MIO_OHARE_ID:
         value = (this->fp_id << 24) | (this->mon_id << 16) | (this->mb_id << 8) |
                 (this->cpu_id);
-        LOG_F(9, "%s: read OHARE_ID @%02x = %08x",
-            this->get_name().c_str(), offset, value);
+        LOG_F(OHARE_ID, "%s: read  OHARE_ID @%02x.%c = %0*x",
+            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     case MIO_OHARE_FEAT_CTRL:
         value = this->feat_ctrl;
-        LOG_F(9, "%s: read  FEAT_CTRL @%02x = %08x",
-            this->get_name().c_str(), offset, value);
+        LOG_F(OHARE_FEAT_CTRL, "%s: read  FEAT_CTRL @%02x.%c = %0*x",
+            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
         break;
     default:
         value = 0;
-        LOG_F(WARNING, "%s: read @%02x",
-            this->get_name().c_str(), offset);
+        LOG_F(WARNING, "%s: read  @%02x.%c = %0*x",
+            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
     }
 
     if (!((offset | size) & 3)) // aligned DWORD reads --> fast path
