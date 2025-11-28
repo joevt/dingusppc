@@ -393,6 +393,8 @@ rom_info rom_identity[] = {
     rom( 0x30c500,          0, nullptr       , "P88"      , nullptr  , "PowerBook G4 (Titanum)"                            ) // PowerBook3,5
     rom( 0x30c501,          0, nullptr       , "P881G"    , nullptr  , "PowerBook G4 (Titanum)"                            ) // PowerBook3,5
     rom( 0x314100, 0x6ece5388, "P84i"        , nullptr    , nullptr  , "PowerBook G4 1.0 17 inch (Aluminum)"               ) // PowerBook5,1
+    rom( 0x314101, 0x6cce272e, "P84"         , nullptr    , nullptr  , "PowerBook G4 1.0 17 inch (Aluminum)"               ) // PowerBook5,1
+    rom( 0x314101, 0x9a72282c, "P84"         , nullptr    , nullptr  , "PowerBook G4 1.0 17 inch (Aluminum)"               ) // PowerBook5,1
     rom( 0x314103, 0x5c13264b, nullptr       , "P84"      , nullptr  , "PowerBook G4 1.0 17 inch (Aluminum)"               ) // PowerBook5,1 // 2003-02-18 462f1
     rom( 0x314202, 0xf60a284b, nullptr       , "Q16-EVT"  , nullptr  , "PowerBook G4 15 inch (FW 800 - Aluminum)"          ) // PowerBook5,2 // 2003-09-04 471f1
     rom( 0x314301,          0, nullptr       , "Q41"      , nullptr  , "PowerBook G4 1.33 17 inch (Aluminum)"              ) // PowerBook5,3
