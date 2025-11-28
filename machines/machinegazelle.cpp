@@ -24,11 +24,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <cpu/ppc/ppcemu.h>
-#include <devices/common/hwcomponent.h>
 #include <devices/memctrl/psx.h>
-#include <devices/common/pci/pcidevice.h>
-#include <devices/common/pci/pcihost.h>
 #include <devices/deviceregistry.h>
+#include <devices/ioctrl/macio.h>
 #include <machines/machine.h>
 #include <machines/machinefactory.h>
 #include <machines/machineproperties.h>
@@ -71,9 +69,13 @@ int MachineGazelle::initialize(const std::string &id) {
     PCIHost *pci_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name("PsxPci1"));
     pci_host->set_irq_map(psx_irq_map);
 
-    // register O'Hare I/O controller with the main PCI bus
-    pci_host->add_device(DEV_FUN(0x10,0),
-        dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("OHare")));
+    MacIoTwo* mio_obj = dynamic_cast<MacIoTwo*>(gMachineObj->get_comp_by_name("OHare"));
+    if (id == "pm6500")
+        mio_obj->set_media_bay_id(0x30);
+    else if (id == "tam")
+        mio_obj->set_media_bay_id(0x70);
+
+    pci_host->add_device(DEV_FUN(0x10,0), mio_obj);
 
     PsxCtrl* psx_obj = dynamic_cast<PsxCtrl*>(gMachineObj->get_comp_by_name("Psx"));
 
@@ -124,9 +126,15 @@ static std::vector<std::string> pm6500_devices = {
     "Psx@F8000000", "PsxPci1@F2000000", "ScreamerSnd@14000", "OHare@10"
 };
 
-static const DeviceDescription MachineGazelle_descriptor = {
+static const DeviceDescription MachineGazelle6500_descriptor = {
     Machine::create<MachineGazelle>, pm6500_devices, pm6500_settings, HWCompType::MACHINE,
     "Power Macintosh 6500"
 };
 
-REGISTER_DEVICE(pm6500, MachineGazelle_descriptor);
+static const DeviceDescription MachineGazelleTAM_descriptor = {
+    Machine::create<MachineGazelle>, pm6500_devices, pm6500_settings, HWCompType::MACHINE,
+    "Twentieth Anniversary Macintosh"
+};
+
+REGISTER_DEVICE(pm6500, MachineGazelle6500_descriptor);
+REGISTER_DEVICE(tam, MachineGazelleTAM_descriptor);
