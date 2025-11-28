@@ -390,6 +390,10 @@ private:
     uint8_t  mon_id = 0x10; // Monitor ID (bits 23:16 of the MIO_HEAT_ID)
     uint8_t  fp_id  = 0x70; // Flat panel ID (MSB of the MIO_HEAT_ID)
 
+    // 70 10 70 E0 = Beige G3 Desktop
+    // 7A 10 30 E0 = 6500/225
+    // 70 10 20 A0 = B&W G3
+
     uint8_t  emmo      = 0x01; // factory tester status, active low
     uint32_t emmo_mask = 0x00000010;
 
