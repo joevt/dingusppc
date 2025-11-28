@@ -28,7 +28,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 namespace loguru {
     enum : Verbosity {
         Verbosity_INTERRUPT = loguru::Verbosity_9,
-        Verbosity_DBDMA = loguru::Verbosity_9
+        Verbosity_DBDMA = loguru::Verbosity_9,
+        Verbosity_OHARE_ID = loguru::Verbosity_INFO,
+        Verbosity_OHARE_FEAT_CTRL = loguru::Verbosity_INFO,
     };
 }
 
@@ -334,6 +336,29 @@ uint32_t MacIoTwo::mio_ctrl_read(uint32_t offset, int size) {
     AccessDetails details;
     ACCESSDETAILS_SET(details, size, offset, 0);
     value = conv_rd_data(value, value2, details);
+
+    switch (offset & ~3) {
+    case MIO_INT_EVENTS2:
+    case MIO_INT_MASK2:
+    case MIO_INT_LEVELS2:
+    case MIO_INT_EVENTS1:
+    case MIO_INT_MASK1:
+    case MIO_INT_LEVELS1:
+    case MIO_INT_CLEAR1:
+    case MIO_INT_CLEAR2:
+        break;
+    case MIO_OHARE_ID:
+        LOG_F(OHARE_ID, "%s: read  OHARE_ID @%02x.%c = %0*x",
+            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
+        break;
+    case MIO_OHARE_FEAT_CTRL:
+        LOG_F(OHARE_FEAT_CTRL, "%s: read  FEAT_CTRL @%02x.%c = %0*x",
+            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
+        break;
+    default:
+        LOG_F(WARNING, "%s: read  @%02x.%c = %0*x",
+            this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
+    }
     return value;
 }
 
@@ -372,18 +397,12 @@ uint32_t MacIoTwo::mio_ctrl_read_aligned(uint32_t offset) {
             (this->mb_id  <<  8) |
              this->cpu_id
         ) & ~this->emmo_mask ) | (this->emmo ? this->emmo_mask : 0);
-        LOG_F(9, "%s: read OHARE_ID @%02x = %08x",
-            this->get_name().c_str(), offset, value);
         break;
     case MIO_OHARE_FEAT_CTRL:
         value = this->feat_ctrl;
-        LOG_F(9, "%s: read  FEAT_CTRL @%02x = %08x",
-            this->get_name().c_str(), offset, value);
         break;
     default:
         value = 0;
-        LOG_F(WARNING, "%s: read @%02x",
-            this->get_name().c_str(), offset);
     }
 
     return value;
