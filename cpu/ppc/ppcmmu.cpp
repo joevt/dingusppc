@@ -754,7 +754,51 @@ static TLBEntry* dtlb2_refill(uint32_t guest_va, int is_write, bool is_dbg = fal
         tlb_entry->phys_tag = phys_addr & ~0xFFFUL;
         return tlb_entry;
     } else {
-        if (!is_dbg && mmu_exception_handler != dbg_exception_handler) {
+        if (!is_dbg && mmu_exception_handler != dbg_exception_handler
+            // PM7200
+            && ppc_state.pc != 0xfff04158
+            && ppc_state.pc != 0xfff0415c
+            && ppc_state.pc != 0xfff04160
+            && ppc_state.pc != 0xfff04164
+            && ppc_state.pc != 0xfff04184
+            && ppc_state.pc != 0xfff04188
+            && ppc_state.pc != 0xfff0419c
+            && ppc_state.pc != 0xfff041a0
+            // PM8600
+            && ppc_state.pc != 0xfff0420c
+            && ppc_state.pc != 0xfff04210
+            && ppc_state.pc != 0xfff04214
+            && ppc_state.pc != 0xfff04218
+            && ppc_state.pc != 0xfff0421c
+            && ppc_state.pc != 0xfff04220
+            && ppc_state.pc != 0xfff04224
+            && ppc_state.pc != 0xfff04228
+            && ppc_state.pc != 0xfff04334
+            && ppc_state.pc != 0xfff04338
+            && ppc_state.pc != 0xfff0433c
+            && ppc_state.pc != 0xfff04340
+            && ppc_state.pc != 0xfff04360
+            && ppc_state.pc != 0xfff04364
+            && ppc_state.pc != 0xfff04378
+            && ppc_state.pc != 0xfff0437c
+            // PM6400
+            && ppc_state.pc != 0xfff0370c
+            && ppc_state.pc != 0xfff03710
+            && ppc_state.pc != 0xfff03714
+            && ppc_state.pc != 0xfff03718
+            && ppc_state.pc != 0xfff0371c
+            && ppc_state.pc != 0xfff03720
+            && ppc_state.pc != 0xfff03724
+            && ppc_state.pc != 0xfff03728
+            && ppc_state.pc != 0xfff0374c
+            && ppc_state.pc != 0xfff03750
+            && ppc_state.pc != 0xfff03758
+            && ppc_state.pc != 0xfff0375c
+            && ppc_state.pc != 0xfff03764
+            && ppc_state.pc != 0xfff03768
+            && ppc_state.pc != 0xfff03780
+            && ppc_state.pc != 0xfff03784
+        ) {
             static uint32_t last_phys_addr = -1;
             static uint32_t first_phys_addr = -1;
             if (phys_addr < last_phys_addr || phys_addr > last_phys_addr + 8) {
