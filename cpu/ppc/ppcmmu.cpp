@@ -892,6 +892,15 @@ TLBEntry* dtlb2_refill(uint32_t guest_va, int is_write, bool is_dbg)
             && ppc_state.pc != 0xfff04364
             && ppc_state.pc != 0xfff04378
             && ppc_state.pc != 0xfff0437c
+            // ANS 1.1.22 addresses
+            && ppc_state.pc != 0xfff045a0
+            && ppc_state.pc != 0xfff045a4
+            && ppc_state.pc != 0xfff045a8
+            && ppc_state.pc != 0xfff045ac
+            && ppc_state.pc != 0xfff045cc
+            && ppc_state.pc != 0xfff045d0
+            && ppc_state.pc != 0xfff045e4
+            && ppc_state.pc != 0xfff045e8
         ) {
             static uint32_t last_phys_addr = -1;
             static uint32_t first_phys_addr = -1;
