@@ -167,6 +167,12 @@ void mmu_dump_translations(bool is_write) {
     }
 }
 
+typedef enum {
+    dppc_debug_context_PPC = 1,
+    dppc_debug_context_68K,
+    dppc_debug_context_auto,
+} DPPCDebugContext;
+
 #ifdef ENABLE_68K_DEBUGGER
 
 typedef struct {
@@ -329,19 +335,19 @@ constexpr auto EMU_68K_TABLE_START_PHYS = 0xfff80000;
 constexpr auto EMU_68K_TABLE_START      = 0x68080000;
 constexpr auto EMU_68K_TABLE_SIZE       =    0x80000;
 
-static int get_context() {
+static DPPCDebugContext get_context() {
     if (ppc_state.pc >= EMU_68K_START && ppc_state.pc <= EMU_68K_START + EMU_68K_SIZE - 1) {
 /*
         // Don't check physical address since 0x69xxxxxx points to RAM instead of ROM.
         uint32_t pcp;
         mmu_translate_imem(ppc_state.pc, &pcp);
         if (pcp >= EMU_68K_START_PHYS && pcp <= EMU_68K_START_PHYS + EMU_68K_SIZE_PHYS - 1) {
-            return 2;
+            return dppc_debug_context_68K;
         }
 */
-        return 2;
+        return dppc_debug_context_68K;
     }
-    return 1;
+    return dppc_debug_context_PPC;
 }
 
 /** Execute ppc until the 68k opcode table is reached. */
@@ -1001,7 +1007,8 @@ void DppcDebugger::enter_debugger() {
            inst_string, inst_num_str, profile_name, sub_cmd;
     uint32_t addr, inst_grab;
     std::stringstream ss;
-    int log_level, context;
+    int log_level;
+    DPPCDebugContext context;
     size_t separator_pos;
     bool did_message = false;
     uint32_t next_addr_ppc;
@@ -1014,7 +1021,7 @@ void DppcDebugger::enter_debugger() {
 
     unique_ptr<OfConfigUtils> ofnvram = unique_ptr<OfConfigUtils>(new OfConfigUtils);
 
-    context = 1; /* start with the PowerPC context */
+    context = dppc_debug_context_PPC; /* start with the PowerPC context */
 
 #ifndef _WIN32
     struct winsize win_size_previous;
@@ -1144,7 +1151,10 @@ void DppcDebugger::enter_debugger() {
         else if (cmd == "regs") {
             cmd = "";
 #ifdef ENABLE_68K_DEBUGGER
-            if (context == 2 || (context == 3 && get_context() == 2)) {
+            if (
+                context == dppc_debug_context_68K ||
+                (context == dppc_debug_context_auto && get_context() == dppc_debug_context_68K)
+            ) {
                 print_68k_regs();
             } else
 #endif
@@ -1204,7 +1214,12 @@ void DppcDebugger::enter_debugger() {
             }
             for (; count > 0; count--) {
 #ifdef ENABLE_68K_DEBUGGER
-                if ((context == 2 || (context == 3 && get_context() == 2)) && exec_upto_68k_opcode(context == 3)) {
+                if (
+                    (
+                        context == dppc_debug_context_68K ||
+                        (context == dppc_debug_context_auto && get_context() == dppc_debug_context_68K)
+                    ) && exec_upto_68k_opcode(context == dppc_debug_context_auto)
+                ) {
                     if (!power_on)
                         break;
                     DisasmContext68K ctx;
@@ -1248,7 +1263,12 @@ void DppcDebugger::enter_debugger() {
             try {
                 addr = str2addr(addr_str);
 #ifdef ENABLE_68K_DEBUGGER
-                if ((context == 2 || (context == 3 && get_context() == 2)) && exec_upto_68k_opcode(context == 3)) {
+                if (
+                    (
+                        context == dppc_debug_context_68K ||
+                        (context == dppc_debug_context_auto && get_context() == dppc_debug_context_68K)
+                    ) && exec_upto_68k_opcode(context == dppc_debug_context_auto)
+                ) {
                     exec_until_68k(addr);
                 } else
 #endif
@@ -1287,7 +1307,12 @@ void DppcDebugger::enter_debugger() {
                     try {
                         /* number conversion failed, trying reg name */
 #ifdef ENABLE_68K_DEBUGGER
-                        if ((context == 2 || (context == 3 && get_context() == 2)) && (addr_str == "pc" || addr_str == "PC")) {
+                        if (
+                            (
+                                context == dppc_debug_context_68K ||
+                                (context == dppc_debug_context_auto && get_context() == dppc_debug_context_68K)
+                            ) && (addr_str == "pc" || addr_str == "PC")
+                        ) {
                             addr = ppc_state.gpr[24] - 2;
                         } else
 #endif
@@ -1301,7 +1326,10 @@ void DppcDebugger::enter_debugger() {
                 }
                 try {
 #ifdef ENABLE_68K_DEBUGGER
-                    if (context == 2 || (context == 3 && get_context() == 2)) {
+                    if (
+                        context == dppc_debug_context_68K ||
+                        (context == dppc_debug_context_auto && get_context() == dppc_debug_context_68K)
+                    ) {
                         next_addr_68k = disasm_68k(inst_grab, addr);
                     } else
 #endif
@@ -1315,7 +1343,10 @@ void DppcDebugger::enter_debugger() {
                 /* disas without arguments defaults to disas 1,pc */
                 try {
 #ifdef ENABLE_68K_DEBUGGER
-                    if (context == 2 || (context == 3 && get_context() == 2)) {
+                    if (
+                        context == dppc_debug_context_68K ||
+                        (context == dppc_debug_context_auto && get_context() == dppc_debug_context_68K)
+                    ) {
                         if (cmd_repeat) {
                             delete_prompt();
                             addr = next_addr_68k;
@@ -1387,11 +1418,11 @@ void DppcDebugger::enter_debugger() {
             expr_str = "";
             ss >> expr_str;
             if (expr_str == "ppc" || expr_str == "PPC") {
-                context = 1;
+                context = dppc_debug_context_PPC;
             } else if (expr_str == "68k" || expr_str == "68K") {
-                context = 2;
+                context = dppc_debug_context_68K;
             } else if (expr_str == "auto" || expr_str == "AUTO") {
-                context = 3;
+                context = dppc_debug_context_auto;
             } else {
                 cout << "Unknown debugging context: " << expr_str << endl;
             }
