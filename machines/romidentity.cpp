@@ -297,7 +297,7 @@ rom_info rom_identity[] = {
     rom( 0x110200, 0x4c372fb6, "Diesel"      , "P54"      , nullptr  , "iBook G3/600 14-Inch (Early 2002 Snow)"            ) // PowerBook4,2
     rom( 0x110200, 0x573b2f41, "P54"         , "P54"      , nullptr  , "iBook G3/600 14-Inch (Early 2002 Snow)"            ) // PowerBook4,2
     rom( 0x110200, 0x850d3040, "P54|Diesel"  , "P54"      , nullptr  , "iBook G3/600 14-Inch (Early 2002 Snow)"            ) // PowerBook4,2 // 2001-12-06 432f1
-    rom( 0x110300, 0x58e12d5c, "P72"         , "P72"      , nullptr  , "iBook G3 (Snow)"                                   ) // PowerBook4,3 // 2002-11-11 454f1
+    rom( 0x110300, 0x58e12d5c, "P72"         , "P72"      , nullptr  , "iBook G3 (Snow)"                                   ) // PowerBook4,3 // 2002-11-11 454f1 // 2004-07-02 454f2
     rom( 0x110300, 0xb98a30be, "Nectr"       , "P72"      , nullptr  , "iBook G3 (Snow)"                                   ) // PowerBook4,3
     rom( 0x110301, 0x594a2d5d, "P73"         , "P73"      , nullptr  , "iBook G3 (Snow)"                                   ) // PowerBook4,3
     rom( 0x110302, 0x59b32d5e, "P72x"        , "P73"      , nullptr  , "iBook G3 (Snow)"                                   ) // PowerBook4,3 // 2003-03-15 464f1
