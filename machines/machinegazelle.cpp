@@ -70,6 +70,7 @@ int MachineGazelle::initialize(const std::string &id) {
     pci_host->set_irq_map(psx_irq_map);
 
     MacIoTwo* mio_obj = dynamic_cast<MacIoTwo*>(gMachineObj->get_comp_by_name("OHare"));
+    mio_obj->set_media_bay_id(id == "tam" ? 0x70 : 0x30);
     mio_obj->set_cpu_id(id == "pm5500" ? 0xF0 : 0xE0);
     mio_obj->set_emmo_mask(0x40);
 
@@ -134,5 +135,11 @@ static const DeviceDescription MachineGazelle6500_descriptor = {
     "Power Macintosh 6500"
 };
 
+static const DeviceDescription MachineGazelleTAM_descriptor = {
+    Machine::create<MachineGazelle>, pm6500_devices, pm6500_settings, HWCompType::MACHINE,
+    "Twentieth Anniversary Macintosh"
+};
+
 REGISTER_DEVICE(pm5500, MachineGazelle5500_descriptor);
 REGISTER_DEVICE(pm6500, MachineGazelle6500_descriptor);
+REGISTER_DEVICE(tam, MachineGazelleTAM_descriptor);
