@@ -358,6 +358,10 @@ public:
         this->cpu_id = id;
     }
 
+    void set_emmo_mask(uint32_t mask) {
+        this->emmo_mask = mask;
+    }
+
     // MMIO device methods
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
     void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
@@ -385,7 +389,9 @@ private:
     uint8_t  mb_id  = 0x70; // Media Bay ID (bits 15:8 of the MIO_HEAT_ID)
     uint8_t  mon_id = 0x10; // Monitor ID (bits 23:16 of the MIO_HEAT_ID)
     uint8_t  fp_id  = 0x70; // Flat panel ID (MSB of the MIO_HEAT_ID)
-    uint8_t  emmo   = 0x01; // factory tester status, active low
+
+    uint8_t  emmo      = 0x01; // factory tester status, active low
+    uint32_t emmo_mask = 0x00000010;
 
     // Subdevice object pointers
     NVram*              nvram;    // NVRAM
