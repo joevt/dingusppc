@@ -345,8 +345,12 @@ uint32_t MacIoTwo::mio_ctrl_read_aligned(uint32_t offset) {
         value = 0;
         break;
     case MIO_OHARE_ID:
-        value = (this->fp_id << 24) | (this->mon_id << 16) | (this->mb_id << 8) |
-            (this->cpu_id | (this->emmo << 4));
+        value = ( (
+            (this->fp_id  << 24) |
+            (this->mon_id << 16) |
+            (this->mb_id  <<  8) |
+             this->cpu_id
+        ) & ~this->emmo_mask ) | (this->emmo ? this->emmo_mask : 0);
         LOG_F(9, "%s: read OHARE_ID @%02x = %08x",
             this->get_name().c_str(), offset, value);
         break;
