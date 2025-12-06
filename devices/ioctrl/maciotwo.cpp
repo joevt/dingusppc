@@ -382,8 +382,12 @@ uint32_t MacIoTwo::mio_ctrl_read_aligned(uint32_t offset) {
         value = 0;
         break;
     case MIO_OHARE_ID:
-        value = (this->fp_id << 24) | (this->mon_id << 16) | (this->mb_id << 8) |
-            (this->cpu_id | (this->emmo << 4));
+        value = ( (
+            (this->fp_id  << 24) |
+            (this->mon_id << 16) |
+            (this->mb_id  <<  8) |
+             this->cpu_id
+        ) & ~this->emmo_mask ) | (this->emmo ? this->emmo_mask : 0);
         break;
     case MIO_OHARE_FEAT_CTRL:
         value = this->feat_ctrl;

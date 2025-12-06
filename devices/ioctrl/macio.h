@@ -345,6 +345,10 @@ public:
         this->mb_id = id;
     }
 
+    void set_emmo_mask(uint32_t mask) {
+        this->emmo_mask = mask;
+    }
+
     // MMIO device methods
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
     void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
@@ -377,7 +381,8 @@ private:
     // 7A 10 30 E0 = 6500/225
     // 70 10 20 A0 = B&W G3
 
-    uint8_t  emmo   = 0x01; // factory tester status, active low
+    uint8_t  emmo      = 0x01; // factory tester status, active low
+    uint32_t emmo_mask = 0x00000010;
 
     // Subdevice object pointers
     NVram*              nvram;    // NVRAM

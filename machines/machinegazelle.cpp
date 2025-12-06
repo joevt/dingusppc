@@ -74,6 +74,7 @@ int MachineGazelle::initialize(const std::string &id) {
         mio_obj->set_media_bay_id(0x30);
     else if (id == "tam")
         mio_obj->set_media_bay_id(0x70);
+    mio_obj->set_emmo_mask(0x40);
 
     pci_host->add_device(DEV_FUN(0x10,0), mio_obj);
 
