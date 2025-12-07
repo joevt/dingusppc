@@ -70,6 +70,7 @@ int MachineGazelle::initialize(const std::string &id) {
     pci_host->set_irq_map(psx_irq_map);
 
     MacIoTwo* mio_obj = dynamic_cast<MacIoTwo*>(gMachineObj->get_comp_by_name("OHare"));
+    mio_obj->set_cpu_id(id == "pm5500" ? 0xF0 : 0xE0);
     mio_obj->set_emmo_mask(0x40);
 
     pci_host->add_device(DEV_FUN(0x10,0), mio_obj);
@@ -123,9 +124,15 @@ static std::vector<std::string> pm6500_devices = {
     "Psx@F8000000", "PsxPci1@F2000000", "ScreamerSnd@14000", "OHare@10"
 };
 
-static const DeviceDescription MachineGazelle_descriptor = {
+static const DeviceDescription MachineGazelle5500_descriptor = {
+    Machine::create<MachineGazelle>, pm6500_devices, pm6500_settings, HWCompType::MACHINE,
+    "Power Macintosh 5500"
+};
+
+static const DeviceDescription MachineGazelle6500_descriptor = {
     Machine::create<MachineGazelle>, pm6500_devices, pm6500_settings, HWCompType::MACHINE,
     "Power Macintosh 6500"
 };
 
-REGISTER_DEVICE(pm6500, MachineGazelle_descriptor);
+REGISTER_DEVICE(pm5500, MachineGazelle5500_descriptor);
+REGISTER_DEVICE(pm6500, MachineGazelle6500_descriptor);
