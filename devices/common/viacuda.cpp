@@ -626,6 +626,15 @@ void ViaCuda::error_response(uint32_t error) {
     this->is_open_ended    = false;
 }
 
+void ViaCuda::one_byte_header(uint32_t pkt_type) {
+    this->out_buf[0]       = pkt_type;
+    this->out_count        = 1;
+    this->out_pos          = 0;
+    this->out_handler      = &ViaCuda::out_buf_handler;
+    this->next_out_handler = &ViaCuda::null_out_handler;
+    this->is_open_ended    = false;
+}
+
 void ViaCuda::process_packet() {
     if (this->in_count < 2) {
         LOG_F(ERROR, "Cuda: invalid packet (too few data)! data:%s", hex_string(this->in_buf, this->in_count).c_str());
@@ -714,8 +723,7 @@ void ViaCuda::autopoll_handler() {
                 }
             } else if (this->one_sec_mode == 3) {
                 LOG_F(CUDATICK, "tick");
-                response_header(CUDA_PKT_TICK, 0);
-                this->out_count = 1;
+                one_byte_header(CUDA_PKT_TICK);
             }
             this->last_time = this_time;
 
