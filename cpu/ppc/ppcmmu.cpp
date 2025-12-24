@@ -41,10 +41,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //#define VERIFY_INSTRUCTION_READ // uncomment this to verify TLB entries for instructions
 //#define CHECK_THREAD // uncomment this to verify the thread
 //#define TRAP_READ_KEYMAP // uncomment this to log access to KeyMap
+//#define WATCH_POINT_WRITE // uncomment this to log writes to an address
 
 #ifdef WATCH_POINT
 extern uint32_t *watch_point_dma;
 extern bool got_watch_point_value;
+#endif
+
+#ifdef WATCH_POINT_WRITE
+static uint32_t watch_point_write_address = 0xff808010;
 #endif
 
 #ifdef LOG_TAG
@@ -1828,6 +1833,15 @@ inline void mmu_write_vmem(uint32_t opcode, uint32_t guest_va, T value)
         LOG_F(ERROR, "mmu_write_vmem; writing to cpu_type value:0x%08llx size:%d guest_pa:0x%08x host_va:0x%llx",
             (uint64_t)value, (int)sizeof(T), guest_pa, (uint64_t)host_va);
         dump_backtrace();
+    }
+#endif
+
+#ifdef WATCH_POINT_WRITE
+    if (guest_va >= watch_point_write_address && guest_va < watch_point_write_address + 4) {
+        LOG_F(WARNING, "Writing to 0x%08X", watch_point_write_address);
+        dump_backtrace();
+        power_on = false;
+        power_off_reason = po_enter_debugger;
     }
 #endif
 
