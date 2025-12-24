@@ -41,6 +41,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //#define VERIFY_INSTRUCTION_READ // uncomment this to verify TLB entries for instructions
 //#define CHECK_THREAD // uncomment this to verify the thread
 //#define TRAP_READ_KEYMAP // uncomment this to log access to KeyMap
+//#define WATCH_POINT_WRITE // uncomment this to log writes to an address
+
+#ifdef WATCH_POINT_WRITE
+static uint32_t watch_point_write_address = 0xff808010;
+#endif
 
 /* pointer to exception handler to be called when a MMU exception is occurred. */
 void (*mmu_exception_handler)(Except_Type exception_type, uint32_t srr1_bits);
@@ -1652,6 +1657,14 @@ inline void mmu_write_vmem(uint32_t opcode, uint32_t guest_va, T value)
                 guest_va, tag, savedphys, tlb2_entry->phys_tag);
             dump_backtrace();
         }
+    }
+#endif
+
+#ifdef WATCH_POINT_WRITE
+    if (guest_va >= watch_point_write_address && guest_va < watch_point_write_address + 4) {
+        LOG_F(WARNING, "Writing to 0x%08X", watch_point_write_address);
+        dump_backtrace();
+        power_off(po_enter_debugger);
     }
 #endif
 
