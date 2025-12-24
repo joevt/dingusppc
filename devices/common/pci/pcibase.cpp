@@ -137,38 +137,44 @@ int PCIBase::attach_exp_rom_image(const std::string img_path)
             throw std::runtime_error("could not open specified ROM dump image");
         }
 
-        // validate image file
-        uint8_t buf[4] = { 0 };
-
-        img_file.seekg(0, std::ios::beg);
-        img_file.read((char *)buf, sizeof(buf));
-
-        if (buf[0] != 0x55 || buf[1] != 0xAA) {
-            throw std::runtime_error("invalid expansion ROM signature");
-        }
-
         // determine image size
         img_file.seekg(0, std::ios::end);
         size_t exp_rom_image_size = img_file.tellg();
+
+        do {
+            // validate image file
+            uint8_t buf[4] = { 0 };
+
+            img_file.seekg(0, std::ios::beg);
+            img_file.read((char *)buf, 2);
+
+            if (buf[0] != 0x55 || buf[1] != 0xAA) {
+                LOG_F(WARNING, "%s: invalid expansion ROM signature.", this->get_name().c_str());
+                break;
+            }
+
+            // verify PCI struct offset
+            img_file.seekg(0x18, std::ios::beg);
+            img_file.read((char *)buf, 2);
+            uint16_t pci_struct_offset = READ_WORD_LE_U(buf);
+
+            if (pci_struct_offset > exp_rom_image_size - 4) {
+                LOG_F(WARNING, "%s: invalid PCI structure offset.", this->get_name().c_str());
+                break;
+            }
+
+            // verify PCI struct signature
+            img_file.seekg(pci_struct_offset, std::ios::beg);
+            img_file.read((char *)buf, 4);
+
+            if (buf[0] != 'P' || buf[1] != 'C' || buf[2] != 'I' || buf[3] != 'R') {
+                LOG_F(WARNING, "%s: unexpected PCI struct signature.", this->get_name().c_str());
+                break;
+            }
+        } while (0);
+
         if (exp_rom_image_size > 4*1024*1024) {
             throw std::runtime_error("expansion ROM file too large");
-        }
-
-        // verify PCI struct offset
-        uint16_t pci_struct_offset = 0;
-        img_file.seekg(0x18, std::ios::beg);
-        img_file.read((char *)&pci_struct_offset, sizeof(pci_struct_offset));
-
-        if (pci_struct_offset > exp_rom_image_size) {
-            throw std::runtime_error("invalid PCI structure offset");
-        }
-
-        // verify PCI struct signature
-        img_file.seekg(pci_struct_offset, std::ios::beg);
-        img_file.read((char *)buf, sizeof(buf));
-
-        if (buf[0] != 'P' || buf[1] != 'C' || buf[2] != 'I' || buf[3] != 'R') {
-            throw std::runtime_error("unexpected PCI struct signature");
         }
 
         // find minimum rom size for the rom file (power of 2 >= 0x800)
