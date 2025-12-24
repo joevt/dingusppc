@@ -55,7 +55,7 @@ PCIBase::PCIBase(const std::string name, PCIHeaderType hdr_type, int num_bars)
         uint16_t new_cmd = cmd & this->command_cfg;
         uint16_t changed = old_cmd ^ new_cmd;
         #define CHANGED(flag, level, name, value) if (changed & flag) \
-            LOG_F(level, "%s: " name, this->get_name().c_str(), (new_cmd & flag) value)
+            LOG_F(level, "%s: " name, this->get_name_and_unit_address().c_str(), (new_cmd & flag) value)
         CHANGED(0x0001, INFO   , "I/O Space %s"                  , ? "enabled" : "disabled");
         CHANGED(0x0002, INFO   , "Memory Space %s"               , ? "enabled" : "disabled");
         CHANGED(0x0004, INFO   , "Bus Master %s"                 , ? "enabled" : "disabled");
@@ -149,7 +149,7 @@ int PCIBase::attach_exp_rom_image(const std::string img_path)
             img_file.read((char *)buf, 2);
 
             if (buf[0] != 0x55 || buf[1] != 0xAA) {
-                LOG_F(WARNING, "%s: invalid expansion ROM signature.", this->get_name().c_str());
+                LOG_F(WARNING, "%s: invalid expansion ROM signature.", this->get_name_and_unit_address().c_str());
                 break;
             }
 
@@ -159,7 +159,7 @@ int PCIBase::attach_exp_rom_image(const std::string img_path)
             uint16_t pci_struct_offset = READ_WORD_LE_U(buf);
 
             if (pci_struct_offset > exp_rom_image_size - 4) {
-                LOG_F(WARNING, "%s: invalid PCI structure offset.", this->get_name().c_str());
+                LOG_F(WARNING, "%s: invalid PCI structure offset.", this->get_name_and_unit_address().c_str());
                 break;
             }
 
@@ -168,7 +168,7 @@ int PCIBase::attach_exp_rom_image(const std::string img_path)
             img_file.read((char *)buf, 4);
 
             if (buf[0] != 'P' || buf[1] != 'C' || buf[2] != 'I' || buf[3] != 'R') {
-                LOG_F(WARNING, "%s: unexpected PCI struct signature.", this->get_name().c_str());
+                LOG_F(WARNING, "%s: unexpected PCI struct signature.", this->get_name_and_unit_address().c_str());
                 break;
             }
         } while (0);
@@ -188,17 +188,17 @@ int PCIBase::attach_exp_rom_image(const std::string img_path)
 
         if (exp_rom_image_size == this->exp_rom_size) {
             LOG_F(INFO, "%s: loaded expansion rom (%d bytes).",
-                this->get_name().c_str(), this->exp_rom_size);
+                this->get_name_and_unit_address().c_str(), this->exp_rom_size);
         }
         else {
             LOG_F(WARNING, "%s: loaded expansion rom (%d bytes adjusted to %d bytes).",
-                this->get_name().c_str(), (int)exp_rom_image_size, this->exp_rom_size);
+                this->get_name_and_unit_address().c_str(), (int)exp_rom_image_size, this->exp_rom_size);
         }
 
         this->exp_bar_cfg  = ~(this->exp_rom_size - 1);
     }
     catch (const std::exception& exc) {
-        LOG_F(ERROR, "%s: %s", this->get_name().c_str(), exc.what());
+        LOG_F(ERROR, "%s: %s", this->get_name_and_unit_address().c_str(), exc.what());
         result = -1;
     }
 
@@ -219,7 +219,7 @@ void PCIBase::set_bar_value(int bar_num, uint32_t value)
             this->bars[bar_num] = (value & bar_cfg & ~3) | (bar_cfg & 3);
             if (value != 0xFFFFFFFFUL && (value & ~3) != (value & bar_cfg & ~3)) {
                 LOG_F(ERROR, "%s: BAR %d cannot be 0x%08x (set to 0x%08x)",
-                    this->get_name().c_str(), bar_num, (value & ~3), (value & bar_cfg & ~3));
+                    this->get_name_and_unit_address().c_str(), bar_num, (value & ~3), (value & bar_cfg & ~3));
             }
             break;
 
@@ -229,7 +229,7 @@ void PCIBase::set_bar_value(int bar_num, uint32_t value)
             this->bars[bar_num] = (value & bar_cfg & ~0xF) | (bar_cfg & 0xF);
             if (value != 0xFFFFFFFFUL && (value & ~0xF) != (value & bar_cfg & ~0xF)) {
                 LOG_F(ERROR, "%s: BAR %d cannot be 0x%08x (set to 0x%08x)",
-                    this->get_name().c_str(), bar_num, (value & ~0xF), (value & bar_cfg & ~0xF));
+                    this->get_name_and_unit_address().c_str(), bar_num, (value & ~0xF), (value & bar_cfg & ~0xF));
             }
             break;
 
@@ -267,11 +267,11 @@ void PCIBase::finish_config_bars()
             case 2:
                 if (bar_num >= num_bars - 1) {
                     ABORT_F("%s: BAR %d cannot be 64-bit",
-                            this->get_name().c_str(), bar_num);
+                            this->get_name_and_unit_address().c_str(), bar_num);
                 }
                 else if (this->bars_cfg[bar_num+1] == 0) {
                     ABORT_F("%s: 64-bit BAR %d has zero for upper 32 bits",
-                            this->get_name().c_str(), bar_num);
+                            this->get_name_and_unit_address().c_str(), bar_num);
                 }
                 else {
                     bars_typ[bar_num++] = PCIBarType::Mem_64_Bit_Lo;
@@ -280,7 +280,7 @@ void PCIBase::finish_config_bars()
                 break;
             default:
                 ABORT_F("%s: invalid or unsupported PCI space type %d for BAR %d",
-                        this->get_name().c_str(), pci_space_type, bar_num);
+                        this->get_name_and_unit_address().c_str(), pci_space_type, bar_num);
             } // switch pci_space_type
         }
     } // for bar_num
@@ -354,7 +354,7 @@ void PCIBase::pci_interrupt(uint8_t irq_line_state) {
         if (this->int_details.int_ctrl_obj && this->int_details.irq_id)
             this->int_details.int_ctrl_obj->ack_int(this->int_details.irq_id, irq_line_state);
         else
-            LOG_F(ERROR, "Unhandled interrupt from device %s", this->get_name().c_str());
+            LOG_F(ERROR, "Unhandled interrupt from device %s", this->get_name_and_unit_address().c_str());
         /* A pci device should set the interrupt status bit when an interrupt occurs
          * and it should clear the interrupt status bit when its interrupt bits are cleared.
          * The interrupt status bit is new to PCI Local Bus Specification Revision 2.3
