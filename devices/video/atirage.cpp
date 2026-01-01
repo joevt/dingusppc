@@ -1119,7 +1119,7 @@ void ATIRage::begin_drawing(uint32_t initiator, uint32_t value) {
 
 void ATIRage::draw_rect(uint32_t width, uint32_t height) {
     uint8_t frgd_src = extract_bits<uint32_t>(this->regs[ATI_DP_SRC], ATI_DP_FRGD_SRC, ATI_DP_FRGD_SRC_size);
-    uint8_t bkgd_src = extract_bits<uint32_t>(this->regs[ATI_DP_SRC], ATI_DP_BKGD_SRC, ATI_DP_BKGD_SRC_size);
+//  uint8_t bkgd_src = extract_bits<uint32_t>(this->regs[ATI_DP_SRC], ATI_DP_BKGD_SRC, ATI_DP_BKGD_SRC_size);
     uint8_t mono_src = extract_bits<uint32_t>(this->regs[ATI_DP_SRC], ATI_DP_MONO_SRC, ATI_DP_MONO_SRC_size);
 
     if (frgd_src == 1 && !mono_src) { // rectangle fill with foreground color
