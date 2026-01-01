@@ -839,7 +839,8 @@ string MachineFactory::machine_name_from_rom(char *rom_data, size_t rom_size) {
     int best_match_count = 0;
     string machine_name = "";
 
-    bool print_all_info = false;
+    // set this to false if you want to print all info only when there's no ROM match
+    bool print_all_info = true;
 
     /* read firmware version from file */
     date = READ_DWORD_BE_A(&rom_data[8]);
@@ -993,7 +994,7 @@ string MachineFactory::machine_name_from_rom(char *rom_data, size_t rom_size) {
         } // for rom_info
     } // for match_pass
 
-    if (1 || print_all_info) {
+    if (print_all_info) {
         if (is_nw) {
             LOG_F(INFO, "Info from ROM:");
             LOG_F(INFO, "    ROM Date: %04x-%02x-%02x", date >> 16, (date >> 8) & 0xff, date & 0xff);
@@ -1028,7 +1029,7 @@ string MachineFactory::machine_name_from_rom(char *rom_data, size_t rom_size) {
     if (expected_ow[0] || expected_start[0] || expected_config[0] || expected_recovery[0] || expected_romimage[0])
         checksum_verbosity = loguru::Verbosity_ERROR;
 
-    if (1 || print_all_info || checksum_verbosity != loguru::Verbosity_INFO) {
+    if (print_all_info || checksum_verbosity != loguru::Verbosity_INFO) {
         if (is_nw) {
             if (has_nw_config) {
                 VLOG_F(checksum_verbosity, "    ROM Checksums: 0x%08x%s, 0x%08x%s, 0x%08x%s, 0x%08x%s",
