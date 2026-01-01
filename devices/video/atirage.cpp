@@ -35,7 +35,8 @@ namespace loguru {
     enum : Verbosity {
         Verbosity_ATIRAGE = loguru::Verbosity_9,
         Verbosity_ATIINTERRUPT = loguru::Verbosity_9,
-        Verbosity_ATICURSOR = loguru::Verbosity_9
+        Verbosity_ATICURSOR = loguru::Verbosity_9,
+        Verbosity_ATIDRAW = loguru::Verbosity_9,
     };
 }
 
@@ -319,13 +320,18 @@ uint32_t ATIRage::read_reg(uint32_t reg_offset, uint32_t size) {
     return static_cast<uint32_t>(result);
 }
 
-#define WRITE_VALUE_AND_LOG(level) \
+#define LOG_VALUE(level) \
     do { \
-        this->regs[reg_num] = new_value; \
         LOG_F(level, "%s: write %s %04x.%c = %0*x = %08x", this->get_name_and_unit_address().c_str(), \
             get_reg_name(reg_num), reg_offset, SIZE_ARG(size), size * 2, \
             (uint32_t)extract_bits<uint64_t>(value, offset * 8, size * 8), new_value \
         ); \
+    } while (0)
+
+#define WRITE_VALUE_AND_LOG(level) \
+    do { \
+        this->regs[reg_num] = new_value; \
+        LOG_VALUE(level); \
     } while (0)
 
 void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
@@ -630,8 +636,10 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
     case ATI_DST_HEIGHT_WIDTH:
     case ATI_DST_X_WIDTH:
     case ATI_DST_BRES_LNTH:
+        new_value = value;
+        LOG_VALUE(ATIDRAW);
         this->begin_drawing(reg_num, value);
-        break;
+        return;
     default:
         new_value = value;
         break;
