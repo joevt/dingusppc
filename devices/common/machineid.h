@@ -74,8 +74,7 @@ public:
             std::string name = get_name_OpenFirmware(ppc_state.pc, phys_addr, &name_offset, false);
             if (!name.empty()) {
                 if (GET_BIN_PROP("debug_copland")) {
-                    power_on = false;
-                    power_off_reason = po_enter_debugger;
+                    power_off(po_enter_debugger);
                 }
 
                 uint32_t nv_ram_buffer_xtoken;

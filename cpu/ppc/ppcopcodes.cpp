@@ -549,12 +549,10 @@ void dppc_interpreter::ppc_divw(uint32_t opcode) {
         auto diff = now - start_time;
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(diff);
         fprintf(stderr, "time since start: %lld ms\n", ms.count());
-        power_on = false;
-        power_off_reason = po_disassemble_on;
+        power_off(po_disassemble_on);
     } else if (ppc_result_b == 32719) {
         fprintf(stderr, "divw by 32749 (after)\n");
-        power_on = false;
-        power_off_reason = po_disassemble_off;
+        power_off(po_disassemble_off);
     }
 #endif
 
