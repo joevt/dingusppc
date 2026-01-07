@@ -153,8 +153,7 @@ void HammerheadCtrl::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t val
             boot_rom->set_rom_write_enable(new_rom_we);
             #if 1
             if (new_rom_we) {
-                power_on = false;
-                power_off_reason = po_enter_debugger;
+                power_off(po_enter_debugger);
             }
             #endif
         }
