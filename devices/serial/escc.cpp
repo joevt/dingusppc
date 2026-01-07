@@ -343,6 +343,9 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
             (this->write_regs[WR3] & (WR3_RX_ENABLE | WR3_ENTER_HUNT_MODE)) |
             (value & ~(WR3_RX_ENABLE | WR3_ENTER_HUNT_MODE));
         return;
+    case WR4:
+        LOG_F(INFO, "%s: WR4  = %02X", this->get_name_and_unit_address().c_str(), value);
+        break;
     case WR7:
         if (this->write_regs[WR15] & WR15_SDLC_HDLC_ENHANCEMENT_ENABLE) {
             this->wr7_enh = value;
@@ -352,6 +355,9 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
     case WR8:
         this->send_byte(value);
         return;
+    case WR11:
+        LOG_F(INFO, "%s: WR11 = %02X", this->get_name_and_unit_address().c_str(), value);
+        break;
     case WR14:
         switch (value & WR14_DPLL_COMMAND_BITS) {
         case WR14_DPLL_NULL_COMMAND:
