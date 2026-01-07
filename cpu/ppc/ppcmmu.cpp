@@ -757,8 +757,7 @@ static TLBEntry* itlb2_refill(uint32_t guest_va)
             (pCurITLB2 == &itlb2_mode1[0]) ? 1 : pCurITLB2 == &itlb2_mode2[0] ? 2 : pCurITLB2 == &itlb2_mode3[0] ? 3 : -1
         );
         //mmu_exception_handler(Except_Type::EXC_ISI, 0x08000000);
-        power_on = false;
-        power_off_reason = po_enter_debugger;
+        power_off(po_enter_debugger);
         tlb_entry = &UnmappedMem;
     }
 
@@ -1411,8 +1410,7 @@ inline T mmu_read_vmem(uint32_t opcode, uint32_t guest_va)
     if (guest_va == 0x174) {
         LOG_F(WARNING, "Reading from 0x174:KeyMap");
         dump_backtrace();
-        power_on = false;
-        power_off_reason = po_enter_debugger;
+        power_off(po_enter_debugger);
     }
 #endif
 
@@ -1849,8 +1847,7 @@ inline void mmu_write_vmem(uint32_t opcode, uint32_t guest_va, T value)
     if (guest_va >= watch_point_write_address && guest_va < watch_point_write_address + 4) {
         LOG_F(WARNING, "Writing to 0x%08X", watch_point_write_address);
         dump_backtrace();
-        power_on = false;
-        power_off_reason = po_enter_debugger;
+        power_off(po_enter_debugger);
     }
 #endif
 
