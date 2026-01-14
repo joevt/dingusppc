@@ -101,6 +101,12 @@ protected:
     uint8_t r_cylinder_hi;
     uint8_t r_dev_head;
     uint8_t r_command;
+    uint8_t r_featuresx;
+    uint8_t r_countx;
+    uint8_t r_lbalowx;
+    uint8_t r_lbamidx;
+    uint8_t r_lbahighx;
+    bool    supports_lba48 = false;
     uint8_t r_status;
     uint8_t r_status_save;
     uint8_t r_dev_ctrl = 0x08 | ata_interface::ATA_CTRL::IEN; // disable interrupts
