@@ -34,8 +34,10 @@ constexpr auto SECTORS_PER_INT = 16;
 
 // C:16383 x H:16 x S:63 = C:1032 x H:254 x S:63 = 8063.5078125 MiB = 8.46 GB
 constexpr auto ATA_BIOS_LIMIT = 16514064;
+
 // C:65535 x H:16 x S:255 = 127.498 GiB = 136.900 GB = largest identify
 constexpr auto REAL_CHS_LIMIT = 267382800;
+
 // C:65536 x H:16 x S:255 = 127.500 GiB = 136.902 GB = largest address
 constexpr auto CHS_LIMIT = 267386880;
 
@@ -61,13 +63,13 @@ public:
 
 protected:
     void        prepare_identify_info();
-    uint64_t    get_lba();
+    uint64_t    get_lba(bool lba48);
     void        calc_chs_params();
 
 private:
     MetaImgFile hdd_img;
     uint64_t    img_size = 0;
-    uint32_t    total_sectors = 0;
+    uint64_t    total_sectors = 0;
     uint64_t    cur_fpos = 0;
 
     // fictive disk geometry for CHS-to-LBA translation
