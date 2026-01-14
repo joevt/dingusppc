@@ -1269,19 +1269,24 @@ void ppc_cpu_init(MemCtrlBase* mem_ctrl, uint32_t cpu_version, bool do_include_6
     g_nanoseconds_base = cpu_now_ns();
     g_icycles = 0;
 
-//                    //                                        // PDM cpu clock calculated at 0x403036CC in r3
-//  icnt_factor = 11; // 1 instruction = 2048 ns =    0.488 MHz // 00068034 =     0.426036 MHz = 2347.219 ns // floppy doesn't work
-//  icnt_factor = 10; // 1 instruction = 1024 ns =    0.977 MHz // 000D204C =     0.860236 MHz = 1162.471 ns //  [0..10] MHz = invalid clock for PDM gestalt calculation
-//  icnt_factor =  9; // 1 instruction =  512 ns =    1.953 MHz // 001A6081 =     1.728641 MHz =  578.489 ns //  [0..10] MHz = invalid clock for PDM gestalt calculation
-//  icnt_factor =  8; // 1 instruction =  256 ns =    3.906 MHz // 0034E477 =     3.466359 MHz =  288.487 ns //  [0..10] MHz = invalid clock for PDM gestalt calculation
-//  icnt_factor =  7; // 1 instruction =  128 ns =    7.813 MHz // 0069E54C =     6.939980 MHz =  144.092 ns //  [0..10] MHz = invalid clock for PDM gestalt calculation
-//  icnt_factor =  6; // 1 instruction =   64 ns =   15.625 MHz // 00D3E6F5 =    13.887221 MHz =   72.008 ns // (10..60] = 50, (60..73] = 66, (73..100] = 80 MHz
-//  icnt_factor =  5; // 1 instruction =   32 ns =   31.250 MHz // 01A7B672 =    27.768434 MHz =   36.012 ns //
-    icnt_factor =  4; // 1 instruction =   16 ns =   62.500 MHz // 034F0F0F =    55.512847 MHz =   18.013 ns // 6100/60 in Apple System Profiler
-//  icnt_factor =  3; // 1 instruction =    8 ns =  125.000 MHz // 069E1E1E =   111.025694 MHz =    9.006 ns // (100...) MHz = invalid clock for PDM gestalt calculation
-//  icnt_factor =  2; // 1 instruction =    4 ns =  250.000 MHz // 0D3C3C3C =   222.051388 MHz =    4.503 ns // (100...) MHz = invalid clock for PDM gestalt calculation
-//  icnt_factor =  1; // 1 instruction =    2 ns =  500.000 MHz // 1A611A7B =   442.571387 MHz =    2.259 ns // (100...) MHz = invalid clock for PDM gestalt calculation
-//  icnt_factor =  0; // 1 instruction =    1 ns = 1500.000 MHz // 3465B2D9 =   879.080153 MHz =    1.137 ns // (100...) MHz = invalid clock for PDM gestalt calculation
+    icnt_factor =
+//          // 1 instruction =        // PDM cpu clock calculated at 0x403036CC in r3
+//      11; // 2048 ns =    0.488 MHz // 00068034 =   0.426036 MHz = 2347.219 ns // floppy doesn't work
+//      10; // 1024 ns =    0.977 MHz // 000D204C =   0.860236 MHz = 1162.471 ns // invalid
+//       9; //  512 ns =    1.953 MHz // 001A6081 =   1.728641 MHz =  578.489 ns // invalid
+//       8; //  256 ns =    3.906 MHz // 0034E477 =   3.466359 MHz =  288.487 ns // invalid
+//       7; //  128 ns =    7.813 MHz // 0069E54C =   6.939980 MHz =  144.092 ns // invalid
+//       6; //   64 ns =   15.625 MHz // 00D3E6F5 =  13.887221 MHz =   72.008 ns //
+//       5; //   32 ns =   31.250 MHz // 01A7B672 =  27.768434 MHz =   36.012 ns //
+         4; //   16 ns =   62.500 MHz // 034F0F0F =  55.512847 MHz =   18.013 ns // 6100/60 in Apple System Profiler
+//       3; //    8 ns =  125.000 MHz // 069E1E1E = 111.025694 MHz =    9.006 ns // invalid
+//       2; //    4 ns =  250.000 MHz // 0D3C3C3C = 222.051388 MHz =    4.503 ns // invalid
+//       1; //    2 ns =  500.000 MHz // 1A611A7B = 442.571387 MHz =    2.259 ns // invalid
+//       0; //    1 ns = 1500.000 MHz // 3465B2D9 = 879.080153 MHz =    1.137 ns // invalid
+//
+//      (10,60] = 50, (60,73] = 66, (73,100] = 80 MHz
+//      [0,10] MHz = invalid clock for PDM gestalt calculation
+//      (100,∞) MHz = invalid clock for PDM gestalt calculation
 
     tbr_wr_timestamp = 0;
     rtc_timestamp = 0;
