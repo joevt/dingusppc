@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 #include <memaccess.h>
 
+#include <algorithm>
 #include <bitset>
 #include <cstring>
 #include <fstream>
@@ -54,10 +55,47 @@ void AtaHardDisk::insert_image(std::string filename) {
 
     this->img_size = this->hdd_img.size();
     uint64_t sectors = this->hdd_img.size() / ATA_HD_SEC_SIZE;
-    this->total_sectors = (uint32_t)sectors;
-    if (sectors != this->total_sectors) {
-        ABORT_F("%s: image file \"%s\" is too big", this->get_name_and_unit_address().c_str(),
-                filename.c_str());
+    this->total_sectors = sectors;
+    if (sectors >= REAL_CHS_LIMIT) {
+        LOG_F(WARNING, "%s: image file \"%s\" size (%.3f GiB %.3f GB) exceeds CHS limit (%.3f GiB %.3f GB)",
+            this->get_name_and_unit_address().c_str(),
+            filename.c_str(),
+            1.0 * ATA_HD_SEC_SIZE * this->total_sectors / (1<<30),
+            1.0 * ATA_HD_SEC_SIZE * this->total_sectors / (1000000000),
+            1.0 * ATA_HD_SEC_SIZE * REAL_CHS_LIMIT / (1<<30),
+            1.0 * ATA_HD_SEC_SIZE * REAL_CHS_LIMIT / (1000000000)
+        );
+    }
+    if (sectors >= (1<<28)) {
+        this->supports_lba48 = true;
+        LOG_F(WARNING, "%s: image file \"%s\" size (%.3f GiB %.3f GB) exceeds LBA28 limit (%.3f GiB %.3f GB)",
+            this->get_name_and_unit_address().c_str(),
+            filename.c_str(),
+            1.0 * ATA_HD_SEC_SIZE * this->total_sectors / (1<<30),
+            1.0 * ATA_HD_SEC_SIZE * this->total_sectors / (1000000000),
+            1.0 * ATA_HD_SEC_SIZE * (1<<28) / (1<<30),
+            1.0 * ATA_HD_SEC_SIZE * (1<<28) / (1000000000)
+        );
+    }
+    if (sectors >= (1LL<<32)) {
+        LOG_F(WARNING, "%s: image file \"%s\" size (%.3f GiB %.3f GB) exceeds LBA32 limit (%.3f GiB %.3f GB)",
+            this->get_name_and_unit_address().c_str(),
+            filename.c_str(),
+            1.0 * ATA_HD_SEC_SIZE * this->total_sectors / (1<<30),
+            1.0 * ATA_HD_SEC_SIZE * this->total_sectors / (1000000000),
+            1.0 * ATA_HD_SEC_SIZE * (1LL<<32) / (1<<30),
+            1.0 * ATA_HD_SEC_SIZE * (1LL<<32) / (1000000000)
+        );
+    }
+    if (sectors >= (1LL<<48)) {
+        ABORT_F("%s: image file \"%s\" size (%.3f GiB %.3f GB) exceeds LBA48 limit (%.3f GiB %.3f GB)",
+            this->get_name_and_unit_address().c_str(),
+            filename.c_str(),
+            1.0 * ATA_HD_SEC_SIZE * this->total_sectors / (1<<30),
+            1.0 * ATA_HD_SEC_SIZE * this->total_sectors / (1000000000),
+            1.0 * ATA_HD_SEC_SIZE * (1LL<<48) / (1<<30),
+            1.0 * ATA_HD_SEC_SIZE * (1LL<<48) / (1000000000)
+        );
     }
     this->calc_chs_params();
 }
@@ -88,6 +126,8 @@ int AtaHardDisk::perform_command() {
 
     LOG_F(ATA_COMMAND, "%s: running ATA command 0x%X", this->get_name_and_unit_address().c_str(), this->r_command);
 
+    bool lba48 = false;
+
     this->r_status |= BSY;
     this->r_error = 0;
 
@@ -103,15 +143,33 @@ int AtaHardDisk::perform_command() {
         this->r_cylinder_lo = 0;
         this->r_dev_head   &= 0xF0;
         this->r_sect_num    = (this->r_dev_head & ATA_Dev_Head::LBA) ? 0 : 1;
+        this->r_countx      = 0;
+        this->r_lbalowx     = 0;
+        this->r_lbamidx     = 0;
+        this->r_lbahighx    = 0;
         this->r_status     &= ~BSY;
         this->update_intrq(1);
         break;
+    case READ_MULTIPLE_EXT:
+    case READ_SECTOR_EXT:
+            if (this->supports_lba48) {
+                lba48 = true;
+            } else {
+                LOG_F(ERROR, "%s: lba48 not supported for read command 0x%X",
+                    this->get_name_and_unit_address().c_str(), this->r_command);
+                this->r_status &= ~BSY;
+                this->r_status |= ERR;
+                return -1;
+            }
+            [[fallthrough]];
     case READ_MULTIPLE:
     case READ_SECTOR:
     case READ_SECTOR_NR: {
-            uint16_t sec_count = this->r_sect_count ? this->r_sect_count : 256;
+            uint32_t sec_count = this->r_sect_count | (lba48 ? (this->r_countx << 8) : 0);
+            if (sec_count == 0)
+                sec_count = lba48 ? 65536 : 256;
             int      xfer_size = sec_count * ATA_HD_SEC_SIZE;
-            uint64_t offset    = this->get_lba() * ATA_HD_SEC_SIZE;
+            uint64_t offset    = this->get_lba(lba48) * ATA_HD_SEC_SIZE;
             uint32_t ints_size = ATA_HD_SEC_SIZE;
             if (this->r_command == READ_MULTIPLE) {
                 if (!this->sectors_per_int) {
@@ -123,9 +181,12 @@ int AtaHardDisk::perform_command() {
                 ints_size *= this->sectors_per_int;
             }
             LOG_F(READWRITE, "%s %lld %d",
-                this->r_command == READ_SECTOR    ? "READ_SECTOR"    :
-                this->r_command == READ_SECTOR_NR ? "READ_SECTOR_NR" :
-                                                    "READ_MULTIPLE"  ,
+                this->r_command == READ_MULTIPLE_EXT ? "READ_MULTIPLE_EXT" :
+                this->r_command == READ_SECTOR_EXT   ? "READ_SECTOR_EXT"   :
+                this->r_command == READ_MULTIPLE     ? "READ_MULTIPLE"     :
+                this->r_command == READ_SECTOR       ? "READ_SECTOR"       :
+                this->r_command == READ_SECTOR_NR    ? "READ_SECTOR_NR"    :
+                                                       "UNKNOWN"           ,
                 (long long)offset, xfer_size
             );
             hdd_img.read(buffer, offset, xfer_size);
@@ -136,11 +197,25 @@ int AtaHardDisk::perform_command() {
                 USECS_TO_NSECS(100), [this]() { this->signal_data_ready(); });
         }
         break;
+    case WRITE_MULTIPLE_EXT:
+    case WRITE_SECTOR_EXT:
+            if (this->supports_lba48) {
+                lba48 = true;
+            } else {
+                LOG_F(ERROR, "%s: lba48 not supported for write command 0x%X",
+                    this->get_name_and_unit_address().c_str(), this->r_command);
+                this->r_status &= ~BSY;
+                this->r_status |= ERR;
+                return -1;
+            }
+            [[fallthrough]];
     case WRITE_MULTIPLE:
     case WRITE_SECTOR:
     case WRITE_SECTOR_NR: {
-            uint16_t sec_count = this->r_sect_count ? this->r_sect_count : 256;
-            this->cur_fpos = this->get_lba() * ATA_HD_SEC_SIZE;
+            uint32_t sec_count = this->r_sect_count | (lba48 ? (this->r_countx << 8) : 0);
+            if (sec_count == 0)
+                sec_count = lba48 ? 65536 : 256;
+            this->cur_fpos = this->get_lba(lba48) * ATA_HD_SEC_SIZE;
             this->data_ptr = (uint16_t *)this->buffer;
             this->cur_data_ptr = this->data_ptr;
             uint32_t xfer_size = sec_count * ATA_HD_SEC_SIZE;
@@ -158,9 +233,12 @@ int AtaHardDisk::perform_command() {
             this->post_xfer_action = [this]() {
                 uint64_t write_len = (this->cur_data_ptr - this->data_ptr) * sizeof(this->data_ptr[0]);
                 LOG_F(READWRITE, "%s %lld %lld",
-                    this->r_command == WRITE_SECTOR    ? "WRITE_SECTOR"    :
-                    this->r_command == WRITE_SECTOR_NR ? "WRITE_SECTOR_NR" :
-                                                         "WRITE_MULTIPLE"  ,
+                    this->r_command == WRITE_MULTIPLE_EXT ? "WRITE_MULTIPLE_EXT" :
+                    this->r_command == WRITE_SECTOR_EXT   ? "WRITE_SECTOR_EXT"   :
+                    this->r_command == WRITE_SECTOR       ? "WRITE_SECTOR"       :
+                    this->r_command == WRITE_SECTOR_NR    ? "WRITE_SECTOR_NR"    :
+                    this->r_command == WRITE_MULTIPLE     ? "WRITE_MULTIPLE"     :
+                                                            "UNKNOWN"            ,
                     (long long)this->cur_fpos, (long long)write_len
                 );
                 this->hdd_img.write(this->data_ptr, this->cur_fpos, write_len);
@@ -268,42 +346,78 @@ int AtaHardDisk::perform_command() {
 }
 
 void AtaHardDisk::prepare_identify_info() {
+
+    enum ident : int {
+        ident_0            =  00, // ATA device, non-removable media, non-removable drive
+        ident_cylinders    =  01, // cylinders
+        ident_heads        =  03, // heads
+        ident_spt          =  06, // sectors
+        ident_rwm          =  47, // SECTORS_PER_INT (max)
+        ident_capabilities =  49, // LBA support
+        ident_pio          =  51, // max. PIO mode for a basic device
+        ident_extension    =  53,
+        ident_curcapacity  =  57, // CHS capacity
+        ident_currwm       =  59, // sectors_per_int
+        ident_capacity     =  60, // LBA capacity
+        ident_multidma     =  63, // cur_dma_mode
+        ident_advpio       =  64,
+        ident_featsupp1    =  82,
+        ident_featsupp2    =  83, // LBA48 support
+        ident_featsupp3    =  84, // & 0xc000 == 0x4000
+        ident_ultradma     =  88,
+        ident_48bitlba     = 100, // total_sectors
+    };
+
     uint16_t    *buf_ptr = (uint16_t *)this->data_buf;
 
     std::memset(this->data_buf, 0, sizeof(this->data_buf));
 
-    WRITE_WORD_LE_A(&buf_ptr[ 0], 0x0040); // ATA device, non-removable media, non-removable drive
-    WRITE_WORD_LE_A(&buf_ptr[49], 0x0200); // report LBA support
+    WRITE_WORD_LE_A(&buf_ptr[ident_0], 0x0040); // ATA device, non-removable media, non-removable drive
+    WRITE_WORD_LE_A(&buf_ptr[ident_capabilities], 0x0200); // report LBA support
 
     // Maximum number of logical sectors per data block that the device supports
     // for READ_MULTIPLE/WRITE_MULTIPLE commands.
-    WRITE_WORD_LE_A(&buf_ptr[47], 0x8000 | SECTORS_PER_INT);
+    WRITE_WORD_LE_A(&buf_ptr[ident_rwm], 0x8000 | SECTORS_PER_INT);
 
     // If bit 8 of word 59 is set to one, then bits 7:0 indicate the number of
     // logical sectors that shall be transferred per data block for
     // READ_MULTIPLE/WRITE_MULTIPLE commands.
     if (this->sectors_per_int)
-        WRITE_WORD_LE_A(&buf_ptr[59], 0x100 | this->sectors_per_int);
+        WRITE_WORD_LE_A(&buf_ptr[ident_currwm], 0x100 | this->sectors_per_int);
 
-    WRITE_WORD_LE_A(&buf_ptr[ 1], this->cylinders);
-    WRITE_WORD_LE_A(&buf_ptr[ 3], this->heads);
-    WRITE_WORD_LE_A(&buf_ptr[ 6], this->sectors);
+    WRITE_WORD_LE_A(&buf_ptr[ident_cylinders], this->cylinders);
+    WRITE_WORD_LE_A(&buf_ptr[ident_heads], this->heads);
+    WRITE_WORD_LE_A(&buf_ptr[ident_spt], this->sectors);
 
-    WRITE_WORD_LE_A(&buf_ptr[51], 0x0200); // max. PIO mode for a basic device
+    WRITE_WORD_LE_A(&buf_ptr[ident_pio], 0x0200); // max. PIO mode for a basic device
 
     // report validity for the advanced PIO and MWDMA fields
-    //WRITE_WORD_LE_A(&buf_ptr[53], 0x0003);
+    //WRITE_WORD_LE_A(&buf_ptr[ident_extension], 0x0003);
 
-    WRITE_DWORD_LE_A(&buf_ptr[57], this->total_sectors);
+    WRITE_DWORD_LE_A(&buf_ptr[ident_curcapacity], (uint32_t)std::min(this->total_sectors, (uint64_t)REAL_CHS_LIMIT));
 
     // report LBA capacity
-    WRITE_DWORD_LE_A(&buf_ptr[60], this->total_sectors);
+    WRITE_DWORD_LE_A(&buf_ptr[ident_capacity], (uint32_t)std::min(this->total_sectors, (1ULL<<28) - 1));
 
-    WRITE_WORD_LE_A(&buf_ptr[63], ((1 << this->cur_dma_mode) << 8) | 7);
+    WRITE_WORD_LE_A(&buf_ptr[ident_multidma], ((1 << this->cur_dma_mode) << 8) | 7);
+
+    if (this->total_sectors >= (1<<28)) {
+        WRITE_WORD_LE_A(&buf_ptr[ident_featsupp2], 0x4400); // 0x400 LBA48 support; 0x2000 FLUSH_CACHE_EXT support
+        WRITE_WORD_LE_A(&buf_ptr[ident_featsupp3], 0x4000);
+        WRITE_QWORD_LE_A(&buf_ptr[ident_48bitlba], std::min(this->total_sectors, (1ULL<<48) - 1));
+    }
 }
 
-uint64_t AtaHardDisk::get_lba() {
+uint64_t AtaHardDisk::get_lba(bool lba48) {
     if (this->r_dev_head & ATA_Dev_Head::LBA) {
+        if (lba48)
+            return 0ULL
+                | (uint64_t)this->r_lbahighx << 40
+                | (uint64_t)this->r_lbamidx << 32
+                | (uint64_t)this->r_lbalowx << 24
+                | (uint64_t)this->r_cylinder_hi << 16
+                | (uint64_t)this->r_cylinder_lo << 8
+                | (uint64_t)this->r_sect_num;
         return uint64_t(((this->r_dev_head & 0xF) << 24) | (this->r_cylinder_hi << 16) |
                 (this->r_cylinder_lo << 8) | (this->r_sect_num));
     } else { // translate old fashioned CHS addressing to LBA
@@ -322,7 +436,7 @@ uint64_t AtaHardDisk::get_lba() {
 void AtaHardDisk::calc_chs_params() {
     unsigned num_blocks, heads, sectors, max_sectors, cylinders, max_cylinders;
 
-    LOG_F(INFO, "%s: total sectors %d", this->get_name_and_unit_address().c_str(), this->total_sectors);
+    LOG_F(INFO, "%s: total sectors %lld", this->get_name_and_unit_address().c_str(), this->total_sectors);
 
     if (this->total_sectors >= REAL_CHS_LIMIT) {
         heads = 16;
@@ -342,7 +456,7 @@ void AtaHardDisk::calc_chs_params() {
         max_cylinders = 16383;
     }
 
-    num_blocks = this->total_sectors;
+    num_blocks = (unsigned)this->total_sectors;
 
     for (heads = 16; heads > 0; heads--)
         for (sectors = max_sectors; sectors > 0; sectors--)
