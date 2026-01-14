@@ -64,6 +64,12 @@ void AtaBaseDevice::device_set_signature() {
     this->r_cylinder_lo = 0;
     this->r_cylinder_hi = 0;
     this->r_status = DRDY | DSC; // DSC=1 is required for ATA devices
+
+    this->r_featuresx = 0;
+    this->r_countx    = 0;
+    this->r_lbalowx   = 0;
+    this->r_lbamidx   = 0;
+    this->r_lbahighx  = 0;
 }
 
 uint16_t AtaBaseDevice::read(const uint8_t reg_addr) {
@@ -88,15 +94,15 @@ uint16_t AtaBaseDevice::read(const uint8_t reg_addr) {
             return 0xFFFFU;
         }
     case ATA_Reg::ERROR:
-        return this->r_error;
+        return (this->supports_lba48 && (this->r_dev_ctrl & HOB)) ? this->r_featuresx : this->r_error;
     case ATA_Reg::SEC_COUNT:
-        return this->r_sect_count;
+        return (this->supports_lba48 && (this->r_dev_ctrl & HOB)) ? this->r_countx : this->r_sect_count;
     case ATA_Reg::SEC_NUM:
-        return this->r_sect_num;
+        return (this->supports_lba48 && (this->r_dev_ctrl & HOB)) ? this->r_lbalowx : this->r_sect_num;
     case ATA_Reg::CYL_LOW:
-        return this->r_cylinder_lo;
+        return (this->supports_lba48 && (this->r_dev_ctrl & HOB)) ? this->r_lbamidx : this->r_cylinder_lo;
     case ATA_Reg::CYL_HIGH:
-        return this->r_cylinder_hi;
+        return (this->supports_lba48 && (this->r_dev_ctrl & HOB)) ? this->r_lbahighx : this->r_cylinder_hi;
     case ATA_Reg::DEVICE_HEAD:
         return this->r_dev_head;
     case ATA_Reg::STATUS:
@@ -111,6 +117,12 @@ uint16_t AtaBaseDevice::read(const uint8_t reg_addr) {
 }
 
 void AtaBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
+    if (reg_addr <= ATA_Reg::COMMAND) {
+        // Command Block registers
+        if (this->supports_lba48)
+            this->r_dev_ctrl &= ~HOB;
+    }
+
     switch (reg_addr) {
     case ATA_Reg::DATA:
         if (this->is_selected() && this->has_data()) {
@@ -142,18 +154,23 @@ void AtaBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
         }
         break;
     case ATA_Reg::FEATURES:
+        this->r_featuresx = this->r_features;
         this->r_features = value;
         break;
     case ATA_Reg::SEC_COUNT:
+        this->r_countx = r_sect_count;
         this->r_sect_count = value;
         break;
     case ATA_Reg::SEC_NUM:
+        this->r_lbalowx = this->r_sect_num;
         this->r_sect_num = value;
         break;
     case ATA_Reg::CYL_LOW:
+        this->r_lbamidx = this->r_cylinder_lo;
         this->r_cylinder_lo = value;
         break;
     case ATA_Reg::CYL_HIGH:
+        this->r_lbahighx = this->r_cylinder_hi;
         this->r_cylinder_hi = value;
         break;
     case ATA_Reg::DEVICE_HEAD:
