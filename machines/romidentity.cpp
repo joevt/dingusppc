@@ -385,7 +385,7 @@ rom_info rom_identity[] = {
     rom( 0x30c201, 0x61842ec5, "Mercury"     , "P12"      , nullptr  , "PowerBook G4 (Original - Titanium)"                ) // PowerBook3,2
     rom( 0x30c300, 0x3e4f2dd5, "P25_100"     , "P25"      , nullptr  , "PowerBook G4 (Gigabit - Titanium)"                 ) // PowerBook3,3
     rom( 0x30c300, 0x63762eca, "Onyx"        , "P25"      , nullptr  , "PowerBook G4 (Gigabit - Titanium)"                 ) // PowerBook3,3
-    rom( 0x30c300, 0x6c212ed4, "Onix100"     , "P25"      , nullptr  , "PowerBook G4 (Gigabit - Titanium)"                 ) // PowerBook3,3
+    rom( 0x30c300, 0x6c212ed4, "Onix100"     , "P25"      , nullptr  , "PowerBook G4 (Gigabit - Titanium)"                 ) // PowerBook3,3 // 2001-09-11 426f1
     rom( 0x30c301, 0x4c2b2df8, "P25"         , "P25"      , nullptr  , "PowerBook G4 (Gigabit - Titanium)"                 ) // PowerBook3,3
     rom( 0x30c301, 0x79fd2ef7, "Onix"        , "P25"      , nullptr  , "PowerBook G4 (Gigabit - Titanium)"                 ) // PowerBook3,3
     rom( 0x30c302, 0x7e6c2f0a, "OnixStar"    , nullptr    , nullptr  , "PowerBook G4 (Gigabit - Titanium)"                 ) // PowerBook3,3
