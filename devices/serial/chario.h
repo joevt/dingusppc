@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <string>
 #include <map>
+#include <memory>
 
 #ifdef _WIN32
 #else
