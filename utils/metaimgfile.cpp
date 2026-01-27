@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <fstream>
 #include <limits>
+#include <cstring>
 
 // ================================================================================================
 std::string get_pascal_string(void * pstr)
