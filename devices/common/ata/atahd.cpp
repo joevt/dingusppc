@@ -253,6 +253,11 @@ int AtaHardDisk::perform_command() {
         this->r_status &= ~BSY;
         this->update_intrq(1);
         break;
+    case IDLE_IMMEDIATE:
+        LOG_F(INFO, "%s: immediate idle requested", this->get_name_and_unit_address().c_str());
+        this->r_status &= ~BSY;
+        this->update_intrq(1);
+        break;
     default:
         LOG_F(ERROR, "%s: unknown ATA command 0x%x", this->get_name_and_unit_address().c_str(), this->r_command);
         this->r_status &= ~BSY;
