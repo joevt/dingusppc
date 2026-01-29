@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /** MPC106 (Grackle) emulation. */
 
+#include <cpu/ppc/ppcemu.h>
 #include <devices/common/hwcomponent.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/deviceregistry.h>
@@ -115,6 +116,11 @@ void MPC106::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size
     }
 }
 
+void MPC106::pci_error() {
+    if (this->machine_check_enable)
+        ppc_exception_handler(Except_Type::EXC_MACHINE_CHECK, 0);
+}
+
 inline void MPC106::cfg_setup(uint32_t offset, int size, int &bus_num, int &dev_num,
                               int &fun_num, uint8_t &reg_offs, AccessDetails &details,
                               PCIBase *&device)
@@ -151,6 +157,7 @@ MPC106PCI::MPC106PCI(MPC106 *mpc106)
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
     mpc106->le_mode = (picr1 & LE_MODE) != 0;
 #endif
+    mpc106->machine_check_enable = (picr1 & MCP_EN) != 0;
 }
 
 uint32_t MPC106PCI::pci_cfg_read(uint32_t reg_offs, const AccessDetails details) {
@@ -235,6 +242,7 @@ void MPC106PCI::pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDet
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
         mpc106->le_mode = (picr1 & LE_MODE) != 0;
 #endif
+        mpc106->machine_check_enable = (picr1 & MCP_EN) != 0;
         break;
     case GrackleReg::PICR2:
         this->picr2 = value;
