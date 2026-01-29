@@ -128,7 +128,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #define ppc_grab_regsda(opcode) \
     int reg_d             = (opcode >> 21) & 31; \
-    uint32_t reg_a        = (opcode >> 16) & 31; \
+    int reg_a             = (opcode >> 16) & 31; \
     uint32_t ppc_result_a = ppc_state.gpr[reg_a];
 
 
