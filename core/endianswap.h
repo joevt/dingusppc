@@ -100,7 +100,7 @@ inline std::uint64_t byteswap_64_impl(std::uint64_t x)
 #endif
 
 #define BYTESWAP_SIZED(val, size) \
-    ((size) == 2 ? BYTESWAP_16(val) : (size) == 4 ? BYTESWAP_32(val) : (val))
+    ((size) == 2 ? BYTESWAP_16(uint16_t(val)) : (size) == 4 ? BYTESWAP_32(val) : (val))
 
 enum {
     PCI_CONFIG_DIRECTION    = 0x0100,

@@ -168,6 +168,7 @@ void PdmOnboardVideo::enable_video_internal()
             LOG_F(ERROR, "PDM-Video: no 16bpp support in mode %d!", this->video_mode);
             this->pixel_depth = 8;
         }
+        break;
     default:
         break;
     }
