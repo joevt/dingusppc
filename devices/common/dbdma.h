@@ -106,7 +106,7 @@ typedef std::function<void(void)> DbdmaCallback;
 class DMAChannel : public DmaBidirChannel, public DmaChannel {
 public:
     DMAChannel(const std::string name) : DmaBidirChannel(name) {}
-    ~DMAChannel() = default;
+    virtual ~DMAChannel() = default;
 
     void set_callbacks(DbdmaCallback start_cb, DbdmaCallback stop_cb);
     uint32_t reg_read(uint32_t offset, int size);
