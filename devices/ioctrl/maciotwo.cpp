@@ -105,7 +105,7 @@ uint32_t MacIoTwo::read(uint32_t /*rgn_start*/, uint32_t offset, int size) {
                 offset, SIZE_ARG(size));
             break;
         }
-        // fallthrough
+        [[fallthrough]];
     case 0x13: // ESCC MacRISC addressing
         value = this->escc->read((offset >> 4) & 0xF);
         break;
@@ -168,7 +168,7 @@ void MacIoTwo::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, in
                 offset, SIZE_ARG(size), size * 2, value);
             break;
         }
-        // fallthrough
+        [[fallthrough]];
     case 0x13: // ESCC MacRISC addressing
         this->escc->write((offset >> 4) & 0xF, value);
         break;
