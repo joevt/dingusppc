@@ -296,7 +296,7 @@ indirect_with_index:
                 case 0x7c0007ec:
                     if ((opcode & 0xffe007ff) == 0x7c0007ec) // dcbz
                         goto indirect_with_index;
-                    /* fallthrough */
+                    [[fallthrough]];
                 default:
                     goto unexpected_instruction;
             }

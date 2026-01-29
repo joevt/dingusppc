@@ -688,7 +688,7 @@ template void ViaCuda::append_data(uint16_t data);
 template void ViaCuda::append_data(uint32_t data);
 
 void ViaCuda::process_adb_command() {
-    uint8_t adb_stat, output_size;
+    uint8_t adb_stat;
 
     adb_stat = this->adb_bus_obj->process_command(&this->in_buf[1],
                                                   this->in_count - 1);
