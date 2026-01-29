@@ -103,7 +103,7 @@ enum : uint64_t {
 class AmicSndOutDma : public DmaOutChannel {
 public:
     AmicSndOutDma();
-    ~AmicSndOutDma() = default;
+    virtual ~AmicSndOutDma() = default;
 
     void            init(uint32_t buf_base, uint32_t buf_samples);
     void            enable()  { this->enabled = true;  }
@@ -139,7 +139,7 @@ private:
 class AmicFloppyDma : public DmaBidirChannel {
 public:
     AmicFloppyDma() : DmaBidirChannel("floppy") {}
-    ~AmicFloppyDma() = default;
+    virtual ~AmicFloppyDma() = default;
 
     void            reinit(const uint32_t addr_ptr, const uint16_t byte_cnt);
     void            reset(const uint32_t addr_ptr);
@@ -160,7 +160,7 @@ private:
 class AmicSerialXmitDma : public DmaOutChannel {
 public:
     AmicSerialXmitDma(const std::string name) : DmaOutChannel(name) {}
-    ~AmicSerialXmitDma() = default;
+    virtual ~AmicSerialXmitDma() = default;
 
     void            write_ctrl(const uint8_t value);
     uint8_t         read_stat() { return this->stat; }
@@ -178,7 +178,7 @@ private:
 class AmicScsiDma : public DmaChannel {
 public:
     AmicScsiDma()  = default;
-    ~AmicScsiDma() = default;
+    virtual ~AmicScsiDma() = default;
 
     void            reinit(const uint32_t addr_ptr);
     void            reset(const uint32_t addr_ptr);

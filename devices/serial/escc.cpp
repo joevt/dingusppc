@@ -371,7 +371,7 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
             break;
         case WR14_DPLL_DISABLE_DPLL:
             this->dpll_active = 0;
-            // fallthrough
+            [[fallthrough]];
         case WR14_DPLL_SET_SOURCE_BR_GENERATOR:
             this->dpll_clock_src = 0;
             break;

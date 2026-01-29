@@ -269,6 +269,7 @@ enum FPSCR : uint32_t {
 };
 
 /** Bit definitions for the Machine State Register (MSR). */
+namespace MSR {
 enum MSR : int {
 // ----------------------------------------------------------------------------------------
 //        64-bit             // 32-bit  // Notes for MPC601 (601), PowerPC (PPC),
@@ -317,6 +318,7 @@ enum MSR : int {
 //  SF   = (1ULL << (63 -  0)), //      // Sixty-four bit mode (PowerPC, PowerISA)
 // ----------------------------------------------------------------------------------------
 };
+}
 
 enum XER : uint32_t {
     CA = 1UL << 29,
