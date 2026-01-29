@@ -249,7 +249,7 @@ uint32_t GrandCentral::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
                 LOG_F(ERROR, "%s: ESCC compatible read  @%x.%c", this->name.c_str(), offset, SIZE_ARG(size));
                 return 0;
             }
-            // fallthrough
+            [[fallthrough]];
         case 3: // ESCC MacRISC addressing
             return this->escc->read((offset >> 4) & 0xF);
         case 4: // AWACS
@@ -269,7 +269,7 @@ uint32_t GrandCentral::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
             if (((offset >> 4) & 0x7) < 6) {
                 if (mac_address[0] == 0x08 && bit_flip_0x08)
                     // reverse the order of the bits
-                    val = (val * 0x0202020202ULL & 0x010884422010ULL) % 1023;
+                    val = uint8_t((val * 0x0202020202ULL & 0x010884422010ULL) % 1023);
             } else {
                 LOG_F(WARNING, "%s: reading byte %d of ENET_ROM using offset %x",
                     this->name.c_str(), (offset >> 4) & 0x7, offset);
@@ -347,7 +347,7 @@ uint32_t GrandCentral::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
                 value = this->mesh_dma->reg_read(offset & 0xFF, size);
                 break;
             }
-            // fallthrough
+            [[fallthrough]];
         default:
             if (!(unsupported_dma_channel_read & (1 << dma_channel))) {
                 unsupported_dma_channel_read |= (1 << dma_channel);
@@ -411,7 +411,7 @@ void GrandCentral::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value
                     offset, SIZE_ARG(size), size * 2, value);
                 break;
             }
-            // fallthrough
+            [[fallthrough]];
         case 3: // ESCC MacRISC addressing
             this->escc->write((offset >> 4) & 0xF, value);
             break;
@@ -507,7 +507,7 @@ void GrandCentral::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value
                 this->mesh_dma->reg_write(offset & 0xFF, value, size);
                 break;
             }
-            // fallthrough
+            [[fallthrough]];
         default:
             if (!(unsupported_dma_channel_write & (1 << dma_channel))) {
                 unsupported_dma_channel_write |= (1 << dma_channel);
