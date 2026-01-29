@@ -32,6 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <loguru.hpp>
 
 using namespace std;
 
@@ -62,6 +63,9 @@ std::string add_reg(std::vector<std::string> &regs, const char* format, Args... 
         return *it;
     }
     else {
+        if (str.empty()) {
+            LOG_F(ERROR, "unknown register");
+        }
         regs.push_back(str);
         return regs.back();
     }
