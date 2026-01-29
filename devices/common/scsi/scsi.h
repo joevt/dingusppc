@@ -198,7 +198,7 @@ class ScsiDevice : virtual public HWComponent {
 public:
     ScsiDevice(const std::string name) : HWComponent(name) {
         supports_types(HWCompType::SCSI_DEV);
-        this->lun = 0,
+        this->lun = 0;
         this->cur_phase = ScsiPhase::BUS_FREE;
     }
     ~ScsiDevice() = default;

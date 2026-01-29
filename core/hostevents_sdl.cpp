@@ -384,19 +384,19 @@ void EventManager::post_keyboard_state_events() {
     } Modifier_t;
 
     static Modifier_t modifiers[] = {
-        SDL_SCANCODE_LSHIFT       , KMOD_LSHIFT , AdbKey_Shift       ,
-        SDL_SCANCODE_RSHIFT       , KMOD_RSHIFT , AdbKey_RightShift  ,
-        SDL_SCANCODE_LCTRL        , KMOD_LCTRL  , AdbKey_Control     ,
-        SDL_SCANCODE_RCTRL        , KMOD_RCTRL  , AdbKey_RightControl,
-        SDL_SCANCODE_LALT         , KMOD_LALT   , AdbKey_Option      ,
-        SDL_SCANCODE_RALT         , KMOD_RALT   , AdbKey_RightOption ,
-        SDL_SCANCODE_LGUI         , KMOD_LGUI   , AdbKey_Command     ,
-        SDL_SCANCODE_RGUI         , KMOD_RGUI   , AdbKey_Command     ,
-//      SDL_SCANCODE_NUMLOCKCLEAR , KMOD_NUM    , AdbKey_KeypadClear ,
-        SDL_SCANCODE_CAPSLOCK     , KMOD_CAPS   , AdbKey_CapsLock    ,
-//      SDL_SCANCODE_MODE         , KMOD_MODE   , AdbKey_????        ,
-//      SDL_SCANCODE_SCROLLLOCK   , KMOD_SCROLL , AdbKey_F14         ,
-        SDL_SCANCODE_UNKNOWN
+        { SDL_SCANCODE_LSHIFT       , KMOD_LSHIFT , AdbKey_Shift        },
+        { SDL_SCANCODE_RSHIFT       , KMOD_RSHIFT , AdbKey_RightShift   },
+        { SDL_SCANCODE_LCTRL        , KMOD_LCTRL  , AdbKey_Control      },
+        { SDL_SCANCODE_RCTRL        , KMOD_RCTRL  , AdbKey_RightControl },
+        { SDL_SCANCODE_LALT         , KMOD_LALT   , AdbKey_Option       },
+        { SDL_SCANCODE_RALT         , KMOD_RALT   , AdbKey_RightOption  },
+        { SDL_SCANCODE_LGUI         , KMOD_LGUI   , AdbKey_Command      },
+        { SDL_SCANCODE_RGUI         , KMOD_RGUI   , AdbKey_Command      },
+//      { SDL_SCANCODE_NUMLOCKCLEAR , KMOD_NUM    , AdbKey_KeypadClear  },
+        { SDL_SCANCODE_CAPSLOCK     , KMOD_CAPS   , AdbKey_CapsLock     },
+//      { SDL_SCANCODE_MODE         , KMOD_MODE   , AdbKey_????         },
+//      { SDL_SCANCODE_SCROLLLOCK   , KMOD_SCROLL , AdbKey_F14          },
+        { SDL_SCANCODE_UNKNOWN                                          },
     };
 
     LOG_F(INFO, "Current keyboard state:");

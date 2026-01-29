@@ -1051,7 +1051,7 @@ void dppc_interpreter::ppc_mfspr(uint32_t opcode) {
         if (!is_601) {
             ppc_exception_handler(Except_Type::EXC_PROGRAM, Exc_Cause::ILLEGAL_OP);
         }
-        // fallthrough
+        [[fallthrough]];
     case SPR::DEC_S:
     {
         uint32_t val = calc_dec_value();
@@ -1831,11 +1831,11 @@ void dppc_interpreter::ppc_lzu(uint32_t opcode) {
 #endif
     ppc_grab_regsda(opcode);
     uint32_t ea = int32_t(int16_t(opcode));
-    if ((reg_a != reg_d) && reg_a != 0) {
+    if ((reg_a != reg_d) && (reg_a != 0)) {
         ea += ppc_result_a;
         uint32_t ppc_result_d = mmu_read_vmem<T>(opcode, ea);
         ppc_store_iresult_reg(reg_d, ppc_result_d);
-        uint32_t ppc_result_a = ea;
+        ppc_result_a = ea;
         ppc_store_iresult_reg(reg_a, ppc_result_a);
     } else {
         ppc_exception_handler(Except_Type::EXC_PROGRAM, Exc_Cause::ILLEGAL_OP);
@@ -1903,7 +1903,7 @@ void dppc_interpreter::ppc_lhau(uint32_t opcode) {
         ea += ppc_result_a;
         int16_t val = mmu_read_vmem<uint16_t>(opcode, ea);
         ppc_store_iresult_reg(reg_d, int32_t(val));
-        uint32_t ppc_result_a = ea;
+        ppc_result_a = ea;
         ppc_store_iresult_reg(reg_a, ppc_result_a);
     } else {
         ppc_exception_handler(Except_Type::EXC_PROGRAM, Exc_Cause::ILLEGAL_OP);
@@ -1919,7 +1919,7 @@ void dppc_interpreter::ppc_lhaux(uint32_t opcode) {
         uint32_t ea = ppc_result_a + ppc_result_b;
         int16_t val = mmu_read_vmem<uint16_t>(opcode, ea);
         ppc_store_iresult_reg(reg_d, int32_t(val));
-        uint32_t ppc_result_a = ea;
+        ppc_result_a = ea;
         ppc_store_iresult_reg(reg_a, ppc_result_a);
     }
     else {
