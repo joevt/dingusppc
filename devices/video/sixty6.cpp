@@ -333,7 +333,7 @@ void Sixty6Video::enable_display()
     switch (this->pixel_format) {
     default:
         LOG_F(ERROR, "Sixty6: Invalid pixel format %d!", this->pixel_format);
-        // fallthrough
+        [[fallthrough]];
     case 1:
         this->pixel_depth = 8;
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
