@@ -94,11 +94,11 @@ void SoundServer::shutdown()
     switch (impl->status) {
     case SND_STREAM_OPENED:
         close_out_stream();
-        /* fall through */
+        [[fallthrough]];
     case SND_STREAM_CLOSED:
-        /* fall through */
+        [[fallthrough]];
     case SND_SERVER_UP:
-        /* fall through */
+        [[fallthrough]];
     case SND_API_READY:
         cubeb_destroy(impl->cubeb_ctx);
         break;

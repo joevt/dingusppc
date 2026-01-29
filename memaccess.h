@@ -49,7 +49,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define READ_QWORD_LE_A(addr) (*(uint64_t*)(addr))
 
 /* read an unaligned big-endian WORD (16bit) */
-#define READ_WORD_BE_U( addr) ((((uint8_t*)(addr))[0] << 8) | ((uint8_t*)(addr))[1])
+#define READ_WORD_BE_U( addr) uint16_t((((uint8_t*)(addr))[0] << 8) | ((uint8_t*)(addr))[1])
 
 /* read an unaligned big-endian DWORD (32bit) */
 #define READ_DWORD_BE_U(addr)                                                  \
@@ -90,30 +90,30 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 /* write an unaligned big-endian WORD (16bit) */
 #define WRITE_WORD_BE_U(addr, val)                                             \
     do {                                                                       \
-        ((uint8_t*)(addr))[0] = ((val) >> 8);                                  \
-        ((uint8_t*)(addr))[1] = (uint8_t)(val);                                \
+        ((uint8_t*)(addr))[0] = (uint8_t)((val) >> 8);                         \
+        ((uint8_t*)(addr))[1] = (uint8_t) (val);                               \
     } while (0)
 
 /* write an unaligned big-endian DWORD (32bit) */
 #define WRITE_DWORD_BE_U(addr, val)                                            \
     do {                                                                       \
-        ((uint8_t*)(addr))[0] = ((val) >> 24);                                 \
-        ((uint8_t*)(addr))[1] = ((val) >> 16);                                 \
-        ((uint8_t*)(addr))[2] = ((val) >>  8);                                 \
-        ((uint8_t*)(addr))[3] = (uint8_t)(val);                                \
+        ((uint8_t*)(addr))[0] = (uint8_t)((val) >> 24);                        \
+        ((uint8_t*)(addr))[1] = (uint8_t)((val) >> 16);                        \
+        ((uint8_t*)(addr))[2] = (uint8_t)((val) >>  8);                        \
+        ((uint8_t*)(addr))[3] = (uint8_t) (val);                               \
     } while (0)
 
 /* write an unaligned big-endian QWORD (64bit) */
 #define WRITE_QWORD_BE_U(addr, val)                                            \
     do {                                                                       \
-        ((uint8_t*)(addr))[0] = ((uint64_t)(val) >> 56);                       \
-        ((uint8_t*)(addr))[1] = ((uint64_t)(val) >> 48);                       \
-        ((uint8_t*)(addr))[2] = ((uint64_t)(val) >> 40);                       \
-        ((uint8_t*)(addr))[3] = ((uint64_t)(val) >> 32);                       \
-        ((uint8_t*)(addr))[4] = (          (val) >> 24);                       \
-        ((uint8_t*)(addr))[5] = (          (val) >> 16);                       \
-        ((uint8_t*)(addr))[6] = (          (val) >>  8);                       \
-        ((uint8_t*)(addr))[7] =   (uint8_t)(val)       ;                       \
+        ((uint8_t*)(addr))[0] = (uint8_t)((uint64_t)(val) >> 56);              \
+        ((uint8_t*)(addr))[1] = (uint8_t)((uint64_t)(val) >> 48);              \
+        ((uint8_t*)(addr))[2] = (uint8_t)((uint64_t)(val) >> 40);              \
+        ((uint8_t*)(addr))[3] = (uint8_t)((uint64_t)(val) >> 32);              \
+        ((uint8_t*)(addr))[4] = (uint8_t)(          (val) >> 24);              \
+        ((uint8_t*)(addr))[5] = (uint8_t)(          (val) >> 16);              \
+        ((uint8_t*)(addr))[6] = (uint8_t)(          (val) >>  8);              \
+        ((uint8_t*)(addr))[7] = (uint8_t)           (val)       ;              \
     } while (0)
 
 /* write an aligned little-endian WORD (16bit) */
@@ -128,30 +128,30 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 /* write an unaligned little-endian WORD (16bit) */
 #define WRITE_WORD_LE_U(addr, val)                                             \
     do {                                                                       \
-        ((uint8_t*)(addr))[0] = (uint8_t)(val);                                \
-        ((uint8_t*)(addr))[1] = ((val) >> 8);                                  \
+        ((uint8_t*)(addr))[0] = (uint8_t) (val);                               \
+        ((uint8_t*)(addr))[1] = (uint8_t)((val) >> 8);                         \
     } while (0)
 
 /* write an unaligned little-endian DWORD (32bit) */
 #define WRITE_DWORD_LE_U(addr, val)                                            \
     do {                                                                       \
-        ((uint8_t*)(addr))[0] = (uint8_t)(val);                                \
-        ((uint8_t*)(addr))[1] = ((val) >>  8);                                 \
-        ((uint8_t*)(addr))[2] = ((val) >> 16);                                 \
-        ((uint8_t*)(addr))[3] = ((val) >> 24);                                 \
+        ((uint8_t*)(addr))[0] = (uint8_t) (val);                               \
+        ((uint8_t*)(addr))[1] = (uint8_t)((val) >>  8);                        \
+        ((uint8_t*)(addr))[2] = (uint8_t)((val) >> 16);                        \
+        ((uint8_t*)(addr))[3] = (uint8_t)((val) >> 24);                        \
     } while (0)
 
 /* write an unaligned little-endian QWORD (64bit) */
 #define WRITE_QWORD_LE_U(addr, val)                                            \
     do {                                                                       \
-        ((uint8_t*)(addr))[0] =   (uint8_t)(val)       ;                       \
-        ((uint8_t*)(addr))[1] = (          (val) >>  8);                       \
-        ((uint8_t*)(addr))[2] = (          (val) >> 16);                       \
-        ((uint8_t*)(addr))[3] = (          (val) >> 24);                       \
-        ((uint8_t*)(addr))[4] = ((uint64_t)(val) >> 32);                       \
-        ((uint8_t*)(addr))[5] = ((uint64_t)(val) >> 40);                       \
-        ((uint8_t*)(addr))[6] = ((uint64_t)(val) >> 48);                       \
-        ((uint8_t*)(addr))[7] = ((uint64_t)(val) >> 56);                       \
+        ((uint8_t*)(addr))[0] = (uint8_t)           (val)       ;              \
+        ((uint8_t*)(addr))[1] = (uint8_t)(          (val) >>  8);              \
+        ((uint8_t*)(addr))[2] = (uint8_t)(          (val) >> 16);              \
+        ((uint8_t*)(addr))[3] = (uint8_t)(          (val) >> 24);              \
+        ((uint8_t*)(addr))[4] = (uint8_t)((uint64_t)(val) >> 32);              \
+        ((uint8_t*)(addr))[5] = (uint8_t)((uint64_t)(val) >> 40);              \
+        ((uint8_t*)(addr))[6] = (uint8_t)((uint64_t)(val) >> 48);              \
+        ((uint8_t*)(addr))[7] = (uint8_t)((uint64_t)(val) >> 56);              \
     } while (0)
 
 /* read value of the specified size from memory starting at addr,

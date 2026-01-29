@@ -342,7 +342,7 @@ bool OfConfigChrp::validate()
         switch (sig) {
         case NVRAM_SIG_OF_ENV:
             of_part_found = true;
-            // fall-through
+            [[fallthrough]];
         case NVRAM_SIG_FREE:
             wip = false;
             break;

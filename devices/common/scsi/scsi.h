@@ -242,7 +242,7 @@ class ScsiPhysDevice : public ScsiPhysInterface, virtual public HWComponent {
 public:
     ScsiPhysDevice(const std::string name) : ScsiPhysInterface(PHY_ID_SCSI), HWComponent(name) {
         supports_types(HWCompType::SCSI_DEV);
-        this->lun = 0,
+        this->lun = 0;
         this->cur_phase = ScsiPhase::BUS_FREE;
     }
     ~ScsiPhysDevice() = default;
