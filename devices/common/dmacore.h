@@ -41,6 +41,7 @@ enum DmaPushResult : int {
 class DmaOutChannel {
 public:
     DmaOutChannel(const std::string name) { this->name = name; }
+    virtual ~DmaOutChannel() = default;
 
     virtual bool            is_out_active() { return true; }
     virtual DmaPullResult   pull_data(uint32_t req_len, uint32_t *avail_len,
@@ -57,6 +58,7 @@ private:
 class DmaInChannel {
 public:
     DmaInChannel(const std::string name) { this->name = name; }
+    virtual ~DmaInChannel() = default;
 
     virtual bool            is_in_active() { return true; }
     virtual DmaPushResult   push_data(const char* src_ptr, int len) = 0;
@@ -74,6 +76,7 @@ class DmaBidirChannel : public DmaOutChannel, public DmaInChannel {
 public:
     DmaBidirChannel(const std::string name) : DmaOutChannel(name + " Out"),
         DmaInChannel(name + std::string(" In")) { this->name = name; }
+    virtual ~DmaBidirChannel() = default;
 
     std::string get_name(void) { return this->name; }
 
@@ -110,7 +113,7 @@ class DmaChannel;
 class DmaDevice {
 public:
     DmaDevice()  = default;
-    ~DmaDevice() = default;
+    virtual ~DmaDevice() = default;
 
     virtual void connect(DmaChannel *ch_obj) { this->channel_obj = ch_obj; }
     virtual void notify(DmaChannel */*ch_obj*/, DmaMsg /*msg*/) {}
@@ -129,7 +132,7 @@ public:
         this->ch_type = type;
         this->ch_id   = id;
     }
-    ~DmaChannel() = default;
+    virtual ~DmaChannel() = default;
 
     // setters/getters
     void        set_id(const uint32_t id) { this->ch_id = id; }
