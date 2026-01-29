@@ -174,6 +174,8 @@ public:
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
     void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
+    virtual void pci_error() override;
+
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
     bool needs_swap_endian(bool is_mmio) override;
 #endif
@@ -192,6 +194,7 @@ private:
 
     bool le_mode;
 #endif
+    bool machine_check_enable;
     uint32_t config_addr;
 };
 
