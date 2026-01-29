@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/coresignal.h>
 #include <cpu/ppc/ppcemu.h>
 #include <devices/common/adb/adbkeyboard.h>
+#include <devices/common/hwinterrupt.h>
 #include <loguru.hpp>
 #include <SDL.h>
 
@@ -218,6 +219,16 @@ void EventManager::poll_events() {
                 if (event.key.keysym.sym == SDLK_d && (event.key.keysym.mod & KMOD_ALL) == KMOD_LCTRL) {
                     if (event.type == SDL_KEYUP) {
                         power_off(po_enter_debugger);
+                    }
+                    return;
+                }
+                // Control-I: cuda interrupt
+                if (event.key.keysym.sym == SDLK_i && (event.key.keysym.mod & KMOD_ALL) == KMOD_LCTRL) {
+                    if (event.type == SDL_KEYUP) {
+                        LOG_F(INFO, "CUDA interrupt");
+                        InterruptCtrl* int_ctrl = dynamic_cast<InterruptCtrl*>(
+                            gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
+                        int_ctrl->ack_int(int_ctrl->register_dev_int(IntSrc::VIA_CUDA), 1);
                     }
                     return;
                 }
