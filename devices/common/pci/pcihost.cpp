@@ -198,8 +198,7 @@ uint32_t PCIHost::pci_io_read_broadcast(uint32_t offset, int size)
         this->get_name().c_str(), offset,
         SIZE_ARG(size)
     );
-    // machine check exception (DEFAULT CATCH!, code=FFF00200)
-    ppc_exception_handler(Except_Type::EXC_MACHINE_CHECK, 0);
+    this->pci_error();
     return 0;
 }
 
