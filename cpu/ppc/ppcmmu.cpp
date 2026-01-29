@@ -570,6 +570,7 @@ void mmu_change_mode()
         switch (mmu_mode) {
             case 1: // user mode can't disable translations
                 mmu_mode = 0;
+                [[fallthrough]];
             case 0: // real address mode
                 pCurITLB1 = &itlb1_mode1[0];
                 pCurITLB2 = &itlb2_mode1[0];
@@ -593,6 +594,7 @@ void mmu_change_mode()
         switch (mmu_mode) {
             case 1: // user mode can't disable translations
                 mmu_mode = 0;
+                [[fallthrough]];
             case 0: // real address mode
                 pCurDTLB1 = &dtlb1_mode1[0];
                 pCurDTLB2 = &dtlb2_mode1[0];
@@ -2038,7 +2040,7 @@ static void write_unaligned(uint32_t opcode, uint32_t guest_va, uint8_t *host_va
 #endif
         switch(sizeof(T)) {
             case 1:
-                *host_va = value;
+                *host_va = (uint8_t)value;
                 break;
             case 2:
                 WRITE_WORD_BE_U(host_va, value);
@@ -2240,7 +2242,6 @@ uint64_t mem_read_dbg(uint32_t virt_addr, uint32_t size) {
 
 void mem_write_dbg(uint32_t virt_addr, uint64_t value, int size) {
     uint32_t save_dsisr, save_dar;
-    uint64_t ret_val;
 
     // save MMU-related CPU state
     save_dsisr            = ppc_state.spr[SPR::DSISR];
@@ -2250,10 +2251,10 @@ void mem_write_dbg(uint32_t virt_addr, uint64_t value, int size) {
     try {
         switch (size) {
         case 1:
-            mmu_write_vmem<uint8_t>(NO_OPCODE, virt_addr, value);
+            mmu_write_vmem<uint8_t>(NO_OPCODE, virt_addr, uint8_t(value));
             break;
         case 2:
-            mmu_write_vmem<uint16_t>(NO_OPCODE, virt_addr, value);
+            mmu_write_vmem<uint16_t>(NO_OPCODE, virt_addr, uint16_t(value));
             break;
         case 4:
             mmu_write_vmem<uint32_t>(NO_OPCODE, virt_addr, uint32_t(value));
@@ -2262,7 +2263,7 @@ void mem_write_dbg(uint32_t virt_addr, uint64_t value, int size) {
             mmu_write_vmem<uint64_t>(NO_OPCODE, virt_addr, value);
             break;
         default:
-            mmu_write_vmem<uint8_t>(NO_OPCODE, virt_addr, value);
+            mmu_write_vmem<uint8_t>(NO_OPCODE, virt_addr, uint8_t(value));
         }
     } catch (std::invalid_argument& exc) {
         // restore MMU-related CPU state
