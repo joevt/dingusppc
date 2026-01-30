@@ -28,6 +28,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <cstring>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_SCSIBUSCTRL = loguru::Verbosity_9
+    };
+}
+
 using namespace Scsi_Bus_Controller;
 
 void ScsiBusController::seq_defer_state(uint64_t delay_ns) {
@@ -125,6 +131,8 @@ void ScsiBusController::sequencer() {
         break;
     case SeqState::SEND_DATA:
         if (this->bus_obj->push_data(this->dst_id, this->data_fifo, this->fifo_pos)) {
+            LOG_F(SCSIBUSCTRL, "%s: sequencer SEND_DATA to_xfer: %d -> %d", this->name.c_str(),
+                this->to_xfer, this->to_xfer - this->fifo_pos);
             this->to_xfer -= this->fifo_pos;
             this->fifo_pos = 0;
             if (this->to_xfer <= 0) {
@@ -209,6 +217,8 @@ bool ScsiBusControllerDev::rcv_data() {
     req_count = std::min(this->ctrl_obj->to_xfer, DATA_FIFO_DEPTH - this->ctrl_obj->fifo_pos);
 
     this->bus_obj->pull_data(this->ctrl_obj->dst_id, &this->ctrl_obj->data_fifo[this->ctrl_obj->fifo_pos], req_count);
+    LOG_F(SCSIBUSCTRL, "%s: rcv_data to_xfer: %d -> %d", this->name.c_str(),
+        this->ctrl_obj->to_xfer, this->ctrl_obj->to_xfer - req_count);
     this->ctrl_obj->fifo_pos += req_count;
     this->ctrl_obj->to_xfer  -= req_count;
     return true;
@@ -224,6 +234,8 @@ int ScsiBusControllerDev::send_data(uint8_t* dst_ptr, int count) {
     std::memcpy(dst_ptr, this->ctrl_obj->data_fifo, actual_count);
 
     // remove the just readed data from the data FIFO
+    LOG_F(SCSIBUSCTRL, "%s: send_data to_xfer: %d -> %d", this->name.c_str(),
+        this->ctrl_obj->to_xfer, this->ctrl_obj->to_xfer - actual_count);
     this->ctrl_obj->fifo_pos -= actual_count;
     this->ctrl_obj->to_xfer  -= actual_count;
     if (this->ctrl_obj->fifo_pos > 0)
@@ -247,6 +259,8 @@ int ScsiBusController::xfer_from(uint8_t *buf, int len) {
     int dma_bytes = std::min(this->to_xfer, len);
 
     if (this->bus_obj->pull_data(this->dst_id, buf, dma_bytes)) {
+        LOG_F(SCSIBUSCTRL, "%s: xfer_from to_xfer: %d -> %d", this->name.c_str(),
+            this->to_xfer, this->to_xfer - dma_bytes);
         this->to_xfer -= dma_bytes;
         if (this->to_xfer <= 0) {
             this->xfer_count = this->to_xfer;
