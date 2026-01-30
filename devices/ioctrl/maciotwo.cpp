@@ -415,18 +415,19 @@ void MacIoTwo::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
         );
     }
 
+    value = BYTESWAP_32(value);
     switch (offset & 0x7FFC) {
     case MIO_INT_MASK2:
-        this->int_mask |= uint64_t(BYTESWAP_32(value) & ~MACIO_INT_MODE) << 32;
+        this->int_mask |= uint64_t(value & ~MACIO_INT_MODE) << 32;
         LOG_F(INTERRUPT, "%s: int_mask2:0x%08x", name.c_str(), uint32_t(this->int_mask >> 32));
         this->signal_cpu_int();
         break;
     case MIO_INT_CLEAR2:
-        this->int_events &= ~(uint64_t(BYTESWAP_32(value) & 0x7FFFFFFFUL) << 32);
+        this->int_events &= ~(uint64_t(value & 0x7FFFFFFFUL) << 32);
         clear_cpu_int();
         break;
     case MIO_INT_MASK1:
-        this->int_mask = (this->int_mask & 0x7FFFFFFF00000000ULL) | BYTESWAP_32(value);
+        this->int_mask = (this->int_mask & 0x7FFFFFFF00000000ULL) | value;
         // copy IntMode bit to InterruptMask2 register
         this->int_mask |= uint64_t(this->int_mask & MACIO_INT_MODE) << 32;
         LOG_F(INTERRUPT, "%s: int_mask1:0x%08x", name.c_str(), uint32_t(this->int_mask));
@@ -436,7 +437,7 @@ void MacIoTwo::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
         if ((this->int_mask & MACIO_INT_MODE) && (value & MACIO_INT_CLR)) {
             this->int_events = 0;
         } else {
-            this->int_events &= ~uint64_t(BYTESWAP_32(value) & 0x7FFFFFFFUL);
+            this->int_events &= ~uint64_t(value & 0x7FFFFFFFUL);
         }
         clear_cpu_int();
         break;
@@ -451,7 +452,7 @@ void MacIoTwo::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
     case MIO_OHARE_FEAT_CTRL:
         LOG_F(WARNING, "%s: write FEAT_CTRL @%x.%c = %0*x",
             this->get_name().c_str(), offset, SIZE_ARG(size), size * 2, value);
-        this->feature_control(BYTESWAP_32(value));
+        this->feature_control(value);
         break;
     case MIO_AUX_CTRL:
         LOG_F(9, "%s: write AUX_CTRL @%x.%c = %0*x",
