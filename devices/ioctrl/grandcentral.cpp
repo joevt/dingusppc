@@ -508,18 +508,18 @@ void GrandCentral::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value
             }
         }
     } else { // Interrupt related registers
+        value = BYTESWAP_32(value);
         //LOG_F(INFO, "write %s 0x%x", get_name_gc_reg(offset), offset);
         if (size != 4)
             LOG_F(ERROR, "%s: writing 0x%X.%c = %0*x",
                   this->name.c_str(), this->base_addr + offset, SIZE_ARG(size), size * 2, value);
         switch (offset) {
         case MIO_INT_MASK1:
-            this->int_mask = BYTESWAP_32(value);
+            this->int_mask = value;
             LOG_F(INTERRUPT, "%s: write int_mask.%c = 0x%08x", name.c_str(), SIZE_ARG(size), this->int_mask);
             this->signal_cpu_int();
             break;
         case MIO_INT_CLEAR1:
-            value = BYTESWAP_32(value);
             if ((this->int_mask & MACIO_INT_MODE) && (value & MACIO_INT_CLR)) {
                 this->int_events = 0;
                 this->clear_cpu_int();
