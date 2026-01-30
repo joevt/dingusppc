@@ -237,13 +237,21 @@ void MPC106PCI::pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDet
     case GrackleReg::MBER:
         this->mem_bank_en = value & 0xFFU;
         break;
-    case GrackleReg::PICR1:
+    case GrackleReg::PICR1: {
+        uint32_t oldval = this->picr1;
         this->picr1 = value;
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
         mpc106->le_mode = (picr1 & LE_MODE) != 0;
+        if ((oldval ^ value) & LE_MODE) {
+            LOG_F(INFO, "Grackle: LE_MODE = %d", mpc106->le_mode);
+        }
 #endif
         mpc106->machine_check_enable = (picr1 & MCP_EN) != 0;
+        if ((oldval ^ value) & MCP_EN) {
+            LOG_F(INFO, "Grackle: MCP_EN = %d", mpc106->machine_check_enable);
+        }
         break;
+    }
     case GrackleReg::PICR2:
         this->picr2 = value;
         break;
