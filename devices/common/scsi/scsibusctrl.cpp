@@ -61,7 +61,7 @@ void ScsiBusController::sequencer() {
         break;
     case SeqState::ARB_BEGIN:
         if (!this->bus_obj->begin_arbitration(this->src_id)) {
-            LOG_F(ERROR, "%s: arbitration error, bus not free!", this->name.c_str());
+            LOG_F(ERROR, "%s: arbitration error, bus not free!", this->get_name_and_unit_address().c_str());
             this->bus_obj->release_ctrl_lines(this->src_id);
             this->next_state = SeqState::BUS_FREE;
             this->seq_defer_state(BUS_CLEAR_DELAY);
@@ -76,7 +76,7 @@ void ScsiBusController::sequencer() {
             this->bus_obj->assert_ctrl_line(this->src_id, SCSI_CTRL_SEL);
             this->step_completed();
         } else { // arbitration lost
-            LOG_F(ERROR, "%s: arbitration lost!", this->name.c_str());
+            LOG_F(ERROR, "%s: arbitration lost!", this->get_name_and_unit_address().c_str());
             this->bus_obj->release_ctrl_lines(this->src_id);
             this->report_error(ARB_LOST);
         }
@@ -89,7 +89,7 @@ void ScsiBusController::sequencer() {
     case SeqState::SEL_END:
         if (this->bus_obj->end_selection(this->src_id, this->dst_id)) {
             this->bus_obj->release_ctrl_line(this->src_id, SCSI_CTRL_SEL);
-            LOG_F(9, "%s: selection completed", this->name.c_str());
+            LOG_F(SCSIBUSCTRL, "%s: selection completed", this->get_name_and_unit_address().c_str());
             this->step_completed();
         } else { // selection timeout
             this->bus_obj->disconnect(this->src_id);
@@ -131,8 +131,8 @@ void ScsiBusController::sequencer() {
         break;
     case SeqState::SEND_DATA:
         if (this->bus_obj->push_data(this->dst_id, this->data_fifo, this->fifo_pos)) {
-            LOG_F(SCSIBUSCTRL, "%s: sequencer SEND_DATA to_xfer: %d -> %d", this->name.c_str(),
-                this->to_xfer, this->to_xfer - this->fifo_pos);
+            LOG_F(SCSIBUSCTRL, "%s: sequencer SEND_DATA to_xfer: %d -> %d",
+                this->get_name_and_unit_address().c_str(), this->to_xfer, this->to_xfer - this->fifo_pos);
             this->to_xfer -= this->fifo_pos;
             this->fifo_pos = 0;
             if (this->to_xfer <= 0) {
@@ -144,7 +144,7 @@ void ScsiBusController::sequencer() {
     case SeqState::RCV_DATA:
         // check for unexpected bus phase changes
         if (this->bus_obj->current_phase() != this->cur_bus_phase) {
-            LOG_F(WARNING, "%s: phase mismatch!", this->name.c_str());
+            LOG_F(WARNING, "%s: phase mismatch!", this->get_name_and_unit_address().c_str());
         } else {
             if (!this->dev_obj->rcv_data()) {
                 this->cur_state = SeqState::XFER_END;
@@ -168,8 +168,8 @@ void ScsiBusController::sequencer() {
         }
         break;
     default:
-        ABORT_F("%s: unimplemented sequencer state %d", this->name.c_str(),
-                this->cur_state);
+        ABORT_F("%s: unimplemented sequencer state %d", this->get_name_and_unit_address().c_str(),
+            this->cur_state);
     }
 }
 
@@ -184,7 +184,7 @@ void ScsiBusControllerDev::notify(ScsiNotification notif_type, int param) {
             this->ctrl_obj->sequencer();
         } else {
             LOG_F(WARNING, "%s: ignore invalid selection confirmation message",
-                  this->name.c_str());
+                this->get_name_and_unit_address().c_str());
         }
         break;
     case ScsiNotification::BUS_PHASE_CHANGE:
@@ -198,8 +198,8 @@ void ScsiBusControllerDev::notify(ScsiNotification notif_type, int param) {
 #endif
         break;
     default:
-        LOG_F(9, "%s: ignore notification message, type: %d", this->name.c_str(),
-              notif_type);
+        LOG_F(SCSIBUSCTRL, "%s: ignore notification message, type: %d", this->get_name_and_unit_address().c_str(),
+            notif_type);
     }
 }
 
@@ -217,7 +217,7 @@ bool ScsiBusControllerDev::rcv_data() {
     req_count = std::min(this->ctrl_obj->to_xfer, DATA_FIFO_DEPTH - this->ctrl_obj->fifo_pos);
 
     this->bus_obj->pull_data(this->ctrl_obj->dst_id, &this->ctrl_obj->data_fifo[this->ctrl_obj->fifo_pos], req_count);
-    LOG_F(SCSIBUSCTRL, "%s: rcv_data to_xfer: %d -> %d", this->name.c_str(),
+    LOG_F(SCSIBUSCTRL, "%s: rcv_data to_xfer: %d -> %d", this->get_name_and_unit_address().c_str(),
         this->ctrl_obj->to_xfer, this->ctrl_obj->to_xfer - req_count);
     this->ctrl_obj->fifo_pos += req_count;
     this->ctrl_obj->to_xfer  -= req_count;
@@ -234,7 +234,7 @@ int ScsiBusControllerDev::send_data(uint8_t* dst_ptr, int count) {
     std::memcpy(dst_ptr, this->ctrl_obj->data_fifo, actual_count);
 
     // remove the just readed data from the data FIFO
-    LOG_F(SCSIBUSCTRL, "%s: send_data to_xfer: %d -> %d", this->name.c_str(),
+    LOG_F(SCSIBUSCTRL, "%s: send_data to_xfer: %d -> %d", this->get_name_and_unit_address().c_str(),
         this->ctrl_obj->to_xfer, this->ctrl_obj->to_xfer - actual_count);
     this->ctrl_obj->fifo_pos -= actual_count;
     this->ctrl_obj->to_xfer  -= actual_count;
@@ -246,7 +246,8 @@ int ScsiBusControllerDev::send_data(uint8_t* dst_ptr, int count) {
 
 int ScsiBusController::xfer_from(uint8_t *buf, int len) {
     if (len > this->to_xfer + this->fifo_pos)
-        LOG_F(WARNING, "%s: DMA xfer len > command xfer len", this->name.c_str());
+        LOG_F(WARNING, "%s: DMA xfer len (%d) > command xfer len (%d + %d)",
+            this->get_name_and_unit_address().c_str(), len, this->to_xfer, this->fifo_pos);
 
     if (this->fifo_pos) {
         int fifo_bytes = std::min(this->fifo_pos, len);
@@ -259,7 +260,7 @@ int ScsiBusController::xfer_from(uint8_t *buf, int len) {
     int dma_bytes = std::min(this->to_xfer, len);
 
     if (this->bus_obj->pull_data(this->dst_id, buf, dma_bytes)) {
-        LOG_F(SCSIBUSCTRL, "%s: xfer_from to_xfer: %d -> %d", this->name.c_str(),
+        LOG_F(SCSIBUSCTRL, "%s: xfer_from to_xfer: %d -> %d", this->get_name_and_unit_address().c_str(),
             this->to_xfer, this->to_xfer - dma_bytes);
         this->to_xfer -= dma_bytes;
         if (this->to_xfer <= 0) {
@@ -285,7 +286,7 @@ void ScsiBusController::fifo_push(const uint8_t data) {
     if (this->fifo_pos < DATA_FIFO_DEPTH) {
         this->data_fifo[this->fifo_pos++] = data;
         if (!this->xfer_count)
-            LOG_F(WARNING, "%s: zero xfer_count!", this->name.c_str());
+            LOG_F(WARNING, "%s: zero xfer_count!", this->get_name_and_unit_address().c_str());
         if (--this->xfer_count == 0)
             this->sequencer();
     } else
