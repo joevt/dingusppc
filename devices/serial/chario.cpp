@@ -273,6 +273,8 @@ int CharIoStdin::rcv_char(uint8_t *c)
 //======================== SOCKET character I/O backend ========================
 #ifdef _WIN32
 
+SocketCache::~SocketCache() {}
+
 #else // non-Windows OS (Linux, mac OS etc.)
 
 #include <sys/socket.h>
