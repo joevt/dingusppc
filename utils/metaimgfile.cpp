@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 
 #include <limits>
+#include <algorithm>
 
 // ================================================================================================
 std::string get_pascal_string(void * pstr)
