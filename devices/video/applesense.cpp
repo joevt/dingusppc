@@ -29,6 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <array>
 #include <cstring>
+#include <algorithm>
 
 /** Mapping between monitor IDs and their sense codes. */
 const std::map<std::string, MonitorInfo> MonitorIdToCode = {
