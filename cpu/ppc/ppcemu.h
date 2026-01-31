@@ -105,6 +105,7 @@ extern bool in_exception;
 #endif
 
 /** symbolic names for frequently used SPRs */
+namespace SPR {
 enum SPR : int {
     MQ      = 0,   // MQ (601)
     XER     = 1,
@@ -141,6 +142,7 @@ enum SPR : int {
     HID0    = 1008,
     HID1    = 1009,
 };
+}
 
 /** symbolic names for common PPC processors */
 enum PPC_VER : uint32_t {
