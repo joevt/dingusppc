@@ -33,6 +33,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <debugger/backtrace.h>
 #include <loguru.hpp>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_DECREMENTER = loguru::Verbosity_9
+    };
+}
+
 //#define CHECK_INVALID_FORM // uncomment this to check for LMW invalid form.
 //#define DISASSEMBLE_TOGGLE // uncomment this to enable disassemble toggle instructions.
 
@@ -866,7 +872,7 @@ void dppc_interpreter::ppc_mtmsr(uint32_t opcode) {
         ppc_exception_handler(Except_Type::EXC_EXT_INT, 0);
     } else if ((ppc_state.msr & MSR::EE) && dec_exception_pending) {
         dec_exception_pending = false;
-        //LOG_F(WARNING, "MTMSR: decrementer exception triggered");
+        LOG_F(DECREMENTER, "MTMSR: decrementer exception triggered");
         ppc_exception_handler(Except_Type::EXC_DECR, 0);
     } else if ((ppc_state.msr & MSR::EE) && thrm_exception_pending) {
         thrm_exception_pending = false;
@@ -995,26 +1001,30 @@ static void trigger_decrementer_exception(uint64_t = 0, uint64_t = 0) {
 
     if (ppc_state.msr & MSR::EE) {
         dec_exception_pending = false;
-        //LOG_F(WARNING, "decrementer exception triggered");
+        LOG_F(DECREMENTER, "decrementer exception triggered");
         ppc_exception_handler(Except_Type::EXC_DECR, 0);
     }
     else {
-        //LOG_F(WARNING, "decrementer exception pending");
+        LOG_F(DECREMENTER, "decrementer exception pending");
         dec_exception_pending = true;
     }
 }
 
 static void trigger_timed_decrementer_exception(uint64_t, uint64_t) {
+    VLOG_SCOPE_F(loguru::Verbosity_DECREMENTER, "trigger_timed_decrementer_exception");
     decrementer_timer.active = 0;
     uint32_t new_val = calc_dec_value();
+    LOG_F(DECREMENTER, "decrementer: %08X", new_val);
     if (new_val >= 0 && new_val != uint32_t(-1)) {
         new_val = -1;
+        LOG_F(DECREMENTER, "adjusted decrementer: %08X", new_val);
     }
     update_decrementer(true, new_val, new_val);
     trigger_decrementer_exception();
 }
 
 static void trigger_immediate_decrementer_exception(uint64_t, uint64_t) {
+    VLOG_SCOPE_F(loguru::Verbosity_DECREMENTER, "trigger_immediate_decrementer_exception");
     decrementer_timer.active = 0;
     update_decrementer(false, ppc_state.spr[SPR::DEC_S], ppc_state.spr[SPR::DEC_S]);
     trigger_decrementer_exception();
@@ -1028,11 +1038,15 @@ static void update_decrementer(bool update_time_stamp, uint32_t oldval, uint32_t
 
     dec_exception_pending = false;
 
+    VLOG_SCOPE_F(loguru::Verbosity_DECREMENTER, "update_decrementer val:%08X->%08X timestamp:%lld",
+        oldval, newval, dec_wr_timestamp);
+
     if (decrementer_timer.active) {
         TimerManager::get_instance()->cancel_timer(decrementer_timer);
     }
 
     if (bit_changed(oldval, newval, 31) && bit_set(newval, 31)) {
+        LOG_F(DECREMENTER, "immediate decrementer exception");
         TimerManager::get_instance()->add_immediate_timer(decrementer_timer,
             trigger_immediate_decrementer_exception
         );
@@ -1052,7 +1066,7 @@ static void update_decrementer(bool update_time_stamp, uint32_t oldval, uint32_t
     uint64_t time_out;
     uint32_t time_out_lo;
     _u32xu64(newval, tbr_period_ns, time_out, time_out_lo);
-    //LOG_F(WARNING, "new decrementer value: 0x%08X, interrupt after %llu ns", newval, time_out);
+    LOG_F(DECREMENTER, "ticks: 0x%08X, interrupt after %llu ns", newval, time_out);
     TimerManager::get_instance()->add_oneshot_timer(decrementer_timer,
         time_out,
         trigger_timed_decrementer_exception
@@ -1237,12 +1251,14 @@ void dppc_interpreter::ppc_mtspr(uint32_t opcode) {
         ppc_state.spr[RTCL_S] = rtc_lo;
         ppc_state.spr[RTCU_S] = rtc_hi = val;
         break;
-    case SPR::DEC_S:
+    case SPR::DEC_S: {
         if (is_601)
             val &= ~0x7F;
+        VLOG_SCOPE_F(loguru::Verbosity_DECREMENTER, "mtdec %08X", val);
         update_decrementer(true, calc_dec_value(), val);
         ppc_state.spr[SPR::DEC_S] = val;
         break;
+    }
     case SPR::TBL_S:
         update_timebase(0xFFFFFFFF00000000ULL, val);
         ppc_state.spr[TBL_S] = val;
