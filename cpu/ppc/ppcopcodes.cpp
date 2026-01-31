@@ -1096,16 +1096,16 @@ void dppc_interpreter::ppc_mfspr(uint32_t opcode) {
     case SPR::TBL_S: {
         uint64_t tbr_value = calc_tbr_value();
         ppc_state.gpr[reg_d] =
-        ppc_state.spr[TBL_S] = uint32_t(tbr_value);
-        ppc_state.spr[TBU_S] = uint32_t(tbr_value >> 32);
+        ppc_state.spr[SPR::TBL_S] = uint32_t(tbr_value);
+        ppc_state.spr[SPR::TBU_S] = uint32_t(tbr_value >> 32);
         break;
     }
     case SPR::TBU_U:
     case SPR::TBU_S: {
         uint64_t tbr_value = calc_tbr_value();
         ppc_state.gpr[reg_d] =
-        ppc_state.spr[TBU_S] = uint32_t(tbr_value >> 32);
-        ppc_state.spr[TBL_S] = uint32_t(tbr_value);
+        ppc_state.spr[SPR::TBU_S] = uint32_t(tbr_value >> 32);
+        ppc_state.spr[SPR::TBL_S] = uint32_t(tbr_value);
         break;
     }
     default:
@@ -1155,13 +1155,13 @@ void dppc_interpreter::ppc_mtspr(uint32_t opcode) {
         break;
     case SPR::RTCL_S:
         calc_rtcl_value();
-        ppc_state.spr[RTCL_S] = rtc_lo = val & 0x3FFFFF80UL;
-        ppc_state.spr[RTCU_S] = rtc_hi;
+        ppc_state.spr[SPR::RTCL_S] = rtc_lo = val & 0x3FFFFF80UL;
+        ppc_state.spr[SPR::RTCU_S] = rtc_hi;
         break;
     case SPR::RTCU_S:
         calc_rtcl_value();
-        ppc_state.spr[RTCL_S] = rtc_lo;
-        ppc_state.spr[RTCU_S] = rtc_hi = val;
+        ppc_state.spr[SPR::RTCL_S] = rtc_lo;
+        ppc_state.spr[SPR::RTCU_S] = rtc_hi = val;
         break;
     case SPR::DEC_S: {
         if (is_601)
@@ -1173,13 +1173,13 @@ void dppc_interpreter::ppc_mtspr(uint32_t opcode) {
     }
     case SPR::TBL_S:
         update_timebase(0xFFFFFFFF00000000ULL, val);
-        ppc_state.spr[TBL_S] = val;
-        ppc_state.spr[TBU_S] = tbr_wr_value >> 32;
+        ppc_state.spr[SPR::TBL_S] = val;
+        ppc_state.spr[SPR::TBU_S] = tbr_wr_value >> 32;
         break;
     case SPR::TBU_S:
         update_timebase(0x00000000FFFFFFFFULL, uint64_t(val) << 32);
-        ppc_state.spr[TBL_S] = (uint32_t)tbr_wr_value;
-        ppc_state.spr[TBU_S] = val;
+        ppc_state.spr[SPR::TBL_S] = (uint32_t)tbr_wr_value;
+        ppc_state.spr[SPR::TBU_S] = val;
         break;
     case SPR::PVR:
         break;
@@ -1226,13 +1226,13 @@ void dppc_interpreter::ppc_mftb(uint32_t opcode) {
     switch (ref_spr) {
     case SPR::TBL_U:
         ppc_state.gpr[reg_d] =
-        ppc_state.spr[TBL_S] = uint32_t(tbr_value);
-        ppc_state.spr[TBU_S] = uint32_t(tbr_value >> 32);
+        ppc_state.spr[SPR::TBL_S] = uint32_t(tbr_value);
+        ppc_state.spr[SPR::TBU_S] = uint32_t(tbr_value >> 32);
         break;
     case SPR::TBU_U:
         ppc_state.gpr[reg_d] =
-        ppc_state.spr[TBU_S] = uint32_t(tbr_value >> 32);
-        ppc_state.spr[TBL_S] = uint32_t(tbr_value);
+        ppc_state.spr[SPR::TBU_S] = uint32_t(tbr_value >> 32);
+        ppc_state.spr[SPR::TBL_S] = uint32_t(tbr_value);
         break;
     default:
         ppc_exception_handler(Except_Type::EXC_PROGRAM, Exc_Cause::ILLEGAL_OP);
