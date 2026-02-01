@@ -230,7 +230,7 @@ int32_t HWComponent::parse_self_unit_address_string(const std::string unit_addre
     std::smatch results;
     if (std::regex_match(unit_address_string, results, unit_address_re)) {
         try {
-            return (int32_t)std::stol(results[1], nullptr, 16);
+            return (int32_t)std::stoul(results[1], nullptr, 16);
         } catch (...) {
             return -1;
         }
