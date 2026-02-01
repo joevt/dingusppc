@@ -122,6 +122,11 @@ void ScsiBusController::sequencer() {
             this->bus_obj->negotiate_xfer(this->fifo_pos, this->bytes_out);
             this->cur_state = SeqState::RCV_DATA;
             this->dev_obj->rcv_data();
+            // This should probably not be done for non-MESH SCSI controllers using PIO transfer,
+            // but it gets maciNTosh ARC firmware further in the boot process.
+            if (!this->is_dma_cmd) {
+                this->step_completed();
+            }
         }
         break;
     case SeqState::XFER_END:
