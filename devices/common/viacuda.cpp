@@ -77,7 +77,8 @@ ViaCuda::ViaCuda(const std::string &dev_name)
     this->t2_counter  = 0xFFFF;
 
     // calculate VIA clock duration in ns
-    this->via_clk_dur = 1.0f / VIA_CLOCK_HZ * NS_PER_SEC;
+    this->via_clk_dur = (float)NS_PER_SEC / VIA_CLOCK_HZ;
+    this->via_clk_freq = (float)VIA_CLOCK_HZ / NS_PER_SEC;
 
     // PRAM is part of Cuda
     this->pram_obj = dynamic_cast<NVram*>(gMachineObj->get_comp_by_name("PRAM"));
@@ -401,11 +402,11 @@ void ViaCuda::write(int reg, uint8_t value) {
     }
 }
 
-uint16_t ViaCuda::calc_counter_val(const uint16_t last_val, const uint64_t& last_time)
+uint16_t ViaCuda::calc_counter_val(const uint16_t last_val, const uint64_t &start_time)
 {
     // calculate current counter value based on elapsed time and timer frequency
     uint64_t cur_time = TimerManager::get_instance()->current_time_ns();
-    uint32_t diff = uint32_t((cur_time - last_time) / this->via_clk_dur);
+    uint64_t diff = uint64_t((cur_time - start_time) * this->via_clk_freq);
     return last_val - diff;
 }
 
