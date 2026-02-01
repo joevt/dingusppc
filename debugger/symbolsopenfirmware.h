@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define SYMBOLS_OPENFIRMWARE_H_
 
 #include <string>
+#include <cstdint>
 
 std::string get_name_OpenFirmware(uint32_t addr, uint32_t addr_p, int *offset, bool append_offset = true);
 bool lookup_name_OpenFirmware(const std::string &name, uint32_t &addr);
