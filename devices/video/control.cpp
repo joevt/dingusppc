@@ -54,6 +54,7 @@ constexpr uint32_t VRAM_BE_APERTURE = 0x800000;
 namespace loguru {
     enum : Verbosity {
         Verbosity_CONTROL = loguru::Verbosity_9,
+        Verbosity_MONSENSE = loguru::Verbosity_9,
     };
 }
 
@@ -394,7 +395,7 @@ uint32_t ControlVideo::read(uint32_t rgn_start, uint32_t offset, int size)
             break;
         case ControlRegs::MON_SENSE:
             value = (this->cur_mon_id << 6) | this->mon_sense;
-            LOG_F(9, "%s: read  MON_SENSE %03x.%c = %0*x", this->name.c_str(),
+            LOG_F(MONSENSE, "%s: read  MON_SENSE %03x.%c = %0*x", this->name.c_str(),
                   offset, SIZE_ARG(size), size * 2, value);
             break;
         case ControlRegs::MISC_ENABLES:
@@ -660,7 +661,7 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         case ControlRegs::MON_SENSE: {
                 // This is a nine-bit register (bits 6-8 are read-only sense
                 // inputs that can be written back). Log unexpected values.
-                VLOG_F((value & ~0x1FF) ? loguru::Verbosity_ERROR : 9,
+                VLOG_F((value & ~0x1FF) ? loguru::Verbosity_ERROR : loguru::Verbosity_MONSENSE,
                        "%s: write MON_SENSE %03x.%c = %0*x", this->name.c_str(),
                        offset, SIZE_ARG(size), size * 2, value);
                 uint8_t dirs   = ((value >> 3) & 7) ^ 7;
