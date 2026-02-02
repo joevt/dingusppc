@@ -459,7 +459,7 @@ void AtaHardDisk::prepare_identify_info() {
     WRITE_DWORD_LE_U(&buf_ptr[ident_curcapacity], (uint32_t)std::min(this->total_sectors, (uint64_t)REAL_CHS_LIMIT));
 
     // report LBA capacity
-    WRITE_DWORD_LE_A(&buf_ptr[ident_capacity], (uint32_t)std::min(this->total_sectors, (1ULL<<28) - 1));
+    WRITE_DWORD_LE_A(&buf_ptr[ident_capacity], (uint32_t)std::min(this->total_sectors, ((uint64_t(1))<<48) - 1));
 
     WRITE_WORD_LE_A(&buf_ptr[ident_multidma], ((1 << this->cur_dma_mode) << 8) | 7);
     WRITE_WORD_LE_A(&buf_ptr[ident_mindma], 120); // minimum MWDMA cycle time (ns)
@@ -468,7 +468,7 @@ void AtaHardDisk::prepare_identify_info() {
     if (this->total_sectors >= (1<<28)) {
         WRITE_WORD_LE_A(&buf_ptr[ident_featsupp2], 0x4400); // 0x400 LBA48 support; 0x2000 FLUSH_CACHE_EXT support
         WRITE_WORD_LE_A(&buf_ptr[ident_featsupp3], 0x4000);
-        WRITE_QWORD_LE_A(&buf_ptr[ident_48bitlba], std::min(this->total_sectors, (1ULL<<48) - 1));
+        WRITE_QWORD_LE_A(&buf_ptr[ident_48bitlba], std::min(this->total_sectors, ((uint64_t(1))<<48) - 1));
     }
 }
 
