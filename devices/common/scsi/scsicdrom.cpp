@@ -76,6 +76,9 @@ void ScsiCdrom::process_command()
     case ScsiCommand::TEST_UNIT_READY:
         this->test_unit_ready();
         break;
+    case ScsiCommand::START_STOP_UNIT:
+        this->start_stop_unit(cmd[4] & 3);
+        break;
     case ScsiCommand::READ_6:
         lba = ((cmd[1] & 0x1F) << 16) + (cmd[2] << 8) + cmd[3];
         this->read(lba, cmd[4], 6);
@@ -179,6 +182,14 @@ void ScsiCdrom::read(uint32_t lba, uint16_t nblocks, uint8_t cmd_len)
 
 int ScsiCdrom::test_unit_ready()
 {
+    this->switch_phase(ScsiPhase::STATUS);
+    return ScsiError::NO_ERROR;
+}
+
+int ScsiCdrom::start_stop_unit(uint8_t op)
+{
+    // TODO: Revisit this in the future if swapping is ever implemented.
+    LOG_F(INFO, "%s: START/STOP UNIT op %d", this->get_name_and_unit_address().c_str(), op & 3);
     this->switch_phase(ScsiPhase::STATUS);
     return ScsiError::NO_ERROR;
 }
