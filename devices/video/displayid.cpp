@@ -28,6 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <map>
 #include <string>
+#include <cstring>
 
 typedef struct {
     uint16_t      h;
