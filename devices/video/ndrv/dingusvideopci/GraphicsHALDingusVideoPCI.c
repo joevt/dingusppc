@@ -3845,7 +3845,11 @@ GDXErr  GraphicsHALDrawHardwareCursor(SInt32 x, SInt32 y, Boolean visible)
 	UInt32						*pCursorImage;
 	SInt32						i, j;
 
-	#warning fix me
+	#ifdef _MSC_VER
+		#pragma message("fix me")
+	#else
+		#warning fix me
+	#endif
 
 	// Get data for hardware cursor
 	pHardwareCursorData = &(templateHALData->hardwareCursorData);
@@ -4235,7 +4239,11 @@ static void  DeferredMoveHardwareCursor(void)
 		height = screenHeight - currentY;
 
 	hardwareCursorImage = (Ptr) &(pHardwareCursorData->cursorImage);
-	#warning fix me
+	#ifdef _MSC_VER
+		#pragma message("fix me")
+	#else
+		#warning fix me
+	#endif
 
 	pHardwareCursorFrameBuffer = templateHALData->baseAddressPageCurrent;
 	screenRowBytes = templateHALData->rowBytes;
@@ -5114,7 +5122,11 @@ static GDXErr TemplateSetupFBController(DepthMode /*depthMode*/, const DisplayIn
 	ControlWriteRegister(kRegFieldControlFRAMEBUFFER_ROWBYTES, templateHALData->rowBytes);
 
 	// Program Toynbee with the 'BitDepthIndependentData'... (could change...always hit)
-	#warning fix me
+	#ifdef _MSC_VER
+		#pragma message("fix me")
+	#else
+		#warning fix me
+	#endif
 //	ControlWriteRegister(kRegFieldControlFRAMEBUFFER_BASE, templateHALData->currentPageAddress);
 
 	return kGDXErrNoError;
