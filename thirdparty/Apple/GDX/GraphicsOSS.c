@@ -220,7 +220,11 @@ static GDXErr GraphicsOSSInitialize(const RegEntryID *regEntryID)
 
 	// Find out if we are running on Mac OS X
 
-	#warning "Test this in Mac OS 9 and Mac OS X"
+	#ifdef _MSC_VER
+		#pragma message("Test this in Mac OS 9 and Mac OS X")
+	#else
+		#warning "Test this in Mac OS 9 and Mac OS X"
+	#endif
 	gIsForMacOSX = noErr == RegistryPropertyGetSize(regEntryID, "AAPL,iokit-ndrv", &valueSize);
 
 	// Retrieve the ISTProperty.
