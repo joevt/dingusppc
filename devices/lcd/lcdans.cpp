@@ -181,9 +181,17 @@ void LcdAns::iodev_write(uint32_t address, uint16_t value)
         case LcdAnsReg::SYNC_TIMEBASE:
             LOG_F(VTIMEBASE, "%s: write SYNC_TIMEBASE = %04x", this->name.c_str(), value);
             if (value & 0x8000) {
-                #warning enable timebase of CPUs
+                #ifdef _MSC_VER
+                    #pragma message("enable timebase of CPUs")
+                #else
+                    #warning enable timebase of CPUs
+                #endif
             } else {
-                #warning disable timebase of CPUs
+                #ifdef _MSC_VER
+                    #pragma message("disable timebase of CPUs")
+                #else
+                    #warning disable timebase of CPUs
+                #endif
             }
             break;
         case LcdAnsReg::UNKNOWN:
