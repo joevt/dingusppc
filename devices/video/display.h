@@ -63,7 +63,7 @@ public:
 
     // Clears the display
     void blank();
-
+    void black();
 
     // Update the host framebuffer display. If the display adapter does its own
     // dirty tracking, fb_known_to_be_changed will be set to true, so that the
