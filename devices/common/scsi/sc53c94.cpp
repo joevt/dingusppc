@@ -992,7 +992,7 @@ int Sc53C94Dev::send_data(uint8_t* dst_ptr, int count)
         std::memmove(this->ctrl_obj->data_fifo, &this->ctrl_obj->data_fifo[actual_count], this->ctrl_obj->data_fifo_pos);
     } else if (this->ctrl_obj->cur_bus_phase == ScsiPhase::DATA_OUT) {
         ABORT_F("%s: don't know what to do next!", this->name.c_str());
-        this->ctrl_obj->sequencer();
+        //this->ctrl_obj->sequencer();
     }
 
     return actual_count;
