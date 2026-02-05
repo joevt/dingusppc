@@ -11,8 +11,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 
 if (NOT WIN32 AND NOT EMSCRIPTEN)
-    find_package(SDL2 REQUIRED)
-    include_directories(${SDL2_INCLUDE_DIRS})
+    find_package(SDL3 REQUIRED)
+    include_directories(${SDL3_INCLUDE_DIRS})
     if (UNIX AND NOT APPLE)
         find_package (Threads)
     endif()
@@ -39,7 +39,7 @@ elseif (WIN32) # Windows build relies on vcpkg
     endif()
 
     set(CMAKE_TOOLCHAIN_FILE ${vcpkg_toolchain_file})
-    find_package(SDL2 CONFIG REQUIRED)
+    find_package(SDL3 CONFIG REQUIRED)
     add_compile_definitions(SDL_MAIN_HANDLED)
 endif()
 
@@ -215,7 +215,7 @@ if (APPLE)
 endif()
 
 if (WIN32)
-    target_link_libraries(dingusppc PRIVATE SDL2::SDL2 cubeb)
+    target_link_libraries(dingusppc PRIVATE SDL3::SDL3 cubeb)
     target_compile_definitions(dingusppc PRIVATE SDL_MAIN_HANDLED)
 elseif (EMSCRIPTEN)
     target_link_libraries(dingusppc PRIVATE
@@ -228,7 +228,7 @@ elseif (EMSCRIPTEN)
                                     "-s EXPORT_NAME=emulator"
                                     "-s 'EXTRA_EXPORTED_RUNTIME_METHODS=[\"FS\"]'")
 else()
-    target_link_libraries(dingusppc PRIVATE SDL2::SDL2main SDL2::SDL2 cubeb
+    target_link_libraries(dingusppc PRIVATE SDL3::SDL3 cubeb
                                     ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 endif()
 
@@ -252,10 +252,10 @@ if (DPPC_BUILD_PPC_TESTS)
                                            $<TARGET_OBJECTS:loguru>)
 
     if (WIN32)
-        target_link_libraries(testppc PRIVATE SDL2::SDL2 cubeb)
+        target_link_libraries(testppc PRIVATE SDL3::SDL3 cubeb)
         target_compile_definitions(testppc PRIVATE SDL_MAIN_HANDLED)
     else()
-        target_link_libraries(testppc PRIVATE SDL2::SDL2main SDL2::SDL2 cubeb
+        target_link_libraries(testppc PRIVATE SDL3::SDL3 cubeb
                                     ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
     endif()
 
@@ -278,7 +278,7 @@ if (DPPC_BUILD_BENCHMARKS)
                                            $<TARGET_OBJECTS:utils>
                                            $<TARGET_OBJECTS:loguru>)
 
-    target_link_libraries(bench1 PRIVATE cubeb SDL2::SDL2 ${CMAKE_DL_LIBS}
+    target_link_libraries(bench1 PRIVATE cubeb SDL3::SDL3 ${CMAKE_DL_LIBS}
             ${CMAKE_THREAD_LIBS_INIT})
     if (WIN32)
         target_compile_definitions(bench1 PRIVATE SDL_MAIN_HANDLED)
