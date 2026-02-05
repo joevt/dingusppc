@@ -29,7 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 
 AdbMouse::AdbMouse(
-    const std::string name, uint8_t device_class, int num_buttons, int num_bits, uint16_t resolution
+    const std::string name, uint8_t device_class, uint8_t num_buttons, uint8_t num_bits, uint16_t resolution
 ) : AdbDevice(name), HWComponent(name),
     device_class(device_class), num_buttons(num_buttons), num_bits(num_bits), resolution(resolution)
 {
@@ -76,29 +76,30 @@ bool AdbMouse::get_register_0(uint8_t buttons, bool force) {
 
         static const uint8_t buttons_to_bits[] = {0, 7, 7, 10, 10, 13, 13, 16, 16};
         static const uint8_t bits_to_bits[]    = {0, 7, 7, 7, 7, 7, 7, 7, 10, 10, 10, 13, 13, 13, 16, 16, 16};
-        int num_bits, total_bits;
+        uint8_t number_bits, total_bits;
         // if the mouse is in standard protocol then only send first 2 bytes
         // BUGBUG: what should tablet do here?
         if (this->device_class == MOUSE && this->dev_handler_id == 1) {
-            num_bits = total_bits = 7;
+            number_bits = total_bits = 7;
         } else {
-            num_bits = this->num_bits;
-            total_bits = std::max(buttons_to_bits[this->num_buttons], bits_to_bits[num_bits]);
+            number_bits = this->num_bits;
+            total_bits = std::max(buttons_to_bits[this->num_buttons], bits_to_bits[number_bits]);
         }
         buttons = ~buttons;
+        int32_t minval =  this->device_class == TABLET ?                  0 : (-1 << (number_bits - 1));
+        int32_t maxval = (this->device_class == TABLET ? (1 << number_bits) : ( 1 << (number_bits - 1))) - 1;
 
-        for (int axis = 0; axis < 2; axis++) {
-            int bits = num_bits;
-            int32_t val = axis ? this->device_class == TABLET ? this->x_abs : this->x_rel
-                               : this->device_class == TABLET ? this->y_abs : this->y_rel;
-            if (val < (-1 << (bits - 1)))
-                val = -1 << (bits - 1);
-            else if (val >= (1 << (bits - 1)))
-                val = (1 << (bits - 1)) - 1;
+        for (uint8_t axis = 0; axis < 2; axis++) {
+            int32_t val = axis ? this->device_class == TABLET ? (int32_t)this->x_abs : this->x_rel
+                               : this->device_class == TABLET ? (int32_t)this->y_abs : this->y_rel;
+            if (val < minval)
+                val = minval;
+            else if (val > maxval)
+                val = maxval;
             int bits_remaining = total_bits;
             p = &out_buf[axis];
-            int button = axis;
-            bits = 7;
+            uint8_t button = axis;
+            uint8_t bits = 7;
 
             while (bits_remaining > 0) {
                 *p = uint8_t((val & ((1 << bits) - 1)) | (((buttons >> button) & 1) << bits) | (*p << (bits + 1)));
