@@ -120,7 +120,7 @@ void ScsiBusController::sequencer() {
             break;
         case ScsiPhase::DATA_IN:
             this->cur_state = SeqState::RCV_DATA;
-            this->dev_obj->rcv_data();
+            this->dev_obj->bus_rcv_data();
             // This should probably not be done for non-MESH SCSI controllers using PIO transfer,
             // but it gets maciNTosh ARC firmware further in the boot process.
             if (!this->is_dma_cmd) {
@@ -150,7 +150,7 @@ void ScsiBusController::sequencer() {
         if (this->bus_obj->current_phase() != this->cur_bus_phase) {
             LOG_F(WARNING, "%s: phase mismatch!", this->get_name_and_unit_address().c_str());
         } else {
-            if (!this->dev_obj->rcv_data()) {
+            if (!this->dev_obj->bus_rcv_data()) {
                 this->cur_state = SeqState::XFER_END;
                 this->sequencer();
             }
@@ -158,7 +158,7 @@ void ScsiBusController::sequencer() {
         break;
     case SeqState::RCV_STATUS:
     case SeqState::RCV_MESSAGE:
-        this->dev_obj->rcv_data();
+        this->dev_obj-> bus_rcv_data();
         if (this->is_initiator) {
             if (this->cur_state == SeqState::RCV_STATUS) {
                 this->bus_obj->target_next_step();
@@ -206,7 +206,7 @@ void ScsiBusControllerDev::notify(ScsiNotification notif_type, int param) {
     }
 }
 
-bool ScsiBusControllerDev::rcv_data() {
+bool ScsiBusControllerDev::bus_rcv_data() {
     int req_count;
 
     // return if REQ line is negated
@@ -220,7 +220,7 @@ bool ScsiBusControllerDev::rcv_data() {
     req_count = std::min(this->ctrl_obj->to_xfer, DATA_FIFO_DEPTH - this->ctrl_obj->fifo_pos);
 
     this->bus_obj->pull_data(this->ctrl_obj->dst_id, &this->ctrl_obj->data_fifo[this->ctrl_obj->fifo_pos], req_count);
-    LOG_F(SCSIBUSCTRL, "%s: rcv_data to_xfer: %d -> %d", this->get_name_and_unit_address().c_str(),
+    LOG_F(SCSIBUSCTRL, "%s: bus_rcv_data to_xfer: %d -> %d", this->get_name_and_unit_address().c_str(),
         this->ctrl_obj->to_xfer, this->ctrl_obj->to_xfer - req_count);
     this->ctrl_obj->fifo_pos += req_count;
     this->ctrl_obj->to_xfer  -= req_count;
