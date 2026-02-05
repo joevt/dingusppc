@@ -126,7 +126,7 @@ public:
     bool prepare_data() override { return false; }
     bool get_more_data() override { return false; }
     bool has_data() override { return false; }
-    bool rcv_data();
+    bool bus_rcv_data();
     int  send_data(uint8_t* dst_ptr, int count) override;
     void process_command() override {}
 
