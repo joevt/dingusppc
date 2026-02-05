@@ -32,14 +32,14 @@ public:
     WindowEvent()  = default;
     ~WindowEvent() = default;
 
-    uint16_t    sub_type;
+    uint32_t    sub_type;
     uint32_t    window_id;
 };
 
-enum : uint16_t {
-    // Standard SDL window event types are uint8_t's.
+enum : uint32_t {
+    // SDL3 events are less than 0x10000.
     // We add our own custom events after that.
-    DPPC_WINDOWEVENT_WINDOW_SCALE_QUALITY_TOGGLE = 1 << 8,
+    DPPC_WINDOWEVENT_WINDOW_SCALE_QUALITY_TOGGLE = 0x10000,
     DPPC_WINDOWEVENT_MOUSE_GRAB_TOGGLE,
     DPPC_WINDOWEVENT_MOUSE_GRAB_CHANGED,
     DPPC_WINDOWEVENT_WINDOW_FULL_SCREEN_TOGGLE,

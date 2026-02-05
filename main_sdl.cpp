@@ -24,26 +24,30 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <main.h>
 #include <cpu/ppc/ppcemu.h>
 #include <loguru.hpp>
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #ifdef __APPLE__
 extern "C" void remap_appkit_menu_shortcuts();
 #endif
 
 bool init() {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER)) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         LOG_F(ERROR, "SDL_Init error: %s", SDL_GetError());
         return false;
     }
 
     SDL_EnableScreenSaver();
 
-    int num_joysticks = SDL_NumJoysticks();
-    for (int i = 0; i < num_joysticks; ++i) {
-        if (SDL_IsGameController(i)) {
-            SDL_GameControllerOpen(i); /* only support one controller for now */
-            break;
+    int num_joysticks;
+    SDL_JoystickID *joystick_ids = SDL_GetJoysticks(&num_joysticks);
+    if (joystick_ids) {
+        for (int i = 0; i < num_joysticks; ++i) {
+            if (SDL_IsGamepad(joystick_ids[i])) {
+                SDL_OpenGamepad(joystick_ids[i]); /* only support one controller for now */
+                break;
+            }
         }
+        SDL_free(joystick_ids);
     }
 
 #ifdef __APPLE__
