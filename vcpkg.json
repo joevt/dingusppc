@@ -5,6 +5,6 @@
   "description": "Experimental Power Macintosh emulator",
   "license": "GPL-3.0-or-later",
   "dependencies": [
-    "sdl2"
+    "sdl3"
   ]
 }
