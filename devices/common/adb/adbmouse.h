@@ -43,19 +43,19 @@ enum DeviceClass {
 };
 
     AdbMouse(
-        const std::string name, uint8_t device_class, int num_buttons, int num_bits, uint16_t resolution);
+        const std::string name, uint8_t device_class, uint8_t num_buttons, uint8_t num_bits, uint16_t resolution);
     ~AdbMouse() = default;
 
     static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
 #ifdef ABSOLUTE
         uint8_t  device_class = TABLET;
-        int      num_buttons = 3;
-        int      num_bits = 16;
+        uint8_t  num_buttons = 3;
+        uint8_t  num_bits = 16;
         uint16_t resolution = 72;
 #else
         uint8_t  device_class = MOUSE;
-        int      num_buttons = 3;
-        int      num_bits = 10;
+        uint8_t  num_buttons = 3;
+        uint8_t  num_bits = 10;
         uint16_t resolution = 300;
 #endif
         return std::unique_ptr<AdbMouse>(
@@ -76,13 +76,13 @@ protected:
 private:
     int32_t  x_rel = 0;
     int32_t  y_rel = 0;
-    int32_t  x_abs = 0;
-    int32_t  y_abs = 0;
+    uint32_t x_abs = 0;
+    uint32_t y_abs = 0;
     uint8_t  buttons_state = 0;
     bool     changed = false;
     uint8_t  device_class;
-    int      num_buttons;
-    int      num_bits;
+    uint8_t  num_buttons;
+    uint8_t  num_bits;
     uint16_t resolution;
 };
 
