@@ -66,7 +66,7 @@ bool OfConfigAppl::validate_header(OfConfigHdrAppl &hdr) {
 }
 
 bool OfConfigAppl::validate() {
-    int             i;
+    unsigned i;
     OfConfigHdrAppl hdr{};
 
     if (this->nvram_obj == nullptr)
@@ -104,7 +104,7 @@ uint16_t OfConfigAppl::checksum_partition() {
         acc += READ_WORD_BE_A(&this->buf[i]);
     }
 
-    return acc + (acc >> 16);
+    return uint16_t(acc + (acc >> 16));
 }
 
 static const string flag_names[] = {
@@ -142,6 +142,7 @@ static const map<string, std::tuple<int, uint16_t>> of_vars = {
     {"nvramrc",         {OF_VAR_TYPE_STR,   0x54}},
     {"boot-command",    {OF_VAR_TYPE_STR,   0x58}},
 };
+constexpr int min_here                    = 0x5C;
 
 const OfConfigImpl::config_dict& OfConfigAppl::get_config_vars() {
     this->_config_vars.clear();
@@ -169,7 +170,7 @@ const OfConfigImpl::config_dict& OfConfigAppl::get_config_vars() {
                 hex2str(READ_DWORD_BE_A(&this->buf[offset]))));
             break;
         case OF_VAR_TYPE_STR:
-            uint16_t str_offset = READ_WORD_BE_A(&this->buf[offset]) - this->nvram_obj->get_of_nvram_offset();
+            uint16_t str_offset = uint16_t(READ_WORD_BE_A(&this->buf[offset]) - this->nvram_obj->get_of_nvram_offset());
             uint16_t str_len    = READ_WORD_BE_A(&this->buf[offset+2]);
 
             if ((str_offset + str_len) > OF_CFG_SIZE) {
@@ -201,7 +202,7 @@ void OfConfigAppl::update_partition() {
     WRITE_WORD_BE_A(&this->buf[4], checksum);
 
     // write the entire partition back to NVRAM
-    for (int i = 0; i < this->size; i++) {
+    for (unsigned i = 0; i < this->size; i++) {
         this->nvram_obj->write_byte(this->nvram_obj->get_of_nvram_offset() + i, this->buf[i]);
     }
 
@@ -209,7 +210,7 @@ void OfConfigAppl::update_partition() {
 }
 
 bool OfConfigAppl::set_var(std::string& var_name, std::string& value) {
-    int i, flag;
+    unsigned i;
 
     if (!this->validate())
         return false;
@@ -217,6 +218,7 @@ bool OfConfigAppl::set_var(std::string& var_name, std::string& value) {
     // check if the user tries to change a flag
     for (i = 0; i < num_flags; i++) {
         if (var_name == flag_names[i]) {
+            int flag;
             if (value == "true")
                 flag = 1;
             else if (value == "false")
@@ -268,19 +270,28 @@ bool OfConfigAppl::set_var(std::string& var_name, std::string& value) {
 
         // check if there is enough space in the heap for the new string
         // the heap is grown down from offset 0x2000 and cannot be lower than here (0x185c)
-        uint16_t new_top = top + str_len - value.length();
-        if (new_top < here) {
+
+        if (here < nvram_obj->get_of_nvram_offset() + min_here) {
+            cout << "here is wrong!" << endl;
+            return false;
+        }
+        if (top > this->nvram_obj->get_of_nvram_offset() + OF_CFG_SIZE) {
+            cout << "top is wrong!" << endl;
+            return false;
+        }
+        if (value.length() + here > unsigned(top) + str_len) {
             cout << "No room in the heap!" << endl;
             return false;
         }
+        uint16_t new_top = uint16_t(unsigned(top) + str_len - value.length());
 
         // remove the old string
         std::memmove(&this->buf[top + str_len - this->nvram_obj->get_of_nvram_offset()],
             &this->buf[top - this->nvram_obj->get_of_nvram_offset()], str_offset - top);
 
         for (auto& var : of_vars) {
-            auto type   = std::get<0>(var.second);
-            auto offset = std::get<1>(var.second);
+            type   = std::get<0>(var.second);
+            offset = std::get<1>(var.second);
             if (type == OF_VAR_TYPE_STR) {
                 uint16_t i_str_offset = READ_WORD_BE_A(&this->buf[offset]);
                 if (i_str_offset < str_offset) {
@@ -293,13 +304,13 @@ bool OfConfigAppl::set_var(std::string& var_name, std::string& value) {
         // copy new string into NVRAM buffer char by char
         i = 0;
         for(char& ch : value) {
-            this->buf[top + i - this->nvram_obj->get_of_nvram_offset()] = ch == '\x0A' ? '\x0D' : ch;
+            this->buf[top + i - this->nvram_obj->get_of_nvram_offset()] = uint8_t(ch == '\x0A' ? '\x0D' : ch);
             i++;
         }
 
         // stuff new values into the variable state
         WRITE_WORD_BE_A(&this->buf[offset+0], top);
-        WRITE_WORD_BE_A(&this->buf[offset+2], value.length());
+        WRITE_WORD_BE_A(&this->buf[offset+2], (uint16_t)value.length());
 
         // update partition header
         WRITE_WORD_BE_A(&hdr->top, top);
@@ -321,12 +332,12 @@ uint8_t OfConfigChrp::checksum_hdr(const uint8_t* data)
             sum = (sum + 1) & 0xFFU;
     }
 
-    return sum;
+    return (uint8_t)sum;
 }
 
 bool OfConfigChrp::validate()
 {
-    int     i, pos, len;
+    unsigned i, pos, len;
     uint8_t sig;
     bool    wip = true;
     bool    of_part_found = false;
@@ -354,7 +365,7 @@ bool OfConfigChrp::validate()
         case NVRAM_SIG_MAC_OS:
         case NVRAM_SIG_ERR_LOG:
             // skip valid partitions we're not interested in
-            len = (this->nvram_obj->read_byte(pos + 2) << 8) |
+            len = ((unsigned)(this->nvram_obj->read_byte(pos + 2)) << 8) |
                    this->nvram_obj->read_byte(pos + 3);
             if (!len || (len * 16) >= 8192)
                 break;
@@ -401,7 +412,7 @@ bool OfConfigChrp::validate()
 }
 
 const OfConfigImpl::config_dict& OfConfigChrp::get_config_vars() {
-    int len;
+    unsigned len;
 
     this->_config_vars.clear();
 
@@ -410,7 +421,7 @@ const OfConfigImpl::config_dict& OfConfigChrp::get_config_vars() {
     if (!this->validate())
         return _config_vars;
 
-    for (int pos = 0; pos < 4096;) {
+    for (unsigned pos = 0; pos < 4096;) {
         char *pname = (char *)&this->buf[pos];
         bool got_name = false;
 
@@ -497,7 +508,7 @@ bool OfConfigChrp::update_partition() {
     }
 
     // write the entire partition back to NVRAM
-    for (int i = 0; i < 4096; i++) {
+    for (unsigned i = 0; i < 4096; i++) {
         this->nvram_obj->write_byte(this->data_offset + i, this->buf[i]);
     }
 
