@@ -151,11 +151,11 @@ HWComponent* ControlVideo::set_property(const std::string &property, const std::
 
 void ControlVideo::change_one_bar(uint32_t &aperture, uint32_t aperture_size, uint32_t aperture_new, int bar_num) {
     if (aperture != aperture_new) {
-        if (aperture)
+        if (bar_num && aperture)
             this->host_instance->pci_unregister_mmio_region(aperture, aperture_size, this);
 
         aperture = aperture_new;
-        if (aperture)
+        if (bar_num && aperture)
             this->host_instance->pci_register_mmio_region(aperture, aperture_size, this);
 
         LOG_F(INFO, "%s: aperture[%d] set to 0x%08X", this->name.c_str(), bar_num, aperture);
