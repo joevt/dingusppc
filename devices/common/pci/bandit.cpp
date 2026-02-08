@@ -214,14 +214,14 @@ void BanditHost::setup_mem_regions(uint32_t base_addr)
     };
     rgn0E->read = [this](uint32_t /*rgn_start*/, uint32_t offset, int size) {
         // Interrupt
-        LOG_F(ERROR, "%s: Interrupt Acknowledge Cycle 0x%08x unsupported", this->name.c_str(), offset & 0x001FFFFF);
+        LOG_F(ERROR, "%s: Interrupt Acknowledge Cycle 0x%08x.%c unsupported", this->name.c_str(), offset, SIZE_ARG(size));
         return 0;
     };
     if (this->bridge_num != 1)
     rgn10->read = [this](uint32_t /*rgn_start*/, uint32_t offset, int size) {
         // 24-Bit Memory Address
         // 24-Bit Memory Address or VGA Device Access
-        LOG_F(ERROR, "%s: Pass-Through read 0x%08x unsupported", this->name.c_str(), offset & 0x00FFFFFF);
+        LOG_F(ERROR, "%s: Pass-Through read 0x%08x.%c unsupported", this->name.c_str(), offset, SIZE_ARG(size));
         return 0;
     };
     rgn00->write = [this](uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
@@ -255,13 +255,15 @@ void BanditHost::setup_mem_regions(uint32_t base_addr)
     };
     rgn0E->write = [this](uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
         // Special
-        LOG_F(ERROR, "%s: Special Cycle 0x%08x unsupported", this->name.c_str(), offset & 0x001FFFFF);
+        LOG_F(ERROR, "%s: Special Cycle 0x%08x.%c = %0*x unsupported",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
     };
     if (this->bridge_num != 1)
     rgn10->write = [this](uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
         // 24-Bit Memory Address
         // 24-Bit Memory Address or VGA Device Access
-        LOG_F(ERROR, "%s: Pass-Through read 0x%08x unsupported", this->name.c_str(), offset & 0x00FFFFFF);
+        LOG_F(ERROR, "%s: Pass-Through write 0x%08x.%c = %0*x unsupported",
+            this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
     };
 }
 
