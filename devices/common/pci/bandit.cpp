@@ -167,22 +167,35 @@ void BanditPciDevice::verbose_address_space()
     }
 }
 
-uint32_t BanditHost::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
+void BanditHost::setup_mem_regions(uint32_t base_addr)
 {
-    switch (offset >> 21) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
-        // I/O space
-        return pci_io_read_broadcast(offset & 0x007FFFFF, size);
+    MemCtrlBase *mem_ctrl = dynamic_cast<MemCtrlBase *>
+        (gMachineObj->get_comp_by_type(HWCompType::MEM_CTRL));
+    /*
+        add memory mapped I/O regions for Bandit control registers
+        The regions have the following layout:
+        base_addr +  0x000000 --> I/O space
+        base_addr +  0x800000 --> CONFIG_ADDR
+        base_addr +  0xC00000 --> CONFIG_DATA
+        base_addr +  0xE00000 --> Special(W)/Interrupt(R)
+        base_addr + 0x1000000 --> pass-through memory space ; exclude for pci1 because GrandCentral exists here
+    */
+    auto rgn00 = mem_ctrl->add_mmio_region(base_addr + 0x00000000, 0x00800000, this);
+    auto rgn08 = mem_ctrl->add_mmio_region(base_addr + 0x00800000, 0x00400000, this);
+    auto rgn0C = mem_ctrl->add_mmio_region(base_addr + 0x00C00000, 0x00200000, this);
+    auto rgn0E = mem_ctrl->add_mmio_region(base_addr + 0x00E00000, 0x00200000, this);
+    auto rgn10 = (this->bridge_num != 1) ?
+                 mem_ctrl->add_mmio_region(base_addr + 0x01000000, 0x01000000, this) : nullptr;
 
-    case 4:
-    case 5:
+    rgn00->read = [this](uint32_t /*rgn_start*/, uint32_t offset, int size) {
+        // I/O space
+        return pci_io_read_broadcast(offset, size);
+    };
+    rgn08->read = [this](uint32_t /*rgn_start*/, uint32_t /*offset*/, int /*size*/) {
         // CONFIG_ADDR
         return (this->is_aspen) ? this->config_addr : BYTESWAP_32(this->config_addr);
-
-    case 6:
+    };
+    rgn0C->read = [this](uint32_t /*rgn_start*/, uint32_t offset, int size) {
         // CONFIG_DATA
         int bus_num, dev_num, fun_num;
         uint8_t reg_offs;
@@ -198,46 +211,28 @@ uint32_t BanditHost::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
         }
         LOG_READ_NON_EXISTENT_PCI_DEVICE();
         return 0xFFFFFFFFUL; // PCI spec §6.1
-
-    case 7:
+    };
+    rgn0E->read = [this](uint32_t /*rgn_start*/, uint32_t offset, int size) {
         // Interrupt
         LOG_F(ERROR, "%s: Interrupt Acknowledge Cycle 0x%08x unsupported", this->name.c_str(), offset & 0x001FFFFF);
-        break;
-
-    case 8:
-    case 9:
-    case 10:
-    case 11:
-    case 12:
-    case 13:
-    case 14:
+        return 0;
+    };
+    if (this->bridge_num != 1)
+    rgn10->read = [this](uint32_t /*rgn_start*/, uint32_t offset, int size) {
         // 24-Bit Memory Address
-    case 15:
         // 24-Bit Memory Address or VGA Device Access
         LOG_F(ERROR, "%s: Pass-Through read 0x%08x unsupported", this->name.c_str(), offset & 0x00FFFFFF);
-        break;
-    }
-    return 0;
-}
-
-void BanditHost::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size)
-{
-    switch (offset >> 21) {
-    case 0:
-    case 1:
-    case 2:
-    case 3:
+        return 0;
+    };
+    rgn00->write = [this](uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
         // I/O space
-        pci_io_write_broadcast(offset & 0x007FFFFF, size, value);
-        break;
-
-    case 4:
-    case 5:
+        pci_io_write_broadcast(offset, size, value);
+    };
+    rgn08->write = [this](uint32_t /*rgn_start*/, uint32_t /*offset*/, uint32_t value, int /*size*/) {
         // CONFIG_ADDR
         this->config_addr = (this->is_aspen) ? value : BYTESWAP_32(value);
-        break;
-
-    case 6:
+    };
+    rgn0C->write = [this](uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
         // CONFIG_DATA
         int bus_num, dev_num, fun_num;
         uint8_t reg_offs;
@@ -257,26 +252,28 @@ void BanditHost::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, 
             return;
         }
         LOG_WRITE_NON_EXISTENT_PCI_DEVICE();
-        break;
-
-    case 7:
+    };
+    rgn0E->write = [this](uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
         // Special
         LOG_F(ERROR, "%s: Special Cycle 0x%08x unsupported", this->name.c_str(), offset & 0x001FFFFF);
-        break;
-
-    case 8:
-    case 9:
-    case 10:
-    case 11:
-    case 12:
-    case 13:
-    case 14:
+    };
+    if (this->bridge_num != 1)
+    rgn10->write = [this](uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
         // 24-Bit Memory Address
-    case 15:
         // 24-Bit Memory Address or VGA Device Access
         LOG_F(ERROR, "%s: Pass-Through read 0x%08x unsupported", this->name.c_str(), offset & 0x00FFFFFF);
-        break;
-    }
+    };
+}
+
+uint32_t BanditHost::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
+{
+    LOG_F(ERROR, "%s: Default read 0x%08x.%c unsupported", this->name.c_str(), offset, SIZE_ARG(size));
+    return 0;
+}
+
+void BanditHost::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size)
+{
+    LOG_F(ERROR, "%s: Default write 0x%08x.%c = %0*x unsupported", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
 }
 
 inline void BanditHost::cfg_setup(uint32_t offset, int size, int &bus_num,
@@ -318,20 +315,8 @@ Bandit::Bandit(int bridge_num, const std::string name, int dev_id, int rev)
     : BanditHost(bridge_num, name), HWComponent(name)
 {
     supports_types(HWCompType::PCI_HOST);
-
     this->base_addr = 0xF0000000 + ((bridge_num & 3) << 25);
-
-    MemCtrlBase *mem_ctrl = dynamic_cast<MemCtrlBase *>
-                           (gMachineObj->get_comp_by_type(HWCompType::MEM_CTRL));
-
-    // add memory mapped I/O region for Bandit control registers
-    // This region has the following layout:
-    // base_addr + 0x00000000 --> I/O space
-    // base_addr + 0x00800000 --> CONFIG_ADDR
-    // base_addr + 0x00C00000 --> CONFIG_DATA
-    // base_addr + 0x00E00000 --> Special(W)/Interrupt(R)
-    // base_addr + 0x01000000 --> pass-through memory space ; grandcentral exists here for pci1
-    mem_ctrl->add_mmio_region(base_addr, bridge_num == 1 ? 0x01000000 : 0x02000000, this);
+    this->setup_mem_regions(this->base_addr);
 
     // connnect Bandit PCI device
     BanditPciDevice *my_pci_device = new BanditPciDevice(bridge_num, name + "PCI", dev_id, rev);
@@ -341,15 +326,7 @@ Bandit::Bandit(int bridge_num, const std::string name, int dev_id, int rev)
 Chaos::Chaos(const std::string name) : BanditHost(0, name), HWComponent(name)
 {
     supports_types(HWCompType::PCI_HOST);
-
-    MemCtrlBase *mem_ctrl = dynamic_cast<MemCtrlBase *>
-                           (gMachineObj->get_comp_by_type(HWCompType::MEM_CTRL));
-
-    // add memory mapped I/O region for Chaos control registers
-    // This region has the following layout:
-    // base_addr +  0x800000 --> CONFIG_ADDR
-    // base_addr +  0xC00000 --> CONFIG_DATA
-    mem_ctrl->add_mmio_region(0xF0000000UL, 0x01000000, this);
+    this->setup_mem_regions(0xF0000000UL);
 }
 
 HWComponent* Chaos::set_property(const std::string &property, const std::string &value, int32_t unit_address)
@@ -361,17 +338,8 @@ HWComponent* Chaos::set_property(const std::string &property, const std::string 
 
 AspenPci::AspenPci(const std::string name) : BanditHost(1, name), HWComponent(name) {
     supports_types(HWCompType::PCI_HOST);
-
     this->is_aspen = true;
-
-    MemCtrlBase *mem_ctrl = dynamic_cast<MemCtrlBase *>
-    (gMachineObj->get_comp_by_type(HWCompType::MEM_CTRL));
-
-    // add memory mapped I/O region for Aspen PCI control registers
-    // This region has the following layout:
-    // base_addr +  0x800000 --> CONFIG_ADDR
-    // base_addr +  0xC00000 --> CONFIG_DATA
-    mem_ctrl->add_mmio_region(0xF2000000UL, 0x01000000, this);
+    this->setup_mem_regions(0xF2000000UL);
 }
 
 static const PropMap Bandit1_Properties = {
