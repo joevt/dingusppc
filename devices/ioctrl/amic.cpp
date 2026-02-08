@@ -101,9 +101,7 @@ PostInitResultType AMIC::device_postinit()
                            (gMachineObj->get_comp_by_type(HWCompType::MEM_CTRL));
 
     // add memory mapped I/O region for the AMIC control registers
-    if (!mem_ctrl->add_mmio_region(0x50F00000, 0x00040000, this)) {
-        LOG_F(ERROR, "Couldn't register AMIC registers!");
-    }
+    mem_ctrl->add_mmio_region(0x50F00000, 0x00040000, this);
 
     // AMIC drives the VIA CA1 internally to generate 60.15 Hz interrupts
     this->pseudo_vbl_tid = TimerManager::get_instance()->add_cyclic_timer(
