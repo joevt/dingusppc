@@ -469,7 +469,7 @@ void Display::blank() {
 
 void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> convert_fb_cb,
                      std::function<void(uint8_t *dst_buf, int dst_pitch)> cursor_ovl_cb,
-                     bool draw_hw_cursor, int cursor_x, int cursor_y,
+                     bool do_render_hw_cursor, int cursor_x, int cursor_y,
                      bool /*fb_known_to_be_changed*/) {
     uint8_t*    dst_buf = nullptr;
     int         dst_pitch;
@@ -496,7 +496,7 @@ if (g_auto_grab_mouse) {
     // screen area. When the session ends, release an automatic grab again so
     // the user can move the pointer to other windows. A manual grab (Ctrl+G)
     // is sticky and is neither grabbed nor released automatically.
-    if (draw_hw_cursor) {
+    if (do_render_hw_cursor) {
         if (!impl->guest_cursor_drawn && !impl->manual_grab && !is_grabbed) {
             this->update_mouse_grab(true);
             SDL_SetWindowRelativeMouseMode(impl->display_wnd, true);
@@ -514,7 +514,7 @@ if (g_auto_grab_mouse) {
     // cursor that does not track the guest one. When the guest cursor is not
     // drawn (e.g. firmware), show the host pointer so the user can aim and
     // click.
-    bool want_host_cursor = !draw_hw_cursor;
+    bool want_host_cursor = !do_render_hw_cursor;
     if (impl->show_host_cursor != want_host_cursor) {
         impl->show_host_cursor = want_host_cursor;
         if (want_host_cursor)
@@ -524,15 +524,15 @@ if (g_auto_grab_mouse) {
     }
 
     // Let the window title reflect the current grab/cursor state.
-    if (is_grabbed != impl->was_grabbed || draw_hw_cursor != impl->guest_cursor_drawn) {
+    if (is_grabbed != impl->was_grabbed || do_render_hw_cursor != impl->guest_cursor_drawn) {
         impl->was_grabbed = is_grabbed;
-        impl->guest_cursor_drawn = draw_hw_cursor;
+        impl->guest_cursor_drawn = do_render_hw_cursor;
         this->update_window_title();
     }
 }
 
     // draw HW cursor if enabled
-    if (draw_hw_cursor) {
+    if (do_render_hw_cursor) {
         impl->cursor_rect.x = cursor_x * impl->renderer_scale_x + impl->dest_rect.x;
         impl->cursor_rect.y = cursor_y * impl->renderer_scale_y + impl->dest_rect.y;
         SDL_RenderTexture(impl->renderer, impl->cursor_texture, NULL, &impl->cursor_rect);
@@ -545,8 +545,10 @@ void Display::update_skipped() {
     // SDL implementation does not care about skipped updates.
 }
 
-void Display::setup_hw_cursor(std::function<void(uint8_t *dst_buf, int dst_pitch)> draw_hw_cursor,
-                              int cursor_width, int cursor_height) {
+void Display::disp_setup_hw_cursor(
+    std::function<void(uint8_t *dst_buf, int dst_pitch)> vidc_draw_hw_cursor,
+    int cursor_width, int cursor_height
+) {
     uint8_t*    dst_buf = nullptr;
     int         dst_pitch;
 
@@ -566,7 +568,7 @@ void Display::setup_hw_cursor(std::function<void(uint8_t *dst_buf, int dst_pitch
     SDL_SetTextureScaleMode(impl->cursor_texture, impl->scale_mode);
     SDL_LockTexture(impl->cursor_texture, NULL, (void **)&dst_buf, &dst_pitch);
     SDL_SetTextureBlendMode(impl->cursor_texture, SDL_BLENDMODE_BLEND);
-    draw_hw_cursor(dst_buf, dst_pitch);
+    vidc_draw_hw_cursor(dst_buf, dst_pitch);
     SDL_UnlockTexture(impl->cursor_texture);
 
     impl->cursor_rect.x = 0;
