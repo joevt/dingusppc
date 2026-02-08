@@ -227,6 +227,15 @@ AddressMapEntry* MemCtrlBase::add_mem_region(
     entry->devobj  = dev_instance;
     entry->mem_ptr = mem_ptr;
 
+    if (dev_instance) {
+        entry->read = [=](uint32_t rgn_start, uint32_t offset, int size) {
+            return dev_instance->read(rgn_start, offset, size);
+        };
+        entry->write = [=](uint32_t rgn_start, uint32_t offset, uint32_t value, int size) {
+            dev_instance->write(rgn_start, offset, value, size);
+        };
+    }
+
     // Keep address_map sorted, that way the RAM region (which starts at 0 and
     // is most often requested) will be found by find_range on the first
     // iteration.
