@@ -72,8 +72,8 @@ protected:
     uint8_t rgb514_read_ind_reg(uint8_t reg_addr);
     void rgb514_write_ind_reg(uint8_t reg_addr, uint8_t value);
     void verbose_pixel_format(int crtc_index);
-    void draw_hw_cursor(uint8_t *dst_buf, int dst_pitch) override;
-    void get_cursor_position(int& x, int& y) override;
+    void vidc_draw_hw_cursor(uint8_t *dst_buf, int dst_pitch) override;
+    void vidc_get_cursor_position(int& x, int& y) override;
 
 private:
     void change_one_bar(uint32_t &aperture, uint32_t aperture_size, uint32_t aperture_new, int bar_num);
