@@ -73,21 +73,24 @@ class BanditHost : public PCIHost, public MMIODevice {
 public:
     BanditHost(int bridge_num, const std::string name) : HWComponent(name) { this->bridge_num = bridge_num; }
 
+    // HWComponent methods
+    PostInitResultType device_postinit() override;
+
     // MMIODevice methods
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
     void    write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
-    PostInitResultType device_postinit() override;
+    // BanditHost methods
+    void setup_mem_regions(uint32_t base_addr);
 
 protected:
-    uint32_t    config_addr;
-    int         bridge_num;
-    bool        is_aspen = false;
-
-private:
     void cfg_setup(uint32_t offset, int size, int &bus_num, int &dev_num,
                    int &fun_num, uint8_t &reg_offs, AccessDetails &details,
                    PCIBase *&device);
+
+    uint32_t    config_addr;
+    int         bridge_num;
+    bool        is_aspen = false;
 };
 
 /*
