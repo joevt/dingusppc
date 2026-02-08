@@ -71,7 +71,7 @@ enum {
  */
 class BanditHost : public PCIHost, public MMIODevice {
 public:
-    BanditHost(int bridge_num, const std::string name) : HWComponent(name) { this->bridge_num = bridge_num; }
+    BanditHost(uint32_t bridge_num, const std::string name) : HWComponent(name) { this->bridge_num = bridge_num; }
 
     // HWComponent methods
     PostInitResultType device_postinit() override;
@@ -84,12 +84,12 @@ public:
     void setup_mem_regions(uint32_t base_addr);
 
 protected:
-    void cfg_setup(uint32_t offset, int size, int &bus_num, int &dev_num,
-                   int &fun_num, uint8_t &reg_offs, AccessDetails &details,
+    void cfg_setup(uint32_t offset, unsigned size, uint8_t &bus_num, uint8_t &dev_num,
+                   uint8_t &fun_num, uint8_t &reg_offs, AccessDetails &details,
                    PCIBase *&device);
 
     uint32_t    config_addr;
-    int         bridge_num;
+    uint32_t    bridge_num;
     bool        is_aspen = false;
 };
 
@@ -98,7 +98,7 @@ protected:
  */
 class BanditPciDevice : public PCIDevice {
 public:
-    BanditPciDevice(int bridge_num, const std::string name, int dev_id, int rev);
+    BanditPciDevice(uint32_t bridge_num, const std::string name, uint16_t dev_id, unsigned rev);
     ~BanditPciDevice() = default;
 
     // PCIDevice methods
@@ -119,7 +119,7 @@ private:
  */
 class Bandit : public BanditHost {
 public:
-    Bandit(int bridge_num, const std::string name, int dev_id=1, int rev=3);
+    Bandit(uint32_t bridge_num, const std::string name, uint16_t dev_id=1, unsigned rev=3);
     ~Bandit() = default;
 
     static std::unique_ptr<HWComponent> create(const std::string &dev_name) {
