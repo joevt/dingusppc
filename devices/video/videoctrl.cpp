@@ -74,18 +74,18 @@ void VideoCtrlBase::update_screen()
 
     int cursor_x = 0;
     int cursor_y = 0;
-    if (this->cursor_on) {
-        this->get_cursor_position(cursor_x, cursor_y);
+    if (this->vidc_cursor_on) {
+        this->vidc_get_cursor_position(cursor_x, cursor_y);
     }
 
     if (this->draw_fb) {
         if (this->cursor_dirty) {
-            this->setup_hw_cursor();
+            this->vidc_setup_hw_cursor();
             this->cursor_dirty = false;
         }
         this->display.update(
             this->convert_fb_cb, this->cursor_ovl_cb,
-            this->cursor_on, cursor_x, cursor_y,
+            this->vidc_cursor_on, cursor_x, cursor_y,
             this->draw_fb_is_dynamic);
     } else if (this->draw_fb_is_dynamic) {
         this->display.update_skipped();
@@ -154,14 +154,14 @@ void VideoCtrlBase::set_palette_color(uint8_t index, uint8_t r, uint8_t g, uint8
     this->palette[index] = (a << 24) | (r << 16) | (g << 8) | b;
 }
 
-void VideoCtrlBase::setup_hw_cursor(int cursor_width, int cursor_height)
+void VideoCtrlBase::vidc_setup_hw_cursor(int cursor_width, int cursor_height)
 {
-    this->display.setup_hw_cursor(
+    this->display.disp_setup_hw_cursor(
         [this](uint8_t *dst_buf, int dst_pitch) {
-            this->draw_hw_cursor(dst_buf, dst_pitch);
+            this->vidc_draw_hw_cursor(dst_buf, dst_pitch);
         },
         cursor_width, cursor_height);
-    this->cursor_on = true;
+    this->vidc_cursor_on = true;
 }
 
 void VideoCtrlBase::convert_frame_1bpp_indexed(uint8_t *dst_buf, int dst_pitch)
