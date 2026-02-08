@@ -594,9 +594,9 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
         new_value = value;
         if (bit_changed(old_value, new_value, ATI_GEN_CUR_ENABLE)) {
             if (bit_set(new_value, ATI_GEN_CUR_ENABLE))
-                this->cursor_on = true;
+                this->vidc_cursor_on = true;
             else
-                this->cursor_on = false;
+                this->vidc_cursor_on = false;
             draw_fb = true;
             WRITE_VALUE_AND_LOG(ATICURSOR);
             return;
@@ -1020,7 +1020,7 @@ void ATIRage::crtc_update() {
     this->crtc_on = true;
 }
 
-void ATIRage::draw_hw_cursor(uint8_t* dst_row, int dst_pitch) {
+void ATIRage::vidc_draw_hw_cursor(uint8_t* dst_row, int dst_pitch) {
     int vert_offset = extract_bits<uint32_t>(
         this->regs[ATI_CUR_HORZ_VERT_OFF], ATI_CUR_VERT_OFF, ATI_CUR_VERT_OFF_size);
     int cur_height = 64 - vert_offset;
@@ -1055,7 +1055,7 @@ void ATIRage::draw_hw_cursor(uint8_t* dst_row, int dst_pitch) {
     }
 }
 
-void ATIRage::get_cursor_position(int& x, int& y) {
+void ATIRage::vidc_get_cursor_position(int& x, int& y) {
     x = extract_bits<uint32_t>(this->regs[ATI_CUR_HORZ_VERT_POSN], ATI_CUR_HORZ_POSN, ATI_CUR_HORZ_POSN_size) -
         extract_bits<uint32_t>(this->regs[ATI_CUR_HORZ_VERT_OFF ], ATI_CUR_HORZ_OFF , ATI_CUR_HORZ_OFF_size );
     y = extract_bits<uint32_t>(this->regs[ATI_CUR_HORZ_VERT_POSN], ATI_CUR_VERT_POSN, ATI_CUR_VERT_POSN_size);
