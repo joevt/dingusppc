@@ -103,11 +103,8 @@ public:
 protected:
     AddressMapEntry* add_mem_region(
         uint32_t start_addr, uint32_t size, uint32_t dest_addr, uint32_t type,
-        uint8_t  *mem_ptr, MMIODevice* dev_instance
+        uint8_t  *mem_ptr, MMIODevice* dev_instance, uint32_t offset
     );
-
-    AddressMapEntry* add_mem_mirror_common(uint32_t start_addr, uint32_t dest_addr,
-                                           uint32_t offset=0, uint32_t size=0);
 
 private:
     std::vector<uint8_t*> mem_regions;
