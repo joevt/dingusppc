@@ -183,8 +183,8 @@ public:
     PostInitResultType device_postinit() override;
 
 private:
-    inline void cfg_setup(uint32_t offset, int size, int &bus_num, int &dev_num,
-                          int &fun_num, uint8_t &reg_offs, AccessDetails &details,
+    inline void cfg_setup(uint32_t offset, unsigned size, uint8_t &bus_num, uint8_t &dev_num,
+                          uint8_t &fun_num, uint8_t &reg_offs, AccessDetails &details,
                           PCIBase *&device);
 
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
