@@ -68,11 +68,11 @@ uint32_t MPC106::read(uint32_t rgn_start, uint32_t offset, int size) {
         return this->config_addr;
     }
     if (this->config_addr & 0x80) {    // process only if bit E (enable) is set
-        int bus_num, dev_num, fun_num;
+        uint8_t bus_num, dev_num, fun_num;
         uint8_t reg_offs;
         AccessDetails details;
         PCIBase *device;
-        cfg_setup(offset, size, bus_num, dev_num, fun_num, reg_offs, details, device);
+        cfg_setup(offset, (unsigned)size, bus_num, dev_num, fun_num, reg_offs, details, device);
         ACCESSDETAILS_FLAGS_SET(details, PCI_CONFIG_READ);
         if (device) {
             uint32_t value = device->pci_cfg_read(reg_offs, details);
@@ -95,11 +95,11 @@ void MPC106::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size
         return;
     }
     if (this->config_addr & 0x80) {    // process only if bit E (enable) is set
-        int bus_num, dev_num, fun_num;
+        uint8_t bus_num, dev_num, fun_num;
         uint8_t reg_offs;
         AccessDetails details;
         PCIBase *device;
-        cfg_setup(offset, size, bus_num, dev_num, fun_num, reg_offs, details, device);
+        cfg_setup(offset, (unsigned)size, bus_num, dev_num, fun_num, reg_offs, details, device);
         ACCESSDETAILS_FLAGS_SET(details, PCI_CONFIG_WRITE);
         if (device) {
             if (size == 4 && !ACCESSDETAILS_OFFSET(details)) { // aligned DWORD writes -> fast path
@@ -121,8 +121,8 @@ void MPC106::pci_error() {
         ppc_exception_handler(Except_Type::EXC_MACHINE_CHECK, 0);
 }
 
-inline void MPC106::cfg_setup(uint32_t offset, int size, int &bus_num, int &dev_num,
-                              int &fun_num, uint8_t &reg_offs, AccessDetails &details,
+inline void MPC106::cfg_setup(uint32_t offset, unsigned size, uint8_t &bus_num, uint8_t &dev_num,
+                              uint8_t &fun_num, uint8_t &reg_offs, AccessDetails &details,
                               PCIBase *&device)
 {
     bus_num  = (this->config_addr >>  8) & 0xFF;
@@ -169,7 +169,7 @@ uint32_t MPC106PCI::pci_cfg_read(uint32_t reg_offs, const AccessDetails details)
     case GrackleReg::CFG10:
         return 0;
     case GrackleReg::PMCR1:
-        return (this->odcr << 24) | (this->pmcr2 << 16) | this->pmcr1;
+        return ((uint32_t)this->odcr << 24) | ((uint32_t)this->pmcr2 << 16) | this->pmcr1;
     case GrackleReg::MSAR1:
     case GrackleReg::MSAR2:
         return this->mem_start[(reg_offs >> 2) & 1];
