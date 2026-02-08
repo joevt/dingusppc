@@ -859,7 +859,7 @@ void AtiMach64Gx::crtc_update()
     this->crtc_on = true;
 }
 
-void AtiMach64Gx::draw_hw_cursor(uint8_t *dst_row, int dst_pitch) {
+void AtiMach64Gx::vidc_draw_hw_cursor(uint8_t *dst_row, int dst_pitch) {
     int vert_offset = extract_bits<uint32_t>(this->regs[ATI_CUR_HORZ_VERT_OFF],
                                              ATI_CUR_VERT_OFF, ATI_CUR_VERT_OFF_size);
     int cur_height = 64 - vert_offset;
@@ -894,7 +894,7 @@ void AtiMach64Gx::draw_hw_cursor(uint8_t *dst_row, int dst_pitch) {
     }
 }
 
-void AtiMach64Gx::get_cursor_position(int& x, int& y) {
+void AtiMach64Gx::vidc_get_cursor_position(int& x, int& y) {
     x = extract_bits<uint32_t>(this->regs[ATI_CUR_HORZ_VERT_POSN], ATI_CUR_HORZ_POSN, ATI_CUR_HORZ_POSN_size) -
         extract_bits<uint32_t>(this->regs[ATI_CUR_HORZ_VERT_OFF ], ATI_CUR_HORZ_OFF , ATI_CUR_HORZ_OFF_size );
     y = extract_bits<uint32_t>(this->regs[ATI_CUR_HORZ_VERT_POSN], ATI_CUR_VERT_POSN, ATI_CUR_VERT_POSN_size);
