@@ -277,7 +277,7 @@ void Sixty6Video::iodev_write(uint32_t address, uint16_t value)
                     if (new_pixel_format != this->pixel_format)
                         this->changed = true;
 
-                    if (1 || (value & 0x49) == 0x49) {
+                    if (1) { // (value & 0x49) == 0x49
                         if (this->changed) {
                             this->enable_display();
                             this->changed = false;
