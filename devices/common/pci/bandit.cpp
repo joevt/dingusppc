@@ -30,7 +30,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 
-const int MultiplyDeBruijnBitPosition2[] =
+const uint8_t MultiplyDeBruijnBitPosition2[] =
 {
     0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
     31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
@@ -39,7 +39,7 @@ const int MultiplyDeBruijnBitPosition2[] =
 /** finds the position of the bit that is set */
 #define WHAT_BIT_SET(val) (MultiplyDeBruijnBitPosition2[(uint32_t)(val * 0x077CB531U) >> 27])
 
-BanditPciDevice::BanditPciDevice(int bridge_num, const std::string name, int dev_id, int rev)
+BanditPciDevice::BanditPciDevice(uint32_t bridge_num, const std::string name, uint16_t dev_id, unsigned rev)
     : PCIDevice(name), HWComponent(name)
 {
     supports_types(HWCompType::PCI_DEV);
@@ -58,7 +58,7 @@ BanditPciDevice::BanditPciDevice(int bridge_num, const std::string name, int dev
     // set the bits in the fine address space field of the address mask register
     // that correspond to the 32MB assigned PCI address space of this Bandit.
     // This initialization is implied by the device functionality.
-    this->addr_mask = 3 << ((bridge_num & 3) * 2);
+    this->addr_mask = 3U << ((bridge_num & 3) * 2);
 
     // initial PCI number + chip mode: big endian, interrupts & VGA space disabled
     this->mode_ctrl = ((bridge_num & 3) << 2) | 3;
@@ -66,7 +66,7 @@ BanditPciDevice::BanditPciDevice(int bridge_num, const std::string name, int dev
     this->rd_hold_off_cnt = 8;
 }
 
-const char * bandit_reg_name(uint32_t reg_offs)
+static const char * bandit_reg_name(uint32_t reg_offs)
 {
     switch (reg_offs) {
         case BANDIT_ADDR_MASK         : return "BANDIT_ADDR_MASK";
@@ -142,7 +142,7 @@ void BanditPciDevice::pci_cfg_write(uint32_t reg_offs, uint32_t value, const Acc
 void BanditPciDevice::verbose_address_space()
 {
     uint32_t mask;
-    int bit_pos;
+    uint32_t bit_pos;
 
     if (!this->addr_mask) {
         return;
@@ -197,11 +197,11 @@ void BanditHost::setup_mem_regions(uint32_t base_addr)
     };
     rgn0C->read = [this](uint32_t /*rgn_start*/, uint32_t offset, int size) {
         // CONFIG_DATA
-        int bus_num, dev_num, fun_num;
+        uint8_t bus_num, dev_num, fun_num;
         uint8_t reg_offs;
         AccessDetails details;
         PCIBase *device;
-        cfg_setup(offset, size, bus_num, dev_num, fun_num, reg_offs, details, device);
+        cfg_setup(offset, (unsigned)size, bus_num, dev_num, fun_num, reg_offs, details, device);
         ACCESSDETAILS_FLAGS_SET(details, PCI_CONFIG_READ);
         if (device) {
             uint32_t value = device->pci_cfg_read(reg_offs, details);
@@ -210,7 +210,7 @@ void BanditHost::setup_mem_regions(uint32_t base_addr)
             return conv_rd_data(value, value, details);
         }
         LOG_READ_NON_EXISTENT_PCI_DEVICE();
-        return 0xFFFFFFFFUL; // PCI spec §6.1
+        return 0xFFFFFFFFU; // PCI spec §6.1
     };
     rgn0E->read = [this](uint32_t /*rgn_start*/, uint32_t offset, int size) {
         // Interrupt
@@ -234,11 +234,11 @@ void BanditHost::setup_mem_regions(uint32_t base_addr)
     };
     rgn0C->write = [this](uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
         // CONFIG_DATA
-        int bus_num, dev_num, fun_num;
+        uint8_t bus_num, dev_num, fun_num;
         uint8_t reg_offs;
         AccessDetails details;
         PCIBase *device;
-        cfg_setup(offset, size, bus_num, dev_num, fun_num, reg_offs, details, device);
+        cfg_setup(offset, (unsigned)size, bus_num, dev_num, fun_num, reg_offs, details, device);
         ACCESSDETAILS_FLAGS_SET(details, PCI_CONFIG_WRITE);
         if (device) {
             if (size == 4 && !ACCESSDETAILS_OFFSET(details)) { // aligned DWORD writes -> fast path
@@ -278,8 +278,8 @@ void BanditHost::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, 
     LOG_F(ERROR, "%s: Default write 0x%08x.%c = %0*x unsupported", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
 }
 
-inline void BanditHost::cfg_setup(uint32_t offset, int size, int &bus_num,
-                                  int &dev_num, int &fun_num, uint8_t &reg_offs,
+inline void BanditHost::cfg_setup(uint32_t offset, unsigned size, uint8_t &bus_num,
+                                  uint8_t &dev_num, uint8_t &fun_num, uint8_t &reg_offs,
                                   AccessDetails &details, PCIBase *&device)
 {
     fun_num = FUN_NUM();
@@ -294,11 +294,11 @@ inline void BanditHost::cfg_setup(uint32_t offset, int size, int &bus_num,
     ACCESSDETAILS_SET(details, size, offset, PCI_CONFIG_TYPE_0);
     bus_num = 0; // use dummy value for bus number
     if (is_aspen)
-        dev_num = (this->config_addr >> 11) + 11; // IDSEL = 1 << (dev_num + 11)
+        dev_num = (uint8_t)(this->config_addr >> 11) + 11; // IDSEL = 1 << (dev_num + 11)
     else {
         uint32_t idsel = this->config_addr & 0xFFFFF800U;
         if (!SINGLE_BIT_SET(idsel)) {
-            for (dev_num = -1, idsel = this->config_addr; idsel; idsel >>= 1, dev_num++) {}
+            for (dev_num = 0xFF, idsel = this->config_addr; idsel; idsel >>= 1, dev_num++) {}
             LOG_F(ERROR, "%s: config_addr 0x%08x does not contain valid IDSEL",
                   this->name.c_str(), (uint32_t)this->config_addr);
             device = NULL;
@@ -313,7 +313,7 @@ PostInitResultType BanditHost::device_postinit() {
     return this->pcihost_device_postinit();
 }
 
-Bandit::Bandit(int bridge_num, const std::string name, int dev_id, int rev)
+Bandit::Bandit(uint32_t bridge_num, const std::string name, uint16_t dev_id, unsigned rev)
     : BanditHost(bridge_num, name), HWComponent(name)
 {
     supports_types(HWCompType::PCI_HOST);
