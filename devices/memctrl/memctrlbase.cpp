@@ -177,21 +177,44 @@ bool MemCtrlBase::is_range_free(uint32_t addr, uint32_t size) {
 }
 
 
-AddressMapEntry* MemCtrlBase::add_mem_region(uint32_t start_addr, uint32_t size,
-                                             uint32_t dest_addr,  uint32_t type,
-                                             uint8_t  *mem_ptr,
-                                             MMIODevice* dev_instance)
-{
+AddressMapEntry* MemCtrlBase::add_mem_region(
+    uint32_t start_addr, uint32_t size,
+    uint32_t dest_addr,
+    uint32_t type,
+    uint8_t  *mem_ptr,
+    MMIODevice* dev_instance,
+    uint32_t offset
+) {
     AddressMapEntry *entry;
+    AddressMapEntry *ref_entry;
 
-    // bail out if a memory region for the given range already exists
-    if (!is_range_free(start_addr, size))
-        return nullptr;
+    if (type & RT_MIRROR) {
+        ref_entry = find_range(dest_addr);
+        if (!ref_entry)
+            return nullptr;
 
-    if (!mem_ptr) {
-        mem_ptr = (uint8_t*)(new uint64_t[(size + 7) / 8]()); // allocate and clear to zero
-        if (((size_t)mem_ptr & 7) != 0)
-            ABORT_F("not aligned!");
+        // use origin's size if no size was specified
+        if (!size)
+            size = ref_entry->end - ref_entry->start + 1;
+
+        if (ref_entry->start + offset + size - 1 > ref_entry->end) {
+            LOG_F(ERROR, "Partial mirror outside the origin, offset=0x%X, size=0x%X",
+                offset, size);
+            return nullptr;
+        }
+
+        type |= ref_entry->type;
+        mem_ptr = ref_entry->mem_ptr + offset;
+    } else {
+        // bail out if a memory region for the given range already exists
+        if (!is_range_free(start_addr, size))
+            return nullptr;
+
+        if (!mem_ptr && (type & (RT_RAM | RT_ROM))) {
+            mem_ptr = (uint8_t*)(new uint64_t[(size + 7) / 8]()); // allocate and clear to zero
+            if (((size_t)mem_ptr & 7) != 0)
+                ABORT_F("not aligned!");
+        }
     }
 
     entry = new AddressMapEntry;
@@ -217,7 +240,14 @@ AddressMapEntry* MemCtrlBase::add_mem_region(uint32_t start_addr, uint32_t size,
             }),
             entry);
 
-    LOG_F(INFO, "Added mem region %s", get_entry_str(entry).c_str());
+    if (type & RT_MIRROR) {
+        LOG_F(INFO, "Added mem region %s points to mem region %s",
+            get_entry_str(entry).c_str(),
+            get_entry_str(ref_entry).c_str()
+        );
+    } else {
+        LOG_F(INFO, "Added mem region %s", get_entry_str(entry).c_str());
+    }
 
     return entry;
 }
@@ -225,64 +255,25 @@ AddressMapEntry* MemCtrlBase::add_mem_region(uint32_t start_addr, uint32_t size,
 
 AddressMapEntry* MemCtrlBase::add_rom_region(uint32_t start_addr, uint32_t size,
                                              MMIODevice* dev_instance) {
-    return add_mem_region(start_addr, size, 0, RT_ROM, nullptr, dev_instance);
+    return add_mem_region(start_addr, size, 0, RT_ROM, nullptr, dev_instance, 0);
 }
 
 
 AddressMapEntry* MemCtrlBase::add_ram_region(uint32_t start_addr, uint32_t size,
                                              uint8_t *mem_ptr,
                                              MMIODevice* dev_instance) {
-    return add_mem_region(start_addr, size, 0, RT_RAM, mem_ptr, dev_instance);
-}
-
-
-AddressMapEntry* MemCtrlBase::add_mem_mirror_common(uint32_t start_addr, uint32_t dest_addr,
-                                                    uint32_t offset, uint32_t size) {
-    AddressMapEntry *entry, *ref_entry;
-
-    ref_entry = find_range(dest_addr);
-    if (!ref_entry)
-        return nullptr;
-
-    // use origin's size if no size was specified
-    if (!size)
-        size = ref_entry->end - ref_entry->start + 1;
-
-    if (ref_entry->start + offset + size - 1 > ref_entry->end) {
-        LOG_F(ERROR, "Partial mirror outside the origin, offset=0x%X, size=0x%X",
-              offset, size);
-        return nullptr;
-    }
-
-    entry = new AddressMapEntry;
-
-    uint32_t end   = start_addr + size - 1;
-    entry->start   = start_addr;
-    entry->end     = end;
-    entry->mirror  = dest_addr;
-    entry->type    = ref_entry->type | RT_MIRROR;
-    entry->devobj  = nullptr;
-    entry->mem_ptr = ref_entry->mem_ptr + offset;
-
-    this->address_map.push_back(entry);
-
-    LOG_F(INFO, "Added mem region %s points to mem region %s",
-        get_entry_str(entry).c_str(),
-        get_entry_str(ref_entry).c_str()
-    );
-
-    return entry;
+    return add_mem_region(start_addr, size, 0, RT_RAM, mem_ptr, dev_instance, 0);
 }
 
 
 AddressMapEntry* MemCtrlBase::add_mem_mirror(uint32_t start_addr, uint32_t dest_addr) {
-    return this->add_mem_mirror_common(start_addr, dest_addr);
+    return this->add_mem_region(start_addr, 0, dest_addr, RT_MIRROR, nullptr, nullptr, 0);
 }
 
 
 AddressMapEntry* MemCtrlBase::add_mem_mirror_partial(uint32_t start_addr, uint32_t dest_addr,
                                                      uint32_t offset, uint32_t size) {
-    return this->add_mem_mirror_common(start_addr, dest_addr, offset, size);
+    return this->add_mem_region(start_addr, size, dest_addr, RT_MIRROR, nullptr, nullptr, offset);
 }
 
 
@@ -329,29 +320,7 @@ void MemCtrlBase::delete_address_map_entry(AddressMapEntry* entry) {
 
 AddressMapEntry* MemCtrlBase::add_mmio_region(uint32_t start_addr, uint32_t size, MMIODevice* dev_instance)
 {
-    AddressMapEntry *entry;
-
-    // bail out if a memory region for the given range already exists
-    if (!is_range_free(start_addr, size))
-        return nullptr;
-
-    entry = new AddressMapEntry;
-
-    uint32_t end   = start_addr + size - 1;
-    entry->start   = start_addr;
-    entry->end     = end;
-    entry->mirror  = 0;
-    entry->type    = RT_MMIO;
-    entry->devobj  = dev_instance;
-    entry->mem_ptr = 0;
-
-    this->address_map.push_back(entry);
-
-    LOG_F(INFO, "Added mem region %s",
-        get_entry_str(entry).c_str()
-    );
-
-    return entry;
+	return this->add_mem_region(start_addr, size, 0, RT_MMIO, nullptr, dev_instance, 0);
 }
 
 
