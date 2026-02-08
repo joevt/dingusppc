@@ -212,7 +212,7 @@ static BATResult ppc_block_address_translation(uint32_t la)
     // Format: %XY
     // X - supervisor access bit, Y - problem/user access bit
     // Those bits are mutually exclusive
-    unsigned access_bits = ((!msr_pr) << 1) | msr_pr;
+    unsigned access_bits = ((unsigned)(!msr_pr) << 1) | msr_pr;
 
     for (int bat_index = 0; bat_index < 4; bat_index++) {
         PPC_BAT_entry* bat_entry = &bat_array[bat_index];
@@ -267,7 +267,7 @@ static bool search_pteg(uint8_t* pteg_addr, uint8_t** ret_pte_addr, uint32_t vsi
                         uint16_t page_index, uint8_t pteg_num)
 {
     /* construct PTE matching word */
-    uint32_t pte_check = 0x80000000 | (vsid << 7) | (pteg_num << 6) | (page_index >> 10);
+    uint32_t pte_check = 0x80000000 | (vsid << 7) | ((uint32_t)pteg_num << 6) | (page_index >> 10);
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
     bool swap = mem_ctrl_instance->needs_swap_endian(false);
 #endif
@@ -356,7 +356,7 @@ static PATResult page_address_translation(uint32_t la, bool is_instr_fetch,
                 }
             } else {
                 if (!is_dbg) {
-                    ppc_state.spr[SPR::DSISR] = 0x40000000 | (is_write << 25);
+                    ppc_state.spr[SPR::DSISR] = 0x40000000 | ((uint32_t)is_write << 25);
                     ppc_state.spr[SPR::DAR]   = la;
                     mmu_exception_handler(Except_Type::EXC_DSI, 0);
                 }
@@ -404,7 +404,7 @@ static PATResult page_address_translation(uint32_t la, bool is_instr_fetch,
                 throw(false);
         } else {
             if (!is_dbg) {
-                ppc_state.spr[SPR::DSISR] = 0x08000000 | (is_write << 25);
+                ppc_state.spr[SPR::DSISR] = 0x08000000 | ((uint32_t)is_write << 25);
                 ppc_state.spr[SPR::DAR]   = la;
                 mmu_exception_handler(Except_Type::EXC_DSI, 0);
             }
@@ -564,7 +564,7 @@ void mmu_change_mode()
 #endif
 
     // switch ITLB tables first
-    mmu_mode = ((!!(ppc_state.msr & MSR::IR)) << 1) | !!(ppc_state.msr & MSR::PR);
+    mmu_mode = uint8_t((!!(ppc_state.msr & MSR::IR)) << 1) | !!(ppc_state.msr & MSR::PR);
 
     if (CurITLBMode != mmu_mode) {
         switch (mmu_mode) {
@@ -588,7 +588,7 @@ void mmu_change_mode()
     }
 
     // then switch DTLB tables
-    mmu_mode = ((!!(ppc_state.msr & MSR::DR)) << 1) | !!(ppc_state.msr & MSR::PR);
+    mmu_mode = uint8_t((!!(ppc_state.msr & MSR::DR)) << 1) | !!(ppc_state.msr & MSR::PR);
 
     if (CurDTLBMode != mmu_mode) {
         switch (mmu_mode) {
@@ -788,7 +788,7 @@ TLBEntry* dtlb2_refill(uint32_t guest_va, int is_write, bool is_dbg)
             if (!is_dbg && (!bat_res.prot || ((bat_res.prot & 1) && is_write))) {
                 LOG_F(9, "BAT DSI exception in TLB2 refill!");
                 LOG_F(9, "Attempt to write to read-only region, LA=0x%08X, PC=0x%08X!", guest_va, ppc_state.pc);
-                ppc_state.spr[SPR::DSISR] = 0x08000000 | (is_write << 25);
+                ppc_state.spr[SPR::DSISR] = 0x08000000 | ((uint32_t)is_write << 25);
                 ppc_state.spr[SPR::DAR]   = guest_va;
                 mmu_exception_handler(Except_Type::EXC_DSI, 0);
             }
@@ -903,8 +903,8 @@ TLBEntry* dtlb2_refill(uint32_t guest_va, int is_write, bool is_dbg)
             && ppc_state.pc != 0xfff045e4
             && ppc_state.pc != 0xfff045e8
         ) {
-            static uint32_t last_phys_addr = -1;
-            static uint32_t first_phys_addr = -1;
+            static uint32_t last_phys_addr = (uint32_t)-1;
+            static uint32_t first_phys_addr = (uint32_t)-1;
             if (phys_addr < last_phys_addr || phys_addr > last_phys_addr + 8) {
                 if (last_phys_addr != -1 && last_phys_addr != first_phys_addr) {
                     LOG_F(WARNING, "                                                         ... phys_addr=0x%08X",
@@ -1263,9 +1263,9 @@ static void mpc601_bat_update(uint32_t bat_reg)
 {
     PPC_BAT_entry *ibat_entry, *dbat_entry;
     uint32_t bsm, hi_mask;
-    int upper_reg_num;
+    uint32_t upper_reg_num;
 
-    upper_reg_num = bat_reg & 0xFFFFFFFE;
+    upper_reg_num = bat_reg & ~1U;
 
     ibat_entry = &ibat_array[(bat_reg - 528) >> 1];
     dbat_entry = &dbat_array[(bat_reg - 528) >> 1];
@@ -1307,11 +1307,11 @@ static void mpc601_dbat_update(uint32_t /*bat_reg*/)
 
 static void ppc_ibat_update(uint32_t bat_reg)
 {
-    int upper_reg_num;
+    uint32_t upper_reg_num;
     uint32_t bl, hi_mask;
     PPC_BAT_entry* bat_entry;
 
-    upper_reg_num = bat_reg & 0xFFFFFFFE;
+    upper_reg_num = bat_reg & ~1U;
 
     bat_entry = &ibat_array[(bat_reg - 528) >> 1];
     bl        = (ppc_state.spr[upper_reg_num] >> 2) & 0x7FF;
@@ -1332,11 +1332,11 @@ static void ppc_ibat_update(uint32_t bat_reg)
 
 static void ppc_dbat_update(uint32_t bat_reg)
 {
-    int upper_reg_num;
+    uint32_t upper_reg_num;
     uint32_t bl, hi_mask;
     PPC_BAT_entry* bat_entry;
 
-    upper_reg_num = bat_reg & 0xFFFFFFFE;
+    upper_reg_num = bat_reg & ~1U;
 
     bat_entry = &dbat_array[(bat_reg - 536) >> 1];
     bl        = (ppc_state.spr[upper_reg_num] >> 2) & 0x7FF;
@@ -1530,8 +1530,8 @@ inline T mmu_read_vmem(uint32_t opcode, uint32_t guest_va)
                 }
 #endif
 
-                return (
-                    ((T)(valueLow) << 32) | valueHigh
+                return (T)(
+                    (T)((T)(valueLow) << 32) | valueHigh
                 );
             }
             else {
@@ -1543,7 +1543,7 @@ inline T mmu_read_vmem(uint32_t opcode, uint32_t guest_va)
 
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
                 if (needs_swap && sizeof(T) > 1) {
-                    value = BYTESWAP_SIZED(value, sizeof(T));
+                    value = (T)(BYTESWAP_SIZED(value, sizeof(T)));
                 }
 #endif
 
@@ -1603,21 +1603,21 @@ inline T mmu_read_vmem(uint32_t opcode, uint32_t guest_va)
         case 2:
             return
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
-                needs_swap ? (READ_WORD_LE_A(host_va)) :
+                needs_swap ? (T)(READ_WORD_LE_A(host_va)) :
 #endif
-                (READ_WORD_BE_A(host_va));
+                (T)(READ_WORD_BE_A(host_va));
         case 4:
             return
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
-                needs_swap ? (READ_DWORD_LE_A(host_va)) :
+                needs_swap ? (T)(READ_DWORD_LE_A(host_va)) :
 #endif
-                (READ_DWORD_BE_A(host_va));
+                (T)(READ_DWORD_BE_A(host_va));
         case 8:
             return
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
-                needs_swap ? (READ_QWORD_LE_A(host_va)) :
+                needs_swap ? (T)(READ_QWORD_LE_A(host_va)) :
 #endif
-                (READ_QWORD_BE_A(host_va));
+                (T)(READ_QWORD_BE_A(host_va));
     }
 }
 
@@ -1799,7 +1799,7 @@ inline void mmu_write_vmem(uint32_t opcode, uint32_t guest_va, T value)
 
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
                 if (needs_swap && sizeof(T) > 1) {
-                    value = BYTESWAP_SIZED(value, sizeof(T));
+                    value = (T)(BYTESWAP_SIZED(value, sizeof(T)));
                 }
 #endif
 
@@ -1856,7 +1856,7 @@ inline void mmu_write_vmem(uint32_t opcode, uint32_t guest_va, T value)
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
     // swap now if needed
     if (needs_swap && sizeof(T) > 1) {
-        value = BYTESWAP_SIZED(value, sizeof(T));
+        value = (T)(BYTESWAP_SIZED(value, sizeof(T)));
     }
 #endif
 
@@ -1874,10 +1874,10 @@ inline void mmu_write_vmem(uint32_t opcode, uint32_t guest_va, T value)
     // handle aligned memory accesses
     switch(sizeof(T)) {
         case 1:
-            *host_va = value;
+            *host_va = (uint8_t)value;
             break;
         case 2:
-            WRITE_WORD_BE_A(host_va, value);
+            WRITE_WORD_BE_A(host_va, (uint16_t)value);
             break;
         case 4:
             WRITE_DWORD_BE_A(host_va, value);
@@ -1922,7 +1922,7 @@ static T read_unaligned(uint32_t opcode, uint32_t guest_va, uint8_t *host_va ARG
             } else
 #endif
             {
-                result = (result << 8) | mmu_read_vmem<uint8_t>(opcode, guest_va);
+                result = (T)(result << 8) | mmu_read_vmem<uint8_t>(opcode, guest_va);
             }
         }
 #if SUPPORTS_PPC_LITTLE_ENDIAN_MODE || SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
@@ -1931,20 +1931,20 @@ static T read_unaligned(uint32_t opcode, uint32_t guest_va, uint8_t *host_va ARG
         // Check for cross-page read, to read the upper 32 bits correctly.
         if (((guest_va & 0xFFF) + 12) > 0x1000) {
             // Add the pre-munged address, as munging is a no-op for uint64_t, but not for uint32_t.
-            result = mmu_read_vmem<uint32_t>(opcode, guest_va + mem_munge_address<uint32_t>(8));
+            result = (T)mmu_read_vmem<uint32_t>(opcode, guest_va + mem_munge_address<uint32_t>(8));
         } else {
             result =
                 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
-                    needs_swap ? (READ_DWORD_LE_U(host_va + 8)) :
+                    needs_swap ? (T)(READ_DWORD_LE_U(host_va + 8)) :
                 #endif
-                (READ_DWORD_BE_U(host_va + 8));
+                (T)(READ_DWORD_BE_U(host_va + 8));
         }
         result <<= 32;
         result |=
             #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
-                needs_swap ? (READ_DWORD_LE_U(host_va)) :
+                needs_swap ? (T)(READ_DWORD_LE_U(host_va)) :
             #endif
-            (READ_DWORD_BE_U(host_va));
+            (T)(READ_DWORD_BE_U(host_va));
 #endif
     } else {
 #ifdef MMU_PROFILING
@@ -1956,21 +1956,21 @@ static T read_unaligned(uint32_t opcode, uint32_t guest_va, uint8_t *host_va ARG
             case 2:
                 return
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
-                    needs_swap ? (READ_WORD_LE_U(host_va)) :
+                    needs_swap ? (T)(READ_WORD_LE_U(host_va)) :
 #endif
                     (READ_WORD_BE_U(host_va));
             case 4:
                 return
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
-                    needs_swap ? (READ_DWORD_LE_U(host_va)) :
+                    needs_swap ? (T)(READ_DWORD_LE_U(host_va)) :
 #endif
-                    (READ_DWORD_BE_U(host_va));
+                    (T)(READ_DWORD_BE_U(host_va));
             case 8:
                 return
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
-                    needs_swap ? (READ_QWORD_LE_U(host_va)) :
+                    needs_swap ? (T)(READ_QWORD_LE_U(host_va)) :
 #endif
-                    (READ_QWORD_BE_U(host_va));
+                    (T)(READ_QWORD_BE_U(host_va));
         }
     }
     return result;
