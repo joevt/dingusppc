@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define MEMORY_CONTROLLER_BASE_H
 
 #include <cinttypes>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -55,6 +56,8 @@ typedef struct AddressMapEntry {
     uint32_t mirror;        // starting address of the origin for RT_MIRROR
     uint32_t type;          // range type
     MMIODevice* devobj;     // pointer to device object
+    std::function<uint32_t(uint32_t rgn_start, uint32_t offset, int size)> read;
+    std::function<void(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)> write;
     unsigned char* mem_ptr; // direct pointer to data for memory objects
 } AddressMapEntry;
 
