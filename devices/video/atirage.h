@@ -82,8 +82,8 @@ protected:
     float calc_pll_freq(int scale, int fb_div) const;
     void verbose_pixel_format(int crtc_index);
     void crtc_update();
-    void draw_hw_cursor(uint8_t *dst_buf, int dst_pitch) override;
-    void get_cursor_position(int& x, int& y) override;
+    void vidc_draw_hw_cursor(uint8_t *dst_buf, int dst_pitch) override;
+    void vidc_get_cursor_position(int& x, int& y) override;
 
 private:
     void change_one_bar(uint32_t &aperture, uint32_t aperture_size,

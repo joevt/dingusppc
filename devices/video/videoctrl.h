@@ -68,9 +68,9 @@ public:
     void set_palette_color(uint8_t index, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
     // HW cursor support
-    void setup_hw_cursor(int cursor_width=64, int cur_height=64);
-    virtual void draw_hw_cursor(uint8_t */*dst_buf*/, int /*dst_pitch*/) {}
-    virtual void get_cursor_position(int& x, int& y) { x = 0; y = 0; }
+    void vidc_setup_hw_cursor(int cursor_width=64, int cur_height=64);
+    virtual void vidc_draw_hw_cursor(uint8_t */*dst_buf*/, int /*dst_pitch*/) {}
+    virtual void vidc_get_cursor_position(int& x, int& y) { x = 0; y = 0; }
 
     // converters for various framebuffer pixel depths
     void convert_frame_1bpp_indexed(uint8_t *dst_buf, int dst_pitch);
@@ -100,7 +100,7 @@ protected:
     // CRT controller parameters
     bool        crtc_on = false;
     bool        blank_on = true;
-    bool        cursor_on = false;
+    bool        vidc_cursor_on = false;
     bool        cursor_dirty = false;
     int         active_width;   // width of the visible display area
     int         active_height;  // height of the visible display area

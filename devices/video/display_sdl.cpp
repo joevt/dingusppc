@@ -434,7 +434,7 @@ void Display::blank() {
 
 void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> convert_fb_cb,
                      std::function<void(uint8_t *dst_buf, int dst_pitch)> cursor_ovl_cb,
-                     bool draw_hw_cursor, int cursor_x, int cursor_y,
+                     bool do_render_hw_cursor, int cursor_x, int cursor_y,
                      bool /*fb_known_to_be_changed*/) {
     uint8_t*    dst_buf = nullptr;
     int         dst_pitch;
@@ -453,7 +453,7 @@ void Display::update(std::function<void(uint8_t *dst_buf, int dst_pitch)> conver
     SDL_RenderCopy(impl->renderer, impl->disp_texture, NULL, &impl->dest_rect);
 
     // draw HW cursor if enabled
-    if (draw_hw_cursor) {
+    if (do_render_hw_cursor) {
         impl->cursor_rect.x = cursor_x * impl->renderer_scale_x + impl->dest_rect.x;
         impl->cursor_rect.y = cursor_y * impl->renderer_scale_y + impl->dest_rect.y;
         SDL_RenderCopy(impl->renderer, impl->cursor_texture, NULL, &impl->cursor_rect);
@@ -466,8 +466,10 @@ void Display::update_skipped() {
     // SDL implementation does not care about skipped updates.
 }
 
-void Display::setup_hw_cursor(std::function<void(uint8_t *dst_buf, int dst_pitch)> draw_hw_cursor,
-                              int cursor_width, int cursor_height) {
+void Display::disp_setup_hw_cursor(
+    std::function<void(uint8_t *dst_buf, int dst_pitch)> vidc_draw_hw_cursor,
+    int cursor_width, int cursor_height
+) {
     uint8_t*    dst_buf = nullptr;
     int         dst_pitch;
 
@@ -486,7 +488,7 @@ void Display::setup_hw_cursor(std::function<void(uint8_t *dst_buf, int dst_pitch
 
     SDL_LockTexture(impl->cursor_texture, NULL, (void **)&dst_buf, &dst_pitch);
     SDL_SetTextureBlendMode(impl->cursor_texture, SDL_BLENDMODE_BLEND);
-    draw_hw_cursor(dst_buf, dst_pitch);
+    vidc_draw_hw_cursor(dst_buf, dst_pitch);
     SDL_UnlockTexture(impl->cursor_texture);
 
     impl->cursor_rect.x = 0;

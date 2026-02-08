@@ -64,7 +64,7 @@ public:
     // implementation can take that into account.
     void update(std::function<void(uint8_t *dst_buf, int dst_pitch)> convert_fb_cb,
                 std::function<void(uint8_t *dst_buf, int dst_pitch)> cursor_ovl_cb,
-                bool draw_hw_cursor, int cursor_x, int cursor_y,
+                bool do_render_hw_cursor, int cursor_x, int cursor_y,
                 bool fb_known_to_be_changed);
 
     // Called in cases where the framebuffer contents have not changed, so a
@@ -73,8 +73,8 @@ public:
     void update_skipped();
 
     void handle_events(const WindowEvent& wnd_event);
-    void setup_hw_cursor(std::function<void(uint8_t *dst_buf, int dst_pitch)> draw_hw_cursor,
-                         int cursor_width, int cursor_height);
+    void disp_setup_hw_cursor(std::function<void(uint8_t *dst_buf, int dst_pitch)> vidc_draw_hw_cursor,
+        int cursor_width, int cursor_height);
     void update_window_title();
     void toggle_mouse_grab();
     void update_mouse_grab(bool will_be_grabbed);
