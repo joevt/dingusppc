@@ -43,7 +43,7 @@ public:
     virtual uint8_t not_ready_reason() { return 0; }
     virtual bool    last_sel_has_attention() { return false; }
     virtual uint8_t last_sel_msg() { return 0; }
-    virtual void    set_xfer_len(uint64_t len) = 0;
+    virtual void    set_xfer_len(int len) = 0;
     virtual void    set_status(uint8_t status_code) = 0;
     virtual void    switch_phase(const int new_phase) = 0;
 
