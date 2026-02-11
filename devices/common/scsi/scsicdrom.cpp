@@ -216,8 +216,8 @@ void ScsiCdrom::mode_sense_6()
     default:
         LOG_F(WARNING, "%s: unsupported page 0x%02x in MODE_SENSE_6", this->get_name_and_unit_address().c_str(),
             page_code);
-        this->set_field_pointer(2), // error is in the 3rd byte
-        this->set_bit_pointer(5),   // starting with bit 5
+        this->set_field_pointer(2); // error is in the 3rd byte
+        this->set_bit_pointer(5);   // starting with bit 5
         this->invalid_cdb();
         this->switch_phase(ScsiPhase::STATUS);
         return;
@@ -257,7 +257,7 @@ void ScsiCdrom::read_capacity_10()
 
     if (!(this->cmd_buf[8] & 1) && lba) {
         LOG_F(ERROR, "%s: non-zero LBA for PMI=0", this->get_name_and_unit_address().c_str());
-        this->set_field_pointer(2),
+        this->set_field_pointer(2);
         this->invalid_cdb();
         this->switch_phase(ScsiPhase::STATUS);
         return;
