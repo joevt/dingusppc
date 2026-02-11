@@ -261,7 +261,7 @@ public:
         return this->last_selection_message;
     }
 
-    void set_xfer_len(uint64_t len) override {
+    void set_xfer_len(int len) override {
         this->xfer_len = len;
     }
 
