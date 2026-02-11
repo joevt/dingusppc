@@ -44,7 +44,7 @@ ScsiCdrom::ScsiCdrom(const std::string name) :
     this->set_buf_ptr(this->data_buf);
     this->set_error_callback(
         [this](uint8_t sense_key, uint8_t asc) {
-            //his->report_error(sense_key, asc);
+            //this->report_error(sense_key, asc);
             this->invalid_cdb(); // HACK! to make CdromDrive::read_toc() work
         }
     );
