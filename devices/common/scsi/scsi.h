@@ -268,7 +268,7 @@ public:
     int32_t parse_self_unit_address_string(const std::string unit_address_string) override;
     static int32_t parse_unit_address_string(const std::string unit_address_string);
 
-    // ScsiDevice methods
+    // ScsiPhysDevice methods
 
     virtual void notify(ScsiNotification notif_type, int param);
     virtual void next_step();
