@@ -1,6 +1,29 @@
 cmake_minimum_required(VERSION 3.14)
+
+# Query the host operating system version
+cmake_host_system_information(RESULT HOST_OS_VERSION QUERY OS_VERSION)
+cmake_host_system_information(RESULT HOST_OS_NAME QUERY OS_NAME)
+cmake_host_system_information(RESULT HOST_OS_RELEASE QUERY OS_RELEASE)
+
+# Print the results
+message(STATUS "Host OS Name: ${HOST_OS_NAME}")
+message(STATUS "Host OS Release: ${HOST_OS_RELEASE}")
+message(STATUS "Host OS Version: ${HOST_OS_VERSION}")
+
+if (APPLE)
+    message(STATUS "Apple")
+    if("${HOST_OS_VERSION}" VERSION_LESS_EQUAL "10.5.8")
+        message(STATUS "Old Mac OS X")
+        # Set custom debug flags for C++
+        set(CMAKE_CXX_FLAGS_DEBUG "-O0 -gdwarf-2" CACHE STRING "Flags used for the DEBUG build type." FORCE)
+        # Set custom debug flags for C
+        set(CMAKE_C_FLAGS_DEBUG "-O0 -gdwarf-2" CACHE STRING "Flags used for the DEBUG build type." FORCE)
+    endif()
+endif()
+
 project(dingusppc)
 
+# list(APPEND CMAKE_PREFIX_PATH "/opt/local")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(PlatformGlob)
 
@@ -9,6 +32,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
+# set(CMAKE_SHARED_LINKER_FLAGS "-latomic")
+# set(CMAKE_EXE_LINKER_FLAGS "-latomic")
+# set(CMAKE_LINKER_FLAGS "-latomic")
+# set(CMAKE_CXX_FLAGS "-O2")
+# set(CMAKE_C_FLAGS "-O2")
+# set(CMAKE_BUILD_WITH_INSTALL_RPATH "true")
 
 if (NOT WIN32 AND NOT EMSCRIPTEN)
     find_package(SDL2 REQUIRED)
@@ -213,6 +242,11 @@ if (APPLE)
         ${COREAUDIO_LIBRARY} 
         ${AUDIOTOOLBOX_LIBRARY}
     )
+
+    if("${HOST_OS_VERSION}" VERSION_LESS_EQUAL "10.5.8")
+        message(STATUS "Old Mac OS X")
+        target_link_libraries(dingusppc PRIVATE "-latomic")
+    endif()
 
     if (IOS)
         target_link_libraries(dingusppc PRIVATE "-framework Foundation" "-framework UIKit")

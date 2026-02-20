@@ -77,9 +77,9 @@ For SDL2, Linux users may also have to run:
 sudo apt install libsdl2-dev
 ```
 
- CLI11 and loguru are already included in the thirdparty folder and compiled along with the rest of DingusPPC.
+CLI11 and loguru are already included in the thirdparty folder and compiled along with the rest of DingusPPC.
 
-For example, to build the project in a Unix-like environment, you will need to run
+To build the project in a Unix-like environment, you will need to run
 the following commands in the OS terminal:
 ```
 mkdir build
@@ -87,7 +87,29 @@ cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make dingusppc
 ```
+To build the project in Mac OS X 10.5, add some options to the cmake command:
+```
+mkdir build-ppc
+cd build-ppc
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DBUILD_RUST_LIBS=OFF -DUSE_SANITIZERS=OFF -DUSE_AUDIOUNIT=OFF ..
+make dingusppc
+```
+To build using Xcode, add the `-G Xcode` option to cmake:
+```
+mkdir build-xcode
+cd build-xcode
+cmake -G Xcode ..
+xcodebuild -configuration Release
+```
+You can use Xcode to build and debug the project:
+```
+cd build-xcode
+open dingusppc.xcodeproj
+```
 You may specify another build type using the variable CMAKE_BUILD_TYPE.
+```
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+```
 
 For Raspbian, you may also need the following command:
 ```
