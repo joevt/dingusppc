@@ -1,4 +1,15 @@
 cmake_minimum_required(VERSION 3.14)
+
+# Query the host operating system version
+cmake_host_system_information(RESULT HOST_OS_VERSION QUERY OS_VERSION)
+cmake_host_system_information(RESULT HOST_OS_NAME QUERY OS_NAME)
+cmake_host_system_information(RESULT HOST_OS_RELEASE QUERY OS_RELEASE)
+
+# Print the results
+message(STATUS "Host OS Name: ${HOST_OS_NAME}")
+message(STATUS "Host OS Release: ${HOST_OS_RELEASE}")
+message(STATUS "Host OS Version: ${HOST_OS_VERSION}")
+
 project(dingusppc)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
@@ -214,6 +225,10 @@ if (APPLE)
         ${AUDIOTOOLBOX_LIBRARY}
     )
 
+    if("${HOST_OS_VERSION}" VERSION_LESS_EQUAL "10.5.8")
+        target_link_libraries(dingusppc PRIVATE "-latomic")
+    endif()
+
     if (IOS)
         target_link_libraries(dingusppc PRIVATE "-framework Foundation" "-framework UIKit")
     endif()
@@ -266,6 +281,12 @@ if (DPPC_BUILD_PPC_TESTS)
                                     ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
     endif()
 
+    if (APPLE)
+        if("${HOST_OS_VERSION}" VERSION_LESS_EQUAL "10.5.8")
+            target_link_libraries(testppc PRIVATE "-latomic")
+        endif()
+    endif()
+
     if (DPPC_68K_DEBUGGER)
         target_link_libraries(testppc PRIVATE capstone)
     endif()
@@ -289,6 +310,12 @@ if (DPPC_BUILD_BENCHMARKS)
             ${CMAKE_THREAD_LIBS_INIT})
     if (WIN32)
         target_compile_definitions(bench1 PRIVATE SDL_MAIN_HANDLED)
+    endif()
+
+    if (APPLE)
+        if("${HOST_OS_VERSION}" VERSION_LESS_EQUAL "10.5.8")
+            target_link_libraries(bench1 PRIVATE "-latomic")
+        endif()
     endif()
 
     if (DPPC_68K_DEBUGGER)
