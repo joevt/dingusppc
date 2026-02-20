@@ -73,7 +73,8 @@
 #endif
 
 #ifdef __APPLE__
-	#include "TargetConditionals.h"
+	#include <AvailabilityMacros.h>
+	#include <TargetConditionals.h>
 #endif
 
 // TODO: use defined(_POSIX_VERSION) for some of these things?
@@ -113,7 +114,7 @@
 		#include <pthread_np.h>
 	#endif
 
-	#ifdef __linux__
+	#if defined(__linux__)
 		/* On Linux, the default thread name is the same as the name of the binary.
 		   Additionally, all new threads inherit the name of the thread it got forked from.
 		   For this reason, Loguru use the pthread Thread Local Storage
@@ -121,6 +122,8 @@
 		#ifndef LOGURU_PTLS_NAMES
 			#define LOGURU_PTLS_NAMES 1
 		#endif
+	#elif defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED <= MAC_OS_X_VERSION_10_5
+		#define LOGURU_PTLS_NAMES 1
 	#endif
 #endif
 
@@ -1112,7 +1115,11 @@ namespace loguru
 
 			#ifdef __APPLE__
 				uint64_t thread_id;
-				pthread_threadid_np(pthread_self(), &thread_id);
+				#if MAC_OS_X_VERSION_MIN_REQUIRED <= MAC_OS_X_VERSION_10_5
+					thread_id = (uint64_t)pthread_self();
+				#else
+					pthread_threadid_np(pthread_self(), &thread_id);
+				#endif
 			#elif defined(__FreeBSD__)
 				long thread_id;
 				(void)thr_self(&thread_id);
