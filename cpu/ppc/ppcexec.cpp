@@ -40,7 +40,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <thread>
 
 #ifdef __APPLE__
+    #ifdef USE_CLOCK_GETTIME_NSEC_NP
 #include <ctime>
+    #else
+#include <mach/mach_time.h>
+#undef EXC_SYSCALL
+static struct mach_timebase_info timebase_info;
+static uint64_t
+ConvertHostTimeToNanos2(uint64_t host_time)
+{
+    if (timebase_info.numer == timebase_info.denom)
+        return host_time;
+    long double answer = host_time;
+    answer *= timebase_info.numer;
+    answer /= timebase_info.denom;
+    return (uint64_t)answer;
+}
+    #endif
 #endif
 
 using namespace std;
@@ -393,7 +409,11 @@ void ppc_main_opcode(PPCOpcode *opcodeGrabber, uint32_t opcode)
 
 static long long cpu_now_ns() {
 #ifdef __APPLE__
+    #ifdef USE_CLOCK_GETTIME_NSEC_NP
     return clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
+    #else
+    return ConvertHostTimeToNanos2(mach_absolute_time());
+    #endif
 #else
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::high_resolution_clock::now().time_since_epoch()).count();
@@ -1673,6 +1693,12 @@ void ppc_cpu_init(MemCtrlBase* mem_ctrl, const PPC_CPU_Config& config)
     TimerManager::get_instance()->set_notify_changes_cb(&force_cycle_counter_reload);
 
     // initialize time base facility
+#ifdef __APPLE__
+    #ifdef USE_CLOCK_GETTIME_NSEC_NP
+    #else
+        mach_timebase_info(&timebase_info);
+    #endif
+#endif
     g_nanoseconds_base.store(cpu_now_ns(), std::memory_order_relaxed);
     g_virt_time = 0;
     g_instruction_period = g_cpu_timing_mode == PPC_CPU_TimingMode::PerMachine
