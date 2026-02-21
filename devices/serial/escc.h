@@ -195,6 +195,9 @@ public:
     uint8_t read(uint8_t reg_offset);
     void    write(uint8_t reg_offset, uint8_t value);
 
+    uint8_t read_reg(int reg_num);
+    void    write_reg(int reg_num, uint8_t value);
+
     void set_dma_channel(ChIndex ch_index, DirIndex dir_index, DmaBidirChannel *dma_ch) {
         switch (ch_index) {
         case CH_A: ch_a->set_dma_channel(dir_index, dma_ch); break;

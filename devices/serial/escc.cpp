@@ -125,31 +125,40 @@ void EsccController::write(uint8_t reg_offset, uint8_t value)
 
 uint8_t EsccController::read_internal(EsccChannel *ch)
 {
+    uint8_t value = ch->read_reg(this->reg_ptr);
+    this->reg_ptr = RR0; // or WR0
+    return value;
+}
+
+uint8_t EsccController::read_reg(int reg_num)
+{
     uint8_t value;
-    switch (this->reg_ptr) {
+    switch (reg_num) {
     case RR2:
         // TODO: implement interrupt vector modifications
         value = this->int_vec;
         break;
     default:
-        value = ch->read_reg(this->reg_ptr);
+        value = 0;
     }
-    this->reg_ptr = RR0; // or WR0
     return value;
 }
 
 void EsccController::write_internal(EsccChannel *ch, uint8_t value)
 {
-    switch (this->reg_ptr) {
-    // chip-specific registers
-    case WR0:
+    if (this->reg_ptr) {
+        ch->write_reg(this->reg_ptr, value);
+        this->reg_ptr = WR0; // or RR0
+    } else {
         this->reg_ptr = value & WR0_REGISTER_SELECTION_CODE;
-        switch (value & WR0_COMMAND_CODES) {
-        case WR0_COMMAND_POINT_HIGH:
+        if ((value & WR0_COMMAND_CODES) == WR0_COMMAND_POINT_HIGH)
             this->reg_ptr |= WR8; // or RR8
-            break;
-        }
-        return;
+    }
+}
+
+void EsccController::write_reg(int reg_num, uint8_t value)
+{
+    switch (reg_num) {
     case WR2:
         this->int_vec = value;
         break;
@@ -171,11 +180,7 @@ void EsccController::write_internal(EsccChannel *ch, uint8_t value)
 
         this->master_int_cntrl = value & WR9_INTERRUPT_CONTROL_BITS;
         break;
-    default:
-        // channel-specific registers
-        ch->write_reg(this->reg_ptr, value);
     }
-    this->reg_ptr = WR0; // or RR0
 }
 
 // ======================== ESCC Channel methods ==============================
@@ -274,6 +279,9 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
         reg_num = WR7Prime;
 
     switch (reg_num) {
+    case WR2:
+        this->controller->write_reg(reg_num, value);
+        return;
     case WR3:
         if ((this->write_regs[WR3] ^ value) & WR3_ENTER_HUNT_MODE) {
             this->write_regs[WR3] |= WR3_ENTER_HUNT_MODE;
@@ -303,6 +311,9 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
         break;
     case WR8:
         this->send_byte(value);
+        return;
+    case WR9:
+        this->controller->write_reg(reg_num, value);
         return;
     case WR14:
         switch (value & WR14_DPLL_COMMAND_BITS) {
@@ -358,6 +369,8 @@ uint8_t EsccChannel::read_reg(int reg_num)
             value &= ~RR0_RX_CHARACTER_AVAILABLE;
         }
         break;
+    case RR2:
+        return this->controller->read_reg(reg_num);
     case RR8:
         value = this->receive_byte();
         break;
