@@ -166,6 +166,9 @@ public:
     uint8_t read(uint8_t reg_offset);
     void    write(uint8_t reg_offset, uint8_t value);
 
+    uint8_t read_reg(int reg_num);
+    void    write_reg(int reg_num, uint8_t value);
+    
     void connect_dma_channel(ChIndex ch_idx, DirIndex dir_idx, DmaChannel *ch_obj) {
         switch (ch_idx) {
         case CH_A: ch_a->set_dma_channel(dir_idx, ch_obj); break;
