@@ -163,6 +163,7 @@ void EsccController::write_reg(int reg_num, uint8_t value)
         this->int_vec = value;
         break;
     case WR9:
+        this->master_int_cntrl = value & WR9_INTERRUPT_CONTROL_BITS;
         // see if some reset is requested
         switch (value & WR9_RESET_COMMAND_BITS) {
         case WR9_CHANNEL_RESET_B:
@@ -178,7 +179,6 @@ void EsccController::write_reg(int reg_num, uint8_t value)
             break;
         }
 
-        this->master_int_cntrl = value & WR9_INTERRUPT_CONTROL_BITS;
         break;
     }
 }
