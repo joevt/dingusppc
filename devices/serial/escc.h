@@ -86,6 +86,8 @@ enum ChIndex : uint8_t {
     CH_B
 };
 
+class EsccController;
+
 /** ESCC Channel class. */
 class EsccChannel : virtual public HWComponent {
 public:
@@ -144,6 +146,10 @@ public:
         }
     }
 
+    void set_controller(EsccController* the_controller) {
+        this->controller = the_controller;
+    }
+
 private:
     uint32_t timer_id_tx = 0;
     uint32_t timer_id_rx = 0;
@@ -160,6 +166,7 @@ private:
     void dma_out_rx();
     void dma_flush_rx();
 
+    EsccController*     controller = nullptr;
     DmaBidirChannel*    dma_ch[DIR_MAX+1];
 
     uint8_t         read_regs[16] = {};
