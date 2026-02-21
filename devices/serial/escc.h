@@ -85,6 +85,8 @@ enum ChIndex : uint8_t {
     CH_B
 };
 
+class EsccController;
+
 /** ESCC Channel class. */
 class EsccChannel : public DmaDevice, virtual public HWComponent {
 public:
@@ -130,7 +132,12 @@ public:
     int xfer_from(DmaChannel *ch_obj, uint8_t *buf, int len) override;
     int xfer_to  (DmaChannel *ch_obj, uint8_t *buf, int len) override;
 
+    void set_controller(EsccController* the_controller) {
+        this->controller = the_controller;
+    }
+
 private:
+    EsccController* controller = nullptr;
     DmaChannel*     dma_channels[2];
 
     uint8_t         read_regs[16] = {};

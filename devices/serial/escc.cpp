@@ -49,6 +49,8 @@ EsccController::EsccController(const std::string &dev_name)
     // ch_a should have a lower unit address than ch_b so that it will get the default socket_backend value
     this->ch_a = dynamic_cast<EsccChannel*>(MachineFactory::create_device(this, "EsccChannel@A"));
     this->ch_b = dynamic_cast<EsccChannel*>(MachineFactory::create_device(this, "EsccChannel@B"));
+    this->ch_a->set_controller(this);
+    this->ch_b->set_controller(this);
 
     this->master_int_cntrl = 0;
     this->reset();
