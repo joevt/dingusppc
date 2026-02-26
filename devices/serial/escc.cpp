@@ -58,8 +58,7 @@ EsccController::EsccController(const std::string &dev_name)
 
 void EsccController::reset()
 {
-    this->master_int_cntrl &= (WR9_NO_VECTOR | WR9_VECTOR_INCLUDES_STATUS);
-    this->master_int_cntrl |= WR9_FORCE_HARDWARE_RESET;
+    this->write_reg(WR9, this->master_int_cntrl & (WR9_NO_VECTOR | WR9_VECTOR_INCLUDES_STATUS));
     this->reg_ptr = WR0; // or RR0
 
     this->ch_a->reset(true);
@@ -167,11 +166,11 @@ void EsccController::write_reg(int reg_num, uint8_t value)
         // see if some reset is requested
         switch (value & WR9_RESET_COMMAND_BITS) {
         case WR9_CHANNEL_RESET_B:
-            this->master_int_cntrl &= ~WR9_INTERRUPT_MASKING_WITHOUT_INTACK;
+            this->ch_b->write_reg(WR9, this->master_int_cntrl & ~WR9_INTERRUPT_MASKING_WITHOUT_INTACK);
             this->ch_b->reset(false);
             break;
         case WR9_CHANNEL_RESET_A:
-            this->master_int_cntrl &= ~WR9_INTERRUPT_MASKING_WITHOUT_INTACK;
+            this->ch_a->write_reg(WR9, this->master_int_cntrl & ~WR9_INTERRUPT_MASKING_WITHOUT_INTACK);
             this->ch_a->reset(false);
             break;
         case WR9_FORCE_HARDWARE_RESET:
@@ -237,37 +236,35 @@ void EsccChannel::reset(bool hw_reset)
         easily compare with the z85c30 data sheet.
     */
 
-    this->write_regs[WR0] = 0;
-    this->write_regs[WR1] &= 0x24;
-    this->write_regs[WR3] &= 0xFE;
-    this->write_regs[WR4] |= 0x04;
-    this->write_regs[WR5] &= 0x61;
-    this->write_regs[WR15] = 0xF8;
+    this->write_reg(WR0, 0x00);
+    this->write_reg(WR1, this->write_regs[WR1] & 0x24);
+    this->write_reg(WR3, this->write_regs[WR3] & 0xFE);
+    this->write_reg(WR4, this->write_regs[WR4] | 0x04);
+    this->write_reg(WR5, this->write_regs[WR5] & 0x61);
+    // skip WR9 which is handled by EsccController
+    if (hw_reset)
+        this->write_reg(WR10, 0x00);
+    else
+        this->write_reg(WR10, this->write_regs[WR10] & 0x60);
+    if (hw_reset)
+        this->write_reg(WR11, 0x08);
 
-    this->read_regs[RR0] &= 0x38;
-    this->read_regs[RR0] |= 0x44;
+    uint8_t enables;
+    if (hw_reset)
+        enables = 0;
+    else
+        enables = this->write_regs[WR14] & 3;
+    this->write_reg(WR14, WR14_DPLL_DISABLE_DPLL | enables);
+    this->write_reg(WR14, WR14_DPLL_RESET_MISSING_CLOCK | enables);
+    this->write_reg(WR14, WR14_DPLL_SET_SOURCE_RTXC | enables);
+    this->write_reg(WR14, WR14_DPLL_SET_NRZI_MODE | enables);
+
+    this->write_reg(WR15, 0xF8);
+
+    this->read_regs[RR0]  = (this->read_regs[RR0] & 0x38) | 0x44;
     this->read_regs[RR1]  = 0x06 | RR1_ALL_SENT; // HACK: also set ALL_SENT flag.
     this->read_regs[RR3]  = 0x00;
     this->read_regs[RR10] = 0x00;
-
-    // initialize DPLL
-    this->dpll_active    = 0;
-    this->dpll_mode      = DpllMode::NRZI;
-    this->dpll_clock_src = 0;
-
-    // initialize Baud Rate Generator (BRG)
-    this->brg_active    = 0;
-    this->brg_clock_src = 0;
-
-    if (hw_reset) {
-        this->write_regs[WR10] = 0;
-        this->write_regs[WR11] = 8;
-        this->write_regs[WR14] &= 0xC0;
-    } else {
-        this->write_regs[WR10] &= 0x60;
-        this->write_regs[WR14] &= 0xC3;
-    }
-    this->write_regs[WR14] |= 0x20;
 }
 
 void EsccChannel::write_reg(int reg_num, uint8_t value)
@@ -294,8 +291,7 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
                 this->write_regs[WR3] ^= WR3_RX_ENABLE;
                 this->chario->rcv_disable();
                 LOG_F(9, "%s: receiver disabled.", this->get_name_and_unit_address().c_str());
-                this->write_regs[WR3] |= WR3_ENTER_HUNT_MODE;
-                this->read_regs[RR0] |= RR0_SYNC_HUNT;
+                this->write_reg(WR3, this->write_regs[WR3] | WR3_ENTER_HUNT_MODE);
             }
         }
         this->write_regs[WR3] =
