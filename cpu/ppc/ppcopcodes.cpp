@@ -2180,7 +2180,7 @@ void dppc_interpreter::ppc_eciwx(uint32_t opcode) {
     uint32_t ear_enable = 0x80000000;
 
     // error if EAR[E] != 1
-    if (!(ppc_state.spr[282] & ear_enable)) {
+    if (!(ppc_state.spr[SPR::EAR] & ear_enable)) {
         ppc_exception_handler(Except_Type::EXC_DSI, 0x0);
     }
 
@@ -2200,7 +2200,8 @@ void dppc_interpreter::ppc_ecowx(uint32_t opcode) {
     uint32_t ear_enable = 0x80000000;
 
     // error if EAR[E] != 1
-    if (!(ppc_state.spr[282] & ear_enable)) {
+    if (!(ppc_state.spr[SPR::EAR] & ear_enable)) {
+        ppc_state.spr[SPR::DSISR] = 0x00100000;
         ppc_exception_handler(Except_Type::EXC_DSI, 0x0);
     }
 
