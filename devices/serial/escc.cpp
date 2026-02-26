@@ -157,11 +157,14 @@ void EsccController::write_internal(EsccChannel *ch, uint8_t value)
 
 void EsccController::write_reg(int reg_num, uint8_t value)
 {
+    uint8_t changed_bits;
     switch (reg_num) {
     case WR2:
+        changed_bits = this->int_vec ^ value;
         this->int_vec = value;
         break;
     case WR9:
+        changed_bits = (value & WR9_RESET_COMMAND_BITS) | ((this->master_int_cntrl ^ value) & WR9_INTERRUPT_CONTROL_BITS);
         this->master_int_cntrl = value & WR9_INTERRUPT_CONTROL_BITS;
         // see if some reset is requested
         switch (value & WR9_RESET_COMMAND_BITS) {
@@ -272,31 +275,31 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
     if ((reg_num == WR7) && (this->write_regs[WR15] & WR15_SDLC_HDLC_ENHANCEMENT_ENABLE))
         reg_num = WR7Prime;
 
+    uint8_t changed_bits;
+    changed_bits = this->write_regs[reg_num] ^ value;
+
     switch (reg_num) {
     case WR2:
         this->controller->write_reg(reg_num, value);
         return;
     case WR3:
-        if ((this->write_regs[WR3] ^ value) & WR3_ENTER_HUNT_MODE) {
-            this->write_regs[WR3] |= WR3_ENTER_HUNT_MODE;
+        changed_bits = (changed_bits & ~WR3_ENTER_HUNT_MODE) | (changed_bits & value & WR3_ENTER_HUNT_MODE);
+        this->write_regs[WR3] = (this->write_regs[WR3] & WR3_ENTER_HUNT_MODE) |
+            (value & WR3_ENTER_HUNT_MODE) | (value & ~WR3_ENTER_HUNT_MODE);
+        if (changed_bits & WR3_ENTER_HUNT_MODE) {
             this->read_regs[RR0] |= RR0_SYNC_HUNT;
             LOG_F(9, "%s: Hunt mode entered.", this->get_name_and_unit_address().c_str());
         }
-        if ((this->write_regs[WR3] ^ value) & WR3_RX_ENABLE) {
+        if (changed_bits & WR3_RX_ENABLE) {
             if (value & WR3_RX_ENABLE) {
-                this->write_regs[WR3] |= WR3_RX_ENABLE;
                 this->chario->rcv_enable();
                 LOG_F(9, "%s: receiver enabled.", this->get_name_and_unit_address().c_str());
             } else {
-                this->write_regs[WR3] ^= WR3_RX_ENABLE;
                 this->chario->rcv_disable();
                 LOG_F(9, "%s: receiver disabled.", this->get_name_and_unit_address().c_str());
                 this->write_reg(WR3, this->write_regs[WR3] | WR3_ENTER_HUNT_MODE);
             }
         }
-        this->write_regs[WR3] =
-            (this->write_regs[WR3] & (WR3_RX_ENABLE | WR3_ENTER_HUNT_MODE)) |
-            (value & ~(WR3_RX_ENABLE | WR3_ENTER_HUNT_MODE));
         return;
     case WR7:
         break;
@@ -309,6 +312,7 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
         this->controller->write_reg(reg_num, value);
         return;
     case WR14:
+        changed_bits = (value & WR14_DPLL_COMMAND_BITS) | (changed_bits & ~WR14_DPLL_COMMAND_BITS);
         switch (value & WR14_DPLL_COMMAND_BITS) {
         case WR14_DPLL_NULL_COMMAND:
             break;
@@ -335,15 +339,15 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
             this->dpll_mode = DpllMode::NRZI;
             break;
         }
-        if (value & (WR14_LOCAL_LOOPBACK | WR14_AUTO_ECHO | WR14_DTR_REQUEST_FUNCTION)) {
-            LOG_F(WARNING, "%s: unexpected value in WR14 = 0x%X", this->get_name_and_unit_address().c_str(), value);
-        }
-        if (this->brg_clock_src ^ (value & WR14_BR_GENERATOR_SOURCE)) {
+        if (changed_bits & WR14_BR_GENERATOR_SOURCE) {
             this->brg_clock_src = value & WR14_BR_GENERATOR_SOURCE;
         }
-        if (this->brg_active ^ (value & WR14_BR_GENERATOR_ENABLE)) {
+        if (changed_bits & WR14_BR_GENERATOR_ENABLE) {
             this->brg_active = value & WR14_BR_GENERATOR_ENABLE;
             LOG_F(9, "%s: BRG %s", this->get_name_and_unit_address().c_str(), this->brg_active ? "enabled" : "disabled");
+        }
+        if (value & (WR14_LOCAL_LOOPBACK | WR14_AUTO_ECHO | WR14_DTR_REQUEST_FUNCTION)) {
+            LOG_F(WARNING, "%s: unexpected value in WR14 = 0x%02X", this->get_name_and_unit_address().c_str(), value);
         }
         break;
     }
