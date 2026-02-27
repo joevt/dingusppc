@@ -277,6 +277,7 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
 
     uint8_t changed_bits;
     changed_bits = this->write_regs[reg_num] ^ value;
+    bool do_update_baud_rate = false;
 
     switch (reg_num) {
     case WR2:
@@ -284,6 +285,9 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
         return;
     case WR3:
         changed_bits = (changed_bits & ~WR3_ENTER_HUNT_MODE) | (changed_bits & value & WR3_ENTER_HUNT_MODE);
+        if (changed_bits) {
+            do_update_baud_rate = true;
+        }
         this->write_regs[WR3] = (this->write_regs[WR3] & WR3_ENTER_HUNT_MODE) |
             (value & WR3_ENTER_HUNT_MODE) | (value & ~WR3_ENTER_HUNT_MODE);
         if (changed_bits & WR3_ENTER_HUNT_MODE) {
@@ -300,7 +304,18 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
                 this->write_reg(WR3, this->write_regs[WR3] | WR3_ENTER_HUNT_MODE);
             }
         }
-        return;
+        value = this->write_regs[WR3];
+        break;
+    case WR4:
+        if (changed_bits) {
+            do_update_baud_rate = true;
+        }
+        break;
+    case WR5:
+        if (changed_bits) {
+            do_update_baud_rate = true;
+        }
+        break;
     case WR7:
         break;
     case WR7Prime:
@@ -311,8 +326,26 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
     case WR9:
         this->controller->write_reg(reg_num, value);
         return;
+    case WR11:
+        if (changed_bits) {
+            do_update_baud_rate = true;
+        }
+        break;
+    case WR12:
+        if (changed_bits) {
+            do_update_baud_rate = true;
+        }
+        break;
+    case WR13:
+        if (changed_bits) {
+            do_update_baud_rate = true;
+        }
+        break;
     case WR14:
         changed_bits = (value & WR14_DPLL_COMMAND_BITS) | (changed_bits & ~WR14_DPLL_COMMAND_BITS);
+        if (changed_bits) {
+            do_update_baud_rate = true;
+        }
         switch (value & WR14_DPLL_COMMAND_BITS) {
         case WR14_DPLL_NULL_COMMAND:
             break;
@@ -353,6 +386,8 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
     }
 
     this->write_regs[reg_num] = value;
+    if (do_update_baud_rate)
+        this->update_baud_rate();
 }
 
 uint8_t EsccChannel::read_reg(int reg_num)
@@ -419,6 +454,116 @@ void EsccChannel::set_enh_reg(uint8_t value)
         if (value & ~WORLDPORT)
             LOG_F(ERROR, "%s: Ignoring attempt to set Enh_Reg bits 0x%02x",
                 this->get_name_and_unit_address().c_str(), value & ~WORLDPORT);
+    }
+}
+
+void EsccChannel::update_baud_rate()
+{
+    uint32_t new_clock_mode;
+    switch (this->write_regs[WR4] & WR4_CLOCK_RATE) {
+        default:
+        case WR4_X1_CLOCK_MODE  : new_clock_mode =  1; break;
+        case WR4_X16_CLOCK_MODE : new_clock_mode = 16; break;
+        case WR4_X32_CLOCK_MODE : new_clock_mode = 32; break;
+        case WR4_X64_CLOCK_MODE : new_clock_mode = 64; break;
+    }
+    if (new_clock_mode != this->clock_mode) {
+        this->clock_mode = new_clock_mode;
+    }
+
+    uint32_t start_bits = 1;
+    uint32_t data_bits[DIR_MAX+1];
+    uint32_t parity_bits = (write_regs[WR4] & WR4_PARITY_ENABLE) ? 1 : 0;
+    uint32_t stop_bits_x2 = 0;
+
+    switch (this->write_regs[WR3] & WR3_RECEIVER_BITS_PER_CHARACTER) {
+        case WR3_BITS_PER_CHARACTER_5: data_bits[DIR_RX] = 5; break;
+        case WR3_BITS_PER_CHARACTER_7: data_bits[DIR_RX] = 7; break;
+        case WR3_BITS_PER_CHARACTER_6: data_bits[DIR_RX] = 6; break;
+        default:
+        case WR3_BITS_PER_CHARACTER_8: data_bits[DIR_RX] = 8; break;
+    }
+
+    switch (this->write_regs[WR5] & WR5_TX_BITS_PER_CHARACTER) {
+        case WR5_TX_5_BITS_OR_LESS_PER_CHARACTER : data_bits[DIR_TX] = 5; break;
+        case WR5_TX_7_BITS_PER_CHARACTER         : data_bits[DIR_TX] = 7; break;
+        case WR5_TX_6_BITS_PER_CHARACTER         : data_bits[DIR_TX] = 6; break;
+        default:
+        case WR5_TX_8_BITS_PER_CHARACTER         : data_bits[DIR_TX] = 8; break;
+    }
+
+    switch (this->write_regs[WR4] & WR4_STOP_BITS) {
+        case WR4_SYNC_MODES_ENABLE:
+            new_clock_mode = 1;
+            start_bits = 0;
+            break;
+        default:
+        case WR4_STOP_BITS_PER_CHARACTER_1          : stop_bits_x2 = 2; break;
+        case WR4_STOP_BITS_PER_CHARACTER_1_AND_HALF : stop_bits_x2 = 3; break;
+        case WR4_STOP_BITS_PER_CHARACTER_2          : stop_bits_x2 = 4; break;
+    }
+
+    uint32_t new_time_constant = this->write_regs[WR12] | (this->write_regs[WR13] << 8);
+    if (new_time_constant != this->time_constant) {
+        this->time_constant = new_time_constant;
+    }
+
+    uint32_t rtxc_clock_output = (
+        (this->write_regs[WR11] & WR11_RTXC_XTAL_NO_XTAL) == WR11_RTXC_XTAL) ?
+            xtal_clock
+        : (this->enh_reg & WORLDPORT) ?
+            this->gpi_clock
+        :
+            this->internal_clock;
+
+    uint32_t brg_clock = (this->brg_clock_src == WR14_BRG_SRC_PCLK)
+        ? this->controller->get_pclk() : rtxc_clock_output;
+
+    double brg_output = brg_clock / (2 * new_clock_mode * (this->time_constant + 2));
+
+    double dpll_clock = this->dpll_clock_src ? brg_output : rtxc_clock_output;
+
+    double new_baud_rate[DIR_MAX+1];
+    double new_char_rate[DIR_MAX+1];
+    for (int i = DIR_MIN; i <= DIR_MAX; i++) {
+        // do WR11_RECEIVE_CLOCK and WR11_TRANSMIT_CLOCK
+        uint8_t clock_src = this->write_regs[WR11] & (
+            (i == DIR_TX) ? WR11_TRANSMIT_CLOCK :
+               /* DIR_RX */ WR11_RECEIVER_CLOCK
+        );
+        switch (clock_src) {
+            default:
+            case WR11_RECEIVE_CLOCK_RTXC_PIN:
+            //case WR11_TRANSMIT_CLOCK_RTXC_PIN:
+                new_baud_rate[i] = rtxc_clock_output;
+                break;
+            case WR11_RECEIVE_CLOCK_TRXC_PIN:
+            case WR11_TRANSMIT_CLOCK_TRXC_PIN:
+                new_baud_rate[i] = this->trxc_clock;
+                break;
+            case WR11_RECEIVE_CLOCK_BR_GENERATOR_OUTPUT:
+            case WR11_TRANSMIT_CLOCK_BR_GENERATOR_OUTPUT:
+                new_baud_rate[i] = brg_output;
+                break;
+            case WR11_RECEIVE_CLOCK_DPLL_OUTPUT:
+            case WR11_TRANSMIT_CLOCK_DPLL_OUTPUT:
+                new_baud_rate[i] = dpll_clock / (
+                    (dpll_mode == DpllMode::FM) ? 16 :
+                    (dpll_mode == DpllMode::NRZI) ? 32 :
+                    32
+                );
+                break;
+        }
+        new_char_rate[i] = new_baud_rate[i] * 2 / ((start_bits + data_bits[i] + parity_bits)*2 + stop_bits_x2);
+    }
+
+    for (int i = DIR_MIN; i <= DIR_MAX; i++) {
+        if (new_baud_rate[i] != this->baud_rate[i]) {
+            this->baud_rate[i] = new_baud_rate[i];
+        }
+        if (new_char_rate[i] != this->char_rate[i]) {
+            this->char_rate[i] = new_char_rate[i];
+        }
     }
 }
 

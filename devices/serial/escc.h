@@ -114,6 +114,7 @@ public:
     uint8_t receive_byte();
     uint8_t get_enh_reg();
     void set_enh_reg(uint8_t value);
+    void update_baud_rate();
 
     void set_dma_channel(DirIndex dir_index, DmaBidirChannel *dma_ch) {
         this->dma_ch[dir_index] = dma_ch;
@@ -177,6 +178,14 @@ private:
     uint8_t         brg_active;
     uint8_t         brg_clock_src;
     uint8_t         enh_reg = 0;
+    uint16_t        time_constant;
+    double          baud_rate[DIR_MAX+1];
+    double          char_rate[DIR_MAX+1];
+    uint32_t        internal_clock = 3686400;
+    uint32_t        xtal_clock = 3000000;
+    uint32_t        trxc_clock = 1000000; // MIDI HSKi pin
+    uint32_t        gpi_clock = 2000000;
+    uint32_t        clock_mode;
 
     std::unique_ptr<CharIoBackEnd>  chario;
 };
@@ -205,6 +214,8 @@ public:
         }
     }
 
+    uint32_t get_pclk() { return this->pclk; }
+
 private:
     void reset();
     void write_internal(EsccChannel* ch, uint8_t value);
@@ -217,6 +228,24 @@ private:
 
     uint8_t master_int_cntrl = 0;
     uint8_t int_vec = 0;
+
+/*
+    |========================================================================================
+    | RTxC                |  PCLK                                |
+    |=====================|======================================|
+    | legacy   | normal   |  legacy    |  slow      |  fast      |  Chipset
+    |==========|==========|============|============|============|===========================
+    |          | 3686400  |            |   7833600  |            |  BIOS 1992/07
+    |          | 3686400  |            |  CPU ÷ 4   |            |  AMIC 1993/03
+    |          | 3672000  |            |  15667200  |  24576000  |  Heathrow 1997/02, KeyWest 1998/07
+    |          | 3672000  |            |  15667200  |  24576000  |  KeyLargo 1999/04
+    |          | 3672000  |            |  15667200  |  22579200  |  KeyLargo 2000/09, 2001/11
+    | 3671000  | 3686400  |  15661200  |  16000000  |  22579200  |  Pangea 2000/12, 2001/09
+    |          | 3686400  |            |  16000000  |  22579200  |  Intrepid 2002/06, 2002/12
+    |          | 3686400  |            |  16667000  |  22579200  |  K2 2004/03, Shasta 2004/01, 2004/07
+    |========================================================================================
+*/
+    uint32_t pclk = 24576000;
 };
 
 #endif // ESCC_H
