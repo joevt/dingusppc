@@ -96,10 +96,10 @@ GrandCentral::GrandCentral(const std::string name)
     this->escc_a_rx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCA_Rx));
     this->escc_b_tx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCB_Tx));
     this->escc_b_rx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCB_Rx));
-    this->escc->set_dma_channel(0, this->escc_a_tx_dma.get());
-    this->escc->set_dma_channel(1, this->escc_a_rx_dma.get());
-    this->escc->set_dma_channel(2, this->escc_b_tx_dma.get());
-    this->escc->set_dma_channel(3, this->escc_b_rx_dma.get());
+    this->escc->set_dma_channel(CH_A, DIR_TX, this->escc_a_tx_dma.get());
+    this->escc->set_dma_channel(CH_A, DIR_RX, this->escc_a_rx_dma.get());
+    this->escc->set_dma_channel(CH_B, DIR_TX, this->escc_b_tx_dma.get());
+    this->escc->set_dma_channel(CH_B, DIR_RX, this->escc_b_rx_dma.get());
 
     // connect MESH (internal SCSI)
     MeshController *mesh_obj = dynamic_cast<MeshController*>(gMachineObj->get_comp_by_name_optional("MeshTnt"));
