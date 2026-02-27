@@ -64,6 +64,11 @@ enum LocalTalkReg : uint8_t {
     Detect_AB   = 0xB,
 };
 
+/** Port A Enhancement Register, Port B Enhancement Register */
+enum EnhancementReg : uint8_t {
+    WORLDPORT = 0x10,
+};
+
 enum DpllMode : uint8_t {
     NRZI = 0,
     FM   = 1
