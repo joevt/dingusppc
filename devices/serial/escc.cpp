@@ -347,18 +347,20 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
 
 uint8_t EsccChannel::read_reg(int reg_num)
 {
+    uint8_t value = this->read_regs[reg_num];
     switch (reg_num) {
     case RR0:
         if (this->chario->rcv_char_available()) {
-            return this->read_regs[RR0] |= RR0_RX_CHARACTER_AVAILABLE;
+            value |= RR0_RX_CHARACTER_AVAILABLE;
         } else {
-            return this->read_regs[RR0] &= ~RR0_RX_CHARACTER_AVAILABLE;
+            value &= ~RR0_RX_CHARACTER_AVAILABLE;
         }
         break;
     case RR8:
-        return this->receive_byte();
+        value = this->receive_byte();
+        break;
     }
-    return this->read_regs[reg_num];
+    return value;
 }
 
 void EsccChannel::send_byte(uint8_t value)
