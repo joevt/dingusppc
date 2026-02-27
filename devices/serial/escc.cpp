@@ -389,18 +389,18 @@ uint8_t EsccChannel::get_enh_reg()
 void EsccChannel::set_enh_reg(uint8_t value)
 {
     uint8_t changed_bits = value ^ this->enh_reg;
-    if (changed_bits & 0x10) {
-        if (value & 0x10)
+    if (changed_bits & WORLDPORT) {
+        if (value & WORLDPORT)
             LOG_F(ERROR, "%s: CTS connected to GPIO; DCD connected to GND",
                 this->get_name_and_unit_address().c_str());
         else
             LOG_F(INFO, "%s: CTS connected to TRXC_In_l; DCD connected to GPIO",
                 this->get_name_and_unit_address().c_str());
-        this->enh_reg = value & 0x10;
-    } else if (changed_bits & ~0x10) {
-        if (value & ~0x10)
+        this->enh_reg = value & WORLDPORT;
+    } else if (changed_bits & ~WORLDPORT) {
+        if (value & ~WORLDPORT)
             LOG_F(ERROR, "%s: Ignoring attempt to set Enh_Reg bits 0x%02x",
-                this->get_name_and_unit_address().c_str(), value & ~0x10);
+                this->get_name_and_unit_address().c_str(), value & ~WORLDPORT);
     }
 }
 
