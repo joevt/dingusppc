@@ -712,6 +712,7 @@ void ViaCuda::autopoll_handler() {
     // or Cuda already has unsent data (TREQ asserted).
     // Events stay queued in ADB devices until the bus is idle.
     if (!this->old_tip || !this->treq) {
+        LOG_F(WARNING, "Cuda transaction probably in progress");
         return;
     }
 
