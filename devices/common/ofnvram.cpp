@@ -58,7 +58,7 @@ static uint32_t str2env(string& num_str) {
 }
 
 bool OfConfigAppl::validate_header(OfConfigHdrAppl &hdr) {
-    if (BYTESWAP_16(hdr.sig) != OF_NVRAM_SIG || hdr.version != 5)
+    if (READ_WORD_BE_A(&hdr.sig) != OF_NVRAM_SIG || hdr.version != 5)
         return false;
     if (hdr.num_pages * 256 != OF_CFG_SIZE)
         return false;
@@ -386,7 +386,7 @@ bool OfConfigChrp::validate()
         ((uint8_t*)&hdr)[i] = this->nvram_obj->read_byte(pos + i);
     }
 
-    len = BYTESWAP_16(hdr.length) * 16;
+    len = READ_WORD_BE_A(&hdr.length) * 16;
 
     // sanity checks
     if (hdr.sig != NVRAM_SIG_OF_ENV || len < 16 || len > (4096 + sizeof(OfConfigHdrChrp)))
