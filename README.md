@@ -104,6 +104,22 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
+To build using Xcode, add the `-G Xcode` option to cmake, and use xcodebuild to do the building.
+
+```
+mkdir build-xcode
+cd build-xcode
+cmake -G Xcode ..
+xcodebuild -configuration Release
+```
+
+You can use the Xcode app to build and debug the project:
+
+```
+cd build-xcode
+open dingusppc.xcodeproj
+```
+
 You may specify another build type using the variable `CMAKE_BUILD_TYPE`. 
 Each build type should have its own build folder.
 
