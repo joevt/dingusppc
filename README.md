@@ -104,6 +104,15 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
+To build the project in Mac OS X 10.5.8, add some options to the cmake command:
+
+```
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DUSE_AUDIOUNIT=OFF -DLAZY_LOAD_LIBS=OFF ..
+make
+```
+
 To build using Xcode, add the `-G Xcode` option to cmake, and use xcodebuild to do the building.
 
 ```
