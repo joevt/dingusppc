@@ -75,9 +75,7 @@ public:
         return data_ptr && xfer_cnt;
     }
 
-    uint16_t get_data() {
-        return BYTESWAP_16(*this->data_ptr++);
-    }
+    uint16_t get_data();
 
 protected:
     bool is_selected() const {
