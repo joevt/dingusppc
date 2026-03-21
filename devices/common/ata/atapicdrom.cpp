@@ -389,7 +389,7 @@ uint16_t AtapiCdrom::get_data() {
             area_start = area_end;
             area_end += 12; // Sync
             if (this->current_block_byte >= area_start && this->current_block_byte < area_end) {
-                ret_data = BYTESWAP_16(*((uint16_t*)(&mode_1_sync[current_block_byte - area_start])));
+                ret_data = READ_WORD_BE_A(&mode_1_sync[current_block_byte - area_start]);
             }
         }
 
@@ -404,7 +404,7 @@ uint16_t AtapiCdrom::get_data() {
                     (uint8_t)msf.frm,
                     0x01 // Mode 1
                 };
-                ret_data = BYTESWAP_16(*((uint16_t*)(&header[current_block_byte - area_start])));
+                ret_data = READ_WORD_BE_A(&header[current_block_byte - area_start]);
             }
         }
 
