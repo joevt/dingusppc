@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <devices/common/ata/atadefs.h>
 #include <devices/common/ata/idechannel.h>
 #include <loguru.hpp>
+#include <memaccess.h>
 
 #include <cstring>
 #include <cinttypes>
@@ -129,7 +130,8 @@ void AtaBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
             if (!this->cur_data_ptr) {
                 ABORT_F("cur_data_ptr is null!");
             }
-            *this->cur_data_ptr++ = BYTESWAP_16(value);
+            WRITE_WORD_BE_A(this->cur_data_ptr, value);
+            this->cur_data_ptr++;
             this->chunk_cnt -= 2;
             if (this->chunk_cnt <= 0) {
                 this->post_xfer_action();
@@ -229,9 +231,6 @@ int AtaBaseDevice::pull_data(uint8_t *buf, int len) {
     if (this->xfer_cnt != len)
         LOG_F(WARNING, "%s: xfer_cnt != len", this->name.c_str());
 
-    //for (int i = 0; i < xfer_size >> 1; i++)
-    //    this->data_ptr[i] = BYTESWAP_16(this->data_ptr[i]);
-
     std::memcpy(buf, this->data_ptr, xfer_size);
 
     this->xfer_cnt -= xfer_size;
@@ -270,6 +269,12 @@ void AtaBaseDevice::signal_data_ready() {
     this->r_status |= DRQ;
     this->r_status &= ~BSY;
     this->update_intrq(1);
+}
+
+uint16_t AtaBaseDevice::get_data() {
+    uint16_t result = READ_WORD_BE_A(this->data_ptr);
+    this->data_ptr++;
+    return result;
 }
 
 int32_t AtaBaseDevice::parse_self_unit_address_string(const std::string unit_address_string) {
