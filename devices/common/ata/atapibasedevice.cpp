@@ -21,7 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /** @file Basic ATAPI interface emulation. */
 
-#include <core/endianswap.h>
+#include <core/memaccess.h>
 #include <devices/common/ata/atabasedevice.h>
 #include <devices/common/ata/atapibasedevice.h>
 #include <devices/common/ata/atadefs.h>
@@ -114,7 +114,8 @@ void AtapiBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
         if (!(this->r_int_reason & ATAPI_Int_Reason::IO)) { // host --> device?
             if (this->r_int_reason & ATAPI_Int_Reason::CoD) { // command phase?
                 if (this->xfer_cnt > 0) {
-                    *this->data_ptr++ = BYTESWAP_16(value);
+                    WRITE_WORD_BE_A(this->data_ptr, value);
+                    this->data_ptr++;
                     this->xfer_cnt -= 2;
                     if (this->xfer_cnt <= 0) {
                         this->r_status &= ~DRQ;
@@ -123,7 +124,8 @@ void AtapiBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
                 }
             } else { // data-out phase
                 if (this->xfer_cnt > 0) {
-                    *this->data_ptr++ = BYTESWAP_16(value);
+                    WRITE_WORD_BE_A(this->data_ptr, value);
+                    this->data_ptr++;
                     this->xfer_cnt -= 2;
                     if (this->xfer_cnt <= 0)
                         this->r_status &= ~DRQ;
