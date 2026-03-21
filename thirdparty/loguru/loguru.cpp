@@ -1435,12 +1435,11 @@ namespace loguru
 		if (verbosity <= g_stderr_verbosity) {
 			if (g_colorlogtostderr && s_terminal_has_color) {
 				if (verbosity > Verbosity_WARNING) {
-					fprintf(stderr, "%s%s%s%s%s%s%s%s\n",
+					fprintf(stderr, "%s%s%s%s%s%s%s\n",
 						terminal_reset(),
-						terminal_dim(),
+						verbosity == Verbosity_INFO ? "" : terminal_cyan(),
 						message.preamble,
 						message.indentation,
-						verbosity == Verbosity_INFO ? terminal_reset() : "", // un-dim for info
 						message.prefix,
 						message.message,
 						terminal_reset());
