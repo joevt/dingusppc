@@ -195,6 +195,7 @@ public:
 #ifdef DEBUG_CPU_INT
     void assert_int(uint8_t flags);
 #endif
+    void schedule_sr_int(uint64_t timeout_ns);
 
 private:
     // VIA virtual HW registers
@@ -278,7 +279,6 @@ private:
     void assert_sr_int();
     void assert_t1_int();
     void assert_t2_int();
-    void schedule_sr_int(uint64_t timeout_ns);
     uint16_t calc_counter_val(const uint16_t last_val, const uint64_t &start_time);
     void activate_t1();
 

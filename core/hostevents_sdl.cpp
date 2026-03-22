@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cpu/ppc/ppcemu.h>
 #include <devices/common/adb/adbkeyboard.h>
 #include <devices/common/hwinterrupt.h>
+#include <devices/common/viacuda.h>
 #include <loguru.hpp>
 #include <SDL.h>
 
@@ -259,6 +260,15 @@ void EventManager::poll_events() {
                         InterruptCtrl* int_ctrl = dynamic_cast<InterruptCtrl*>(
                             gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
                         int_ctrl->ack_int(int_ctrl->register_int(IntSrc::VIA_CUDA), 1);
+                    }
+                    return;
+                }
+                if (event.key.keysym.sym == SDLK_i && (event.key.keysym.mod & KMOD_ALL) == (KMOD_LCTRL | KMOD_LSHIFT)) {
+                    if (event.type == SDL_KEYUP) {
+                        LOG_F(INFO, "CUDA SR interrupt");
+                        ViaCuda* via_obj = dynamic_cast<ViaCuda*>(gMachineObj->get_comp_by_name("ViaCuda"));
+                        if (via_obj)
+                            via_obj->schedule_sr_int(0);
                     }
                     return;
                 }
