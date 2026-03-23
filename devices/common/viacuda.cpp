@@ -49,6 +49,7 @@ namespace loguru {
         Verbosity_CUDATICK = loguru::Verbosity_9,
         Verbosity_CUDAREAD = loguru::Verbosity_9,
         Verbosity_CUDAWRITE = loguru::Verbosity_9,
+        Verbosity_CUDASR = loguru::Verbosity_9,
     };
 }
 
@@ -270,6 +271,7 @@ uint8_t ViaCuda::read(int reg) {
         break;
     case VIA_SR:
         value = this->via_sr;
+        LOG_F(CUDASR, "Cuda: Read cleared SR bit");
         this->_via_ifr &= ~VIA_IF_SR;
         update_irq();
         break;
@@ -374,6 +376,7 @@ void ViaCuda::write(int reg, uint8_t value) {
         break;
     case VIA_SR:
         this->via_sr = value;
+        LOG_F(CUDASR, "Cuda: Write cleared SR bit");
         this->_via_ifr &= ~VIA_IF_SR;
         update_irq();
         break;
@@ -388,6 +391,8 @@ void ViaCuda::write(int reg, uint8_t value) {
     case VIA_IFR:
         // for each "1" in value clear the corresponding flags
         // bit 7 is ignored
+        if (this->_via_ifr & value & VIA_IF_SR)
+            LOG_F(CUDASR, "Cuda: Cleared SR bit");
         this->_via_ifr &= ~(value & 0x7F);
         update_irq();
         break;
@@ -455,6 +460,7 @@ void ViaCuda::update_irq() {
 }
 
 void ViaCuda::assert_sr_int() {
+    LOG_F(CUDASR, "Cuda: SR int");
     this->_via_ifr |= VIA_IF_SR;
     update_irq();
 }
@@ -499,6 +505,7 @@ void ViaCuda::assert_ctrl_line(ViaLine line)
 
 void ViaCuda::schedule_sr_int(uint64_t timeout_ns) {
     if (this->sr_timer_id) {
+        LOG_F(CUDASR, "Cuda: cancelling SR timer");
         TimerManager::get_instance()->cancel_timer(this->sr_timer_id);
         this->sr_timer_id = 0;
     }
@@ -556,6 +563,7 @@ void ViaCuda::write(uint8_t new_state) {
         }
 
         // send dummy byte as idle acknowledge or attention
+        LOG_F(CUDASR, "Cuda: schedule_sr_int new_tip");
         schedule_sr_int(USECS_TO_NSECS(61));
     } else {
         if (this->via_acr & 0x10) { // data transfer: Host --> Cuda
@@ -567,6 +575,7 @@ void ViaCuda::write(uint8_t new_state) {
                         LOG_F(WARNING, "Cuda input data count (%d) exceeds 256!", (int)this->in_count);
                 }
                 // tell the system we've read the byte after 71 usecs
+                LOG_F(CUDASR, "Cuda: schedule_sr_int host->cuda");
                 schedule_sr_int(USECS_TO_NSECS(71));
             } else {
                 LOG_F(WARNING, "Cuda input buffer too small (%d). Truncating data (%d)!",
@@ -575,6 +584,7 @@ void ViaCuda::write(uint8_t new_state) {
         } else { // data transfer: Cuda --> Host
             (this->*out_handler)();
             // tell the system we've written next byte after 88 usecs
+            LOG_F(CUDASR, "Cuda: schedule_sr_int cuda->host");
             schedule_sr_int(USECS_TO_NSECS(88));
         }
     }
@@ -733,6 +743,7 @@ void ViaCuda::autopoll_handler() {
         this->treq = 0;
 
         // draw guest system's attention
+        LOG_F(CUDASR, "Cuda: schedule_sr_int poll");
         schedule_sr_int(USECS_TO_NSECS(30));
     } else if (this->one_sec_mode != 0) {
         uint32_t this_time = calc_real_time();
@@ -740,6 +751,8 @@ void ViaCuda::autopoll_handler() {
         // Don't send one-second packets if a command response is pending.
         // Unlike autopoll, time packets are not urgent enough to preempt.
         if (!this->treq || this->treq_timer_id || this->sr_timer_id) {
+            if (this->sr_timer_id)
+                LOG_F(CUDASR, "Cuda: SR int pending - skipping one sec timer");
             // ERS: track missed ticks for mode $02/$03 fallback
             if (this_time != this->last_time)
                 this->one_sec_missed = true;
@@ -779,6 +792,7 @@ void ViaCuda::autopoll_handler() {
             this->treq = 0;
 
             // draw guest system's attention
+            LOG_F(CUDASR, "Cuda: schedule_sr_int onesec");
             schedule_sr_int(USECS_TO_NSECS(30));
         }
     }
