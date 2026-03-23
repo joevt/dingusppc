@@ -872,7 +872,8 @@ void AtiMach64Gx::vidc_draw_hw_cursor(uint8_t *dst_row, int dst_pitch) {
 
     for (int h = cur_height; h > 0; h--) {
         for (int x = 2; x > 0; x--) {
-            uint64_t px = *src_row++;
+            uint64_t px = READ_QWORD_LE_A(src_row);
+            src_row++;
             for (int p = 32; p > 0; p--, px >>= 2, dst_row += 4) {
                 switch(px & 3) {
                 case 0: // cursor color 0
