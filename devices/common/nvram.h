@@ -53,6 +53,11 @@ public:
     uint8_t read_byte(uint32_t offset);
     void write_byte(uint32_t offset, uint8_t value);
     uint32_t get_of_nvram_offset() { return of_nvram_offset; }
+    void apply_patches();
+    void apply_patch(const std::string &patch);
+
+    static std::vector<std::string> nvram_patches;
+    static std::vector<std::string> pram_patches;
 
 private:
     std::string file_name; // file name for the backing file
