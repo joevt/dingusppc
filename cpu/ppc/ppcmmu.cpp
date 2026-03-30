@@ -95,7 +95,8 @@ uint64_t    num_entry_replacements  = 0; // number of entry replacements
 AddressMapEntry last_ptab_area;
 
 /** Dummy pages for catching writes to physical read-only pages */
-static std::array<uint64_t, 8192 / sizeof(uint64_t)> dummy_page;
+alignas(PPC_PAGE_SIZE) static std::array<uint8_t, 8192> dummy_page_r;
+alignas(PPC_PAGE_SIZE) static std::array<uint8_t, 8192> dummy_page_w;
 
 #if SUPPORTS_PPC_LITTLE_ENDIAN_MODE || SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
 template <class T>
@@ -624,7 +625,11 @@ uint32_t tlb_size_mask = TLB_SIZE - 1;
 
 // fake TLB entry for handling of unmapped memory accesses
 uint64_t    UnmappedVal = -1ULL;
-TLBEntry    UnmappedMem = {TLB_INVALID_TAG, TLBFlags::PAGE_NOPHYS, 0, {{0}}};
+TLBEntry    UnmappedMem = {
+    .tag      = TLB_INVALID_TAG,
+    .flags    = TLBFlags::PAGE_NOPHYS,
+    .lru_bits = 0,
+};
 
 uint8_t     CurITLBMode = {0xFF}; // current ITLB mode
 uint8_t     CurDTLBMode = {0xFF}; // current DTLB mode
@@ -790,6 +795,8 @@ static TLBEntry* itlb2_refill(uint32_t guest_va)
         phys_addr = guest_va;
     }
 
+    const uint32_t tag = guest_va & ~0xFFFUL;
+
     // look up host virtual address
     AddressMapEntry* rgn_desc = mem_ctrl_instance->find_range(phys_addr);
     if (rgn_desc) {
@@ -807,7 +814,6 @@ static TLBEntry* itlb2_refill(uint32_t guest_va)
             }
         }
         // refill the secondary TLB
-        const uint32_t tag = guest_va & ~0xFFFUL;
         tlb_entry = tlb2_target_entry<TLBType::ITLB>(tag);
         tlb_entry->tag = tag;
         tlb_entry->flags = flags | TLBFlags::PAGE_MEM |
@@ -824,6 +830,9 @@ static TLBEntry* itlb2_refill(uint32_t guest_va)
         );
         power_off(po_enter_debugger);
         tlb_entry = &UnmappedMem;
+        tlb_entry->phys_tag = phys_addr & ~0xFFFUL;
+        tlb_entry->host_va_offs_r = (int64_t)&dummy_page_r - tag;
+        tlb_entry->host_va_offs_w = (int64_t)&dummy_page_w - tag;
     }
 
     return tlb_entry;
@@ -901,7 +910,7 @@ static TLBEntry* dtlb2_refill(uint32_t guest_va, int is_write, bool is_dbg = fal
                                         (phys_addr - rgn_desc->start);
             if (rgn_desc->type == RT_ROM) {
                 // redirect writes to the dummy page for ROM regions
-                tlb_entry->host_va_offs_w = (int64_t)&dummy_page - tag;
+                tlb_entry->host_va_offs_w = (int64_t)&dummy_page_w - tag;
             } else {
                 tlb_entry->host_va_offs_w = tlb_entry->host_va_offs_r;
             }
@@ -967,8 +976,13 @@ static TLBEntry* dtlb2_refill(uint32_t guest_va, int is_write, bool is_dbg = fal
             }
             last_phys_addr = phys_addr;
         }
-        return &UnmappedMem;
+        tlb_entry = &UnmappedMem;
+        tlb_entry->phys_tag = phys_addr & ~0xFFFUL;
+        tlb_entry->host_va_offs_r = (int64_t)&dummy_page_r - tag;
+        tlb_entry->host_va_offs_w = (int64_t)&dummy_page_w - tag;
     }
+
+    return tlb_entry;
 }
 
 template <const TLBType tlb_type>
