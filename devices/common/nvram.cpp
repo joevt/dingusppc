@@ -67,12 +67,12 @@ NVram::~NVram() {
 
 uint8_t NVram::read_byte(uint32_t offset) {
     uint8_t val = this->storage[offset];
-    LOG_F(NVRAM_RW, "nvram read  %04x = %02x", offset, val);
+    LOG_F(NVRAM_RW, "%s: read  %04x = %02x", this->get_name().c_str(), offset, val);
     return (val);
 }
 
 void NVram::write_byte(uint32_t offset, uint8_t val) {
-    LOG_F(NVRAM_RW, "nvram write %04x = %02x", offset, val);
+    LOG_F(NVRAM_RW, "%s: write %04x = %02x", this->get_name().c_str(), offset, val);
     this->storage[offset] = val;
 }
 
@@ -101,8 +101,10 @@ void NVram::init() {
     if (f.fail() || !f.read(sig, sizeof(NVRAM_FILE_ID)) ||
         !f.read((char*)&data_size, sizeof(data_size)) ||
         memcmp(sig, NVRAM_FILE_ID, sizeof(NVRAM_FILE_ID)) || data_size != this->ram_size ||
-        !f.read((char*)this->storage.get(), this->ram_size)) {
-        LOG_F(WARNING, "Could not restore NVRAM content from the given file \"%s\".", this->file_name.c_str());
+        !f.read((char*)this->storage.get(), this->ram_size)
+    ) {
+        LOG_F(WARNING, "%s: Could not restore content from the given file \"%s\".",
+            this->get_name().c_str(), this->file_name.c_str());
         memset(this->storage.get(), 0, this->ram_size);
     }
 
@@ -111,7 +113,8 @@ void NVram::init() {
 
 void NVram::save() {
     if (is_deterministic) {
-        LOG_F(INFO, "Skipping NVRAM write to \"%s\" in deterministic mode", this->file_name.c_str());
+        LOG_F(INFO, "%s: Skipping write to \"%s\" in deterministic mode",
+            this->get_name().c_str(), this->file_name.c_str());
         return;
     }
 
