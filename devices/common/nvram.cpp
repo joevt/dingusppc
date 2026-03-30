@@ -139,14 +139,14 @@ void NVram::set_copland_nvram(uint32_t phys) {
 
     if (OfConfigAppl::validate_header(*hdr_dingus)) {
         if (std::memcmp(this->storage.get(), this->copland_nvram_host, ram_size)) {
-            LOG_F(INFO, "DingusPPC overrides Copland NVRAM");
+            LOG_F(INFO, "%s: DingusPPC overrides Copland NVRAM", this->get_name().c_str());
             std::memcpy(this->copland_nvram_host, this->storage.get(), ram_size);
         } else {
-            LOG_F(INFO, "DingusPPC and Copland NVRAM are equal");
+            LOG_F(INFO, "%s: DingusPPC and Copland NVRAM are equal", this->get_name().c_str());
         }
     } else {
         std::memcpy(this->storage.get(), this->copland_nvram_host, ram_size);
-        LOG_F(INFO, "Copland replaces invalid DingusPPC NVRAM");
+        LOG_F(INFO, "%s: Copland replaces invalid DingusPPC NVRAM", this->get_name().c_str());
     }
 }
 
