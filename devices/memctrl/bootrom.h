@@ -143,6 +143,10 @@ public:
     virtual int set_data(const uint8_t* data, uint32_t size);
     virtual uint8_t* get_data() { return rom_entry->mem_ptr; };
     virtual void identify_rom();
+    static void apply_patches();
+    void apply_patch(const std::string &patch);
+
+    static std::vector<std::string> rom_patches;
 
 private:
     bool                rom_we = false;
