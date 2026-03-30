@@ -31,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <cstring>
 #include <fstream>
+#include <regex>
 #include <loguru.hpp>
 
 namespace loguru {
@@ -59,6 +60,7 @@ NVram::NVram(const std::string &dev_name, std::string file_name, uint32_t ram_si
     this->storage = std::unique_ptr<uint8_t[]>(new uint8_t[ram_size] ());
 
     this->init();
+    this->apply_patches();
 }
 
 NVram::~NVram() {
@@ -147,6 +149,47 @@ void NVram::set_copland_nvram(uint32_t phys) {
     } else {
         std::memcpy(this->storage.get(), this->copland_nvram_host, ram_size);
         LOG_F(INFO, "%s: Copland replaces invalid DingusPPC NVRAM", this->get_name().c_str());
+    }
+}
+
+std::vector<std::string> NVram::pram_patches;
+std::vector<std::string> NVram::nvram_patches;
+
+void NVram::apply_patches() {
+    std::vector<std::string> &patches = this->supports_type(HWCompType::PRAM) ? NVram::pram_patches : NVram::nvram_patches;
+    if (patches.empty())
+        return;
+    for (const auto &patch : patches) {
+        this->apply_patch(patch);
+    }
+}
+
+extern std::string hex_string(const uint8_t *p, int len);
+
+void NVram::apply_patch(const std::string &patch)
+{
+    std::smatch results;
+    std::regex patch_re("0*([0-9A-F]{1,8})=((?:[0-9A-F]{2})+)", std::regex_constants::icase);
+    if (std::regex_match(patch, results, patch_re)) {
+        uint32_t offset = (uint32_t)std::stoul(results[1], nullptr, 16);
+        std::string patch = results[2];
+        uint32_t len = (uint32_t)patch.length() / 2;
+        if (offset + len <= this->ram_size) {
+            LOG_F(INFO, "%s: Patching %04X from %s", this->get_name().c_str(),
+                offset, hex_string(&this->storage[0] + offset, len).c_str());
+            for (int i = 0; i < len; i++) {
+                this->storage[i + offset] =
+                    (((patch[i*2  ] & 15) + (patch[i*2  ] > '9' ? 9 : 0)) << 4) +
+                     ((patch[i*2+1] & 15) + (patch[i*2+1] > '9' ? 9 : 0));
+            }
+            LOG_F(INFO, "%s: Patching %04X  to  %s", this->get_name().c_str(),
+                offset, hex_string(&this->storage[0] + offset, len).c_str());
+        }
+        else {
+            LOG_F(ERROR, "%s: Patch offset %08X is out of range", this->get_name().c_str(), offset);
+        }
+    } else {
+        LOG_F(ERROR, "%s: Patch should have format address=bytes (all in hex)", this->get_name().c_str());
     }
 }
 
