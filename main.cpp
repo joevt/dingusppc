@@ -28,6 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cpu/ppc/ppcemu.h>
 #include <cpu/ppc/ppcmmu.h>
 #include <debugger/debugger.h>
+#include <devices/common/nvram.h>
 #include <devices/common/ofnvram.h>
 #include <devices/memctrl/bootrom.h>
 #include <debugger/symbols.h>
@@ -188,6 +189,10 @@ int main(int argc, char** argv) {
     emu->add_option("--setenv", OfConfigUtils::env_vars, "Set Open Firmware variables at startup")
         ->take_all();
     emu->add_option("--patch", BootRom::rom_patches, "Patch boot ROM")
+        ->take_all();
+    emu->add_option("--setnvram", NVram::nvram_patches, "Patch NVRAM")
+        ->take_all();
+    emu->add_option("--setpram", NVram::pram_patches, "Patch PRAM")
         ->take_all();
 
     uint32_t profiling_interval_ms = 0;
