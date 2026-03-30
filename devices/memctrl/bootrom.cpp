@@ -746,6 +746,51 @@ void BootRomNW::rom_write(FlashChip *chip, uint32_t addr, uint16_t value)
     *(uint16_t*)(this->get_data() + rom_addr) = value;
 }
 
+std::vector<std::string> BootRom::rom_patches;
+
+void BootRom::apply_patches() {
+    if (BootRom::rom_patches.empty())
+        return;
+    BootRom* bootrom = dynamic_cast<BootRom*>(
+        gMachineObj->get_comp_by_type(HWCompType::ROM));
+    if (bootrom) {
+        for (const auto &patch : BootRom::rom_patches) {
+            bootrom->apply_patch(patch);
+        }
+    } else {
+        LOG_F(WARNING, "Boot ROM not found. Cannot apply patches.");
+    }
+}
+
+extern std::string hex_string(const uint8_t *p, int len);
+
+void BootRom::apply_patch(const std::string &patch)
+{
+    std::smatch results;
+    std::regex patch_re("0*([0-9A-F]{1,8})=((?:[0-9A-F]{2})+)", std::regex_constants::icase);
+    if (std::regex_match(patch, results, patch_re)) {
+        uint32_t address = (uint32_t)std::stoul(results[1], nullptr, 16);
+        std::string patch = results[2];
+        uint32_t len = (uint32_t)patch.length() / 2;
+        if (address >= this->rom_entry->start && address + len - 1 <= this->rom_entry->end) {
+            LOG_F(INFO, "%s: Patching %08X from %s", this->get_name().c_str(),
+                address, hex_string(&this->rom_entry->mem_ptr[0] + address - rom_entry->start, len).c_str());
+            for (int i = 0; i < len; i++) {
+                this->rom_entry->mem_ptr[i + address - this->rom_entry->start] =
+                    (((patch[i*2  ] & 15) + (patch[i*2  ] > '9' ? 9 : 0)) << 4) +
+                     ((patch[i*2+1] & 15) + (patch[i*2+1] > '9' ? 9 : 0));
+            }
+            LOG_F(INFO, "%s: Patching %08X  to  %s", this->get_name().c_str(),
+                address, hex_string(&this->rom_entry->mem_ptr[0] + address - rom_entry->start, len).c_str());
+        }
+        else {
+            LOG_F(ERROR, "%s: Patch address %08X is out of range", this->get_name().c_str(), address);
+        }
+    } else {
+        LOG_F(ERROR, "%s: Patch should have format address=bytes (all in hex)", this->get_name().c_str());
+    }
+}
+
 static const DeviceDescription Am28F020_Descriptor = {
     Am28F020::create, {}, {}, HWCompType::FLASH
 };
