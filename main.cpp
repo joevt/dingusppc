@@ -29,6 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cpu/ppc/ppcmmu.h>
 #include <debugger/debugger.h>
 #include <devices/common/ofnvram.h>
+#include <devices/memctrl/bootrom.h>
 #include <debugger/symbols.h>
 #include <devices/common/hwcomponent.h>
 #include <devices/serial/chario.h>
@@ -160,6 +161,8 @@ int main(int argc, char** argv) {
         "Show thread name in logged messages");
 
     app.add_option("--setenv", OfConfigUtils::env_vars, "Set Open Firmware variables at startup")
+        ->take_all();
+    app.add_option("--patch", BootRom::rom_patches, "Patch boot ROM")
         ->take_all();
 
     uint32_t profiling_interval_ms = 0;
@@ -360,6 +363,7 @@ void run_machine(
     profiling_interval_ms
 #endif
 ) {
+    BootRom::apply_patches();
     OfConfigUtils::setenv_from_command_line();
 
     uint32_t deterministic_timer;
