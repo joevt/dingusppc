@@ -157,11 +157,11 @@ int MachineGossamer::initialize(const std::string &id) {
 
 static const PropMap gossamer_desktop_settings = {
     {"rambank1_size",
-        new IntProperty(256, std::vector<uint32_t>({8, 16, 32, 64, 128, 256, 512}))},
+        new IntProperty(256, std::vector<uint32_t>({8, 16, 32, 64, 128, 256, 512, 1024}))},
     {"rambank2_size",
-        new IntProperty(  0, std::vector<uint32_t>({0, 8, 16, 32, 64, 128, 256, 512}))},
+        new IntProperty(  0, std::vector<uint32_t>({0, 8, 16, 32, 64, 128, 256, 512, 1024}))},
     {"rambank3_size",
-        new IntProperty(  0, std::vector<uint32_t>({0, 8, 16, 32, 64, 128, 256, 512}))},
+        new IntProperty(  0, std::vector<uint32_t>({0, 8, 16, 32, 64, 128, 256, 512, 1024}))},
     {"emmo",
         new BinProperty(0)},
     {"hdd_config",
@@ -176,11 +176,11 @@ static const PropMap gossamer_desktop_settings = {
 
 static const PropMap gossamer_tower_settings = {
     {"rambank1_size",
-        new IntProperty(256, std::vector<uint32_t>({8, 16, 32, 64, 128, 256, 512}))},
+        new IntProperty(256, std::vector<uint32_t>({8, 16, 32, 64, 128, 256, 512, 1024}))},
     {"rambank2_size",
-        new IntProperty(  0, std::vector<uint32_t>({0, 8, 16, 32, 64, 128, 256, 512}))},
+        new IntProperty(  0, std::vector<uint32_t>({0, 8, 16, 32, 64, 128, 256, 512, 1024}))},
     {"rambank3_size",
-        new IntProperty(  0, std::vector<uint32_t>({0, 8, 16, 32, 64, 128, 256, 512}))},
+        new IntProperty(  0, std::vector<uint32_t>({0, 8, 16, 32, 64, 128, 256, 512, 1024}))},
     {"emmo",
         new BinProperty(0)},
     {"hdd_config",
