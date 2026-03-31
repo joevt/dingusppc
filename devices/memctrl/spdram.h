@@ -110,6 +110,11 @@ public:
             this->eeprom_data[4] = 0xB; /* 11 columns */
             this->eeprom_data[5] = 0x2; /* two banks  */
             break;
+        case 1024:
+            this->eeprom_data[3] = 0xC; /* 12 rows    */
+            this->eeprom_data[4] = 0xC; /* 12 columns */
+            this->eeprom_data[5] = 0x2; /* two banks  */
+            break;
         default:
             throw std::invalid_argument(std::string("Unsupported capacity!"));
         }
