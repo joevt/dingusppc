@@ -236,6 +236,31 @@ void EventManager::poll_events() {
                     }
                     return;
                 }
+                // LAlt-+: speed up icnt_factor
+                if (event.key.keysym.sym == SDLK_EQUALS && (event.key.keysym.mod & KMOD_ALL) == KMOD_LALT) {
+                    if (event.type == SDL_KEYUP) {
+                        int icnt_counter_val = increment_icnt_factor();
+                        LOG_F(INFO, "Incremented icnt_factor: %d", icnt_counter_val);
+                    }
+                    return;
+                }
+                // LAlt--: slow down icnt_factor
+                if (event.key.keysym.sym == SDLK_MINUS && (event.key.keysym.mod & KMOD_ALL) == KMOD_LALT) {
+                    if (event.type == SDL_KEYUP) {
+                        int icnt_counter_val = decrement_icnt_factor();
+                        LOG_F(INFO, "Decremented icnt_factor: %d", icnt_counter_val);
+                    }
+                    return;
+                }
+
+                // LALT-R: g_realtime toggle
+                if (event.key.keysym.sym == SDLK_r && (event.key.keysym.mod & KMOD_ALL) == KMOD_LALT) {
+                    if (event.type == SDL_KEYUP) {
+                        bool g_realtime_status = toggle_g_realtime();
+                        LOG_F(INFO, "g_realtime: %s", g_realtime_status ? "enabled" : "disabled");
+                    }
+                }
+
                 // Control-L: log toggle
                 if (event.key.keysym.sym == SDLK_l && (event.key.keysym.mod & KMOD_ALL) == KMOD_LCTRL) {
                     if (event.type == SDL_KEYUP) {
