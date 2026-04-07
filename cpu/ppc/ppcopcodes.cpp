@@ -953,7 +953,7 @@ static uint32_t decrementer_timer_id = 0;
 
 static void update_decrementer(bool update_time_stamp, uint32_t oldval, uint32_t newval);
 
-static void trigger_decrementer_exception() {
+static void trigger_decrementer_exception(uint64_t = 0, uint64_t = 0) {
 #ifdef DECREMENTER_TOGGLE
     if (!decrementer_enabled)
         return;
@@ -977,7 +977,7 @@ static void trigger_decrementer_exception() {
     }
 }
 
-static void trigger_timed_decrementer_exception() {
+static void trigger_timed_decrementer_exception(uint64_t, uint64_t) {
     VLOG_SCOPE_F(loguru::Verbosity_DECREMENTER, "trigger_timed_decrementer_exception");
     decrementer_timer_id = 0;
     uint32_t new_val = calc_dec_value();
@@ -990,7 +990,7 @@ static void trigger_timed_decrementer_exception() {
     trigger_decrementer_exception();
 }
 
-static void trigger_immediate_decrementer_exception() {
+static void trigger_immediate_decrementer_exception(uint64_t, uint64_t) {
     VLOG_SCOPE_F(loguru::Verbosity_DECREMENTER, "trigger_immediate_decrementer_exception");
     decrementer_timer_id = 0;
     update_decrementer(false, ppc_state.spr[SPR::DEC_S], ppc_state.spr[SPR::DEC_S]);

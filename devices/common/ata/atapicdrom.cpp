@@ -209,7 +209,7 @@ void AtapiCdrom::perform_packet_command() {
         this->status_good();
         #if 0
             TimerManager::get_instance()->add_oneshot_timer(
-                USECS_TO_NSECS(100), [this]() { this->data_in_phase(); });
+                USECS_TO_NSECS(100), [this](uint64_t, uint64_t) { this->data_in_phase(); });
         #else
             this->data_in_phase();
         #endif
