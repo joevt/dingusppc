@@ -194,7 +194,7 @@ int AtaHardDisk::perform_command() {
             // those commands should generate IRQ for each sector
             this->prepare_xfer(xfer_size, ints_size);
             TimerManager::get_instance()->add_oneshot_timer(
-                USECS_TO_NSECS(100), [this]() { this->signal_data_ready(); });
+                USECS_TO_NSECS(100), [this](uint64_t, uint64_t) { this->signal_data_ready(); });
         }
         break;
     case WRITE_MULTIPLE_EXT:
