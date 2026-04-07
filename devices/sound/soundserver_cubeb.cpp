@@ -168,7 +168,7 @@ static void status_callback(cubeb_stream */*stream*/, void */*user_data*/, cubeb
 int SoundServer::open_out_stream(uint32_t sample_rate, DmaOutChannel *dma_ch)
 {
     if (is_deterministic) {
-        impl->deterministic_poll_cb = [dma_ch] {
+        impl->deterministic_poll_cb = [dma_ch](uint64_t, uint64_t) {
             if (!dma_ch->is_out_active()) {
                return;
             }
