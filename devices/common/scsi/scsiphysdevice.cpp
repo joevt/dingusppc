@@ -47,7 +47,7 @@ void ScsiPhysDevice::notify(ScsiNotification notif_type, int param)
                 LOG_F(SCSIDEVICE, "%s selected", this->get_name_and_unit_address().c_str());
                 TimerManager::get_instance()->add_oneshot_timer(
                     BUS_SETTLE_DELAY,
-                    [this]() {
+                    [this](uint64_t, uint64_t) {
                         // don't confirm selection if BSY or I/O are asserted
                         if (this->bus_obj->test_ctrl_lines(SCSI_CTRL_BSY | SCSI_CTRL_IO))
                             return;

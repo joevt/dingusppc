@@ -165,7 +165,7 @@ int IdeChannel::xfer_to(uint8_t *buf, int len) {
 }
 
 void IdeChannel::assert_dmareq(uint64_t delay) {
-    TimerManager::get_instance()->add_oneshot_timer(delay, [this]() {
+    TimerManager::get_instance()->add_oneshot_timer(delay, [this](uint64_t, uint64_t) {
         //LOG_F(INFO, "%s: DMAREQ asserted", this->name.c_str());
         this->channel_obj->xfer_retry();
     });

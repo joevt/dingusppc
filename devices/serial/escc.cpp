@@ -1024,7 +1024,7 @@ void EsccChannel::dma_in_rx()
     if (dma_ch[DIR_RX]->get_push_data_remaining()) {
         this->timer_id_rx = TimerManager::get_instance()->add_oneshot_timer(
             0,
-            [this]() {
+            [this](uint64_t, uint64_t) {
                 this->timer_id_rx = 0;
                 char c = receive_byte();
                 dma_ch[DIR_RX]->push_data(&c, 1);
@@ -1037,7 +1037,7 @@ void EsccChannel::dma_out_tx()
 {
     this->timer_id_tx = TimerManager::get_instance()->add_oneshot_timer(
         10,
-        [this]() {
+        [this](uint64_t, uint64_t) {
             this->timer_id_tx = 0;
             uint8_t *data;
             uint32_t avail_len;
@@ -1062,7 +1062,7 @@ void EsccChannel::dma_flush_tx()
     this->dma_stop_tx();
     this->timer_id_tx = TimerManager::get_instance()->add_oneshot_timer(
         10,
-        [this]() {
+        [this](uint64_t, uint64_t) {
             this->timer_id_tx = 0;
             dma_ch[DIR_TX]->end_pull_data();
     });
@@ -1073,7 +1073,7 @@ void EsccChannel::dma_flush_rx()
     this->dma_stop_rx();
     this->timer_id_rx = TimerManager::get_instance()->add_oneshot_timer(
         10,
-        [this]() {
+        [this](uint64_t, uint64_t) {
             this->timer_id_rx = 0;
             dma_ch[DIR_RX]->end_push_data();
     });

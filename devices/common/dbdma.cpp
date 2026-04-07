@@ -73,7 +73,7 @@ DMACmd* DMAChannel::fetch_cmd(uint32_t cmd_addr, DMACmd* p_cmd, bool *is_writabl
 
 void DMAChannel::schedule_cmd() {
     if (!interpret_timer_id) {
-        interpret_timer_id = TimerManager::get_instance()->add_oneshot_timer(1000000, [this] {
+        interpret_timer_id = TimerManager::get_instance()->add_oneshot_timer(1000000, [this](uint64_t, uint64_t) {
             interpret_timer_id = 0;
             if (this->ch_stat & CH_STAT_ACTIVE) {
                 this->interpret_cmd("schedule_cmd");
@@ -349,7 +349,7 @@ void DMAChannel::update_irq(uint8_t cmd_bits) {
             }
             if (cond) {
                 if (int_ctrl) {
-                    TimerManager::get_instance()->add_immediate_timer([this] {
+                    TimerManager::get_instance()->add_immediate_timer([this](uint64_t, uint64_t) {
                         this->int_ctrl->ack_dma_int(this->irq_id, 1);
                     });
                 } else

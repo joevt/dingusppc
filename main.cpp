@@ -376,7 +376,7 @@ void run_machine(
         EventManager::get_instance()->disable_input_handlers();
         // Log the PC and instruction every second to make it easier to validate
         // that execution is the same every time.
-        deterministic_timer = TimerManager::get_instance()->add_cyclic_timer(MSECS_TO_NSECS(1000), [] {
+        deterministic_timer = TimerManager::get_instance()->add_cyclic_timer(MSECS_TO_NSECS(1000), [](uint64_t, uint64_t) {
             PPCDisasmContext ctx;
             ctx.instr_code = ppc_read_instruction(mmu_translate_imem(ppc_state.pc));
             ctx.instr_addr = ppc_state.pc;
@@ -390,14 +390,16 @@ void run_machine(
 
     // set up system wide event polling using
     // default Macintosh polling rate of 11 ms
-    uint32_t event_timer = TimerManager::get_instance()->add_cyclic_timer(MSECS_TO_NSECS(11), [] {
+    uint32_t event_timer = TimerManager::get_instance()->add_cyclic_timer(MSECS_TO_NSECS(11), [](uint64_t, uint64_t) {
         EventManager::get_instance()->poll_events();
     });
 
 #ifdef CPU_PROFILING
     uint32_t profiling_timer;
     if (profiling_interval_ms > 0) {
-        profiling_timer = TimerManager::get_instance()->add_cyclic_timer(MSECS_TO_NSECS(profiling_interval_ms), [] {
+        profiling_timer = TimerManager::get_instance()->add_cyclic_timer(MSECS_TO_NSECS(profiling_interval_ms),
+            [](uint64_t, uint64_t)
+        {
             gProfilerObj->print_profile("PPC_CPU");
         });
     }

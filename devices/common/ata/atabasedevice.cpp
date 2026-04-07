@@ -87,7 +87,7 @@ uint16_t AtaBaseDevice::read(const uint8_t reg_addr) {
                 } else {
                     this->chunk_cnt = std::min(this->xfer_cnt, this->chunk_size);
                     TimerManager::get_instance()->add_oneshot_timer(
-                        USECS_TO_NSECS(100), [this]() { this->update_intrq(1); });
+                        USECS_TO_NSECS(100), [this](uint64_t, uint64_t) { this->update_intrq(1); });
                 }
             }
             return ret_data;
@@ -140,7 +140,7 @@ void AtaBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
                     this->xfer_cnt = 0;
                     this->r_status &= ~DRQ;
                     //LOG_F(INFO, "%s: write complete", this->get_name_and_unit_address().c_str());
-                    TimerManager::get_instance()->add_oneshot_timer(USECS_TO_NSECS(100), [this]() {
+                    TimerManager::get_instance()->add_oneshot_timer(USECS_TO_NSECS(100), [this](uint64_t, uint64_t) {
                         this->r_status &= ~BSY;
                         this->update_intrq(1);
                     });
@@ -148,7 +148,7 @@ void AtaBaseDevice::write(const uint8_t reg_addr, const uint16_t value) {
                     this->cur_data_ptr = this->data_ptr;
                     this->chunk_cnt = std::min(this->xfer_cnt, this->chunk_size);
                     //LOG_F(INFO, "%s: write needs more data (left: 0x%x)", this->get_name_and_unit_address().c_str(), xfer_cnt);
-                    TimerManager::get_instance()->add_oneshot_timer(USECS_TO_NSECS(100), [this]() {
+                    TimerManager::get_instance()->add_oneshot_timer(USECS_TO_NSECS(100), [this](uint64_t, uint64_t) {
                         this->signal_data_ready();
                     });
                 }
@@ -235,7 +235,7 @@ int AtaBaseDevice::pull_data(uint8_t *buf, int len) {
 
     this->xfer_cnt -= xfer_size;
     if (!this->xfer_cnt) {
-        TimerManager::get_instance()->add_oneshot_timer(500, [this]() {
+        TimerManager::get_instance()->add_oneshot_timer(500, [this](uint64_t, uint64_t) {
             this->r_status &= ~(BSY | DRQ);
             this->update_intrq(1);
         });
