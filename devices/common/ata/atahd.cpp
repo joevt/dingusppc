@@ -208,7 +208,7 @@ int AtaHardDisk::perform_command() {
             } else {
                 // PIO commands generate IRQ for each sector or multiple block.
                 TimerManager::get_instance()->add_oneshot_timer(
-                    USECS_TO_NSECS(100), [this]() { this->signal_data_ready(); });
+                    USECS_TO_NSECS(100), [this](uint64_t, uint64_t) { this->signal_data_ready(); });
             }
         }
         break;
