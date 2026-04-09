@@ -1662,6 +1662,10 @@ void DppcDebugger::enter_debugger() {
             int_ctrl->ack_int(int_ctrl->register_int(IntSrc::NMI), 1);
         } else if (cmd == "amicint") {
             cmd = "";
+            if (!gMachineObj) {
+                cout << "Machine doesn't exist." << endl;
+                continue;
+            }
             string value;
             int irq_id;
             ss >> value;
@@ -1676,6 +1680,10 @@ void DppcDebugger::enter_debugger() {
             int_ctrl->ack_int(irq_id, 1);
         } else if (cmd == "viaint") {
             cmd = "";
+            if (!gMachineObj) {
+                cout << "Machine doesn't exist." << endl;
+                continue;
+            }
             string value;
             int irq_bit;
             ss >> value;
