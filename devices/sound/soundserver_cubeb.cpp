@@ -74,7 +74,7 @@ SoundServer::SoundServer() : impl(std::make_unique<Impl>()), HWComponent("SoundS
 
 SoundServer::~SoundServer()
 {
-    this->shutdown();
+    this->device_shutdown();
 }
 
 int SoundServer::start()
@@ -100,7 +100,7 @@ int SoundServer::start()
     return 0;
 }
 
-void SoundServer::shutdown()
+void SoundServer::device_shutdown()
 {
     switch (impl->status) {
     case SND_STREAM_OPENED:
