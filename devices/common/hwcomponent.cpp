@@ -50,6 +50,7 @@ HWComponent::HWComponent(const std::string name) {
 }
 
 HWComponent::~HWComponent() {
+    this->shutdown_devices();
     this->clear_devices();
     LOG_F(INFO, "Deleted %s", name.c_str());
 }
@@ -226,6 +227,12 @@ PostInitResultType HWComponent::postinit_devices() {
     if (devices_skipped)
         return PI_RETRY;
     return result;
+}
+
+void HWComponent::shutdown_devices() {
+    for (auto it = this->children.begin(); it != this->children.end(); it++)
+        it->second.get()->shutdown_devices();
+    this->device_shutdown();
 }
 
 std::string HWComponent::extract_device_name(const std::string name) {

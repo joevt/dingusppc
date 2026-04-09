@@ -99,6 +99,8 @@ public:
         return PI_SUCCESS;
     }
 
+    virtual void device_shutdown() {}
+
     virtual bool is_ready_for_machine() {
         return true;
     }
@@ -126,6 +128,7 @@ public:
     HWComponent* get_comp_by_name_optional(const std::string name);
     HWComponent* get_comp_by_type(HWCompType type);
     PostInitResultType postinit_devices();
+    void shutdown_devices();
 
     std::string get_path();
     HWComponent *find_path(
