@@ -126,6 +126,8 @@ protected:
     int         fb_pitch = 0;
     uint32_t    refresh_task_id = 0;
     uint32_t    vbl_end_task_id = 0;
+    uint64_t    refresh_interval = 0;
+    uint64_t    vbl_duration = 0;
 
     // interrupt suff
     InterruptCtrl* int_ctrl = nullptr;
