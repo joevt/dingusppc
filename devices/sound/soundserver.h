@@ -46,7 +46,7 @@ public:
     ~SoundServer();
 
     int start();
-    void shutdown();
+    virtual void device_shutdown() override;
     int open_out_stream(uint32_t sample_rate, DmaOutChannel *dma_ch);
     int start_out_stream();
     void close_out_stream();
