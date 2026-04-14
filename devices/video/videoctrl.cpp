@@ -172,7 +172,6 @@ void VideoCtrlBase::vidc_setup_hw_cursor(int cursor_width, int cursor_height)
             this->vidc_draw_hw_cursor(dst_buf, dst_pitch);
         },
         cursor_width, cursor_height);
-    this->vidc_cursor_on = true;
 }
 
 void VideoCtrlBase::convert_frame_1bpp_indexed(uint8_t *dst_buf, int dst_pitch)
