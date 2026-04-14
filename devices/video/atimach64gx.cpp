@@ -586,14 +586,14 @@ void AtiMach64Gx::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size)
     case ATI_CUR_CLR0:
     case ATI_CUR_CLR1:
         new_value = value;
-        this->cursor_dirty = true;
+        this->set_cursor_dirty();
         draw_fb = true;
         WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
     case ATI_CUR_OFFSET:
         new_value = value;
         if (old_value != new_value)
-            this->cursor_dirty = true;
+            this->set_cursor_dirty();
         draw_fb = true;
         WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
@@ -603,7 +603,7 @@ void AtiMach64Gx::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size)
             extract_bits<uint32_t>(new_value, ATI_CUR_VERT_OFF, ATI_CUR_VERT_OFF_size) !=
             extract_bits<uint32_t>(old_value, ATI_CUR_VERT_OFF, ATI_CUR_VERT_OFF_size)
         )
-            this->cursor_dirty = true;
+            this->set_cursor_dirty();
         draw_fb = true;
         WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
