@@ -133,7 +133,7 @@ PostInitResultType ViaCuda::device_postinit()
 {
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
-    this->irq_id = this->int_ctrl->register_dev_int(IntSrc::VIA_CUDA);
+    this->irq_id = this->int_ctrl->register_int(IntSrc::VIA_CUDA);
 
     return PI_SUCCESS;
 }
