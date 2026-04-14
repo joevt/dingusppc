@@ -158,6 +158,15 @@ const OfConfigImpl::config_dict& OfConfigAppl::get_config_vars() {
                              (int32_t(of_flags << i) < 0) ? "true" : "false"));
     }
 
+    OfConfigHdrAppl *hdr = (OfConfigHdrAppl *)&this->buf[0];
+    uint16_t here = READ_WORD_BE_A(&hdr->here);
+    uint16_t top  = READ_WORD_BE_A(&hdr->top);
+
+    if (here < nvram_obj->get_of_nvram_offset() + min_here) {
+        printf("here (0x%04x) is wrong!\n", here);
+        here = nvram_obj->get_of_nvram_offset() + min_here;
+    }
+
     // populate the remaining variables
     for (auto& var : of_vars) {
         auto& name   = var.first;
@@ -170,15 +179,27 @@ const OfConfigImpl::config_dict& OfConfigAppl::get_config_vars() {
                 hex2str(READ_DWORD_BE_A(&this->buf[offset]))));
             break;
         case OF_VAR_TYPE_STR:
-            uint16_t str_offset = uint16_t(READ_WORD_BE_A(&this->buf[offset]) - this->nvram_obj->get_of_nvram_offset());
-            uint16_t str_len    = READ_WORD_BE_A(&this->buf[offset+2]);
+            uint16_t str_offset = READ_WORD_BE_A(&this->buf[offset]);
+            if (str_offset < here) {
+                printf("string offset (0x%04x) of \"%s\" is less than here (0x%04x) - skip it\n",
+                    str_offset, name.c_str(), here);
+                break;
+            }
+            if (str_offset < top) {
+                printf("string offset (0x%04x) of \"%s\" is less than top (0x%04x) - moving top\n",
+                    str_offset, name.c_str(), top);
+                top = str_offset;
+                WRITE_WORD_BE_A(&hdr->top, top);
+            }
+            str_offset -= this->nvram_obj->get_of_nvram_offset();
 
-            if ((str_offset + str_len) > OF_CFG_SIZE) {
-                cout << "string property too long - skip it" << endl;
+            uint16_t str_len = READ_WORD_BE_A(&this->buf[offset+2]);
+            if (str_offset + str_len > OF_CFG_SIZE) {
+                printf("string length (%d) of \"%s\" is too long - skip it\n", str_len, name.c_str());
                 break;
             }
 
-            char prop_val[OF_CFG_SIZE] = "";
+            char prop_val[OF_CFG_SIZE];
             memcpy(prop_val, &this->buf[str_offset], str_len);
             prop_val[str_len] = '\0';
 
@@ -214,6 +235,7 @@ bool OfConfigAppl::set_var(std::string& var_name, std::string& value) {
 
     if (!this->validate())
         return false;
+    this->get_config_vars();
 
     // check if the user tries to change a flag
     for (i = 0; i < num_flags; i++) {
@@ -272,15 +294,15 @@ bool OfConfigAppl::set_var(std::string& var_name, std::string& value) {
         // the heap is grown down from offset 0x2000 and cannot be lower than here (0x185c)
 
         if (here < nvram_obj->get_of_nvram_offset() + min_here) {
-            cout << "here is wrong!" << endl;
+            printf("here (0x%04x) is wrong!\n", here);
             return false;
         }
         if (top > this->nvram_obj->get_of_nvram_offset() + OF_CFG_SIZE) {
-            cout << "top is wrong!" << endl;
+            printf("top (0x%04x) is wrong!\n", top);
             return false;
         }
         if (value.length() + here > unsigned(top) + str_len) {
-            cout << "No room in the heap!" << endl;
+            printf("No room in the heap!\n");
             return false;
         }
         uint16_t new_top = uint16_t(unsigned(top) + str_len - value.length());
@@ -521,6 +543,7 @@ bool OfConfigChrp::update_partition() {
 bool OfConfigChrp::set_var(std::string& var_name, std::string& value) {
     if (!this->validate())
         return false;
+    this->get_config_vars();
 
     // see if we're about to change a flag
     if (var_name.back() == '?') {
@@ -623,8 +646,6 @@ bool OfConfigUtils::setenv(string var_name, string value)
 {
     if (!this->open_container())
         return false;
-
-    OfConfigImpl::config_dict vars = this->cfg_impl->get_config_vars();
 
     return this->cfg_impl->set_var(var_name, value);
 }
