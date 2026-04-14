@@ -49,6 +49,12 @@ AMIC::AMIC(const std::string &dev_name)
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::INT_CTRL);
 
+    this->setup_intsrc_map();
+    this->via2_irq_id     = this->register_int(IntSrc::VIA2    );
+    this->all_dma_irq_id  = this->register_int(IntSrc::DMA_ALL );
+    this->all_slot_irq_id = this->register_int(IntSrc::SLOT_ALL);
+    this->vbl_irq_id      = this->register_int(IntSrc::VBL     );
+
     // connect internal SCSI controller
     this->scsi = dynamic_cast<Sc53C94*>(gMachineObj->get_comp_by_name("Sc53C94"));
     this->curio_dma = std::unique_ptr<AmicScsiDma> (new AmicScsiDma());
@@ -77,7 +83,7 @@ AMIC::AMIC(const std::string &dev_name)
 
     // initialize sound HW
     this->snd_out_dma = std::unique_ptr<AmicSndOutDma>(new AmicSndOutDma());
-    this->snd_out_dma->init_interrupts(this, DMA1_INT_SOUND << DMA1_INT_SHIFT);
+    this->snd_out_dma->init_interrupts(this, this->register_int(IntSrc::DMA_DAVBUS_Tx));
     this->awacs = new AwacDevicePdm();
     this->add_device(0x14000, this->awacs);
     this->awacs->set_dma_out(this->snd_out_dma.get());
@@ -118,7 +124,7 @@ PostInitResultType AMIC::device_postinit()
     // initialize on-board video
     this->disp_id = dynamic_cast<DisplayID*>(this->get_comp_by_type(HWCompType::DISPLAY));
     this->def_vid = dynamic_cast<PdmOnboardVideo*>(this->get_comp_by_name("PdmOnboardVideo"));
-    this->def_vid->init_interrupts(this, SLOT_INT_VBL << SLOT_INT_SHIFT);
+    this->def_vid->init_interrupts(this, this->vbl_irq_id);
 
     return PI_SUCCESS;
 }
@@ -508,7 +514,7 @@ void AMIC::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int si
     case AMICReg::VIA2_Slot_IFR:
         if (value & SLOT_INT_VBL) {
             // clear pending VBL int
-            this->ack_slot_int(SLOT_INT_VBL, 0);
+            this->ack_int(this->vbl_irq_id, 0);
         }
         break;
     case AMICReg::VIA2_IFR:
@@ -697,38 +703,28 @@ void AMIC::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int si
 }
 
 // ======================== Interrupt related stuff ==========================
-uint64_t AMIC::register_dev_int(IntSrc src_id) {
-    switch (src_id) {
-    case IntSrc::VIA_CUDA      : return CPU_INT_VIA1      << CPU_INT_SHIFT;
-    case IntSrc::VIA2          : return CPU_INT_VIA2      << CPU_INT_SHIFT;
-    case IntSrc::ESCC          : return CPU_INT_ESCC      << CPU_INT_SHIFT;
-    case IntSrc::ETHERNET      : return CPU_INT_ENET      << CPU_INT_SHIFT;
-    case IntSrc::DMA_ALL       : return CPU_INT_ALL_DMA   << CPU_INT_SHIFT;
-    case IntSrc::NMI           : return CPU_INT_NMI       << CPU_INT_SHIFT;
+void AMIC::setup_intsrc_map() {
+    this->add_intsrc(IntSrc::VIA_CUDA      , CPU_INT_VIA1      << CPU_INT_SHIFT);
+    this->add_intsrc(IntSrc::VIA2          , CPU_INT_VIA2      << CPU_INT_SHIFT);
+    this->add_intsrc(IntSrc::ESCC          , CPU_INT_ESCC      << CPU_INT_SHIFT);
+    this->add_intsrc(IntSrc::ETHERNET      , CPU_INT_ENET      << CPU_INT_SHIFT);
+    this->add_intsrc(IntSrc::DMA_ALL       , CPU_INT_ALL_DMA   << CPU_INT_SHIFT);
+    this->add_intsrc(IntSrc::NMI           , CPU_INT_NMI       << CPU_INT_SHIFT);
 
-    case IntSrc::DMA_SCSI_CURIO: return VIA2_INT_SCSI_DRQ << VIA2_INT_SHIFT;
-    case IntSrc::SLOT_ALL      : return VIA2_INT_ALL_SLOT << VIA2_INT_SHIFT;
-    case IntSrc::SCSI_CURIO    : return VIA2_INT_SCSI_IRQ << VIA2_INT_SHIFT;
-    case IntSrc::DAVBUS        : return VIA2_INT_SOUND    << VIA2_INT_SHIFT;
-    case IntSrc::SWIM3         : return VIA2_INT_SWIM3    << VIA2_INT_SHIFT;
+    this->add_intsrc(IntSrc::DMA_SCSI_CURIO, VIA2_INT_SCSI_DRQ << VIA2_INT_SHIFT);
+    this->add_intsrc(IntSrc::SLOT_ALL      , VIA2_INT_ALL_SLOT << VIA2_INT_SHIFT);
+    this->add_intsrc(IntSrc::SCSI_CURIO    , VIA2_INT_SCSI_IRQ << VIA2_INT_SHIFT);
+    this->add_intsrc(IntSrc::DAVBUS        , VIA2_INT_SOUND    << VIA2_INT_SHIFT);
+    this->add_intsrc(IntSrc::SWIM3         , VIA2_INT_SWIM3    << VIA2_INT_SHIFT);
 
-    case IntSrc::SLOT_0        : return SLOT_INT_SLOT_0   << SLOT_INT_SHIFT;
-    case IntSrc::SLOT_1        : return SLOT_INT_SLOT_1   << SLOT_INT_SHIFT;
-    case IntSrc::SLOT_2        : return SLOT_INT_SLOT_2   << SLOT_INT_SHIFT;
-    case IntSrc::SLOT_PDS      : return SLOT_INT_SLOT_PDS << SLOT_INT_SHIFT;
-    case IntSrc::SLOT_VDS      : return SLOT_INT_SLOT_VDS << SLOT_INT_SHIFT;
-    case IntSrc::VBL           : return SLOT_INT_VBL      << SLOT_INT_SHIFT;
+    this->add_intsrc(IntSrc::SLOT_0        , SLOT_INT_SLOT_0   << SLOT_INT_SHIFT);
+    this->add_intsrc(IntSrc::SLOT_1        , SLOT_INT_SLOT_1   << SLOT_INT_SHIFT);
+    this->add_intsrc(IntSrc::SLOT_2        , SLOT_INT_SLOT_2   << SLOT_INT_SHIFT);
+    this->add_intsrc(IntSrc::SLOT_PDS      , SLOT_INT_SLOT_PDS << SLOT_INT_SHIFT);
+    this->add_intsrc(IntSrc::SLOT_VDS      , SLOT_INT_SLOT_VDS << SLOT_INT_SHIFT);
+    this->add_intsrc(IntSrc::VBL           , SLOT_INT_VBL      << SLOT_INT_SHIFT);
 
-    case IntSrc::DMA_DAVBUS_Tx : return DMA1_INT_SOUND    << DMA1_INT_SHIFT;
-    default:
-        ABORT_F("AMIC: unknown interrupt source %d", src_id);
-    }
-    return 0;
-}
-
-uint64_t AMIC::register_dma_int(IntSrc /*src_id*/) {
-    ABORT_F("AMIC: register_dma_int() not implemented");
-    return 0;
+    this->add_intsrc(IntSrc::DMA_DAVBUS_Tx , DMA1_INT_SOUND    << DMA1_INT_SHIFT);
 }
 
 void AMIC::ack_int(uint64_t irq_id, uint8_t irq_line_state) {
@@ -758,7 +754,7 @@ void AMIC::ack_slot_int(uint8_t slot_int, uint8_t irq_line_state) {
     uint8_t new_irq = !!(~this->via2_slot_ifr & this->via2_slot_ier & 0x7F);
     if (new_irq != this->via2_slot_irq) {
         this->via2_slot_irq = new_irq;
-        this->ack_via2_int(VIA2_INT_ALL_SLOT, new_irq);
+        this->ack_int(this->all_slot_irq_id, new_irq);
     }
 }
 
@@ -767,7 +763,7 @@ void AMIC::update_via2_irq() {
     this->via2_ifr  = (this->via2_ifr & 0x7F) | (new_irq << 7);
     if (new_irq != this->via2_irq) {
         this->via2_irq = new_irq;
-        this->ack_cpu_int(CPU_INT_VIA2, new_irq);
+        this->ack_int(this->via2_irq_id, new_irq);
     }
 }
 
@@ -817,7 +813,7 @@ void AMIC::ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) {
     uint8_t new_irq = (this->dma_ifr0 || this->dma_ifr1) ? 1 : 0;
     if (new_irq != this->dma_irq) {
         this->dma_irq = new_irq;
-        this->ack_cpu_int(CPU_INT_ALL_DMA, new_irq);
+        this->ack_int(this->all_dma_irq_id, new_irq);
     }
 }
 
