@@ -79,7 +79,7 @@ void VideoCtrlBase::update_screen()
     }
 
     if (this->draw_fb) {
-        if (this->cursor_dirty) {
+        if (this->vidc_cursor_on && this->cursor_dirty) {
             this->vidc_setup_hw_cursor();
             this->cursor_dirty = false;
         }
