@@ -64,7 +64,7 @@ PostInitResultType ValkyrieVideo::device_postinit() {
 
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
-    this->irq_id = this->int_ctrl->register_dev_int(IntSrc::VALKYRIE);
+    this->irq_id = this->int_ctrl->register_int(IntSrc::VALKYRIE);
 
     this->vbl_cb = [this](uint8_t irq_line_state) {
         if (!(this->int_latch & Valkyrie::VBL_IRQ) && irq_line_state) {

@@ -366,8 +366,7 @@ public:
     void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
     // InterruptCtrl methods
-    uint64_t register_dev_int(IntSrc src_id) override;
-    uint64_t register_dma_int(IntSrc src_id) override;
+    void setup_intsrc_map();
     void ack_int(uint64_t irq_id, uint8_t irq_line_state) override;
     void ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) override;
 
@@ -415,6 +414,12 @@ private:
     uint8_t     via2_slot_irq   =    0; // normal logic
 
     TimerInfo   pseudo_vbl_timer; // the pseudo-VBL timer
+
+    // irq_ids of registered interrupts
+    uint64_t via2_irq_id;
+    uint64_t all_dma_irq_id;
+    uint64_t all_slot_irq_id;
+    uint64_t vbl_irq_id;
 
     // AMIC subdevice instances
     Sc53C94*            scsi;

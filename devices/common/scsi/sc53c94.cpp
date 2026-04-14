@@ -80,7 +80,7 @@ PostInitResultType Sc53C94::device_postinit()
 
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
-    this->irq_id = this->int_ctrl->register_dev_int(IntSrc::SCSI_CURIO);
+    this->irq_id = this->int_ctrl->register_int(IntSrc::SCSI_CURIO);
 
     return PI_SUCCESS;
 }
