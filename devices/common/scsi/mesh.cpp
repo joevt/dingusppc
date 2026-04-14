@@ -47,7 +47,7 @@ PostInitResultType MeshController::device_postinit() {
     this->dev_obj = dynamic_cast<ScsiBusControllerDev*>(gMachineObj->get_comp_by_name("MeshDev"));
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
-    this->irq_id = this->int_ctrl->register_dev_int(IntSrc::SCSI_MESH);
+    this->irq_id = this->int_ctrl->register_int(IntSrc::SCSI_MESH);
 
     return PI_SUCCESS;
 }

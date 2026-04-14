@@ -123,7 +123,7 @@ PostInitResultType Swim3Ctrl::device_postinit()
 {
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
-    this->irq_id = this->int_ctrl->register_dev_int(IntSrc::SWIM3);
+    this->irq_id = this->int_ctrl->register_int(IntSrc::SWIM3);
     return PI_SUCCESS;
 }
 
