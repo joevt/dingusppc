@@ -703,38 +703,28 @@ void AMIC::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int si
 }
 
 // ======================== Interrupt related stuff ==========================
-uint64_t AMIC::register_dev_int(IntSrc src_id) {
-    switch (src_id) {
-    case IntSrc::VIA_CUDA      : return CPU_INT_VIA1      << CPU_INT_SHIFT;
-    case IntSrc::VIA2          : return CPU_INT_VIA2      << CPU_INT_SHIFT;
-    case IntSrc::ESCC          : return CPU_INT_ESCC      << CPU_INT_SHIFT;
-    case IntSrc::ETHERNET      : return CPU_INT_ENET      << CPU_INT_SHIFT;
-    case IntSrc::DMA_ALL       : return CPU_INT_ALL_DMA   << CPU_INT_SHIFT;
-    case IntSrc::NMI           : return CPU_INT_NMI       << CPU_INT_SHIFT;
+void AMIC::setup_intsrc_map() {
+    this->add_intsrc(IntSrc::VIA_CUDA      , CPU_INT_VIA1      << CPU_INT_SHIFT);
+    this->add_intsrc(IntSrc::VIA2          , CPU_INT_VIA2      << CPU_INT_SHIFT);
+    this->add_intsrc(IntSrc::ESCC          , CPU_INT_ESCC      << CPU_INT_SHIFT);
+    this->add_intsrc(IntSrc::ETHERNET      , CPU_INT_ENET      << CPU_INT_SHIFT);
+    this->add_intsrc(IntSrc::DMA_ALL       , CPU_INT_ALL_DMA   << CPU_INT_SHIFT);
+    this->add_intsrc(IntSrc::NMI           , CPU_INT_NMI       << CPU_INT_SHIFT);
 
-    case IntSrc::DMA_SCSI_CURIO: return VIA2_INT_SCSI_DRQ << VIA2_INT_SHIFT;
-    case IntSrc::SLOT_ALL      : return VIA2_INT_ALL_SLOT << VIA2_INT_SHIFT;
-    case IntSrc::SCSI_CURIO    : return VIA2_INT_SCSI_IRQ << VIA2_INT_SHIFT;
-    case IntSrc::DAVBUS        : return VIA2_INT_SOUND    << VIA2_INT_SHIFT;
-    case IntSrc::SWIM3         : return VIA2_INT_SWIM3    << VIA2_INT_SHIFT;
+    this->add_intsrc(IntSrc::DMA_SCSI_CURIO, VIA2_INT_SCSI_DRQ << VIA2_INT_SHIFT);
+    this->add_intsrc(IntSrc::SLOT_ALL      , VIA2_INT_ALL_SLOT << VIA2_INT_SHIFT);
+    this->add_intsrc(IntSrc::SCSI_CURIO    , VIA2_INT_SCSI_IRQ << VIA2_INT_SHIFT);
+    this->add_intsrc(IntSrc::DAVBUS        , VIA2_INT_SOUND    << VIA2_INT_SHIFT);
+    this->add_intsrc(IntSrc::SWIM3         , VIA2_INT_SWIM3    << VIA2_INT_SHIFT);
 
-    case IntSrc::SLOT_0        : return SLOT_INT_SLOT_0   << SLOT_INT_SHIFT;
-    case IntSrc::SLOT_1        : return SLOT_INT_SLOT_1   << SLOT_INT_SHIFT;
-    case IntSrc::SLOT_2        : return SLOT_INT_SLOT_2   << SLOT_INT_SHIFT;
-    case IntSrc::SLOT_PDS      : return SLOT_INT_SLOT_PDS << SLOT_INT_SHIFT;
-    case IntSrc::SLOT_VDS      : return SLOT_INT_SLOT_VDS << SLOT_INT_SHIFT;
-    case IntSrc::VBL           : return SLOT_INT_VBL      << SLOT_INT_SHIFT;
+    this->add_intsrc(IntSrc::SLOT_0        , SLOT_INT_SLOT_0   << SLOT_INT_SHIFT);
+    this->add_intsrc(IntSrc::SLOT_1        , SLOT_INT_SLOT_1   << SLOT_INT_SHIFT);
+    this->add_intsrc(IntSrc::SLOT_2        , SLOT_INT_SLOT_2   << SLOT_INT_SHIFT);
+    this->add_intsrc(IntSrc::SLOT_PDS      , SLOT_INT_SLOT_PDS << SLOT_INT_SHIFT);
+    this->add_intsrc(IntSrc::SLOT_VDS      , SLOT_INT_SLOT_VDS << SLOT_INT_SHIFT);
+    this->add_intsrc(IntSrc::VBL           , SLOT_INT_VBL      << SLOT_INT_SHIFT);
 
-    case IntSrc::DMA_DAVBUS_Tx : return DMA1_INT_SOUND    << DMA1_INT_SHIFT;
-    default:
-        ABORT_F("AMIC: unknown interrupt source %d", src_id);
-    }
-    return 0;
-}
-
-uint64_t AMIC::register_dma_int(IntSrc /*src_id*/) {
-    ABORT_F("AMIC: register_dma_int() not implemented");
-    return 0;
+    this->add_intsrc(IntSrc::DMA_DAVBUS_Tx , DMA1_INT_SOUND    << DMA1_INT_SHIFT);
 }
 
 void AMIC::ack_int(uint64_t irq_id, uint8_t irq_line_state) {

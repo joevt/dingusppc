@@ -30,7 +30,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <memory>
 
 MacIoBase::MacIoBase(std::string name, uint16_t dev_id, uint8_t rev) :
-    PCIDevice(name), InterruptCtrl()
+    PCIDevice(name), InterruptCtrl(), HWComponent(name)
 {
     supports_types(HWCompType::MMIO_DEV | HWCompType::PCI_DEV | HWCompType::INT_CTRL);
 
@@ -49,6 +49,8 @@ MacIoBase::MacIoBase(std::string name, uint16_t dev_id, uint8_t rev) :
         this->notify_bar_change(bar_num);
     };
 
+    this->setup_intsrc_map();
+
     // connect Cuda
     this->viacuda = dynamic_cast<ViaCuda*>(gMachineObj->get_comp_by_name("ViaCuda"));
 
@@ -56,14 +58,14 @@ MacIoBase::MacIoBase(std::string name, uint16_t dev_id, uint8_t rev) :
     this->snd_codec = dynamic_cast<MacioSndCodec*>(gMachineObj->get_comp_by_type(HWCompType::SND_CODEC));
     this->add_device(0x14000, this->snd_codec);
     this->snd_out_dma = std::unique_ptr<DMAChannel> (new DMAChannel("snd_out"));
-    this->snd_out_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_DAVBUS_Tx));
+    this->snd_out_dma->register_dma_int(this, this->register_int(IntSrc::DMA_DAVBUS_Tx));
     this->snd_codec->set_dma_out(this->snd_out_dma.get());
     this->snd_out_dma->set_callbacks(
         std::bind(&AwacsScreamer::dma_out_start, this->snd_codec),
         std::bind(&AwacsScreamer::dma_out_stop, this->snd_codec)
     );
     this->snd_in_dma = std::unique_ptr<DMAChannel> (new DMAChannel("snd_in"));
-    this->snd_in_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_DAVBUS_Rx));
+    this->snd_in_dma->register_dma_int(this, this->register_int(IntSrc::DMA_DAVBUS_Rx));
     this->snd_codec->set_dma_in(this->snd_in_dma.get());
     this->snd_in_dma->set_callbacks(
         std::bind(&AwacsScreamer::dma_in_start, this->snd_codec),
@@ -74,7 +76,7 @@ MacIoBase::MacIoBase(std::string name, uint16_t dev_id, uint8_t rev) :
     this->swim3 = dynamic_cast<Swim3::Swim3Ctrl*>(gMachineObj->get_comp_by_name("Swim3"));
     this->floppy_dma = std::unique_ptr<DMAChannel> (new DMAChannel("floppy"));
     this->swim3->set_dma_channel(this->floppy_dma.get());
-    this->floppy_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SWIM3));
+    this->floppy_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SWIM3));
 
     // connect serial HW to its DMA channels
     this->escc = dynamic_cast<EsccController*>(gMachineObj->get_comp_by_name("Escc"));
@@ -82,10 +84,10 @@ MacIoBase::MacIoBase(std::string name, uint16_t dev_id, uint8_t rev) :
     this->escc_a_rx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_a_rx"));
     this->escc_b_tx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_b_tx"));
     this->escc_b_rx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_b_rx"));
-    this->escc_a_tx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCA_Tx));
-    this->escc_a_rx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCA_Rx));
-    this->escc_b_tx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCB_Tx));
-    this->escc_b_rx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCB_Rx));
+    this->escc_a_tx_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SCCA_Tx));
+    this->escc_a_rx_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SCCA_Rx));
+    this->escc_b_tx_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SCCB_Tx));
+    this->escc_b_rx_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SCCB_Rx));
     this->escc->set_dma_channel(CH_A, DIR_TX, this->escc_a_tx_dma.get());
     this->escc->set_dma_channel(CH_A, DIR_RX, this->escc_a_rx_dma.get());
     this->escc->set_dma_channel(CH_B, DIR_TX, this->escc_b_tx_dma.get());
@@ -107,19 +109,14 @@ void MacIoBase::notify_bar_change(int bar_num) {
     }
 }
 
-uint64_t MacIoBase::register_dma_int(IntSrc src_id) {
-    switch (src_id) {
-    case IntSrc::DMA_SWIM3          : return INT_TO_IRQ_ID(0x01);
-    case IntSrc::DMA_SCCA_Tx        : return INT_TO_IRQ_ID(0x04);
-    case IntSrc::DMA_SCCA_Rx        : return INT_TO_IRQ_ID(0x05);
-    case IntSrc::DMA_SCCB_Tx        : return INT_TO_IRQ_ID(0x06);
-    case IntSrc::DMA_SCCB_Rx        : return INT_TO_IRQ_ID(0x07);
-    case IntSrc::DMA_DAVBUS_Tx      : return INT_TO_IRQ_ID(0x08);
-    case IntSrc::DMA_DAVBUS_Rx      : return INT_TO_IRQ_ID(0x09);
-    default:
-        ABORT_F("%s: unknown DMA interrupt source %d", this->name.c_str(), src_id);
-    }
-    return 0;
+void MacIoBase::setup_intsrc_map() {
+    this->add_intsrc(IntSrc::DMA_SWIM3    , INT_TO_IRQ_ID(0x01));
+    this->add_intsrc(IntSrc::DMA_SCCA_Tx  , INT_TO_IRQ_ID(0x04));
+    this->add_intsrc(IntSrc::DMA_SCCA_Rx  , INT_TO_IRQ_ID(0x05));
+    this->add_intsrc(IntSrc::DMA_SCCB_Tx  , INT_TO_IRQ_ID(0x06));
+    this->add_intsrc(IntSrc::DMA_SCCB_Rx  , INT_TO_IRQ_ID(0x07));
+    this->add_intsrc(IntSrc::DMA_DAVBUS_Tx, INT_TO_IRQ_ID(0x08));
+    this->add_intsrc(IntSrc::DMA_DAVBUS_Rx, INT_TO_IRQ_ID(0x09));
 }
 
 void MacIoBase::ack_int_common(uint64_t irq_id, uint8_t irq_line_state) {

@@ -66,20 +66,22 @@ GrandCentral::GrandCentral(const std::string name)
         this->notify_bar_change(bar_num);
     };
 
+    this->setup_intsrc_map();
+
     // connect Cuda
     this->viacuda = dynamic_cast<ViaCuda*>(gMachineObj->get_comp_by_name("ViaCuda"));
 
     // initialize sound chip and its DMA output channel, then wire them together
     this->awacs = dynamic_cast<AwacsScreamer*>(gMachineObj->get_comp_by_type(HWCompType::SND_CODEC));
     this->snd_out_dma = std::unique_ptr<DMAChannel> (new DMAChannel("snd_out"));
-    this->snd_out_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_DAVBUS_Tx));
+    this->snd_out_dma->register_dma_int(this, this->register_int(IntSrc::DMA_DAVBUS_Tx));
     this->awacs->set_dma_out(this->snd_out_dma.get());
     this->snd_out_dma->set_callbacks(
         std::bind(&AwacsScreamer::dma_out_start, this->awacs),
         std::bind(&AwacsScreamer::dma_out_stop, this->awacs)
     );
     this->snd_in_dma = std::unique_ptr<DMAChannel> (new DMAChannel("snd_in"));
-    this->snd_in_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_DAVBUS_Rx));
+    this->snd_in_dma->register_dma_int(this, this->register_int(IntSrc::DMA_DAVBUS_Rx));
     this->awacs->set_dma_in(this->snd_in_dma.get());
     this->snd_in_dma->set_callbacks(
         std::bind(&AwacsScreamer::dma_in_start, this->awacs),
@@ -92,10 +94,10 @@ GrandCentral::GrandCentral(const std::string name)
     this->escc_a_rx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_a_rx"));
     this->escc_b_tx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_b_tx"));
     this->escc_b_rx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Escc_b_rx"));
-    this->escc_a_tx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCA_Tx));
-    this->escc_a_rx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCA_Rx));
-    this->escc_b_tx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCB_Tx));
-    this->escc_b_rx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCCB_Rx));
+    this->escc_a_tx_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SCCA_Tx));
+    this->escc_a_rx_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SCCA_Rx));
+    this->escc_b_tx_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SCCB_Tx));
+    this->escc_b_rx_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SCCB_Rx));
     this->escc->set_dma_channel(CH_A, DIR_TX, this->escc_a_tx_dma.get());
     this->escc->set_dma_channel(CH_A, DIR_RX, this->escc_a_rx_dma.get());
     this->escc->set_dma_channel(CH_B, DIR_TX, this->escc_b_tx_dma.get());
@@ -110,7 +112,7 @@ GrandCentral::GrandCentral(const std::string name)
     } else {
         this->mesh = mesh_obj;
         this->mesh_dma = std::unique_ptr<DMAChannel> (new DMAChannel("mesh_scsi"));
-        this->mesh_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCSI_MESH));
+        this->mesh_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SCSI_MESH));
         this->mesh_dma->connect(mesh_obj);
         mesh_obj->connect(this->mesh_dma.get());
     }
@@ -118,7 +120,7 @@ GrandCentral::GrandCentral(const std::string name)
     // connect external SCSI controller (Curio) to its DMA channel
     this->curio = dynamic_cast<Sc53C94*>(gMachineObj->get_comp_by_name("Sc53C94"));
     this->curio_dma = std::unique_ptr<DMAChannel> (new DMAChannel("curio_scsi"));
-    this->curio_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCSI_CURIO));
+    this->curio_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SCSI_CURIO));
     this->curio_dma->connect(this->curio);
     this->curio->connect(this->curio_dma.get());
     //this->curio->set_dma_channel(this->curio_dma.get());
@@ -129,9 +131,9 @@ GrandCentral::GrandCentral(const std::string name)
     // connect Ethernet HW
     this->mace = dynamic_cast<MaceController*>(gMachineObj->get_comp_by_name("Mace"));
     this->enet_tx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("mace_enet_tx"));
-    this->enet_tx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_ETHERNET_Tx));
+    this->enet_tx_dma->register_dma_int(this, this->register_int(IntSrc::DMA_ETHERNET_Tx));
     this->enet_rx_dma = std::unique_ptr<DMAChannel> (new DMAChannel("mace_enet_rx"));
-    this->enet_rx_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_ETHERNET_Rx));
+    this->enet_rx_dma->register_dma_int(this, this->register_int(IntSrc::DMA_ETHERNET_Rx));
     this->enet_tx_dma->connect(this->mace);
     this->enet_rx_dma->connect(this->mace);
     this->mace->connect(this->enet_rx_dma.get());
@@ -140,7 +142,7 @@ GrandCentral::GrandCentral(const std::string name)
     this->swim3 = dynamic_cast<Swim3::Swim3Ctrl*>(gMachineObj->get_comp_by_name("Swim3"));
     this->floppy_dma = std::unique_ptr<DMAChannel> (new DMAChannel("floppy"));
     this->swim3->set_dma_channel(this->floppy_dma.get());
-    this->floppy_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SWIM3));
+    this->floppy_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SWIM3));
 
     // attach IOBus Device #4 0xF301D000 ; NVRAM High Address
     this->nvram_addr_hi_dev = new NvramAddrHiDev();
@@ -553,62 +555,50 @@ void GrandCentral::attach_iodevice(int dev_num, IobusDevice* dev_obj)
     }
 }
 
-uint64_t GrandCentral::register_dev_int(IntSrc src_id) {
-    switch (src_id) {
-    case IntSrc::SCSI_CURIO : return INT_TO_IRQ_ID(0x0C);
-    case IntSrc::SCSI_MESH  : return INT_TO_IRQ_ID(0x0D);
-    case IntSrc::ETHERNET   : return INT_TO_IRQ_ID(0x0E);
-    case IntSrc::SCCA       : return INT_TO_IRQ_ID(0x0F);
-    case IntSrc::SCCB       : return INT_TO_IRQ_ID(0x10);
-    case IntSrc::DAVBUS     : return INT_TO_IRQ_ID(0x11);
-    case IntSrc::VIA_CUDA   : return INT_TO_IRQ_ID(0x12);
-    case IntSrc::SWIM3      : return INT_TO_IRQ_ID(0x13);
-    case IntSrc::NMI        : return INT_TO_IRQ_ID(0x14); // EXT0 // nmiSource in AppleGrandCentral/AppleGrandCentral.cpp
-    case IntSrc::EXT1       : return INT_TO_IRQ_ID(0x15); // EXT1 // Iridium
+void GrandCentral::setup_intsrc_map()
+{
+    this->add_intsrc(IntSrc::DMA_SCSI_CURIO , INT_TO_IRQ_ID(0x00));
+    this->add_intsrc(IntSrc::DMA_SWIM3      , INT_TO_IRQ_ID(0x01));
+    this->add_intsrc(IntSrc::DMA_ETHERNET_Tx, INT_TO_IRQ_ID(0x02));
+    this->add_intsrc(IntSrc::DMA_ETHERNET_Rx, INT_TO_IRQ_ID(0x03));
+    this->add_intsrc(IntSrc::DMA_SCCA_Tx    , INT_TO_IRQ_ID(0x04));
+    this->add_intsrc(IntSrc::DMA_SCCA_Rx    , INT_TO_IRQ_ID(0x05));
+    this->add_intsrc(IntSrc::DMA_SCCB_Tx    , INT_TO_IRQ_ID(0x06));
+    this->add_intsrc(IntSrc::DMA_SCCB_Rx    , INT_TO_IRQ_ID(0x07));
+    this->add_intsrc(IntSrc::DMA_DAVBUS_Tx  , INT_TO_IRQ_ID(0x08));
+    this->add_intsrc(IntSrc::DMA_DAVBUS_Rx  , INT_TO_IRQ_ID(0x09));
+    this->add_intsrc(IntSrc::DMA_SCSI_MESH  , INT_TO_IRQ_ID(0x0A));
 
-    case IntSrc::BANDIT1    : return INT_TO_IRQ_ID(0x16); // EXT2
-    case IntSrc::PCI_A      : return INT_TO_IRQ_ID(0x17); // EXT3
-    case IntSrc::PCI_B      : return INT_TO_IRQ_ID(0x18); // EXT4
-    case IntSrc::PCI_C      : return INT_TO_IRQ_ID(0x19); // EXT5
+    this->add_intsrc(IntSrc::SCSI_CURIO     , INT_TO_IRQ_ID(0x0C));
+    this->add_intsrc(IntSrc::SCSI_MESH      , INT_TO_IRQ_ID(0x0D));
+    this->add_intsrc(IntSrc::ETHERNET       , INT_TO_IRQ_ID(0x0E));
+    this->add_intsrc(IntSrc::SCCA           , INT_TO_IRQ_ID(0x0F));
+    this->add_intsrc(IntSrc::SCCB           , INT_TO_IRQ_ID(0x10));
+    this->add_intsrc(IntSrc::DAVBUS         , INT_TO_IRQ_ID(0x11));
+    this->add_intsrc(IntSrc::VIA_CUDA       , INT_TO_IRQ_ID(0x12));
+    this->add_intsrc(IntSrc::SWIM3          , INT_TO_IRQ_ID(0x13));
+    this->add_intsrc(IntSrc::NMI            , INT_TO_IRQ_ID(0x14)); // EXT0 // nmiSource in AppleGrandCentral.cpp
+    this->add_intsrc(IntSrc::EXT1           , INT_TO_IRQ_ID(0x15)); // EXT1 // Iridium
 
-    case IntSrc::BANDIT2    : return INT_TO_IRQ_ID(0x1A); // EXT6
-    case IntSrc::PCI_D      : return INT_TO_IRQ_ID(0x1B); // EXT7
-    case IntSrc::PCI_E      : return INT_TO_IRQ_ID(0x1C); // EXT8
-    case IntSrc::PCI_F      : return INT_TO_IRQ_ID(0x1D); // EXT9
+    this->add_intsrc(IntSrc::BANDIT1        , INT_TO_IRQ_ID(0x16)); // EXT2
+    this->add_intsrc(IntSrc::PCI_A          , INT_TO_IRQ_ID(0x17)); // EXT3
+    this->add_intsrc(IntSrc::PCI_B          , INT_TO_IRQ_ID(0x18)); // EXT4
+    this->add_intsrc(IntSrc::PCI_C          , INT_TO_IRQ_ID(0x19)); // EXT5
 
-    case IntSrc::CONTROL    : return INT_TO_IRQ_ID(0x1A); // EXT6
-    case IntSrc::SIXTY6     : return INT_TO_IRQ_ID(0x1B); // EXT7
-    case IntSrc::PLANB      : return INT_TO_IRQ_ID(0x1C); // EXT8
-    case IntSrc::VCI        : return INT_TO_IRQ_ID(0x1D); // EXT9
+    this->add_intsrc(IntSrc::BANDIT2        , INT_TO_IRQ_ID(0x1A)); // EXT6
+    this->add_intsrc(IntSrc::PCI_D          , INT_TO_IRQ_ID(0x1B)); // EXT7
+    this->add_intsrc(IntSrc::PCI_E          , INT_TO_IRQ_ID(0x1C)); // EXT8
+    this->add_intsrc(IntSrc::PCI_F          , INT_TO_IRQ_ID(0x1D)); // EXT9
 
-    case IntSrc::PLATINUM   : return INT_TO_IRQ_ID(0x1E); // EXT10
+    this->add_intsrc(IntSrc::CONTROL        , INT_TO_IRQ_ID(0x1A)); // EXT6
+    this->add_intsrc(IntSrc::SIXTY6         , INT_TO_IRQ_ID(0x1B)); // EXT7
+    this->add_intsrc(IntSrc::PLANB          , INT_TO_IRQ_ID(0x1C)); // EXT8
+    this->add_intsrc(IntSrc::VCI            , INT_TO_IRQ_ID(0x1D)); // EXT9
 
-    case IntSrc::PIPPIN_F   : return INT_TO_IRQ_ID(0x1D); // EXT9
-    case IntSrc::PIPPIN_E   : return INT_TO_IRQ_ID(0x1E); // EXT10
+    this->add_intsrc(IntSrc::PLATINUM       , INT_TO_IRQ_ID(0x1E)); // EXT10
 
-    default:
-        ABORT_F("%s: unknown interrupt source %d", this->name.c_str(), src_id);
-    }
-    return 0;
-}
-
-uint64_t GrandCentral::register_dma_int(IntSrc src_id) {
-    switch (src_id) {
-    case IntSrc::DMA_SCSI_CURIO : return INT_TO_IRQ_ID(0x00);
-    case IntSrc::DMA_SWIM3      : return INT_TO_IRQ_ID(0x01);
-    case IntSrc::DMA_ETHERNET_Tx: return INT_TO_IRQ_ID(0x02);
-    case IntSrc::DMA_ETHERNET_Rx: return INT_TO_IRQ_ID(0x03);
-    case IntSrc::DMA_SCCA_Tx    : return INT_TO_IRQ_ID(0x04);
-    case IntSrc::DMA_SCCA_Rx    : return INT_TO_IRQ_ID(0x05);
-    case IntSrc::DMA_SCCB_Tx    : return INT_TO_IRQ_ID(0x06);
-    case IntSrc::DMA_SCCB_Rx    : return INT_TO_IRQ_ID(0x07);
-    case IntSrc::DMA_DAVBUS_Tx  : return INT_TO_IRQ_ID(0x08);
-    case IntSrc::DMA_DAVBUS_Rx  : return INT_TO_IRQ_ID(0x09);
-    case IntSrc::DMA_SCSI_MESH  : return INT_TO_IRQ_ID(0x0A);
-    default:
-        ABORT_F("%s: unknown DMA interrupt source %d", this->name.c_str(), src_id);
-    }
-    return 0;
+    this->add_intsrc(IntSrc::PIPPIN_F       , INT_TO_IRQ_ID(0x1D)); // EXT9
+    this->add_intsrc(IntSrc::PIPPIN_E       , INT_TO_IRQ_ID(0x1E)); // EXT10
 }
 
 void GrandCentral::ack_int_common(uint64_t irq_id, uint8_t irq_line_state) {

@@ -158,7 +158,8 @@ public:
     MacIoBase(std::string name, uint16_t dev_id, uint8_t rev=1);
     ~MacIoBase() = default;
 
-    uint64_t register_dma_int(IntSrc src_id) override;
+    // InterruptCtrl methods
+    void setup_intsrc_map();
     void ack_int(uint64_t irq_id, uint8_t irq_line_state) override;
     void ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) override;
 
@@ -214,8 +215,7 @@ public:
 
     // InterruptCtrl methods
 
-    uint64_t register_dev_int(IntSrc src_id) override;
-    uint64_t register_dma_int(IntSrc src_id) override;
+    void setup_intsrc_map();
     void ack_int(uint64_t irq_id, uint8_t irq_line_state) override;
     void ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) override;
 
@@ -373,8 +373,7 @@ public:
     void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
 
     // InterruptCtrl methods
-    uint64_t register_dev_int(IntSrc src_id) override;
-    uint64_t register_dma_int(IntSrc src_id) override;
+    void setup_intsrc_map();
 
 protected:
     uint32_t dma_read(uint32_t offset, int size);

@@ -174,7 +174,7 @@ PostInitResultType ControlVideo::device_postinit() {
 
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
-    this->irq_id = this->int_ctrl->register_dev_int(IntSrc::CONTROL);
+    this->irq_id = this->int_ctrl->register_int(IntSrc::CONTROL);
 
     this->vbl_cb = [this](uint8_t irq_line_state) {
         if (irq_line_state != !!(this->int_status & VBL_IRQ_STAT)) {

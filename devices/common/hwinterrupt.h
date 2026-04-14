@@ -22,7 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef HW_INTERRUPT_H
 #define HW_INTERRUPT_H
 
-#include <cinttypes>
+#include <devices/common/hwcomponent.h>
 
 #define DEBUG_CPU_INT // uncomment this to enable hacks for debugging HW interrupts
 
@@ -96,18 +96,24 @@ enum IntSrc : uint32_t {
 };
 
 /** Base class for interrupt controllers. */
-class InterruptCtrl {
+class InterruptCtrl : virtual public HWComponent {
 public:
     InterruptCtrl() = default;
     virtual ~InterruptCtrl() = default;
 
+    // register interrupt sources
+    void add_intsrc(IntSrc src_id, uint64_t irq_id);
+
     // register interrupt sources for a device
-    virtual uint64_t register_dev_int(IntSrc src_id) = 0;
-    virtual uint64_t register_dma_int(IntSrc src_id) = 0;
+    uint64_t register_int(IntSrc src_id);
 
     // acknowledge HW interrupt
     virtual void ack_int(uint64_t irq_id, uint8_t irq_line_state)     = 0;
     virtual void ack_dma_int(uint64_t irq_id, uint8_t irq_line_state) = 0;
+
+private:
+    std::map<IntSrc,uint64_t> int_src_to_irq_id;
+    std::map<uint64_t,IntSrc> irq_id_to_int_src;
 };
 
 typedef struct {

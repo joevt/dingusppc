@@ -35,26 +35,28 @@ namespace loguru {
 MacIoTwo::MacIoTwo(std::string name, uint16_t dev_id)
     : MacIoBase(name, dev_id), HWComponent(name)
 {
+    this->setup_intsrc_map();
+
     // NVRAM connection
     this->nvram = dynamic_cast<NVram*>(gMachineObj->get_comp_by_name("NVRAM"));
 
     // connect SCSI controller cell and its DMA channel
     this->mesh = dynamic_cast<MeshController*>(gMachineObj->get_comp_by_type(HWCompType::SCSI_HOST));
     this->mesh_dma = std::unique_ptr<DMAChannel> (new DMAChannel("mesh"));
-    this->mesh_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_SCSI_MESH));
+    this->mesh_dma->register_dma_int(this, this->register_int(IntSrc::DMA_SCSI_MESH));
     this->mesh_dma->connect(this->mesh);
     this->mesh->connect(this->mesh_dma.get());
 
     // connect IDE HW
     this->ide_0 = dynamic_cast<IdeChannel*>(gMachineObj->get_comp_by_name("Ide0"));
     this->ide0_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Ide0-Dma"));
-    this->ide0_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_IDE0));
+    this->ide0_dma->register_dma_int(this, this->register_int(IntSrc::DMA_IDE0));
     this->ide0_dma->connect(this->ide_0);
     this->ide_0->connect(this->ide0_dma.get());
 
     this->ide_1 = dynamic_cast<IdeChannel*>(gMachineObj->get_comp_by_name_optional("Ide1"));
     this->ide1_dma = std::unique_ptr<DMAChannel> (new DMAChannel("Ide1-Dma"));
-    this->ide1_dma->register_dma_int(this, this->register_dma_int(IntSrc::DMA_IDE1));
+    this->ide1_dma->register_dma_int(this, this->register_int(IntSrc::DMA_IDE1));
     if (this->ide_1) {
         this->ide1_dma->connect(this->ide_1);
         this->ide_1->connect(this->ide1_dma.get());
@@ -430,80 +432,58 @@ void MacIoTwo::feature_control(uint32_t value) {
     }
 }
 
-uint64_t MacIoTwo::register_dev_int(IntSrc src_id) {
-    if (this->device_id == MIO_DEV_ID_OHARE && src_id == ETHERNET) {
-        ABORT_F("%s: attempt to register non-existing Ethernet device int",
-                this->name.c_str());
-    }
+void MacIoTwo::setup_intsrc_map() {
+    this->add_intsrc(IntSrc::DMA_SCSI_MESH  , INT_TO_IRQ_ID(0x00));
+    this->add_intsrc(IntSrc::DMA_IDE0       , INT_TO_IRQ_ID(0x02));
+    this->add_intsrc(IntSrc::DMA_IDE1       , INT_TO_IRQ_ID(0x03));
 
-    switch (src_id) {
-    case IntSrc::SCSI_MESH  : return INT_TO_IRQ_ID(0x0C);
-    case IntSrc::IDE0       : return INT_TO_IRQ_ID(0x0D); // Beige G3 first IDE controller, or Yosemite ata-3
-    case IntSrc::IDE1       : return INT_TO_IRQ_ID(0x0E);
-    case IntSrc::SCCA       : return INT_TO_IRQ_ID(0x0F);
-    case IntSrc::SCCB       : return INT_TO_IRQ_ID(0x10);
-    case IntSrc::DAVBUS     : return INT_TO_IRQ_ID(0x11);
-    case IntSrc::VIA_CUDA   : return INT_TO_IRQ_ID(0x12);
-    case IntSrc::SWIM3      : return INT_TO_IRQ_ID(0x13);
-    case IntSrc::NMI        : return INT_TO_IRQ_ID(0x14); // nmiSource in AppleHeathrow/Heathrow.cpp; programmer-switch in B&W G3
+    this->add_intsrc(IntSrc::SCSI_MESH      , INT_TO_IRQ_ID(0x0C));
+    this->add_intsrc(IntSrc::IDE0           , INT_TO_IRQ_ID(0x0D)); // Beige G3 first IDE controller, or Yosemite ata-3
+    this->add_intsrc(IntSrc::IDE1           , INT_TO_IRQ_ID(0x0E));
+    this->add_intsrc(IntSrc::SCCA           , INT_TO_IRQ_ID(0x0F));
+    this->add_intsrc(IntSrc::SCCB           , INT_TO_IRQ_ID(0x10));
+    this->add_intsrc(IntSrc::DAVBUS         , INT_TO_IRQ_ID(0x11));
+    this->add_intsrc(IntSrc::VIA_CUDA       , INT_TO_IRQ_ID(0x12));
+    this->add_intsrc(IntSrc::SWIM3          , INT_TO_IRQ_ID(0x13));
+    this->add_intsrc(IntSrc::NMI            , INT_TO_IRQ_ID(0x14)); // nmiSource in Heathrow.cpp; programmer-switch in B&W G3
 
-    case IntSrc::BANDIT1    : return INT_TO_IRQ_ID(0x16);
-    case IntSrc::PCI_E      : return (this->device_id == MIO_DEV_ID_OHARE)
-                                   ? INT_TO_IRQ_ID(0x16) // same interrupt as bandit
-                                   : INT_TO_IRQ_ID(0x18); // Lombard GPU
-    case IntSrc::PCI_F      : return INT_TO_IRQ_ID(0x18);
-    case IntSrc::PCI_A      : return INT_TO_IRQ_ID(0x17);
-    case IntSrc::PCI_B      : return (this->device_id == MIO_DEV_ID_OHARE)
-                                   ? INT_TO_IRQ_ID(0x19)
-                                   : INT_TO_IRQ_ID(0x18);
-//  case IntSrc::???        : return INT_TO_IRQ_ID(0x1A);
-//  case IntSrc::???        : return INT_TO_IRQ_ID(0x1B);
-    case IntSrc::PCI_C      : return (this->device_id == MIO_DEV_ID_OHARE)
-                                   ? INT_TO_IRQ_ID(0x1C)
-                                   : INT_TO_IRQ_ID(0x19);
+    this->add_intsrc(IntSrc::BANDIT1        , INT_TO_IRQ_ID(0x16));
+    this->add_intsrc(IntSrc::PCI_E          , (this->device_id == MIO_DEV_ID_OHARE)
+                                            ? INT_TO_IRQ_ID(0x16) // same interrupt as bandit
+                                            : INT_TO_IRQ_ID(0x18)); // Lombard GPU
+    this->add_intsrc(IntSrc::PCI_F          , INT_TO_IRQ_ID(0x18));
+    this->add_intsrc(IntSrc::PCI_A          , INT_TO_IRQ_ID(0x17));
+    this->add_intsrc(IntSrc::PCI_B          , (this->device_id == MIO_DEV_ID_OHARE)
+                                            ? INT_TO_IRQ_ID(0x19)
+                                            : INT_TO_IRQ_ID(0x18));
+//  this->add_intsrc(IntSrc::???            , INT_TO_IRQ_ID(0x1A));
+//  this->add_intsrc(IntSrc::???            , INT_TO_IRQ_ID(0x1B));
+    this->add_intsrc(IntSrc::PCI_C          , (this->device_id == MIO_DEV_ID_OHARE)
+                                            ? INT_TO_IRQ_ID(0x1C)
+                                            : INT_TO_IRQ_ID(0x19));
 
-    case IntSrc::PERCH2     : return INT_TO_IRQ_ID(0x15);
-    case IntSrc::PCI_GPU    : return INT_TO_IRQ_ID(0x16);
-    case IntSrc::PCI_CARDBUS: return INT_TO_IRQ_ID(0x16); // Lombard
-    case IntSrc::PERCH1     : return INT_TO_IRQ_ID(0x1A);
-    case IntSrc::PCI_PERCH  : return INT_TO_IRQ_ID(0x1C);
+    this->add_intsrc(IntSrc::PERCH2         , INT_TO_IRQ_ID(0x15));
+    this->add_intsrc(IntSrc::PCI_GPU        , INT_TO_IRQ_ID(0x16));
+    this->add_intsrc(IntSrc::PCI_CARDBUS    , INT_TO_IRQ_ID(0x16)); // Lombard
+    this->add_intsrc(IntSrc::PERCH1         , INT_TO_IRQ_ID(0x1A));
+    this->add_intsrc(IntSrc::PCI_PERCH      , INT_TO_IRQ_ID(0x1C));
 
-    case IntSrc::FIREWIRE   : return INT_TO_IRQ_ID(0x15); // Yosemite built-in PCI FireWire
-    case IntSrc::PCI_J12    : return INT_TO_IRQ_ID(0x16); // Yosemite 32-bit 66MHz slot for GPU
-    case IntSrc::PCI_J11    : return INT_TO_IRQ_ID(0x17); // Yosemite 64-bit 33MHz slot
-    case IntSrc::PCI_J10    : return INT_TO_IRQ_ID(0x18); // Yosemite 64-bit 33MHz slot
-    case IntSrc::PCI_J9     : return INT_TO_IRQ_ID(0x19); // Yosemite 64-bit 33MHz slot
-    case IntSrc::ATA        : return INT_TO_IRQ_ID(0x1A); // Yosemite PCI pci-ata
-    case IntSrc::ZIVA       : return INT_TO_IRQ_ID(0x1A); // Lombard ZiVA DVD Decoder
-    case IntSrc::USB        : return INT_TO_IRQ_ID(0x1C); // Yosemite/Lombard PCI USB
-    case IntSrc::MEDIA_BAY  : return INT_TO_IRQ_ID(0x1D); // Lombard
+    this->add_intsrc(IntSrc::FIREWIRE       , INT_TO_IRQ_ID(0x15)); // Yosemite built-in PCI FireWire
+    this->add_intsrc(IntSrc::PCI_J12        , INT_TO_IRQ_ID(0x16)); // Yosemite 32-bit 66MHz slot for GPU
+    this->add_intsrc(IntSrc::PCI_J11        , INT_TO_IRQ_ID(0x17)); // Yosemite 64-bit 33MHz slot
+    this->add_intsrc(IntSrc::PCI_J10        , INT_TO_IRQ_ID(0x18)); // Yosemite 64-bit 33MHz slot
+    this->add_intsrc(IntSrc::PCI_J9         , INT_TO_IRQ_ID(0x19)); // Yosemite 64-bit 33MHz slot
+    this->add_intsrc(IntSrc::ATA            , INT_TO_IRQ_ID(0x1A)); // Yosemite PCI pci-ata
+    this->add_intsrc(IntSrc::ZIVA           , INT_TO_IRQ_ID(0x1A)); // Lombard ZiVA DVD Decoder
+    this->add_intsrc(IntSrc::USB            , INT_TO_IRQ_ID(0x1C)); // Yosemite/Lombard PCI USB
+    this->add_intsrc(IntSrc::MEDIA_BAY      , INT_TO_IRQ_ID(0x1D)); // Lombard
 
-    case IntSrc::ETHERNET   : return INT_TO_IRQ_ID(0x2A);
+    if (this->device_id == MIO_DEV_ID_OHARE)
+        return;
 
-    default:
-        ABORT_F("%s: unknown interrupt source %d", this->name.c_str(), src_id);
-    }
-
-    return 0;
-}
-
-uint64_t MacIoTwo::register_dma_int(IntSrc src_id) {
-    if (this->device_id == MIO_DEV_ID_OHARE &&
-        (src_id == IntSrc::DMA_ETHERNET_Tx || src_id == IntSrc::DMA_ETHERNET_Rx)) {
-        ABORT_F("%s: attempt to register non-existing Ethernet DMA int", this->name.c_str());
-    }
-
-    switch (src_id) {
-    case IntSrc::DMA_SCSI_MESH      : return INT_TO_IRQ_ID(0x00);
-    case IntSrc::DMA_IDE0           : return INT_TO_IRQ_ID(0x02);
-    case IntSrc::DMA_IDE1           : return INT_TO_IRQ_ID(0x03);
-    case IntSrc::DMA_ETHERNET_Tx    : return INT_TO_IRQ_ID(0x20);
-    case IntSrc::DMA_ETHERNET_Rx    : return INT_TO_IRQ_ID(0x21);
-    default:
-        return MacIoBase::register_dma_int(src_id);
-    }
-
-    return 0;
+    this->add_intsrc(IntSrc::DMA_ETHERNET_Tx, INT_TO_IRQ_ID(0x20));
+    this->add_intsrc(IntSrc::DMA_ETHERNET_Rx, INT_TO_IRQ_ID(0x21));
+    this->add_intsrc(IntSrc::ETHERNET       , INT_TO_IRQ_ID(0x2A));
 }
 
 //===========================================================================
