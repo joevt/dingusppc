@@ -334,7 +334,7 @@ void EventManager::poll_events() {
                         LOG_F(INFO, "CUDA interrupt");
                         InterruptCtrl* int_ctrl = dynamic_cast<InterruptCtrl*>(
                             gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
-                        int_ctrl->ack_int(int_ctrl->register_dev_int(IntSrc::VIA_CUDA), 1);
+                        int_ctrl->ack_int(int_ctrl->register_int(IntSrc::VIA_CUDA), 1);
                     }
                     return;
                 }
