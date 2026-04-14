@@ -146,7 +146,7 @@ bool PCIHost::register_pci_int(PCIBase* dev_instance) {
         IntDetails new_int_detail;
         new_int_detail.int_ctrl_obj = this->get_interrupt_controller();
         if (new_int_detail.int_ctrl_obj && irq.int_src)
-            new_int_detail.irq_id = new_int_detail.int_ctrl_obj->register_dev_int(irq.int_src);
+            new_int_detail.irq_id = new_int_detail.int_ctrl_obj->register_int(irq.int_src);
         dev_instance->set_int_details(new_int_detail);
         return true;
     }
