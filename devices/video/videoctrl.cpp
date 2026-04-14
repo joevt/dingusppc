@@ -100,6 +100,10 @@ void VideoCtrlBase::set_cursor_dirty() {
     this->cursor_dirty = true;
 }
 
+void VideoCtrlBase::set_cursor_enable(bool enable) {
+    this->vidc_cursor_on = enable;
+}
+
 void VideoCtrlBase::start_refresh_task() {
     if (this->vert_blank == 0) {
         LOG_F(ERROR, "Vertical blank is 0. Using 25 instead.");
