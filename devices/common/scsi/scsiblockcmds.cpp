@@ -79,6 +79,8 @@ void ScsiBlockCmds::init_block_device(uint8_t medium_type, uint8_t dev_flags,
 }
 
 void ScsiBlockCmds::process_command() {
+    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: ScsiBlockCmds::process_command 0x%X",
+        dynamic_cast<HWComponent*>(this)->get_name_and_unit_address().c_str(), cdb_ptr[0]);
     int next_phase;
 
     // use non-disk buffer by default
