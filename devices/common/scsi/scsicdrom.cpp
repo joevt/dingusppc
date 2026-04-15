@@ -65,7 +65,8 @@ HWComponent* ScsiCdrom::set_property(const std::string &property, const std::str
 }
 
 void ScsiCdrom::process_command() {
-    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: process_command 0x%X", this->get_name_and_unit_address().c_str(), cmd_buf[0]);
+    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: ScsiCdrom::process_command 0x%X",
+        this->get_name_and_unit_address().c_str(), cmd_buf[0]);
 
     uint32_t lba;
 

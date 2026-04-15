@@ -32,6 +32,9 @@ ScsiCommonCmds::ScsiCommonCmds() {
 }
 
 void ScsiCommonCmds::process_command() {
+    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: ScsiCommonCmds::process_command 0x%X",
+        dynamic_cast<HWComponent*>(this)->get_name_and_unit_address().c_str(), cdb_ptr[0]);
+
     int next_phase;
 
     switch(this->cdb_ptr[0]) {

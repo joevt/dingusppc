@@ -88,6 +88,9 @@ void ScsiHardDisk::insert_image(std::string filename) {
 }
 
 void ScsiHardDisk::process_command() {
+    VLOG_SCOPE_F(loguru::Verbosity_WARNING, "%s: ScsiHardDisk::process_command 0x%X",
+        dynamic_cast<HWComponent*>(this)->get_name_and_unit_address().c_str(), cdb_ptr[0]);
+
     uint32_t lba;
 
     if (this->verify_cdb() < 0) {
