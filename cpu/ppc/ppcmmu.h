@@ -73,6 +73,7 @@ typedef struct PATResult {
 /** DMA memory mapping result. */
 typedef struct MapDmaResult {
     uint32_t    type;
+    uint32_t    size;
     bool        is_writable;
     // for memory regions
     uint8_t*    host_va;
@@ -96,7 +97,8 @@ extern BatUpdateCallback dbat_update;
 extern PPC_BAT_entry ibat_array[4];
 extern PPC_BAT_entry dbat_array[4];
 
-extern MapDmaResult mmu_map_dma_mem(uint32_t addr, uint32_t size, bool allow_mmio = false, bool is_dbg = false);
+extern MapDmaResult mmu_map_dma_mem(uint32_t addr, uint32_t size,
+    bool allow_mmio = false, bool allow_partial = false, bool is_dbg = false);
 
 extern uint8_t CurITLBMode;
 extern uint8_t CurDTLBMode;
