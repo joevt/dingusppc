@@ -114,14 +114,22 @@ int ScsiCommonCmds::verify_cdb() {
 int ScsiCommonCmds::test_unit_ready() {
     // Assume that LUN is okay and the status has been set to GOOD
 
+    int next_phase = ScsiPhase::STATUS;
+    ready_for_command(ScsiCommand::TEST_UNIT_READY, next_phase);
+    return next_phase;
+}
+
+bool ScsiCommonCmds::ready_for_command(uint8_t cmd, int &next_phase) {
     if (!phy_impl->is_device_ready()) {
         this->sense_key = ScsiSense::NOT_READY;
         this->asc       = phy_impl->not_ready_reason();
         this->ascq      = 0;
         phy_impl->set_status(ScsiStatus::CHECK_CONDITION);
+        next_phase = ScsiPhase::STATUS;
+        return false;
     }
 
-    return ScsiPhase::STATUS;
+    return true;
 }
 
 int ScsiCommonCmds::inquiry_new() {
