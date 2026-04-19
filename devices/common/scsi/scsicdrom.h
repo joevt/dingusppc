@@ -44,6 +44,10 @@ public:
 
 protected:
     bool is_device_ready() override { return this->is_ready; }
+    uint8_t not_ready_reason() override {
+        if (!this->medium_present())
+            return ScsiError::MEDIUM_NOT_PRESENT;
+    }
 
     void mode_select_6(uint8_t param_len);
 
