@@ -49,6 +49,10 @@ public:
 
 protected:
     bool is_device_ready() override { return this->is_ready; }
+    uint8_t not_ready_reason() override {
+        if (!this->medium_present())
+            return ScsiError::MEDIUM_NOT_PRESENT;
+    }
 
     int  get_apple_page_49(uint8_t subpage, uint8_t ctrl, uint8_t *out_ptr,
                           int avail_len);

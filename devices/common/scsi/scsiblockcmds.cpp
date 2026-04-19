@@ -90,6 +90,8 @@ void ScsiBlockCmds::process_command() {
     case ScsiCommand::READ_6:
     case ScsiCommand::READ_10:
     case ScsiCommand::READ_12:
+        if (!ready_for_command(cdb_ptr[0], next_phase))
+            break;
         next_phase = this->read_new();
         break;
     case ScsiCommand::WRITE_6:

@@ -97,6 +97,7 @@ protected:
     virtual void     invalid_cdb();
     virtual void     invalid_command();
     virtual void     illegal_request(uint8_t asc, uint8_t ascq, bool is_cdb = true);
+    virtual bool     ready_for_command(uint8_t cmd, int &next_phase);
 
     int get_one_page(uint8_t ctrl, uint8_t page, uint8_t subpage, uint8_t* out_ptr,
                      int avail_len);
