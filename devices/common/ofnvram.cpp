@@ -627,6 +627,56 @@ static std::string ReplaceAll(std::string& str, const std::string& from, const s
     return str;
 }
 
+static std::string decode_binary(std::string& str) {
+    size_t start_pos = 0;
+    while((start_pos = str.find('\xff', start_pos)) != std::string::npos) {
+        if (start_pos + 1 < str.length()) {
+            uint8_t what = str[start_pos + 1];
+            std::string to(what & 0x7F, what & 0x80 ? 0xFF : 0x00);
+            str.replace(start_pos, 2, to);
+            start_pos += to.length();
+        }
+    }
+    return str;
+}
+
+extern std::string hex_string(const uint8_t *p, int len);
+
+static std::string format_aapl_pci(std::string& str) {
+    decode_binary(str);
+
+    size_t start_pos = 0;
+    do {
+        if (start_pos > 0) {
+            str.replace(start_pos, 0, "\n");
+            start_pos += 1;
+        }
+
+        if ((start_pos = str.find('\x00', start_pos)) == std::string::npos)
+            break;
+        str.replace(start_pos, 1, ":\n");
+        start_pos += 2;
+
+        size_t property_name_pos = start_pos;
+        if ((start_pos = str.find('\x00', start_pos)) == std::string::npos)
+            break;
+        std::string to(std::max(int(24 - start_pos + property_name_pos), 1), ' ');
+        str.replace(start_pos, 1, to);
+        start_pos += to.length();
+
+        size_t property_val_pos = start_pos;
+        if ((start_pos = str.find('\x00', start_pos)) == std::string::npos)
+            break;
+        int property_len = int(start_pos - property_val_pos);
+        std::string property_str = str.substr(property_val_pos, property_len);
+        decode_binary(property_str);
+        to = hex_string((uint8_t*)property_str.c_str(), (int)property_str.length());
+        str.replace(property_val_pos, property_len, to);
+        start_pos += to.length();
+    } while (start_pos < str.length());
+    return str;
+}
+
 void OfConfigUtils::printenv() {
     if (!this->open_container())
         return;
@@ -635,8 +685,12 @@ void OfConfigUtils::printenv() {
 
     for (auto& var : vars) {
         std::string val = var.second;
-        ReplaceAll(val, "\r\n", "\n");
-        ReplaceAll(val, "\r", "\n");
+        if (var.first == "aapl,pci") {
+            format_aapl_pci(val);
+        } else {
+            ReplaceAll(val, "\r\n", "\n");
+            ReplaceAll(val, "\r", "\n");
+        }
         ReplaceAll(val, "\n", "\n                                  "); // 34 spaces
         cout << setw(34) << left << var.first << val << right << endl; // name column has width 34
     }
