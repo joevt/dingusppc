@@ -215,6 +215,11 @@ void AtapiCdrom::perform_packet_command() {
         #endif
         break;
     case ScsiCommand::READ_12:
+        if (!this->medium_present()) {
+            this->status_error(ScsiSense::NOT_READY, ScsiError::MEDIUM_NOT_PRESENT);
+            this->present_status();
+            break;
+        }
         lba      = READ_DWORD_BE_U(&this->cmd_pkt[2]);
         xfer_len = READ_DWORD_BE_U(&this->cmd_pkt[6]);
 
