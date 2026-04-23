@@ -76,6 +76,8 @@ public:
         this->video_ctrl = video_ctrl;
     }
     uint8_t read_monitor_sense(uint8_t levels, uint8_t dirs);
+    uint8_t get_edid_byte(int pos) { return this->edid ? this->edid[pos % this->edid_length] : 0xff; }
+    int     get_edid_length() { return this->edid_length; }
 
 protected:
     uint8_t set_result(uint8_t sda, uint8_t scl);
