@@ -50,7 +50,7 @@ rewritten to match the ATIRage / AtiMach64Gx patterns in this codebase.
  * draw_hardware_cursor()     → draw_hw_cursor(dst_buf, dst_pitch)
  * bx_ddc_c ddc               → std::unique_ptr<DisplayID> disp_id
  * init_bar_mem(n,sz,rh,wh)   → bars_cfg[]+finish_config_bars()+notify_bar_change
- * init_pci_conf(vid,did,...)  → this->vendor_id / device_id / class_rev / irq_pin
+ * init_pci_conf(vid,did,...) → this->vendor_id / device_id / class_rev / irq_pin
  * pci_write_handler()        → pci_cfg_write() in PCIDevice base
  * BX_GEFORCE_SMF             → (removed — always instance methods)
  *
@@ -1014,7 +1014,7 @@ uint8_t NvidiaNV::ddc_i2c_read()
 {
     // bit 2 = SCL_in, bit 3 = SDA_in (wired-AND of master and device)
     uint8_t val = 0;
-    if (ddc_i2c.last_scl)                        val |= 0x04;
+    if (ddc_i2c.last_scl)                         val |= 0x04;
     if (ddc_i2c.master_sda && ddc_i2c.device_sda) val |= 0x08;
     return val;
 }
