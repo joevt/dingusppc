@@ -51,6 +51,7 @@ Ported from Bochs bx_geforce_c (Copyright 2025-2026 The Bochs Project, LGPL v2+)
 #define NV_SUBCHANNEL_COUNT 8
 #define NV_CACHE1_SIZE      64
 #define NV_CRTC_EXT_MAX     0xF0
+#define NV_USE_CUSTOM_DDC   0
 
 enum NvCardType : uint32_t {
     NV_TYPE_NV15 = 0x15,
@@ -414,6 +415,7 @@ private:
 
     DisplayID* disp_id = nullptr;
 
+#if NV_USE_CUSTOM_DDC
     // Custom I2C DDC state machine
     enum DdcState { DDC_IDLE, DDC_START, DDC_ADDR, DDC_ACK_ADDR, DDC_REG, DDC_ACK_REG, DDC_DATA, DDC_ACK_DATA, DDC_NACK };
     struct {
@@ -426,6 +428,9 @@ private:
         bool device_sda = true;
         bool stop_suppress = false;
     } ddc_i2c;
+#else
+    uint8_t mon_sense = 0;
+#endif
     void     ddc_i2c_write(bool scl, bool sda);
     uint8_t  ddc_i2c_read();
 };
