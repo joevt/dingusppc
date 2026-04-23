@@ -412,7 +412,7 @@ private:
         bool bpp32 = false, enabled = false;
     } hw_cursor;
 
-    std::unique_ptr<DisplayID> disp_id;
+    DisplayID* disp_id = nullptr;
 
     // Custom I2C DDC state machine
     enum DdcState { DDC_IDLE, DDC_START, DDC_ADDR, DDC_ACK_ADDR, DDC_REG, DDC_ACK_REG, DDC_DATA, DDC_ACK_DATA, DDC_NACK };
