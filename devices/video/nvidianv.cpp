@@ -187,7 +187,6 @@ NvidiaNV::NvidiaNV(NvCardType type)
     // std::out_of_range. The ROM attachment is deferred to device_postinit().
 
     // ---- DDC / display identification ----
-    this->disp_id = std::make_unique<DisplayID>("display-id");
     crtc_ext.reg[0x3E] = 0x0C;  // DDC idle: both SCL/SDA high
 
     // ---- VRAM allocation ----
@@ -222,27 +221,8 @@ NvidiaNV::NvidiaNV(NvCardType type)
 
 PostInitResultType NvidiaNV::device_postinit()
 {
-    // On JoeVT's branch, properties are safe to query here but not reliably in the
-    // constructor. Try the configured ROM name first; if that property is absent,
-    // fall back to a sensible card-specific default instead of throwing.
-    std::string rom_name;
-    try {
-        rom_name = GET_STR_PROP("rom_id");
-    } catch (const std::out_of_range&) {
-        switch (card_type) {
-        case NV_TYPE_NV15: rom_name = "GF2MX.rom"; break;
-        case NV_TYPE_NV20: rom_name = "GF3.rom"; break;
-        case NV_TYPE_NV35: rom_name = "FX5900.rom"; break;
-        case NV_TYPE_NV40: rom_name = "6800GT.rom"; break;
-        default: break;
-        }
-    }
-    if (!rom_name.empty()) {
-        if (this->attach_exp_rom_image(rom_name)) {
-            LOG_F(WARNING, "%s: could not load FCode ROM '%s' — Open Firmware init may fail!",
-                  this->name.c_str(), rom_name.c_str());
-        }
-    }
+    // ---- DDC / display identification ----
+    this->disp_id = dynamic_cast<DisplayID*>(this->get_comp_by_type(HWCompType::DISPLAY));
 
     // VBL callback: raise PCRTC_INTR_VBLANK on each vertical blank.
     this->vbl_cb = [this](uint8_t irq_line_state) {
@@ -832,25 +812,6 @@ uint64_t NvidiaNV::get_current_time() {
 // device holds SDA=0, so the bus SDA stays 0 regardless of master release.
 // ============================================================================
 
-static const uint8_t nv_edid[128] = {
-    0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00,
-    0x34, 0x38, 0x09, 0x06, 0x1B, 0x06, 0x00, 0x00,
-    0x03, 0x0C, 0x01, 0x02, 0x68, 0x1E, 0x17, 0x78,
-    0xEA, 0x6D, 0x8C, 0x98, 0x59, 0x50, 0x93, 0x26,
-    0x20, 0x4C, 0x52, 0xFF, 0xFF, 0xFF, 0x31, 0x4F,
-    0x45, 0x4F, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0xC3, 0x1E,
-    0x00, 0x20, 0x41, 0x00, 0x20, 0x30, 0x10, 0x60,
-    0x13, 0x00, 0x30, 0xE4, 0x10, 0x00, 0x00, 0x1E,
-    0x00, 0x00, 0x00, 0xFD, 0x00, 0x37, 0x4B, 0x1F,
-    0x3C, 0x08, 0x00, 0x0A, 0x20, 0x20, 0x20, 0x20,
-    0x20, 0x20, 0x00, 0x00, 0x00, 0xFC, 0x00, 0x31,
-    0x30, 0x20, 0x31, 0x35, 0x20, 0x34, 0x35, 0x0A,
-    0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0xFE,
-    0x00, 0x4D, 0x61, 0x78, 0x64, 0x61, 0x74, 0x61,
-    0x31, 0x30, 0x31, 0x35, 0x34, 0x35, 0x00, 0xA4
-};
-
 void NvidiaNV::ddc_i2c_write(bool scl, bool sda)
 {
     auto &s = ddc_i2c;
@@ -939,7 +900,7 @@ void NvidiaNV::ddc_i2c_write(bool scl, bool sda)
             if (s.dev_addr & 1) {
                 // Read — prepare EDID byte, first bit sent on next clock
                 s.state = DDC_DATA;
-                s.byte = nv_edid[s.data_pos & 0x7F];
+                s.byte = disp_id->get_edid_byte(s.data_pos);
                 LOG_F(INFO, "%s: DDC ACK_ADDR(rd) → DATA byte[%d]=0x%02x dev_sda=%d",
                       name.c_str(), s.data_pos, s.byte, s.device_sda);
             } else {
@@ -983,7 +944,7 @@ void NvidiaNV::ddc_i2c_write(bool scl, bool sda)
             if (!bus_sda) {
                 // Master ACK — send next byte
                 s.bit_count = 0;
-                s.byte = nv_edid[s.data_pos & 0x7F];
+                s.byte = disp_id->get_edid_byte(s.data_pos);
                 if (big_endian_mode && s.data_pos < 20) {
                     LOG_F(INFO, "%s: DDC EDID byte[%d]=0x%02x",
                           name.c_str(), s.data_pos, s.byte);
@@ -2248,41 +2209,69 @@ uint32_t NvidiaNV::d3d_get_surface_pitch_z(NvChannel *) { return 0; }
 // ============================================================================
 // Device registration
 //
-// "NvidiaNV_NV20" is the device name used in the machine JSON config.
-// The B&W G3 (Yosemite) config entry should look like:
-//
-//   { "device_type": "NvidiaNV_NV20", "slot": "<machine PCI slot>",
-//     "gfxmem_size": 64, "mon_id": "" }
-//
 // ============================================================================
 
-static const PropMap NvidiaNV_NV20_Properties = {
-    {"gfxmem_size",
-        new IntProperty(64, std::vector<uint32_t>({64}))},
-    {"rom_id",
-        new StrProperty("GF3.rom")},
-    {"mon_id",
-        new StrProperty("")},
-};
-
-static const DeviceDescription NvidiaNV_NV20_Descriptor = {
-    NvidiaNV::create_nv20, {}, NvidiaNV_NV20_Properties,
-    HWCompType::MMIO_DEV | HWCompType::PCI_DEV
-};
-
-REGISTER_DEVICE(NvidiaNV_NV20, NvidiaNV_NV20_Descriptor);
-
-// Additional models — add as needed
-static const PropMap NvidiaNV_NV15_Properties = {
+static const PropMap Nv15_Properties = {
     {"gfxmem_size", new IntProperty(64, std::vector<uint32_t>({64}))},
-    {"rom_id",      new StrProperty("GF3.rom")},
-    {"mon_id",      new StrProperty("")},
+    {"rom",         new StrProperty("GF2MX.rom")},
 };
-static const DeviceDescription NvidiaNV_NV15_Descriptor = {
-    NvidiaNV::create_nv15, {}, NvidiaNV_NV15_Properties,
+
+static const DeviceDescription Nv15_Descriptor = {
+    NvidiaNV::create_nv15, {"NvVideoDisplay@0"}, Nv15_Properties,
     HWCompType::MMIO_DEV | HWCompType::PCI_DEV
 };
-REGISTER_DEVICE(NvidiaNV_NV15, NvidiaNV_NV15_Descriptor);
+
+REGISTER_DEVICE(Nv15, Nv15_Descriptor);
+
+static const PropMap Nv20_Properties = {
+    {"gfxmem_size", new IntProperty(64, std::vector<uint32_t>({64}))},
+    {"rom",         new StrProperty("GF3.rom")},
+};
+
+static const DeviceDescription Nv20_Descriptor = {
+    NvidiaNV::create_nv20, {"NvVideoDisplay@0"}, Nv20_Properties,
+    HWCompType::MMIO_DEV | HWCompType::PCI_DEV
+};
+
+REGISTER_DEVICE(Nv20, Nv20_Descriptor);
+
+static const PropMap Nv35_Properties = {
+    {"gfxmem_size", new IntProperty(64, std::vector<uint32_t>({64}))},
+    {"rom",         new StrProperty("FX5900.rom")},
+};
+
+static const DeviceDescription Nv35_Descriptor = {
+    NvidiaNV::create_nv35, {"NvVideoDisplay@0"}, Nv35_Properties,
+    HWCompType::MMIO_DEV | HWCompType::PCI_DEV
+};
+
+REGISTER_DEVICE(Nv35, Nv35_Descriptor);
+
+static const PropMap Nv40_Properties = {
+    {"gfxmem_size", new IntProperty(64, std::vector<uint32_t>({64}))},
+    {"rom",         new StrProperty("6800GT.rom")},
+};
+
+static const DeviceDescription Nv40_Descriptor = {
+    NvidiaNV::create_nv40, {"NvVideoDisplay@0"}, Nv40_Properties,
+    HWCompType::MMIO_DEV | HWCompType::PCI_DEV
+};
+
+REGISTER_DEVICE(Nv40, Nv40_Descriptor);
+
+static std::unique_ptr<HWComponent> NvVideoDisplay_create(const std::string &dev_name) {
+    return std::unique_ptr<DisplayID>(new DisplayID(dev_name));
+}
+
+static const PropMap NvVideoDisplay_Properties = {
+    {"edid"  , new StrProperty("")},
+};
+
+static const DeviceDescription NvVideoDisplay_Descriptor = {
+    NvVideoDisplay_create, {}, NvVideoDisplay_Properties, HWCompType::DISPLAY
+};
+
+REGISTER_DEVICE(NvVideoDisplay, NvVideoDisplay_Descriptor);
 
 
 
