@@ -814,6 +814,7 @@ uint64_t NvidiaNV::get_current_time() {
 
 void NvidiaNV::ddc_i2c_write(bool scl, bool sda)
 {
+#if NV_USE_CUSTOM_DDC
     auto &s = ddc_i2c;
     s.master_sda = sda;  // track raw master SDA
 
@@ -969,14 +970,24 @@ void NvidiaNV::ddc_i2c_write(bool scl, bool sda)
 
     s.last_scl = bus_scl;
     s.last_sda = bus_sda;
+#else
+    uint8_t mon_levels = (scl << 1) | (sda << 2);
+    uint8_t mon_dirs = 6;
+    this->mon_sense = this->disp_id->read_monitor_sense(mon_levels, mon_dirs);
+#endif
 }
 
 uint8_t NvidiaNV::ddc_i2c_read()
 {
     // bit 2 = SCL_in, bit 3 = SDA_in (wired-AND of master and device)
     uint8_t val = 0;
+#if NV_USE_CUSTOM_DDC
     if (ddc_i2c.last_scl)                         val |= 0x04;
     if (ddc_i2c.master_sda && ddc_i2c.device_sda) val |= 0x08;
+#else
+    if (this->mon_sense & 2)                      val |= 0x04;
+    if (this->mon_sense & 4)                      val |= 0x08;
+#endif
     return val;
 }
 
