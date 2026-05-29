@@ -302,7 +302,7 @@ void ScsiPhysDevice::process_message() {
     static int sdtr_response_seq[4] = {ScsiPhase::MESSAGE_OUT, ScsiPhase::MESSAGE_IN,
                                        ScsiPhase::COMMAND, -1};
 
-    if (this->msg_buf[0] == 1) { // extended messages
+    if (this->msg_buf[0] == ScsiMessage::EXTENDED_MESSAGE) {
         if (!this->bus_obj->pull_data(this->initiator_id, &this->msg_buf[1], 1) ||
             !this->bus_obj->pull_data(this->initiator_id, &this->msg_buf[2], this->msg_buf[1]))
             ABORT_F("%s: incomplete message received", this->get_name_and_unit_address().c_str());
