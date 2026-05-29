@@ -325,6 +325,8 @@ void ScsiPhysDevice::process_message() {
     } else if ((this->msg_buf[0] >> 4) == 2) { // two-byte messages
         if (!this->bus_obj->pull_data(this->initiator_id, &this->msg_buf[1], 1))
             ABORT_F("%s: incomplete message received", this->get_name_and_unit_address().c_str());
+        LOG_F(ERROR, "%s: unsupported two-byte message %s", this->get_name_and_unit_address().c_str(),
+            hex_string(&this->msg_buf[0], 2).c_str());
     }
 }
 
