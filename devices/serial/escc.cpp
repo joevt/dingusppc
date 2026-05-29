@@ -347,6 +347,10 @@ void EsccChannel::write_reg(int reg_num, uint8_t value)
             this->read_regs[RR0] |= RR0_SYNC_HUNT;
         }
         break;
+    case WR7:
+        break;
+    case WR7Prime:
+        break;
     case WR8:
         this->send_byte(value);
         return;
