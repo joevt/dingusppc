@@ -150,7 +150,7 @@ TLBEntry* dtlb2_refill(uint32_t guest_va, int is_write, bool is_dbg = false);
 extern uint64_t mem_read_dbg(uint32_t virt_addr, uint32_t size);
 extern void mem_write_dbg(uint32_t virt_addr, uint64_t value, int size);
 uint8_t *mmu_translate_imem(uint32_t vaddr, uint32_t *paddr = nullptr);
-bool mmu_translate_dbg(uint32_t guest_va, uint32_t &guest_pa);
+bool mmu_translate_dbg(uint32_t guest_va, uint32_t &guest_pa, int is_write = 0);
 
 template <class T>
 extern T mmu_read_vmem(uint32_t opcode, uint32_t guest_va);
