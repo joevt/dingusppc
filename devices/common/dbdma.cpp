@@ -280,6 +280,10 @@ void DMAChannel::xfer_quad(const DMACmd *cmd_desc, DMACmd *cmd_host) {
                 case 2: WRITE_WORD_LE_A(res.host_va, cmd_desc->cmd_arg); break;
                 case 4: WRITE_DWORD_LE_A(res.host_va, cmd_desc->cmd_arg); break;
             }
+            LOG_F(DBDMA, "%s: STORE_QUAD 0x%08x.%c = %0*x", this->get_name().c_str(), addr,
+                SIZE_ARG(xfer_size), xfer_size * 2,
+                uint32_t(cmd_desc->cmd_arg & ((uint64_t(1) << (xfer_size * 8)) - 1))
+            );
         } else {
             LOG_F(ERROR, "SOS: DMA access is not to RAM %08X!\n", addr);
         }
