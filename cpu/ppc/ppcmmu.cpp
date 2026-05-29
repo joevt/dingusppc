@@ -2275,7 +2275,7 @@ void mem_write_dbg(uint32_t virt_addr, uint64_t value, int size) {
     ppc_state.spr[SPR::DAR]   = save_dar;
 }
 
-bool mmu_translate_dbg(uint32_t guest_va, uint32_t &guest_pa) {
+bool mmu_translate_dbg(uint32_t guest_va, uint32_t &guest_pa, int is_write) {
     uint32_t save_dsisr, save_dar;
     bool is_mapped;
 
@@ -2299,7 +2299,7 @@ bool mmu_translate_dbg(uint32_t guest_va, uint32_t &guest_pa) {
                 if (tlb2_entry == nullptr) {
                     // secondary TLB miss ->
                     // perform full address translation and refill the secondary TLB
-                    tlb2_entry = dtlb2_refill(guest_va, 0, true);
+                    tlb2_entry = dtlb2_refill(guest_va, is_write, true);
                     if (tlb2_entry->flags & PAGE_NOPHYS) {
                         is_mapped = false;
                         break;
