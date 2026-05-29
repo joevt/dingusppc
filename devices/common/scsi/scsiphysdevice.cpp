@@ -298,6 +298,8 @@ int ScsiPhysDevice::rcv_data(const uint8_t* src_ptr, const int count)
     return count;
 }
 
+extern std::string hex_string(const uint8_t *p, int len);
+
 void ScsiPhysDevice::process_message() {
     static int sdtr_response_seq[4] = {ScsiPhase::MESSAGE_OUT, ScsiPhase::MESSAGE_IN,
                                        ScsiPhase::COMMAND, -1};
@@ -309,14 +311,16 @@ void ScsiPhysDevice::process_message() {
 
         switch(this->msg_buf[2]) {
         case ScsiExtMessage::SYNCH_XFER_REQ:
-            LOG_F(INFO, "%s: SDTR message received", this->get_name_and_unit_address().c_str());
+            LOG_F(INFO, "%s: SDTR message received %s", this->get_name_and_unit_address().c_str(),
+                hex_string(&this->msg_buf[3], this->msg_buf[1] - 1).c_str());
             // confirm synchronous transfer capability by sending back the SDTR message
             this->seq_steps = sdtr_response_seq;
             this->data_ptr = this->msg_buf;
             this->data_size = 5;
             break;
         default:
-            LOG_F(ERROR, "%s: unsupported message %d", this->get_name_and_unit_address().c_str(), this->msg_buf[2]);
+            LOG_F(ERROR, "%s: unsupported extended message %s", this->get_name_and_unit_address().c_str(),
+                hex_string(&this->msg_buf[2], this->msg_buf[1]).c_str());
         }
     } else if ((this->msg_buf[0] >> 4) == 2) { // two-byte messages
         if (!this->bus_obj->pull_data(this->initiator_id, &this->msg_buf[1], 1))
