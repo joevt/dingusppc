@@ -150,7 +150,7 @@ int MachineTnt::initialize(const std::string &id) {
 // If this is templated, it hits a compiler bug in MSVC, so use #define instead.
 #define static_const_tnt_common_settings(cpu) \
     {"rambank0_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank1_size" , new IntProperty(16, std::vector<uint32_t>({   4, 8, 16, 32, 64, 128}))}, \
+    {"rambank1_size" , new IntProperty(16, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
     {"rambank2_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
     {"rambank3_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
     {"rambank4_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \

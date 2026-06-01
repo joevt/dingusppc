@@ -209,7 +209,7 @@ void HammerheadCtrl::map_phys_ram()
 
     LOG_F(INFO, "%s: total RAM size = %d bytes", this->name.c_str(), total_ram);
 
-    if (!add_ram_region(0x00000000, total_ram)) {
+    if (total_ram && !add_ram_region(0x00000000, total_ram)) {
         ABORT_F("%s: could not allocate physical RAM storage", this->name.c_str());
     }
 }
