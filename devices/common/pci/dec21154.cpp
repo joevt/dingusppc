@@ -85,14 +85,28 @@ void DecPciBridge::pci_cfg_write(uint32_t reg_offs, uint32_t value, const Access
         {
             uint8_t bits_to_set = gpio_out_data >> 4;
             uint8_t bits_to_clr = gpio_out_data & 0xFU;
+            uint8_t old_val = this->gpio_out_data_val;
             this->gpio_out_data_val |= bits_to_set;
             this->gpio_out_data_val &= ~bits_to_clr;
+            if (bits_to_set & bits_to_clr)
+                LOG_F(ERROR, "%s: GPIO Output Data Register set & clr overlap",
+                    this->get_name_and_unit_address().c_str());
+            if (old_val != this->gpio_out_data_val || (bits_to_set | bits_to_clr))
+                LOG_F(WARNING, "%s: GPIO Output Data Register = %02x (old:%x new:%x)",
+                    this->get_name_and_unit_address().c_str(), gpio_out_data, old_val, this->gpio_out_data_val);
         }
         {
             uint8_t bits_to_set = gpio_out_en >> 4;
             uint8_t bits_to_clr = gpio_out_en & 0xFU;
+            uint8_t old_val = this->gpio_out_en_val;
             this->gpio_out_en_val |= bits_to_set;
             this->gpio_out_en_val &= ~bits_to_clr;
+            if (bits_to_set & bits_to_clr)
+                LOG_F(ERROR, "%s: GPIO Output Enable Control Register set & clr overlap",
+                    this->get_name_and_unit_address().c_str());
+            if (old_val != this->gpio_out_en_val || (bits_to_set | bits_to_clr))
+                LOG_F(WARNING, "%s: GPIO Output Enable Control Register = %02x (old:%x new:%x)",
+                    this->get_name_and_unit_address().c_str(), gpio_out_data, old_val, this->gpio_out_en_val);
         }
         break;
     case SEC_CLK_CTRL:
