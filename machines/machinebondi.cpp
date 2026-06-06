@@ -90,15 +90,19 @@ int MachineBondi::initialize(const std::string &id) {
     return 0;
 }
 
-static const PropMap bondi_settings = {
-    {"rambank1_size", new IntProperty(128, std::vector<uint32_t>({8, 16, 32, 64, 128, 256, 512}))},
-    {"rambank2_size", new IntProperty(128, std::vector<uint32_t>({8, 16, 32, 64, 128, 256, 512}))},
-    {"emmo", new BinProperty(0)},
-    {"hdd_config", new StrProperty("Ide0/@0")},
-    {"cdr_config", new StrProperty("Ide1/@0")},
-    {"pci_GPU", new StrProperty("AtiRagePro")},
-    {"pci_dev_max", new IntProperty(0xF, 0, 0x1F)},
+#define imac_settings(name, gpu) \
+static const PropMap name ## _settings = { \
+    {"rambank1_size", new IntProperty(128, std::vector<uint32_t>({8, 16, 32, 64, 128, 256, 512}))}, \
+    {"rambank2_size", new IntProperty(128, std::vector<uint32_t>({8, 16, 32, 64, 128, 256, 512}))}, \
+    {"emmo", new BinProperty(0)}, \
+    {"hdd_config", new StrProperty("Ide0/@0")}, \
+    {"cdr_config", new StrProperty("Ide1/@0")}, \
+    {"pci_GPU", new StrProperty( #gpu )}, \
+    {"pci_dev_max", new IntProperty(0xF, 0, 0x1F)}, \
 };
+
+imac_settings(bondi, AtiRagePro)
+imac_settings(prototype, AtiRageGW)
 
 static std::vector<std::string> bondi_devices = {
     "BootRomNW@FFF00000",
@@ -110,4 +114,10 @@ static const DeviceDescription MachineBondi_descriptor = {
     "iMac G3 Bondi Blue"
 };
 
+static const DeviceDescription MachineProto_descriptor = {
+    Machine::create<MachineBondi>, bondi_devices, prototype_settings, HWCompType::MACHINE,
+    "iMac G3 Prototype"
+};
+
 REGISTER_DEVICE(imacg3, MachineBondi_descriptor);
+REGISTER_DEVICE(imacg3proto, MachineProto_descriptor);
