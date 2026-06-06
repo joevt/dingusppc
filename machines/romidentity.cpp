@@ -205,11 +205,12 @@ rom_info rom_identity[] = {
       .dppc_description       = dppc_desc,           \
       .rom_description        = rom_desc },
 
-    rom( 0x10f1, "pbg3lb"  , "PowerBook G3 Lombard" , "PowerBook G3 Lombard"              ) // PowerBook1,1 // 1999-04-06 3.1.0f1
-    rom( 0x11f4, "pmg3nw"  , "Power Mac Yosemite"   , "Power Mac B&W G3"                  ) // PowerMac1,1  // 1999-04-09 3.1.1f4
-    rom( 0x12f2, "pmyikes" , "Power Mac G4 Yikes"   , "Power Mac G4 Yikes"                ) // PowerMac1,2  // 1999-08-19 3.1.2f2
-    rom( 0x13f2, "imacg3"  , "iMac G3 Bondi"        , "iMac (233 MHz) (Bondi Blue)"       ) // iMac,1       // 1999-04-23 3.1.3f2
-    rom( 0x13f3, "imacg3"  , "iMac G3 Tray Loading" , "iMac (266,333 MHz) (Tray Loading)" ) // iMac,1       // 1999-07-16 3.1.3f3
+    rom( 0x80f6, "imacg3proto"  , "iMac G3 Proto"        , "iMac G3 Prototype"                 ) // iMac,1       // 1998-07-10 3.0.0f6
+    rom( 0x10f1, "pbg3lb"       , "PowerBook G3 Lombard" , "PowerBook G3 Lombard"              ) // PowerBook1,1 // 1999-04-06 3.1.0f1
+    rom( 0x11f4, "pmg3nw"       , "Power Mac Yosemite"   , "Power Mac B&W G3"                  ) // PowerMac1,1  // 1999-04-09 3.1.1f4
+    rom( 0x12f2, "pmyikes"      , "Power Mac G4 Yikes"   , "Power Mac G4 Yikes"                ) // PowerMac1,2  // 1999-08-19 3.1.2f2
+    rom( 0x13f2, "imacg3"       , "iMac G3 Bondi"        , "iMac (233 MHz) (Bondi Blue)"       ) // iMac,1       // 1999-04-23 3.1.3f2
+    rom( 0x13f3, "imacg3"       , "iMac G3 Tray Loading" , "iMac (266,333 MHz) (Tray Loading)" ) // iMac,1       // 1999-07-16 3.1.3f3
 
 #undef rom
 
