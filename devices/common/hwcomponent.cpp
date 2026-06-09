@@ -350,17 +350,32 @@ bool HWComponent::path_match(std::string path, bool allow_partial_match) {
 void HWComponent::init_device_settings(const DeviceDescription &dev) {
     this->device_description = &dev;
     for (auto& p : dev.properties) {
-        if (gPropHelp.count(p.first) == 0) {
-            LOG_F(ERROR, "Missing help for setting \"%s\" from %s.", p.first.c_str(), name.c_str());
-            continue;
+        std::string prop = p.first;
+        std::string path;
+        std::smatch results;
+        if (std::regex_match(prop, results, MachineFactory::child_prop_override_re)) {
+            path = results[1];
+            prop = results[2];
         }
-        if (gPropHelp.at(p.first).property_scope != PropertyDevice)
+
+        if (gPropHelp.at(prop).property_scope != PropertyDevice)
             continue;
 
-        this->device_settings[p.first] = std::unique_ptr<Setting>(new Setting());
-        auto &s = this->device_settings[p.first];
+        if (gPropHelp.count(prop) == 0) {
+            LOG_F(ERROR, "Missing help for device setting \"%s\" from %s.", prop.c_str(), name.c_str());
+            continue;
+        }
+
+        if (!path.empty()) {
+            LOG_F(INFO, "Deferring device setting \"%s\" meant for %s.",
+                prop.c_str(), path.c_str());
+            continue;
+        }
+
+        this->device_settings[prop] = std::unique_ptr<Setting>(new Setting());
+        auto &s = this->device_settings[prop];
         LOG_F(INFO, "Adding device setting \"%s\" = \"%s\" from %s.",
-            p.first.c_str(), p.second->get_string().c_str(), name.c_str());
+            prop.c_str(), p.second->get_string().c_str(), name.c_str());
         s->set_property_info(p.second);
     }
 }
