@@ -323,6 +323,48 @@ int MachineFactory::create(string& mach_id, vector<std::string> &app_args)
     }
 
     {
+        VLOG_SCOPE_F(loguru::Verbosity_INFO, "Applying default overrides from ancestors");
+        gMachineObj->iterate(
+            [&](HWComponent *it, int depth) {
+                if (it->device_settings.empty())
+                    return false;
+                for (auto& s : it->device_settings) {
+                    if (s.second->value_commandline == s.second->value_not_inited) {
+                        const std::string& proptofind = s.first;
+                        HWComponent* foundparent = nullptr;
+                        BasicProperty* value;
+                        for (HWComponent* parent = it->get_parent(); parent; parent = parent->get_parent()) {
+                            if (parent->device_description) {
+                                for (auto& p : parent->device_description->properties) {
+                                    std::string prop = p.first;
+                                    std::string path;
+                                    std::smatch results;
+                                    if (std::regex_match(prop, results, MachineFactory::child_prop_override_re)) {
+                                        path = results[1];
+                                        prop = results[2];
+                                        if (prop == proptofind) {
+                                            if (it == parent->find_path(path)) {
+                                                foundparent = parent;
+                                                value = p.second;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (foundparent) {
+                            LOG_F(INFO, "Overriding %s setting \"%s\" = \"%s\" from %s", it->get_path().c_str(),
+                                proptofind.c_str(), value->get_string().c_str(), foundparent->get_name().c_str());
+                            s.second->set_property_info(value);
+                        }
+                    }
+                }
+                return false;
+            }
+        );
+    }
+
+    {
         std::regex argument_re("--([^=]+)(?:=(.*))?");
 
         VLOG_SCOPE_F(loguru::Verbosity_INFO, "Parsing remaining command line arguments");
@@ -558,6 +600,7 @@ HWComponent* MachineFactory::set_property(const std::string &property, const std
 }
 
 std::regex MachineFactory::path_re("(?:([^\\s]*)/)?([^\\s@]+)?(?:@([\\dA-F,]+))?", std::regex_constants::icase);
+std::regex MachineFactory::child_prop_override_re("(.+) (.+)", std::regex_constants::icase);
 
 bool MachineFactory::find_path(std::string path, HWComponent *&hwc, int32_t &unit_address, bool &is_leaf_match)
 {
@@ -679,13 +722,21 @@ void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope,
     bool did_path = scope == PropertyMachine;
 
     for (auto& p : prop_map) {
-        if (properties) {
-            if (properties->count(p.first))
-                continue;
-            properties->insert(p.first);
+        std::string prop = p.first;
+        std::string path;
+        std::smatch results;
+        if (std::regex_match(prop, results, MachineFactory::child_prop_override_re)) {
+            path = results[1];
+            prop = results[2];
         }
 
-        auto phelp = gPropHelp.find(p.first);
+        if (properties) {
+            if (properties->count(prop))
+                continue;
+            properties->insert(prop);
+        }
+
+        auto phelp = gPropHelp.find(prop);
         if (phelp != gPropHelp.end()) {
             if ((phelp->second.property_scope == PropertyMachine) != (scope == PropertyMachine))
                 continue;
@@ -712,7 +763,10 @@ void MachineFactory::print_settings(const PropMap& prop_map, PropScope scope,
             did_path = true;
         }
 
-        cout << setw(16) << right << p.first << "    " << help << endl;
+        cout << setw(16) << right << prop << "    " << help;
+        if (!path.empty())
+            cout << " (for device " << path << ")";
+        cout << endl;
 
         cout << setw(16) << "" << "    " << "Valid values: ";
 
@@ -746,25 +800,38 @@ void MachineFactory::register_device_settings(const std::string& name)
 
 void MachineFactory::register_settings(const std::string& dev_name, const PropMap& props) {
     for (auto& p : props) {
-
-        if (gPropHelp.count(p.first) == 0) {
-            LOG_F(ERROR, "Missing help for setting \"%s\" from %s.", p.first.c_str(), dev_name.c_str());
-            continue;
+        std::string prop = p.first;
+        std::string path;
+        std::smatch results;
+        if (std::regex_match(prop, results, MachineFactory::child_prop_override_re)) {
+            path = results[1];
+            prop = results[2];
         }
 
-        auto& phelp = gPropHelp.at(p.first);
+        auto& phelp = gPropHelp.at(prop);
         if (phelp.property_scope == PropertyDevice)
             continue;
 
-        if (gMachineSettings.count(p.first) == 0) {
-            gMachineSettings[p.first] = unique_ptr<Setting>(new Setting());
-
-            auto override_value = get_setting_value(p.first);
-            if (override_value)
-                gMachineSettings[p.first]->value_commandline = *override_value;
+        if (gPropHelp.count(prop) == 0) {
+            LOG_F(ERROR, "Missing help for setting \"%s\" from %s.", prop.c_str(), dev_name.c_str());
+            continue;
         }
 
-        auto &s = gMachineSettings[p.first];
+        if (!path.empty()) {
+            LOG_F(INFO, "Deferring setting \"%s\" meant for %s.",
+                prop.c_str(), path.c_str());
+            continue;
+        }
+
+        if (gMachineSettings.count(prop) == 0) {
+            gMachineSettings[prop] = unique_ptr<Setting>(new Setting());
+
+            auto override_value = get_setting_value(prop);
+            if (override_value)
+                gMachineSettings[prop]->value_commandline = *override_value;
+        }
+
+        auto &s = gMachineSettings[prop];
         if (s->property) {
             if (Setting::loaded_properties.count(p.second) == 0) {
                 /*
@@ -772,13 +839,13 @@ void MachineFactory::register_settings(const std::string& dev_name, const PropMa
                     If we haven't loaded this property yet, then report that we are
                     ignoring this setting that was overridden by an ancestor device.
                 */
-                LOG_F(INFO, "Ignoring setting \"%s\" from %s.", p.first.c_str(), dev_name.c_str());
+                LOG_F(INFO, "Ignoring setting \"%s\" from %s.", prop.c_str(), dev_name.c_str());
                 Setting::loaded_properties.insert(p.second);
             }
         }
         else {
             LOG_F(INFO, "Adding setting \"%s\" = \"%s\" from %s.",
-                p.first.c_str(), p.second->get_string().c_str(), dev_name.c_str());
+                prop.c_str(), p.second->get_string().c_str(), dev_name.c_str());
             s->set_property_info(p.second);
             Setting::loaded_properties.insert(p.second);
         }
