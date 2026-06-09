@@ -99,6 +99,16 @@ static const PropMap name ## _settings = { \
     {"cdr_config", new StrProperty("Ide1/@0")}, \
     {"pci_GPU", new StrProperty( #gpu )}, \
     {"pci_dev_max", new IntProperty(0xF, 0, 0x1F)}, \
+    {"GrackleBondi/@12/@0 edid", new StrProperty( \
+        "00ffffffffffff000610019d01010101" \
+        "00080101081b1428e866e99c574c9626" \
+        "10484c00020001010101010101010101" \
+        "010101010101881380c020e022101040" \
+        "13000ec81000001e601820f030582020" \
+        "105013000ec81000001e000000fd004b" \
+        "753c3c08000a202020202020000000fc" \
+        "00694d61630a2020202020202020003b" \
+    )}, \
 };
 
 imac_settings(bondi, AtiRagePro)
