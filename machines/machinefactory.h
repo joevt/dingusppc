@@ -99,6 +99,7 @@ public:
     static GetSettingValueFunc get_setting_value;
 
     static std::regex path_re;
+    static std::regex child_prop_override_re;
 
 private:
     static void print_settings(const PropMap& p, PropScope scope, int indent,
