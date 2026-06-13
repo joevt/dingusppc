@@ -107,14 +107,10 @@ int MachineCatalyst::initialize(const std::string &id) {
 }
 
 static const PropMap pm7200_settings = {
-    {"rambank1_size",
-        new IntProperty( 8, std::vector<uint32_t>({   4, 8, 16, 32, 64, 128}))},
-    {"rambank2_size",
-        new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
-    {"rambank3_size",
-        new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
-    {"rambank4_size",
-        new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))},
+    {"rambank1_size", new IntProperty( 8, std::vector<uint32_t>({0, 2, 4, 8, 16, 32, 64, 128}))},
+    {"rambank2_size", new IntProperty( 0, std::vector<uint32_t>({0, 2, 4, 8, 16, 32, 64, 128}))},
+    {"rambank3_size", new IntProperty( 0, std::vector<uint32_t>({0, 2, 4, 8, 16, 32, 64, 128}))},
+    {"rambank4_size", new IntProperty( 0, std::vector<uint32_t>({0, 2, 4, 8, 16, 32, 64, 128}))},
     {"emmo",
         new BinProperty(0)},
     {"cpu",
