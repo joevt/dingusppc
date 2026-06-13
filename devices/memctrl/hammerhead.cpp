@@ -114,6 +114,10 @@ finish:
 
 void HammerheadCtrl::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size)
 {
+    // 0x1FF supports 1.625 GiB = real HammerHead
+    // 0x3FF supports 3.25 GiB = fake HammerHead; requires ROM patch to allow more than 1.625 GiB of RAM
+    constexpr int BANK_BITS_MASK = 0x3FF;
+
     // extract byte value from the MSB of a multibyte value
     value = value >> ((size - 1) << 3);
 
@@ -126,8 +130,9 @@ void HammerheadCtrl::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t val
         } else { // update the MSB part
             bank_base[bank] = (bank_base[bank] & 0x00FFU) | (value << 8);
         }
-        LOG_F(INFO, "%s: bank base #%d set to 0x%X", this->name.c_str(),
-              bank, bank_base[bank]);
+        LOG_F(INFO, "%s: bank base #%02d.%s set to 0x%03X = 0x%08X%s", this->name.c_str(),
+            bank, (offset & 1) ? "lo" : "hi", bank_base[bank],
+            (bank_base[bank] & BANK_BITS_MASK) << 22, (bank_base[bank] & 0x400) ? " (interleaved)" : "");
         return;
     }
 
