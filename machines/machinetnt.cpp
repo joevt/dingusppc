@@ -91,6 +91,7 @@ int MachineTnt::initialize(const std::string &id) {
         new BoardRegister("BoardReg1",
             0x3F                                                                       | // pull up all PRSNT bits
             ((GET_BIN_PROP("emmo") ^ 1) << 8)                                          | // factory tests (active low)
+            (GET_INT_PROP("box_id") << 11)                                             | // BoxId0 and BoxId1
             ((gMachineObj->get_comp_by_name_optional("Sixty6Video") == nullptr) << 13) | // composite video out (active low)
             ((gMachineObj->get_comp_by_name_optional("MeshTnt") != nullptr) << 14)     | // fast SCSI (active high)
             0x8000U                                                                      // pull up unused bits
@@ -148,7 +149,7 @@ int MachineTnt::initialize(const std::string &id) {
 }
 
 // If this is templated, it hits a compiler bug in MSVC, so use #define instead.
-#define static_const_tnt_common_settings(cpu) \
+#define static_const_tnt_common_settings(box_id, cpu) \
     {"rambank0_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
     {"rambank1_size" , new IntProperty(16, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
     {"rambank2_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
@@ -163,19 +164,20 @@ int MachineTnt::initialize(const std::string &id) {
     {"rambank11_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
     {"rambank12_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
     {"emmo", new BinProperty(0)}, \
+    {"box_id", new IntProperty(box_id, std::vector<uint32_t>({0,1,2,3}))}, \
     {"cpu", new StrProperty(# cpu, std::vector<std::string>({"601", "604", "604e", "750"}))}, \
     {"pci_dev_max", new IntProperty(0xF, 0, 0x1F)},
 
-#define static_const_tnt_settings(cpu) \
-static const PropMap tnt_settings_ ## cpu = { \
-    static_const_tnt_common_settings(cpu) \
+#define static_const_tnt_settings(box_id, cpu) \
+static const PropMap tnt_settings_ ## box_id ## _ ## cpu = { \
+    static_const_tnt_common_settings(box_id, cpu) \
     {"hdd_config", new StrProperty("ScsiMesh/@0")}, \
     {"cdr_config", new StrProperty("ScsiMesh/@3")}, \
 };
 
-static_const_tnt_settings(601)
-static_const_tnt_settings(604)
-static_const_tnt_settings(604e)
+static_const_tnt_settings(0,601)
+static_const_tnt_settings(0,604)
+static_const_tnt_settings(0,604e)
 
 static std::vector<std::string> pm7500_devices = {
     "BootRomOW@FFC00000",
@@ -194,37 +196,37 @@ static std::vector<std::string> pm9500_devices = {
 };
 
 static const DeviceDescription MachineTnt7300_descriptor = {
-    Machine::create<MachineTnt>, pm7500_devices, tnt_settings_604e, HWCompType::MACHINE,
+    Machine::create<MachineTnt>, pm7500_devices, tnt_settings_0_604e, HWCompType::MACHINE,
     "Power Macintosh 7300"
 };
 
 static const DeviceDescription MachineTnt7500_descriptor = {
-    Machine::create<MachineTnt>, pm7500_devices, tnt_settings_601, HWCompType::MACHINE,
+    Machine::create<MachineTnt>, pm7500_devices, tnt_settings_0_601, HWCompType::MACHINE,
     "Power Macintosh 7500"
 };
 
 static const DeviceDescription MachineTnt8500_descriptor = {
-    Machine::create<MachineTnt>, pm8500_devices, tnt_settings_604, HWCompType::MACHINE,
+    Machine::create<MachineTnt>, pm8500_devices, tnt_settings_0_604, HWCompType::MACHINE,
     "Power Macintosh 8500"
 };
 
 static const DeviceDescription MachineTnt9500_descriptor = {
-    Machine::create<MachineTnt>, pm9500_devices, tnt_settings_604, HWCompType::MACHINE,
+    Machine::create<MachineTnt>, pm9500_devices, tnt_settings_0_604, HWCompType::MACHINE,
     "Power Macintosh 9500"
 };
 
 static const DeviceDescription MachineTnt7600_descriptor = {
-    Machine::create<MachineTnt>, pm7500_devices, tnt_settings_604e, HWCompType::MACHINE,
+    Machine::create<MachineTnt>, pm7500_devices, tnt_settings_0_604e, HWCompType::MACHINE,
     "Power Macintosh 7600"
 };
 
 static const DeviceDescription MachineTnt8600_descriptor = {
-    Machine::create<MachineTnt>, pm8500_devices, tnt_settings_604e, HWCompType::MACHINE,
+    Machine::create<MachineTnt>, pm8500_devices, tnt_settings_0_604e, HWCompType::MACHINE,
     "Power Macintosh 8600"
 };
 
 static const DeviceDescription MachineTnt9600_descriptor = {
-    Machine::create<MachineTnt>, pm9500_devices, tnt_settings_604e, HWCompType::MACHINE,
+    Machine::create<MachineTnt>, pm9500_devices, tnt_settings_0_604e, HWCompType::MACHINE,
     "Power Macintosh 9600"
 };
 
