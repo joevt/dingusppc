@@ -149,19 +149,19 @@ int MachineTnt::initialize(const std::string &id) {
 
 // If this is templated, it hits a compiler bug in MSVC, so use #define instead.
 #define static_const_tnt_common_settings(cpu) \
-    {"rambank0_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank1_size" , new IntProperty(16, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank2_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank3_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank4_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank5_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank6_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank7_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank8_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank9_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank10_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank11_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
-    {"rambank12_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128}))}, \
+    {"rambank0_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
+    {"rambank1_size" , new IntProperty(16, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
+    {"rambank2_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
+    {"rambank3_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
+    {"rambank4_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
+    {"rambank5_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
+    {"rambank6_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
+    {"rambank7_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
+    {"rambank8_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
+    {"rambank9_size" , new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
+    {"rambank10_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
+    {"rambank11_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
+    {"rambank12_size", new IntProperty( 0, std::vector<uint32_t>({0, 4, 8, 16, 32, 64, 128, 256}))}, \
     {"emmo", new BinProperty(0)}, \
     {"cpu", new StrProperty(# cpu, std::vector<std::string>({"601", "604", "604e", "750"}))}, \
     {"pci_dev_max", new IntProperty(0xF, 0, 0x1F)},
