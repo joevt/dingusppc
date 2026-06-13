@@ -461,8 +461,10 @@ void PlatinumCtrl::insert_ram_dimm(int slot_num, uint32_t capacity) {
         this->bank_size[slot_num * 2 + 0] = capacity;
         break;
     case DRAM_CAP_128MB:
-        this->bank_size[slot_num * 2 + 0] = DRAM_CAP_64MB;
-        this->bank_size[slot_num * 2 + 1] = DRAM_CAP_64MB;
+    case DRAM_CAP_256MB:
+    case DRAM_CAP_512MB:
+        this->bank_size[slot_num * 2 + 0] = capacity / 2;
+        this->bank_size[slot_num * 2 + 1] = capacity / 2;
         break;
     default:
         ABORT_F("%s: unsupported DRAM capacity %d", this->name.c_str(), capacity);
