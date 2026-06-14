@@ -400,9 +400,9 @@ PostInitResultType Sixty6Video::device_postinit()
     // attach IOBus Device #3 0xF301C000 ; sixty6
     gc_obj->add_device(0x1C000, this);
 
-    // attach IOBus Device #5 0xF301E000 ; sixty6 composite/s-video
+    // attach IOBus Device #5 0xF301E000 ; sixty6 composite/s-video detect
     gc_obj->add_device(0x1E000,
-        new BoardRegister("BoardReg66",
+        new BoardRegister("BoardReg2",
             ((GET_BIN_PROP("has_svideo") ^ 1) << 6)    | // S-Video connected (active low)
             ((GET_BIN_PROP("has_composite") ^ 1) << 7) | // Composite Video connected (active low)
             0xFF3FU                                      // pull up unused bits
