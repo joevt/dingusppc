@@ -135,8 +135,9 @@ int MachineTnt::initialize(const std::string &id) {
     if (pci2_host) {
         pci2_host->set_irq_map(is_tnt ? bandit2_irq_map : ans_bandit2_irq_map);
         if (is_tnt) {
-            // attach IOBus Device #3 0xF301C000
-            gc_obj->add_device(0x1C000,
+            // attach IOBus Device #5 0xF301E000
+            // Note: Open Firmware incorrectly reads bandit2 PRSNT bits from IOBus Device #3 0xF301C000
+            gc_obj->add_device(0x1E000,
                 new BoardRegister("BoardReg2",
                     0x3F                                        | // pull up all PRSNT bits
                     0x8000U                                       // pull up unused bits
