@@ -86,27 +86,37 @@ int MachineTnt::initialize(const std::string &id) {
             dynamic_cast<PCIDevice*>(gMachineObj->get_comp_by_name("ControlVideo")));
     }
 
+    HWComponent *mesh   = gMachineObj->get_comp_by_name_optional("MeshTnt");
+    HWComponent *sixty6 = gMachineObj->get_comp_by_name_optional("Sixty6Video");
+    if (sixty6) {
+        // attach IOBus Device #3 0xF301C000 ; sixty6
+        gc_obj->add_device(0x1C000, sixty6);
+    }
+
     // attach IOBus Device #1 0xF301A000
     gc_obj->add_device(0x1A000,
         new BoardRegister("BoardReg1",
-            0x3F                                                                       | // pull up all PRSNT bits
-            ((GET_BIN_PROP("emmo") ^ 1) << 8)                                          | // factory tests (active low)
-            (GET_INT_PROP("box_id") << 11)                                             | // BoxId0 and BoxId1
-            ((gMachineObj->get_comp_by_name_optional("Sixty6Video") == nullptr) << 13) | // composite video out (active low)
-            ((gMachineObj->get_comp_by_name_optional("MeshTnt") != nullptr) << 14)     | // fast SCSI (active high)
-            0x8000U                                                                      // pull up unused bits
+            0x3F                              | // pull up all PRSNT bits
+            ((GET_BIN_PROP("emmo") ^ 1) << 8) | // factory tests (active low)
+            (GET_INT_PROP("box_id") << 11)    | // BoxId0 and BoxId1
+            ((sixty6 == nullptr) << 13)       | // composite video out (active low)
+            ((mesh   != nullptr) << 14)       | // fast SCSI (active high)
+            0x8000U                             // pull up unused bits
     ));
 
     PCIHost *pci2_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name_optional("Bandit2"));
     if (pci2_host) {
         pci2_host->set_irq_map(bandit2_irq_map);
-        // attach IOBus Device #5 0xF301E000
-        gc_obj->add_device(0x1E000,
-            new BoardRegister("BoardReg2",
-                0x3F                                        | // pull up all PRSNT bits
-                0x8000U                                       // pull up unused bits
-        ));
     }
+
+    // attach IOBus Device #5 0xF301E000
+    gc_obj->add_device(0x1E000,
+        new BoardRegister("BoardReg2",
+            0x3F                                       | // pull up all PRSNT bits
+            ((GET_BIN_PROP("has_svideo") ^ 1) << 6)    | // S-Video connected (active low)
+            ((GET_BIN_PROP("has_composite") ^ 1) << 7) | // Composite Video connected (active low)
+            0xFF00U                                      // pull up unused bits
+    ));
 
     // get (raw) pointer to the memory controller
     memctrl_obj = dynamic_cast<HammerheadCtrl*>(gMachineObj->get_comp_by_name("Hammerhead"));
