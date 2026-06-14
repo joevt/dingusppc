@@ -140,7 +140,7 @@ int MachineTnt::initialize(const std::string &id) {
             gc_obj->add_device(0x1E000,
                 new BoardRegister("BoardReg2",
                     0x3F                                        | // pull up all PRSNT bits
-                    0x8000U                                       // pull up unused bits
+                    0xFFC0U                                       // pull up unused bits
                 )
             );
         } else {
