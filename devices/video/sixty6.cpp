@@ -394,20 +394,6 @@ void Sixty6Video::disable_display()
 
 PostInitResultType Sixty6Video::device_postinit()
 {
-    // get (raw) pointer to the I/O controller
-    GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralTnt"));
-
-    // attach IOBus Device #3 0xF301C000 ; sixty6
-    gc_obj->add_device(0x1C000, this);
-
-    // attach IOBus Device #5 0xF301E000 ; sixty6 composite/s-video
-    gc_obj->add_device(0x1E000,
-        new BoardRegister("BoardReg66",
-            ((GET_BIN_PROP("has_svideo") ^ 1) << 6)    | // S-Video connected (active low)
-            ((GET_BIN_PROP("has_composite") ^ 1) << 7) | // Composite Video connected (active low)
-            0xFF3FU                                      // pull up unused bits
-    ));
-
     this->int_ctrl = dynamic_cast<InterruptCtrl*>(
         gMachineObj->get_comp_by_type(HWCompType::INT_CTRL));
     this->irq_id = this->int_ctrl->register_int(IntSrc::SIXTY6);
