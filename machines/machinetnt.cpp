@@ -110,7 +110,11 @@ int MachineTnt::initialize(const std::string &id) {
         gc_obj->add_device(0x1A000,
             new BoardRegister("BoardReg1",
                 0x3F                                                                       | // pull up all PRSNT bits
+                ((0 ^ 1) << 6) /* TODO: should match WR5_RTS */                            | // GCRTSA_I (active low)
+                ((0 ^ 1) << 7) /* TODO: should match WR5_RTS */                            | // GCRTSB_I (active low)
                 ((GET_BIN_PROP("emmo") ^ 1) << 8)                                          | // factory tests (active low)
+                ((0 ^ 1) << 9)  /* TODO: connection status of microphone */                | // MicSense_I (active low)
+                ((0 ^ 1) << 10) /* TODO: connection status of Ethernet cable */            | // ETH10BT_LINK (active low)
                 (GET_INT_PROP("box_id") << 11)                                             | // BoxId0 and BoxId1
                 ((gMachineObj->get_comp_by_name_optional("Sixty6Video") == nullptr) << 13) | // composite video out (active low)
                 ((gMachineObj->get_comp_by_name_optional("MeshTnt") != nullptr) << 14)     | // fast SCSI (active high)
