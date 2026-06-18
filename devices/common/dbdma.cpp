@@ -587,7 +587,10 @@ void DMAChannel::xfer_from_device() {
         this->finish_cmd();
     } else if (got_bytes) {
         LOG_F(WARNING, "%s: got unexpected amount of data in xfer_from_device",
-              this->get_name().c_str());
+            this->get_name().c_str());
+    } else {
+        LOG_F(WARNING, "%s: got no data in xfer_from_device",
+            this->get_name().c_str());
     }
 
     this->interpret_cmd("xfer_from_device");
@@ -604,6 +607,12 @@ void DMAChannel::xfer_to_device() {
     this->queue_len -= got_bytes;
     if (!this->queue_len) {
         this->finish_cmd();
+    } else if (got_bytes) {
+        LOG_F(WARNING, "%s: got unexpected amount of data in xfer_to_device",
+            this->get_name().c_str());
+    } else {
+        LOG_F(WARNING, "%s: got no data in xfer_to_device",
+            this->get_name().c_str());
     }
 
     this->interpret_cmd("xfer_to_device");
