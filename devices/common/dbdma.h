@@ -118,7 +118,7 @@ public:
     }
 
     void update_ch_stat(uint8_t mask, uint8_t new_val) {
-        this->ch_stat = (this->ch_stat & ~mask) | new_val;
+        this->ch_stat = (this->ch_stat & ~mask) | (new_val & mask);
     }
 
     bool            is_out_active() override;
