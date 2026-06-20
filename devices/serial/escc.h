@@ -126,7 +126,7 @@ public:
     // End of packet (EOP) flag is reflected by s5 bit of the DMA TX channel status
     void update_ltpc_eop_flag(uint8_t flag) {
         auto dbdma_ch = static_cast<DMAChannel*>(this->dma_channels[DIR_TX]);
-        dbdma_ch->update_ch_stat(1 << 5, (flag & 1) << 5);
+        dbdma_ch->update_ch_stat(1 << 5, flag << 5);
     }
 
     // DmaChannel methods
