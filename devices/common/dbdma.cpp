@@ -608,20 +608,17 @@ DmaPullResult DMAChannel::pull_data(uint32_t req_len, uint32_t *avail_len, uint8
 
     // dequeue data if any
     if (this->queue_len) {
-        *p_data = this->queue_data;
         if (this->queue_len >= req_len) {
             LOG_F(DBDMA, "%s: Return req_len = %d data", this->get_name().c_str(), req_len);
-            *avail_len = req_len;
-            this->queue_len -= req_len;
-            this->res_count -= req_len;
-            this->queue_data += req_len;
         } else { // return less data than req_len
-            LOG_F(DBDMA, "%s: Return queue_len = %d data", this->get_name().c_str(),
-                this->queue_len);
-            *avail_len      = this->queue_len;
-            this->res_count -= this->queue_len;
-            this->queue_len = 0;
+            req_len = this->queue_len;
+            LOG_F(DBDMA, "%s: Return queue_len = %d data", this->get_name().c_str(), req_len);
         }
+        *p_data = this->queue_data;
+        *avail_len = req_len;
+        this->queue_len -= req_len;
+        this->res_count -= req_len;
+        this->queue_data += req_len;
         LOG_F(DBDMA, "%s: Will pull %d bytes from 0x%llx (next:0x%llx, count:%d, queue:%d) : %s",
             this->get_name().c_str(), *avail_len, (uint64_t)(*p_data), (uint64_t)(this->queue_data),
             this->res_count, this->queue_len, hex_string(*p_data, *avail_len).c_str()
