@@ -126,7 +126,7 @@ uint32_t MacIoTwo::read(uint32_t /*rgn_start*/, uint32_t offset, int size) {
         break;
     default:
         if (sub_addr >= 0x60) {
-            value = this->nvram->read_byte((offset >> 4) & 0x1FFF);
+            value = this->nvram->read_byte((offset >> 4) & 0x1FFF) | (((offset >> 9) & 0xff) << 8);
         } else {
             value = 0;
             LOG_F(WARNING, "%s: read @%x.%c", this->get_name().c_str(),
