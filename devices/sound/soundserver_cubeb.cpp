@@ -37,6 +37,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <objbase.h>
 #endif
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_SOUNDSERVER = loguru::Verbosity_INFO
+    };
+}
+
 typedef enum {
     SND_SERVER_DOWN = 0,
     SND_API_READY,
@@ -65,7 +71,7 @@ public:
         }
         TimerManager::get_instance()->add_cyclic_timer(this->deterministic_poll_timer,
             MSECS_TO_NSECS(10), this->deterministic_poll_cb);
-        LOG_F(9, "%s; falling back to cyclic DMA drain.", reason);
+        LOG_F(SOUNDSERVER, "%s; falling back to cyclic DMA drain.", reason);
     }
 };
 
@@ -176,7 +182,7 @@ static long sound_out_callback(cubeb_stream* /*stream*/, void* user_data,
 
 static void status_callback(cubeb_stream */*stream*/, void */*user_data*/, cubeb_state state)
 {
-    LOG_F(9, "Cubeb status callback fired, status = %d", state);
+    LOG_F(SOUNDSERVER, "Cubeb status callback fired, status = %d", state);
 }
 
 int SoundServer::open_out_stream(uint32_t sample_rate, DmaOutChannel *dma_ch)
@@ -202,7 +208,7 @@ int SoundServer::open_out_stream(uint32_t sample_rate, DmaOutChannel *dma_ch)
 
     if (is_deterministic) {
         impl->status = SND_STREAM_OPENED;
-        LOG_F(9, "Deterministic sound output callback set up.");
+        LOG_F(SOUNDSERVER, "Deterministic sound output callback set up.");
         return 0;
     }
 
@@ -230,7 +236,7 @@ int SoundServer::open_out_stream(uint32_t sample_rate, DmaOutChannel *dma_ch)
         impl->status = SND_STREAM_OPENED;
         return 0;
     } else {
-        LOG_F(9, "Minimum sound latency: %d frames", latency_frames);
+        LOG_F(SOUNDSERVER, "Minimum sound latency: %d frames", latency_frames);
     }
 
     res = cubeb_stream_init(impl->cubeb_ctx, &impl->out_stream, "SndOut stream",
@@ -243,7 +249,7 @@ int SoundServer::open_out_stream(uint32_t sample_rate, DmaOutChannel *dma_ch)
         return 0;
     }
 
-    LOG_F(9, "Sound output stream opened.");
+    LOG_F(SOUNDSERVER, "Sound output stream opened.");
 
     impl->status = SND_STREAM_OPENED;
 
@@ -285,5 +291,5 @@ void SoundServer::close_out_stream()
     cubeb_stream_destroy(impl->out_stream);
     impl->out_stream = nullptr;
     impl->status = SND_STREAM_CLOSED;
-    LOG_F(9, "Sound output stream closed.");
+    LOG_F(SOUNDSERVER, "Sound output stream closed.");
 }
