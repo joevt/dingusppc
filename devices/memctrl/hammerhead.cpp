@@ -125,9 +125,9 @@ void HammerheadCtrl::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t val
             bank_base[bank] = (bank_base[bank] & 0xFF00U) | value;
         } else { // update the MSB part
             bank_base[bank] = (bank_base[bank] & 0x00FFU) | (value << 8);
+            LOG_F(INFO, "%s: bank base #%02d set to 0x%03X = 0x%08X%s", this->name.c_str(), bank, bank_base[bank],
+                (bank_base[bank] & 0x1FF) << 22, (bank_base[bank] & 0x400) ? " (interleaved)" : "");
         }
-        LOG_F(INFO, "%s: bank base #%02d set to 0x%03X = 0x%08X%s", this->name.c_str(), bank, bank_base[bank],
-            (bank_base[bank] & 0x1FF) << 22, (bank_base[bank] & 0x400) ? " (interleaved)" : "");
         return;
     }
 
