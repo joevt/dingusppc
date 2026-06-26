@@ -158,17 +158,24 @@ void PdmOnboardVideo::enable_video_internal()
     int new_width, new_height, hori_blank, vert_blank;
 
     // ensure all video parameters contain safe values
+    int max_depth;
     switch(this->video_mode) {
+    case PdmVideoMode::Rgb12in:
+    case PdmVideoMode::Rgb13in:
+        max_depth = 16;
+        break;
     case PdmVideoMode::Portrait:
     case PdmVideoMode::Rgb16in:
     case PdmVideoMode::VGA:
-        if (this->pixel_depth > 8) {
-            LOG_F(ERROR, "PDM-Video: no 16bpp support in mode %d!", this->video_mode);
-            this->pixel_depth = 8;
-        }
+        max_depth = 8;
         break;
     default:
-        break;
+        max_depth = 32;
+    }
+    if (this->pixel_depth > max_depth) {
+        LOG_F(WARNING, "PDM-Video: support for %dbpp in mode %d does not exist in real hardware!",
+            this->pixel_depth, this->video_mode);
+        this->pixel_depth = max_depth;
     }
 
     // set video mode parameters
