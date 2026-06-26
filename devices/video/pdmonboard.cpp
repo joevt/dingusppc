@@ -175,7 +175,6 @@ void PdmOnboardVideo::enable_video_internal()
     if (this->pixel_depth > max_depth) {
         LOG_F(WARNING, "PDM-Video: support for %dbpp in mode %d does not exist in real hardware!",
             this->pixel_depth, this->video_mode);
-        this->pixel_depth = max_depth;
     }
 
     // set video mode parameters
