@@ -33,9 +33,6 @@ class InterruptCtrl;
 
 constexpr auto PDM_VMODE_OFF = 0x1F;
 
-/** Max. size of our framebuffer in bytes (RGB 13-inch, 16 bpp) */
-constexpr auto PDM_FB_SIZE_MAX = (640 * 480 * 2);
-
 /** Fixed video modes supported by the PDM on-board video. */
 enum PdmVideoMode : uint8_t {
     Portrait = 1,
@@ -94,6 +91,7 @@ private:
     uint8_t     clut_index;
     uint8_t     comp_index;
     uint8_t     fb_loc = 0;
+    uint32_t    fb_size = 0;
     uint8_t     clut_color[3];
 
     HMC*        hmc_obj;
