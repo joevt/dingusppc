@@ -215,7 +215,6 @@ void PdmOnboardVideo::enable_video_internal()
     }
 
     // set CRTC parameters
-    this->set_fb_base();
     this->active_width  = new_width;
     this->active_height = new_height;
     this->hori_blank    = hori_blank;
@@ -224,6 +223,7 @@ void PdmOnboardVideo::enable_video_internal()
     this->vert_total    = new_height + vert_blank;
 
     this->set_depth_internal(new_width);
+    this->set_fb_base();
 
     this->stop_refresh_task();
 
@@ -255,12 +255,14 @@ void PdmOnboardVideo::disable_video_internal()
 void PdmOnboardVideo::set_fb_base() {
     // figure out where our framebuffer is located
     uint64_t hmc_control = this->hmc_obj->get_control_reg();
-    uint8_t  vmem_loc = (hmc_control >> HMC_VBASE_BIT) & 1;
-    if (this->fb_loc != vmem_loc) {
+    uint8_t vmem_loc = (hmc_control >> HMC_VBASE_BIT) & 1;
+    uint32_t fb_size = this->fb_pitch * this->active_height;
+    if (this->fb_loc != vmem_loc || this->fb_size != fb_size) {
         uint32_t fb_base_phys = vmem_loc ? 0 : 0x100000;
-        MapDmaResult res = mmu_map_dma_mem(fb_base_phys, PDM_FB_SIZE_MAX, false);
+        MapDmaResult res = mmu_map_dma_mem(fb_base_phys, fb_size, false);
         this->fb_ptr = res.host_va;
         this->fb_loc = vmem_loc;
+        this->fb_size = fb_size;
     }
 }
 
