@@ -78,13 +78,11 @@ void PdmOnboardVideo::set_video_mode(uint8_t new_mode)
 
 void PdmOnboardVideo::set_pixel_depth(uint8_t depth)
 {
-    static uint8_t pix_depths[8] = {1, 2, 4, 8, 16, 0xFF, 0xFF, 0xFF};
-
-    uint8_t new_pix_depth = pix_depths[depth];
-    if (new_pix_depth == 0xFF) {
+    if (depth > 4) {
         ABORT_F("PDM-Video: invalid pixel depth code %d specified!", depth);
     }
 
+    uint8_t new_pix_depth = 1 << depth;
     if (new_pix_depth != this->pixel_depth) {
         this->pixel_depth = new_pix_depth;
         this->set_depth_internal(this->active_width);
