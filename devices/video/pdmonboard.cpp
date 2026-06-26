@@ -78,7 +78,7 @@ void PdmOnboardVideo::set_video_mode(uint8_t new_mode)
 
 void PdmOnboardVideo::set_pixel_depth(uint8_t depth)
 {
-    if (depth > 4) {
+    if (depth > 5) {
         ABORT_F("PDM-Video: invalid pixel depth code %d specified!", depth);
     }
 
@@ -147,6 +147,12 @@ void PdmOnboardVideo::set_depth_internal(int width)
             this->convert_frame_15bpp<BE>(dst_buf, dst_pitch);
         };
         this->fb_pitch = width << 1; // 1 pixel is 2 bytes
+        break;
+    case 32:
+        this->convert_fb_cb = [this](uint8_t* dst_buf, int dst_pitch) {
+            this->convert_frame_32bpp<BE>(dst_buf, dst_pitch);
+        };
+        this->fb_pitch = width << 2; // 1 pixel is 4 bytes
         break;
     default:
         ABORT_F("PDM-Video: pixel depth %d not implemented yet!", this->pixel_depth);
