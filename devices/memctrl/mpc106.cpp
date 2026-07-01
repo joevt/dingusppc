@@ -277,6 +277,10 @@ void MPC106PCI::pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDet
 }
 
 void MPC106PCI::setup_ram() {
+    // 3 supports 1 GB = real MPC106
+    // 7 supports 2 GB = fake MPC106; requires ROM patch to allow more than 1 GB of RAM
+    constexpr int EXTENDED_BITS_MASK = 7;
+
     uint32_t bank_start[8];
     uint32_t bank_end[8];
     int bank_order[8];
@@ -289,9 +293,9 @@ void MPC106PCI::setup_ram() {
             int word = bank >> 2;
             int byte = bank & 3;
             int shift = byte * 8;
-            bank_start[bank_count] = (((ext_mem_start[word] >> shift) & 3) << 28) |
+            bank_start[bank_count] = (((ext_mem_start[word] >> shift) & EXTENDED_BITS_MASK) << 28) |
                 ((((mem_start[word]) >> shift) & 0xFF) << 20);
-            bank_end  [bank_count] = (((ext_mem_end  [word] >> shift) & 3) << 28) |
+            bank_end  [bank_count] = (((ext_mem_end  [word] >> shift) & EXTENDED_BITS_MASK) << 28) |
                 ((((mem_end  [word]) >> shift) & 0xFF) << 20) | 0xFFFFFU;
             bank_order[bank_count] = bank_count;
             bank_count++;
