@@ -34,6 +34,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <string>
 
+static std::map<int,PciIrqMap> psx_irq_map = {
+    {DEV_FUN(0x0B,0), {nullptr , IntSrc::BANDIT1}},
+    {DEV_FUN(0x0D,0), {"pci_A1", IntSrc::PCI_A  }},
+    {DEV_FUN(0x0E,0), {"pci_B1", IntSrc::PCI_B  }},
+    {DEV_FUN(0x0F,0), {"pci_C1", IntSrc::PCI_C  }},
+    {DEV_FUN(0x10,0), {nullptr ,                }}, // OHare
+    {DEV_FUN(0x11,0), {"pci_E1", IntSrc::PCI_E  }},
+};
+
 class MachineAlchemy : public Machine {
 public:
     MachineAlchemy() : HWComponent("MachineAlchemy") {}
@@ -43,8 +52,8 @@ public:
 int MachineAlchemy::initialize(const std::string &id) {
     LOG_F(INFO, "Building machine Alchemy...");
 
-    PCIHost *pci_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name("PsxPci1"));
-    //pci_host->set_irq_map(psx_irq_map);
+    PCIHost *pci_host = dynamic_cast<PCIHost*>(gMachineObj->get_comp_by_name("PsxPci1Alchemy"));
+    pci_host->set_irq_map(psx_irq_map);
 
     MacIoTwo* macio_obj = dynamic_cast<MacIoTwo*>(gMachineObj->get_comp_by_name("OHare"));
 
@@ -121,7 +130,7 @@ static const PropMap pm6400_settings = {
 
 static std::vector<std::string> pm6400_devices = {
     "BootRomOW@FFC00000",
-    "Psx@F8000000", "PsxPci1@F2000000", "ScreamerSnd@14000", "OHare@10", "ValkyrieAlchemy@F1000000"
+    "Psx@F8000000", "PsxPci1Alchemy@F2000000", "ScreamerSnd@14000", "OHare@10", "ValkyrieAlchemy@F1000000"
 };
 
 static const DeviceDescription Machine5400_descriptor = {
