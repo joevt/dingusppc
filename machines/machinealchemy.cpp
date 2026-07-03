@@ -118,8 +118,6 @@ static const PropMap pm6400_settings = {
         new StrProperty("ScsiMesh/@3")},
     {"emmo",
         new BinProperty(0)},
-    {"pci_F1",
-        new StrProperty("AtiRageGT")},
     {"pci_dev_max",
         new IntProperty(0xF, 0, 0x1F)},
 };
