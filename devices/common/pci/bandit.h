@@ -126,6 +126,7 @@ public:
         if (dev_name == "Bandit1"   ) return std::unique_ptr<Bandit>(new Bandit(1, dev_name));
         if (dev_name == "Bandit2"   ) return std::unique_ptr<Bandit>(new Bandit(2, dev_name));
         if (dev_name == "PsxPci1"   ) return std::unique_ptr<Bandit>(new Bandit(1, dev_name, 8, 0));
+        if (dev_name == "PsxPci1Alchemy") return std::unique_ptr<Bandit>(new Bandit(1, dev_name, 8, 0));
         return nullptr;
     }
 
