@@ -382,6 +382,17 @@ static const PropMap PsxPci1_Properties = {
         new StrProperty("")},
 };
 
+static const PropMap PsxPci1Alchemy_Properties = {
+    {"pci_A1",
+        new StrProperty("")},
+    {"pci_B1",
+        new StrProperty("")},
+    {"pci_C1",
+        new StrProperty("")},
+    {"pci_E1",
+        new StrProperty("")},
+};
+
 static const std::vector<std::string> Chaos_Subdevices = {
     "ControlVideo@B"
 };
@@ -398,6 +409,10 @@ static const DeviceDescription PsxPci1_Descriptor = {
     Bandit::create, {}, PsxPci1_Properties, HWCompType::PCI_HOST
 };
 
+static const DeviceDescription PsxPci1Alchemy_Descriptor = {
+    Bandit::create, {}, PsxPci1Alchemy_Properties, HWCompType::PCI_HOST
+};
+
 static const DeviceDescription Chaos_Descriptor = {
     Chaos::create, Chaos_Subdevices, Chaos_Properties, HWCompType::PCI_HOST
 };
@@ -409,5 +424,6 @@ static const DeviceDescription AspenPci1_Descriptor = {
 REGISTER_DEVICE(Bandit1,    Bandit1_Descriptor);
 REGISTER_DEVICE(Bandit2,    Bandit2_Descriptor);
 REGISTER_DEVICE(PsxPci1,    PsxPci1_Descriptor);
+REGISTER_DEVICE(PsxPci1Alchemy, PsxPci1Alchemy_Descriptor);
 REGISTER_DEVICE(AspenPci1,  AspenPci1_Descriptor);
 REGISTER_DEVICE(Chaos,      Chaos_Descriptor);
