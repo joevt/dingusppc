@@ -210,6 +210,7 @@ rom_info rom_identity[] = {
     rom( 0x11f4, "pmg3nw"       , "Power Mac Yosemite"   , "Power Mac B&W G3"                  ) // PowerMac1,1  // 1999-04-09 3.1.1f4
     rom( 0x12f2, "pmyikes"      , "Power Mac G4 Yikes"   , "Power Mac G4 Yikes"                ) // PowerMac1,2  // 1999-08-19 3.1.2f2
     rom( 0x13f2, "imacg3"       , "iMac G3 Bondi"        , "iMac (233 MHz) (Bondi Blue)"       ) // iMac,1       // 1999-04-23 3.1.3f2
+    rom( 0x12f3, "imacg3"       , "iMac G3 Tray Loading" , "iMac (266,333 MHz) (Tray Loading)" ) // iMac,1       // 1998-12-02 3.0.0f3
     rom( 0x13f3, "imacg3"       , "iMac G3 Tray Loading" , "iMac (266,333 MHz) (Tray Loading)" ) // iMac,1       // 1999-07-16 3.1.3f3
 
 #undef rom
