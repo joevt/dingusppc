@@ -974,19 +974,19 @@ string MachineFactory::machine_name_from_rom(char *rom_data, size_t rom_size) {
     date = READ_DWORD_BE_A(&rom_data[8]);
     nw_config_signature = READ_WORD_BE_A(&rom_data[0x3f00]);
     has_nw_config = nw_config_signature == 0xc99c || nw_config_signature == 0xc03c;
-    if (!has_nw_config && !(date >= 0x19990101 && date < 0x20060000)) {
+    if (!has_nw_config && !(date > 0x19980710 && date <= 0x20051231)) {
         date = READ_DWORD_BE_A(&rom_data[12]);
     }
 
-    if (has_nw_config || (date >= 0x19980101 && date < 0x20060000)) {
+    if (has_nw_config || (date >= 0x19980101 && date <= 0x20051213)) {
         is_nw = true;
-        if (has_nw_config || date >= 0x19990101)
+        if (has_nw_config || date > 0x19980710)
             firmware_version = READ_DWORD_BE_A(&rom_data[4]);
         else {
             firmware_version = READ_DWORD_BE_A(&rom_data[8]);
         }
 
-        if (has_nw_config || date >= 0x19990101) {
+        if (has_nw_config || date > 0x19980710) {
             nw_recovery_checksum_calculated = adler32(&rom_data[0x8000], 0x77ffc);
             nw_recovery_checksum_stored = READ_DWORD_BE_A(&rom_data[0x7fffc]);
             nw_romimage_checksum_calculated = adler32(&rom_data[0x80000], 0x7fffc);
