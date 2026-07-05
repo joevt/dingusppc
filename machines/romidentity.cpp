@@ -367,7 +367,7 @@ rom_info rom_identity[] = {
     rom( 0x20c600, 0x6ac22d3f, "P58_133"        , "P58"      , nullptr  , "Power Mac G4 (Mirrored Drive Doors)"               ) // PowerMac3,6
     rom( 0x20c600, 0x6e5a2d67, "P58_133"        , "P58"      , nullptr  , "Power Mac G4 (Mirrored Drive Doors)"               ) // PowerMac3,6 // 2002-09-30 448f2
     rom( 0x20c600, 0x79302eaa, "Moj"            , "P58"      , nullptr  , "Power Mac G4 (Mirrored Drive Doors)"               ) // PowerMac3,6
-    rom( 0x20c600, 0x9c2c2e66, "P58_133|P58_DVT", "P58"      , nullptr  , "Power Mac G4 (Mirrored Drive Doors)"               ) // PowerMac3,6
+    rom( 0x20c600, 0x9c2c2e66, "P58_133|P58_DVT", "P58"      , nullptr  , "Power Mac G4 (Mirrored Drive Doors)"               ) // PowerMac3,6 // 2002-09-10 447f1
     rom( 0x20c601, 0x1d472c7c, "P58_167"        , "P58"      , nullptr  , "Power Mac G4 (Mirrored Drive Doors)"               ) // PowerMac3,6
     rom( 0x20c601, 0x20df2ca4, "P58_167"        , "P58"      , nullptr  , "Power Mac G4 (Mirrored Drive Doors)"               ) // PowerMac3,6
     rom( 0x20c601, 0x4eb12da3, "P58_167"        , "P58"      , nullptr  , "Power Mac G4 (Mirrored Drive Doors)"               ) // PowerMac3,6
