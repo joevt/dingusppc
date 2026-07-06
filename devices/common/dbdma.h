@@ -88,18 +88,16 @@ typedef struct DMACmd {
     uint16_t    xfer_stat;
 } DMACmd;
 
-namespace DBDMA_Cmd {
-    enum : uint8_t {
-        OUTPUT_MORE = 0,
-        OUTPUT_LAST = 1,
-        INPUT_MORE  = 2,
-        INPUT_LAST  = 3,
-        STORE_QUAD  = 4,
-        LOAD_QUAD   = 5,
-        NOP         = 6,
-        STOP        = 7
-    };
-}
+enum class DBDMA_Cmd : uint8_t {
+    OUTPUT_MORE = 0,
+    OUTPUT_LAST = 1,
+    INPUT_MORE  = 2,
+    INPUT_LAST  = 3,
+    STORE_QUAD  = 4,
+    LOAD_QUAD   = 5,
+    NOP         = 6,
+    STOP        = 7
+};
 
 typedef std::function<void(void)> DbdmaCallback;
 
@@ -164,7 +162,7 @@ private:
 
     bool     cmd_in_progress = false;
     bool     is_paused       = false;
-    uint8_t  cur_cmd;
+    DBDMA_Cmd cur_cmd;
     DMACmd * cur_host = nullptr;   // host virtual address of current command
     bool     cur_is_writable = false;  // current command is writable
 

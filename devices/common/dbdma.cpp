@@ -81,7 +81,7 @@ void DMAChannel::interpret_cmd() {
 
     this->ch_stat &= ~CH_STAT_WAKE; // clear wake bit (DMA spec, 5.5.3.4)
 
-    this->cur_cmd = cmd_struct.cmd_key >> 4;
+    this->cur_cmd = DBDMA_Cmd(cmd_struct.cmd_key >> 4);
 
     switch (this->cur_cmd) {
     case DBDMA_Cmd::OUTPUT_MORE:
@@ -109,6 +109,8 @@ void DMAChannel::interpret_cmd() {
             case DBDMA_Cmd::INPUT_LAST:
                 this->xfer_from_device();
                 break;
+            default:
+                ;
             }
         } else {
             this->queue_len = 0;
@@ -139,7 +141,7 @@ void DMAChannel::interpret_cmd() {
         break;
     default:
         LOG_F(ERROR, "%s: Unsupported DMA command 0x%X", this->get_name().c_str(),
-            this->cur_cmd);
+            (int)this->cur_cmd);
         this->ch_stat |= CH_STAT_DEAD;
         this->ch_stat &= ~CH_STAT_ACTIVE;
     }
