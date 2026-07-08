@@ -83,6 +83,12 @@ void DMAChannel::interpret_cmd() {
 
     this->cur_cmd = DBDMA_Cmd(cmd_struct.cmd_key >> 4);
 
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: interpret_cmd (ChannelStatus 0x%04x):",
+        this->get_name().c_str(), this->ch_stat);
+    if (loguru::Verbosity_DBDMA <= loguru::current_verbosity_cutoff()) {
+        dump_program(this->cmd_ptr, 1);
+    }
+
     switch (this->cur_cmd) {
     case DBDMA_Cmd::OUTPUT_MORE:
     case DBDMA_Cmd::OUTPUT_LAST:
