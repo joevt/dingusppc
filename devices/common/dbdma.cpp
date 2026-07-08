@@ -677,6 +677,7 @@ bool DMAChannel::is_active() {
 }
 
 void DMAChannel::start() {
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: start", this->get_name().c_str());
     if (this->ch_stat & CH_STAT_PAUSE) {
         LOG_F(WARNING, "%s: Cannot start DMA channel, PAUSE bit is set",
             this->get_name().c_str());
