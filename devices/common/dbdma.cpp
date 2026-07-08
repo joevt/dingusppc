@@ -37,7 +37,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace loguru {
     enum : Verbosity {
-        Verbosity_DBDMA = loguru::Verbosity_9
+        Verbosity_DBDMA = loguru::Verbosity_INFO
     };
 }
 
@@ -63,19 +63,19 @@ DMACmd* DMAChannel::fetch_cmd(uint32_t cmd_addr, DMACmd* p_cmd, bool *is_writabl
     return cmd_host;
 }
 
+void DMAChannel::init_cmd() {
+    this->queue_len = 0;
+    this->res_count = 0;
+    this->cmd_in_progress = true;
+    this->xfer_dir = DMA_DIR_UNDEF;
+    this->is_flushing = false;
+}
+
 void DMAChannel::interpret_cmd() {
     DMACmd cmd_struct;
     MapDmaResult res;
 
-    if (this->cmd_in_progress) {
-        // if there is data remaining to transfer then the command is not finished
-        if (this->queue_len)
-            return;
-
-        // if there is no data remaining to transfer then the command is finished
-        // and the program should procede to the next command
-        this->finish_cmd();
-    }
+    init_cmd();
 
     this->cur_host = fetch_cmd(this->cmd_ptr, &cmd_struct, &this->cur_is_writable);
 
@@ -105,7 +105,6 @@ void DMAChannel::interpret_cmd() {
             this->queue_len  = cmd_struct.req_count; // don't set queue_len until all the other fields are set
             LOG_F(DBDMA, "%s: Will transfer %d bytes %s 0x%08x (host:0x%llx)", this->get_name().c_str(), this->queue_len,
                 this->cur_cmd > DBDMA_Cmd::OUTPUT_LAST ? "to" : "from", cmd_struct.address, (uint64_t)(this->queue_data));
-            this->cmd_in_progress = true;
             switch (this->cur_cmd) {
             case DBDMA_Cmd::OUTPUT_MORE:
             case DBDMA_Cmd::OUTPUT_LAST:
@@ -118,10 +117,6 @@ void DMAChannel::interpret_cmd() {
             default:
                 ;
             }
-        } else {
-            this->queue_len = 0;
-            this->res_count = 0;
-            this->finish_cmd();
         }
         break;
     case DBDMA_Cmd::STORE_QUAD:
@@ -138,12 +133,9 @@ void DMAChannel::interpret_cmd() {
         this->xfer_quad(true);
         break;
     case DBDMA_Cmd::NOP:
-        this->finish_cmd();
         break;
     case DBDMA_Cmd::STOP:
         this->ch_stat &= ~CH_STAT_ACTIVE;
-        this->cmd_in_progress = false;
-        this->finish_cmd();
         break;
     default:
         LOG_F(ERROR, "%s: Unsupported DMA command 0x%X", this->get_name().c_str(),
@@ -154,6 +146,9 @@ void DMAChannel::interpret_cmd() {
 }
 
 void DMAChannel::finish_cmd() {
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: finish_cmd() (ChannelStatus 0x%04x)",
+        this->get_name().c_str(), this->ch_stat);
+
     bool   branch_taken = false;
 
     uint32_t saved_cmd_ptr = this->cmd_ptr;
@@ -225,6 +220,68 @@ void DMAChannel::finish_cmd() {
     this->cmd_in_progress = false;
 }
 
+DBDMA_State DMAChannel::dbdma_loop_iteration() {
+    if (!this->is_active())
+        return DBDMA_State::STOPPED;
+    if (this->is_paused)
+        return DBDMA_State::PAUSED;
+    if (this->cmd_in_progress && this->queue_len > 0) {
+        if (this->is_flushing) {
+            this->queue_len = 0;
+            this->is_flushing = false;
+        } else {
+            if (this->is_polled_transfer)
+                this->xfer_retry_internal();
+            if (this->queue_len > 0)
+                return DBDMA_State::TRANSFER;
+        }
+    }
+    if (this->cmd_in_progress)
+        this->finish_cmd();
+    if (this->cmd_in_progress)
+        return DBDMA_State::WAITING;
+    this->interpret_cmd();
+    return DBDMA_State::FETCH;
+}
+
+void DMAChannel::dbdma_loop_timed() {
+    bool continue_loop;
+    DBDMA_State state = this->dbdma_loop_iteration();
+    switch (state) {
+        case DBDMA_State::TRANSFER:
+            continue_loop = this->is_polled_transfer;
+            break;
+        case DBDMA_State::WAITING:
+            continue_loop = this->is_polled_waiting;
+            break;
+        case DBDMA_State::FETCH:
+            continue_loop = true;
+            break;
+        default:
+            continue_loop = false;
+    }
+
+    if (continue_loop)
+        this->interpret_timer_id = TimerManager::get_instance()->add_oneshot_timer(500, [this](uint64_t, uint64_t) {
+            this->dbdma_loop_timed();
+        });
+    else
+        this->interpret_timer_id = 0;
+}
+
+void DMAChannel::schedule_cmd() {
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: schedule_cmd() (ChannelStatus 0x%04x)",
+        this->get_name().c_str(), this->ch_stat);
+    std::lock_guard<std::mutex> lk(interpret_mtx);
+    if (this->interpret_timer_id) {
+        LOG_F(DBDMA, "%s: interpret_timer_id is already running", this->get_name().c_str());
+        return;
+    }
+    this->interpret_timer_id = TimerManager::get_instance()->add_oneshot_timer(500, [this](uint64_t, uint64_t) {
+        this->dbdma_loop_timed();
+    });
+}
+
 void DMAChannel::xfer_quad(bool is_store) {
     MapDmaResult res;
     uint32_t addr      = READ_DWORD_LE_A(&this->cur_host->address);
@@ -288,8 +345,6 @@ void DMAChannel::xfer_quad(bool is_store) {
     if (this->cur_host->cmd_bits & 0xC)
         ABORT_F("%s: cmd_bits.b should be zero for LOAD/STORE_QUAD!",
             this->get_name().c_str());
-
-    this->finish_cmd();
 }
 
 void DMAChannel::update_irq(uint8_t cmd_bits) {
@@ -297,6 +352,8 @@ void DMAChannel::update_irq(uint8_t cmd_bits) {
     if (this->cur_cmd < DBDMA_Cmd::STOP) {
         // react to cmd.i (interrupt) bits
         if (cmd_bits & 0x30) {
+            VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: update_irq(0x%02X) (ChannelStatus 0x%04x)",
+                this->get_name().c_str(), cmd_bits, this->ch_stat);
             bool cond = true;
             if ((cmd_bits & 0x30) != 0x30) {
                 uint16_t int_mask = this->int_select >> 16;
@@ -307,6 +364,7 @@ void DMAChannel::update_irq(uint8_t cmd_bits) {
             }
             if (cond) {
                 if (this->int_ctrl) {
+                    std::lock_guard<std::mutex> lk(interrupt_mtx);
                     if (!this->interrupt_timer_id)
                         this->interrupt_timer_id = TimerManager::get_instance()->add_immediate_timer([this](uint64_t, uint64_t) {
                             this->interrupt_timer_id = 0;
@@ -405,25 +463,27 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
             // when the channel is active and not dead.
             // Setting FLUSH to 0 has no effect.
             if (data & CH_STAT_FLUSH) {
-                if (
-                    (this->cur_cmd == DBDMA_Cmd::INPUT_MORE || this->cur_cmd == DBDMA_Cmd::INPUT_LAST) &&
-                    this->is_active()
-                ) {
-                    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: CH_STAT_FLUSH", this->get_name().c_str());
+                if (this->is_active()) {
                     this->ch_stat |= CH_STAT_FLUSH;
-                    if (this->dev_obj != nullptr) {
-                        VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: notify flush", this->get_name().c_str());
-                        this->dev_obj->notify(this, DMA_MSG_FLUSH);
+                    if ((this->cur_cmd == DBDMA_Cmd::INPUT_MORE || this->cur_cmd == DBDMA_Cmd::INPUT_LAST)) {
+                        VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: CH_STAT_FLUSH", this->get_name().c_str());
+                        this->is_flushing = true;
+                        if (this->dev_obj != nullptr) {
+                            VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: notify flush", this->get_name().c_str());
+                            this->dev_obj->notify(this, DMA_MSG_FLUSH);
+                        }
+                    } else {
+                        LOG_F(DBDMA, "%s: Attempt to flush when not doing INPUT",
+                            this->get_name().c_str());
                     }
                 } else {
-                    LOG_F(DBDMA, "%s: Attempt to flush when not doing INPUT",
+                    LOG_F(DBDMA, "%s: Attempt to flush when not ACTIVE",
                         this->get_name().c_str());
                 }
             } else {
                 LOG_F(ERROR, "%s: Attempt to clear flush bit which is %s",
                     this->get_name().c_str(), (this->ch_stat & CH_STAT_FLUSH) ? "set" : "already cleared");
             }
-            this->ch_stat &= ~CH_STAT_FLUSH;
         }
 
         if (mask & CH_STAT_RUN) {
@@ -449,9 +509,8 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
                 if (this->ch_stat & CH_STAT_ACTIVE) {
                     this->abort();
                     this->update_irq(this->cur_host->cmd_bits);
-                    this->cmd_in_progress = false;
                 }
-                this->ch_stat &= ~(CH_STAT_RUN | CH_STAT_ACTIVE | CH_STAT_DEAD);
+                this->ch_stat &= ~(CH_STAT_RUN | CH_STAT_ACTIVE | CH_STAT_DEAD | CH_STAT_FLUSH);
             }
         } else if (mask & CH_STAT_PAUSE) {
             if (data & CH_STAT_PAUSE) {
@@ -526,52 +585,62 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
 }
 
 void DMAChannel::xfer_from_device() {
+    this->xfer_dir = DMA_DIR_FROM_DEV;
+
     if (this->dev_obj == nullptr)
         return;
 
-    this->xfer_dir = DMA_DIR_FROM_DEV;
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: xfer_from_device() (ChannelStatus 0x%04x)",
+        this->get_name().c_str(), this->ch_stat);
 
     int got_bytes = this->dev_obj->xfer_from(this, this->queue_data, this->queue_len);
-    this->queue_data += got_bytes;
+    if (got_bytes > this->queue_len)
+        ABORT_F("%s: got_bytes > this->queue_len", this->get_name().c_str());
+    else if (got_bytes < this->queue_len)
+        LOG_F(DBDMA, "%s: Return got_bytes = %d data", this->get_name().c_str(), got_bytes);
+    else
+        LOG_F(DBDMA, "%s: Return queue_len = %d data", this->get_name().c_str(), this->queue_len);
+
+    uint8_t* p_data = this->queue_data;
     this->res_count -= got_bytes;
     this->queue_len -= got_bytes;
-    if (!this->queue_len) {
-        this->finish_cmd();
-    } else if (got_bytes) {
-        LOG_F(WARNING, "%s: got unexpected amount of data in xfer_from_device",
-            this->get_name().c_str());
-    } else {
-        LOG_F(WARNING, "%s: got no data in xfer_from_device",
-            this->get_name().c_str());
-    }
+    this->queue_data += got_bytes;
 
-    this->interpret_cmd();
+    LOG_F(DBDMA, "%s: Transferred %d bytes from 0x%llx (next:0x%llx, count:%d, queue:%d) : %s",
+        this->get_name().c_str(), got_bytes, (uint64_t)(p_data), (uint64_t)(this->queue_data),
+        this->res_count, this->queue_len, hex_string(p_data, got_bytes).c_str()
+    );
 }
 
 void DMAChannel::xfer_to_device() {
+    this->xfer_dir = DMA_DIR_TO_DEV;
+
     if (this->dev_obj == nullptr)
         return;
 
-    this->xfer_dir = DMA_DIR_TO_DEV;
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: xfer_to_device() (ChannelStatus 0x%04x)",
+        this->get_name().c_str(), this->ch_stat);
 
     int got_bytes = this->dev_obj->xfer_to(this, this->queue_data, this->queue_len);
-    this->queue_data += got_bytes;
+    if (got_bytes > this->queue_len)
+        ABORT_F("%s: got_bytes > this->queue_len", this->get_name().c_str());
+    else if (got_bytes < this->queue_len)
+        LOG_F(DBDMA, "%s: Return got_bytes = %d data", this->get_name().c_str(), got_bytes);
+    else
+        LOG_F(DBDMA, "%s: Return queue_len = %d data", this->get_name().c_str(), this->queue_len);
+
+    uint8_t* p_data = this->queue_data;
     this->res_count -= got_bytes;
     this->queue_len -= got_bytes;
-    if (!this->queue_len) {
-        this->finish_cmd();
-    } else if (got_bytes) {
-        LOG_F(WARNING, "%s: got unexpected amount of data in xfer_to_device",
-            this->get_name().c_str());
-    } else {
-        LOG_F(WARNING, "%s: got no data in xfer_to_device",
-            this->get_name().c_str());
-    }
+    this->queue_data += got_bytes;
 
-    this->interpret_cmd();
+    LOG_F(DBDMA, "%s: Transferred %d bytes to 0x%llx (next:0x%llx, count:%d, queue:%d) : %s",
+        this->get_name().c_str(), got_bytes, (uint64_t)(p_data), (uint64_t)(this->queue_data),
+        this->res_count, this->queue_len, hex_string(p_data, got_bytes).c_str()
+    );
 }
 
-void DMAChannel::xfer_retry() {
+void DMAChannel::xfer_retry_internal() {
     if (this->xfer_dir == DMA_DIR_UNDEF)
         return;
 
@@ -579,6 +648,13 @@ void DMAChannel::xfer_retry() {
         this->xfer_from_device();
     else
         this->xfer_to_device();
+}
+
+void DMAChannel::xfer_retry() {
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: xfer_retry() (ChannelStatus 0x%04x)",
+        this->get_name().c_str(), this->ch_stat);
+    this->xfer_retry_internal();
+    this->schedule_cmd();
 }
 
 bool DMAChannel::dma_is_ready() {
@@ -605,13 +681,8 @@ DmaPullResult DMAChannel::pull_data(uint32_t req_len, uint32_t *avail_len, uint8
         return DmaPullResult::NoMoreData;
     }
 
-    // interpret DBDMA program until we get data or become idle
-    while ((this->ch_stat & CH_STAT_ACTIVE) && !this->queue_len) {
-        this->interpret_cmd();
-    }
-
     // dequeue data if any
-    if (this->queue_len) {
+    if (this->queue_len > 0) {
         if (this->queue_len >= req_len) {
             LOG_F(DBDMA, "%s: Return req_len = %d data", this->get_name().c_str(), req_len);
         } else { // return less data than req_len
@@ -627,10 +698,11 @@ DmaPullResult DMAChannel::pull_data(uint32_t req_len, uint32_t *avail_len, uint8
             this->get_name().c_str(), *avail_len, (uint64_t)(*p_data), (uint64_t)(this->queue_data),
             this->res_count, this->queue_len, hex_string(*p_data, *avail_len).c_str()
         );
-        return DmaPullResult::MoreData; // tell the caller there is more data
     }
 
-    return DmaPullResult::NoMoreData; // tell the caller there is no more data
+    this->schedule_cmd();
+
+    return DmaPullResult::MoreData;
 }
 
 DmaPushResult DMAChannel::push_data(const char* src_ptr, int len) {
@@ -645,12 +717,7 @@ DmaPushResult DMAChannel::push_data(const char* src_ptr, int len) {
         return DmaPushResult::NoData;
     }
 
-    // interpret DBDMA program until we get buffer to fill in or become idle
-    while ((this->ch_stat & CH_STAT_ACTIVE) && !this->queue_len) {
-        this->interpret_cmd();
-    }
-
-    if (this->queue_len) {
+    if (this->queue_len > 0) {
         len = std::min((int)this->queue_len, len);
         std::memcpy(this->queue_data, src_ptr, len);
         this->queue_data += len;
@@ -664,10 +731,7 @@ DmaPushResult DMAChannel::push_data(const char* src_ptr, int len) {
         }
     }
 
-    // proceed with the DBDMA program if the buffer became exhausted
-    if (!this->queue_len) {
-        this->interpret_cmd();
-    }
+    this->schedule_cmd();
 
     return DmaPushResult::PushedData;
 }
@@ -698,23 +762,13 @@ void DMAChannel::start() {
         return;
     }
 
-    this->queue_len = 0;
-
-    this->cmd_in_progress = false;
-
     if (this->dev_obj != nullptr)
         this->dev_obj->notify(this, DMA_MSG_START);
 
     if (this->start_cb)
         this->start_cb();
 
-    // some DBDMA programs contain commands that don't transfer data
-    // between a device and memory (LOAD_QUAD, STORE_QUAD, NOP and STOP).
-    // We thus interprete the DBDMA program until a data transfer between
-    // a device and memory is queued or the channel becomes idle/dead.
-    while (!this->cmd_in_progress && this->is_active()) {
-        this->interpret_cmd();
-    }
+    this->schedule_cmd();
 }
 
 void DMAChannel::resume() {
@@ -725,13 +779,7 @@ void DMAChannel::resume() {
         return;
     }
 
-    // some DBDMA programs contain commands that don't transfer data
-    // between a device and memory (LOAD_QUAD, STORE_QUAD, NOP and STOP).
-    // We thus interprete the DBDMA program until a data transfer between
-    // a device and memory is queued or the channel becomes idle/dead.
-    while (!this->cmd_in_progress && this->is_active()) {
-        this->interpret_cmd();
-    }
+    this->schedule_cmd();
 }
 
 void DMAChannel::abort() {

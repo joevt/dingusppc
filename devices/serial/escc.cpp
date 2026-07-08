@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 /** @file Enhanced Serial Communications Controller (ESCC) emulation. */
 
 #include <core/timermanager.h>
+#include <cpu/ppc/ppcemu.h>
 #include <devices/deviceregistry.h>
 #include <devices/serial/chario.h>
 #include <devices/serial/escc.h>
@@ -1069,6 +1070,13 @@ int EsccChannel::xfer_to(DmaChannel *ch_obj, uint8_t *buf, int len) {
     }
 
     return bytes_moved;
+}
+
+void EsccChannel::notify(DmaChannel *ch_obj, DmaMsg msg) {
+    if (msg == DmaMsg::DMA_MSG_FLUSH) {
+        power_on = false;
+        power_off_reason = po_enter_debugger;
+    }
 }
 
 static const std::vector<std::string> CharIoBackends = {"null", "stdio", "socket"};

@@ -120,7 +120,7 @@ public:
 
         ch_obj->set_id(dir_index);
         ch_obj->set_type(dir_index == DIR_TX ? DMA_CH_TYPE_OUT : DMA_CH_TYPE_IN);
-        ch_obj->connect(this);
+        ch_obj->connect(this, true);
     }
 
     // End of packet (EOP) flag is reflected by s5 bit of the DMA TX channel status
@@ -132,6 +132,7 @@ public:
     // DmaChannel methods
     int xfer_from(DmaChannel *ch_obj, uint8_t *buf, int len) override;
     int xfer_to  (DmaChannel *ch_obj, uint8_t *buf, int len) override;
+    void notify  (DmaChannel *ch_obj, DmaMsg msg) override;
 
     void set_controller(EsccController* the_controller) {
         this->controller = the_controller;
