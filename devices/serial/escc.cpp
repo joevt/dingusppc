@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 /** @file Enhanced Serial Communications Controller (ESCC) emulation. */
 
 #include <core/timermanager.h>
+#include <cpu/ppc/ppcemu.h>
 #include <devices/deviceregistry.h>
 #include <devices/serial/chario.h>
 #include <devices/serial/escc.h>
