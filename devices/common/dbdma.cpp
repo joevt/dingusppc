@@ -156,6 +156,8 @@ void DMAChannel::interpret_cmd() {
 void DMAChannel::finish_cmd() {
     bool   branch_taken = false;
 
+    uint32_t saved_cmd_ptr = this->cmd_ptr;
+
     // save interrupt bits from the completing command before cmd_ptr may change
     uint8_t saved_cmd_bits = this->cur_host->cmd_bits;
 
@@ -209,6 +211,11 @@ void DMAChannel::finish_cmd() {
 
     if (this->cur_cmd < DBDMA_Cmd::STOP && !branch_taken)
         this->cmd_ptr += 16;
+
+    LOG_F(DBDMA, "%s: finish_cmd (ChannelStatus 0x%04x):", this->get_name().c_str(), this->ch_stat);
+    if (loguru::Verbosity_DBDMA <= loguru::current_verbosity_cutoff()) {
+        dump_program(saved_cmd_ptr, 1);
+    }
 
     // use the interrupt bits saved before cmd_ptr was advanced or branched
     if (this->cur_cmd < DBDMA_Cmd::STOP) {
