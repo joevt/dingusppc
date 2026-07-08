@@ -34,6 +34,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 #include <functional>
+#include <mutex>
 
 class InterruptCtrl;
 
@@ -100,6 +101,15 @@ enum class DBDMA_Cmd : uint8_t {
     STOP        = 7
 };
 
+enum class DBDMA_State {
+    STOPPED,
+    PAUSED,
+    TRANSFER,
+    WAITING,
+    FETCH,
+    FINISH,
+};
+
 typedef std::function<void(void)> DbdmaCallback;
 
 class DMAChannel : public DmaBidirChannel, public DmaChannel {
@@ -136,14 +146,19 @@ public:
 
 protected:
     static DMACmd* fetch_cmd(uint32_t cmd_addr, DMACmd* p_cmd, bool *is_writable);
-    void interpret_cmd(void);
-    void interpret_until_blocked();
+    void init_cmd();
+    void interpret_cmd();
     void update_cmd();
     void finish_cmd();
+    DBDMA_State dbdma_loop_iteration();
+    void dbdma_loop_timed();
+    void schedule_cmd();
+
     void xfer_quad(bool is_store);
     void update_irq(uint8_t cmd_bits);
     void xfer_from_device();
     void xfer_to_device();
+    void xfer_retry_internal();
 
     void start(void);
     void resume(void);
@@ -155,10 +170,12 @@ protected:
 private:
     std::function<void(void)> start_cb = nullptr; // DMA channel start callback
     std::function<void(void)> stop_cb  = nullptr; // DMA channel stop callback
+    TimerInfo interpret_timer;
+    std::mutex interpret_mtx;
 
     uint16_t ch_stat        = 0;
     uint32_t cmd_ptr        = 0;
-    uint32_t queue_len      = 0;
+    int32_t  queue_len      = 0;
     uint8_t* queue_data     = 0;
     uint32_t res_count      = 0;
     uint32_t int_select     = 0;
@@ -167,6 +184,7 @@ private:
 
     bool     cmd_in_progress = false;
     bool     is_paused       = false;
+    bool     is_flushing     = false;
     DBDMA_Cmd cur_cmd;
     DMACmd * cur_host = nullptr;   // host virtual address of current command
     uint32_t cur_guest = 0;
@@ -176,6 +194,7 @@ private:
     InterruptCtrl* int_ctrl = nullptr;
     uint64_t       irq_id   = 0;
     TimerInfo      interrupt_timer;
+    std::mutex     interrupt_mtx;
 
     uint64_t unsupported_register_read = 0;
     uint64_t unsupported_register_write = 0;
