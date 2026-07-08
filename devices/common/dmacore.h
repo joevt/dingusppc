@@ -135,7 +135,14 @@ public:
     uint32_t    get_id() { return this->ch_id; }
     void        set_type(const DmaChannelType type) { this->ch_type = type; }
 
-    virtual void connect(DmaDevice *dev_obj) { this->dev_obj = dev_obj; }
+    virtual void connect(DmaDevice *dev_obj) {
+        this->dev_obj = dev_obj;
+        this->is_polled_transfer = false;
+    }
+    virtual void connect(DmaDevice *dev_obj, bool is_polled_transfer) {
+        this->dev_obj = dev_obj;
+        this->is_polled_transfer = is_polled_transfer;
+    }
     virtual void notify(DmaMsg /*msg*/) {}
     virtual bool dma_is_ready() { return false; }
     virtual void xfer_retry() {}
@@ -145,6 +152,8 @@ protected:
     uint32_t        ch_id    = 0; // support for several channels per device
     DmaChannelType  ch_type  = DMA_CH_TYPE_BIDIR;
     XferDir         xfer_dir = DMA_DIR_UNDEF;
+    bool            is_polled_waiting  = false;
+    bool            is_polled_transfer = false;
 };
 
 /*
