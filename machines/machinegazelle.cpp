@@ -25,8 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cpu/ppc/ppcemu.h>
 #include <devices/memctrl/psx.h>
-#include <devices/common/pci/pcidevice.h>
-#include <devices/common/pci/pcihost.h>
 #include <devices/deviceregistry.h>
 #include <devices/ioctrl/macio.h>
 #include <machines/machine.h>
