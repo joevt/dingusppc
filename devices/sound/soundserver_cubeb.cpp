@@ -39,7 +39,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace loguru {
     enum : Verbosity {
-        Verbosity_SOUNDSERVER = loguru::Verbosity_INFO
+        Verbosity_SOUNDSERVER = loguru::Verbosity_INFO,
+        Verbosity_SOUNDOUT    = loguru::Verbosity_9,
+        Verbosity_SOUNDCALLBACK = loguru::Verbosity_9,
     };
 }
 
@@ -143,6 +145,9 @@ static long sound_out_callback(cubeb_stream* /*stream*/, void* user_data,
         if (DmaPullResult::MoreData == dma_ch->pull_data((uint32_t)req_frames << 2, &got_len, &p_in)) {
             if ((in_buf = (int16_t*)p_in)) {
                 frames = got_len >> 2;
+                if (got_len & 3)
+                    LOG_F(ERROR, "didn't get multiple of 4 bytes");
+                LOG_F(SOUNDOUT, "MoreData req_frames:%ld frames:%ld", req_frames, frames);
 
                 for (int i = (int)frames; i > 0; i--) {
                     out_buf[0] = READ_WORD_BE_A(&in_buf[0]);
@@ -155,10 +160,12 @@ static long sound_out_callback(cubeb_stream* /*stream*/, void* user_data,
                 out_frames += frames;
             }
             else {
-                LOG_F(ERROR, "Didn't get qdata");
+                /* The DMA might not be running yet */
+                LOG_F(SOUNDOUT, "MoreData req_frames:%ld got_len:%ld ; Didn't get qdata", req_frames, (long)got_len);
             }
         }
         else {
+            LOG_F(SOUNDOUT, "NoMoreData req_frames:%ld got_len:%ld", req_frames, (long)got_len);
             break;
         }
     }
@@ -168,7 +175,7 @@ static long sound_out_callback(cubeb_stream* /*stream*/, void* user_data,
 
 static void status_callback(cubeb_stream */*stream*/, void */*user_data*/, cubeb_state state)
 {
-    LOG_F(SOUNDSERVER, "Cubeb status callback fired, status = %d", state);
+    LOG_F(SOUNDCALLBACK, "Cubeb status callback fired, status = %d", state);
 }
 
 int SoundServer::open_out_stream(uint32_t sample_rate, DmaOutChannel *dma_ch)
