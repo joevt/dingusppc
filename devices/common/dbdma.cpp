@@ -599,7 +599,7 @@ DmaPullResult DMAChannel::pull_data(uint32_t req_len, uint32_t *avail_len, uint8
 
     if (!this->is_active()) {
         // dead or idle channel? -> no more data
-        LOG_F(WARNING, "%s: Dead/idle channel -> no more data", this->get_name().c_str());
+        LOG_F(DBDMA, "%s: Dead/idle channel -> no more data", this->get_name().c_str());
         return DmaPullResult::NoMoreData;
     }
 
