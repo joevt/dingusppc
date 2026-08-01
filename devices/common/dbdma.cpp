@@ -163,6 +163,8 @@ void DMAChannel::interpret_until_blocked() {
 }
 
 void DMAChannel::update_cmd() {
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: update_cmd() (ChannelStatus 0x%04x)",
+        this->get_name().c_str(), this->ch_stat);
     if (this->cur_is_writable) {
         if (this->cur_cmd < DBDMA_Cmd::STOP)
             WRITE_WORD_LE_A(&this->cur_host->xfer_stat, this->ch_stat | CH_STAT_ACTIVE);
