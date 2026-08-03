@@ -138,10 +138,12 @@ public:
     virtual void connect(DmaDevice *dev_obj) {
         this->dev_obj = dev_obj;
         this->is_polled_transfer = false;
+        this->is_threaded = false;
     }
-    virtual void connect(DmaDevice *dev_obj, bool is_polled_transfer) {
+    virtual void connect(DmaDevice *dev_obj, bool is_polled_transfer, bool is_threaded) {
         this->dev_obj = dev_obj;
         this->is_polled_transfer = is_polled_transfer;
+        this->is_threaded = is_threaded;
     }
     virtual void notify(DmaMsg /*msg*/) {}
     virtual bool dma_is_ready() { return false; }
@@ -154,6 +156,7 @@ protected:
     XferDir         xfer_dir = DMA_DIR_UNDEF;
     bool            is_polled_waiting  = false;
     bool            is_polled_transfer = false;
+    bool            is_threaded = false;
 };
 
 /*
