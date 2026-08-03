@@ -137,6 +137,11 @@ public:
 
     virtual void connect(DmaDevice *dev_obj) {
         this->dev_obj = dev_obj;
+        this->is_threaded = false;
+    }
+    virtual void connect(DmaDevice *dev_obj, bool is_threaded) {
+        this->dev_obj = dev_obj;
+        this->is_threaded = is_threaded;
     }
     virtual void notify(DmaMsg /*msg*/) {}
     virtual bool dma_is_ready() { return false; }
@@ -147,6 +152,7 @@ protected:
     uint32_t        ch_id    = 0; // support for several channels per device
     DmaChannelType  ch_type  = DMA_CH_TYPE_BIDIR;
     XferDir         xfer_dir = DMA_DIR_UNDEF;
+    bool            is_threaded = false;
 };
 
 /*
