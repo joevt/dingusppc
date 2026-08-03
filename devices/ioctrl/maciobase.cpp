@@ -70,6 +70,7 @@ MacIoBase::MacIoBase(std::string name, uint16_t dev_id, uint8_t rev) :
         std::bind(&AwacsScreamer::dma_out_start, this->snd_codec),
         std::bind(&AwacsScreamer::dma_out_stop, this->snd_codec)
     );
+    this->snd_out_dma->connect(nullptr, false, true);
     this->snd_in_dma = std::unique_ptr<DMAChannel> (new DMAChannel("snd_in"));
     this->snd_in_dma->register_dma_int(this, this->register_int(IntSrc::DMA_DAVBUS_Rx));
     this->snd_codec->set_dma_in(this->snd_in_dma.get());

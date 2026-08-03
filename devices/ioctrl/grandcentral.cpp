@@ -80,6 +80,7 @@ GrandCentral::GrandCentral(const std::string name)
         std::bind(&AwacsScreamer::dma_out_start, this->awacs),
         std::bind(&AwacsScreamer::dma_out_stop, this->awacs)
     );
+    this->snd_out_dma->connect(nullptr, false, true);
     this->snd_in_dma = std::unique_ptr<DMAChannel> (new DMAChannel("snd_in"));
     this->snd_in_dma->register_dma_int(this, this->register_int(IntSrc::DMA_DAVBUS_Rx));
     this->awacs->set_dma_in(this->snd_in_dma.get());
