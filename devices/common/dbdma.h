@@ -151,8 +151,8 @@ protected:
     void update_cmd();
     void finish_cmd();
     DBDMA_State dbdma_loop_iteration();
-    void dbdma_loop_timed();
-    void schedule_cmd();
+    void dbdma_loop_timed(bool is_immediate = false);
+    void schedule_cmd(bool is_immediate = false);
 
     void xfer_quad(bool is_store);
     void update_irq(uint8_t cmd_bits);
@@ -172,6 +172,7 @@ private:
     std::function<void(void)> stop_cb  = nullptr; // DMA channel stop callback
     TimerInfo interpret_timer;
     std::mutex interpret_mtx;
+    std::mutex dbdma_loop_mtx;
 
     uint16_t ch_stat        = 0;
     uint32_t cmd_ptr        = 0;
