@@ -250,7 +250,11 @@ DBDMA_State DMAChannel::dbdma_loop_iteration() {
     return DBDMA_State::FETCH;
 }
 
-void DMAChannel::dbdma_loop_timed() {
+void DMAChannel::dbdma_loop_timed(bool is_immediate) {
+    std::unique_lock<std::mutex> lk(this->dbdma_loop_mtx, std::defer_lock);
+    if (this->is_threaded && !lk.try_lock())
+        return;
+
     bool continue_loop;
     DBDMA_State state = this->dbdma_loop_iteration();
     switch (state) {
@@ -267,18 +271,24 @@ void DMAChannel::dbdma_loop_timed() {
             continue_loop = false;
     }
 
-    if (continue_loop)
-        this->interpret_timer_id = TimerManager::get_instance()->add_oneshot_timer(500, [this](uint64_t, uint64_t) {
-            this->dbdma_loop_timed();
-        });
-    else
-        this->interpret_timer_id = 0;
+    if (!is_immediate) {
+        if (continue_loop)
+            this->interpret_timer_id = TimerManager::get_instance()->add_oneshot_timer(500, [this](uint64_t, uint64_t) {
+                this->dbdma_loop_timed();
+            });
+        else
+            this->interpret_timer_id = 0;
+    }
 }
 
-void DMAChannel::schedule_cmd() {
-    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: schedule_cmd() (ChannelStatus 0x%04x)",
-        this->get_name().c_str(), this->ch_stat);
-    std::lock_guard<std::mutex> lk(interpret_mtx);
+void DMAChannel::schedule_cmd(bool is_immediate) {
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: schedule_cmd(%s) (ChannelStatus 0x%04x)",
+        this->get_name().c_str(), is_immediate ? "immediate" : "", this->ch_stat);
+
+    if (is_immediate)
+        this->dbdma_loop_timed();
+
+    std::lock_guard<std::mutex> lk(this->interpret_mtx);
     if (this->interpret_timer_id) {
         LOG_F(DBDMA, "%s: interpret_timer_id is already running", this->get_name().c_str());
         return;
@@ -706,7 +716,7 @@ DmaPullResult DMAChannel::pull_data(uint32_t req_len, uint32_t *avail_len, uint8
         );
     }
 
-    this->schedule_cmd();
+    this->schedule_cmd(this->is_threaded);
 
     return DmaPullResult::MoreData;
 }

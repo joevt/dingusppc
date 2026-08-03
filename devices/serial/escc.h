@@ -120,7 +120,7 @@ public:
 
         ch_obj->set_id(dir_index);
         ch_obj->set_type(dir_index == DIR_TX ? DMA_CH_TYPE_OUT : DMA_CH_TYPE_IN);
-        ch_obj->connect(this, true);
+        ch_obj->connect(this, true, false);
     }
 
     // End of packet (EOP) flag is reflected by s5 bit of the DMA TX channel status
