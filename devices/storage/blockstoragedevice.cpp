@@ -34,8 +34,8 @@ BlockStorageDevice::BlockStorageDevice(const uint32_t cache_blocks,
     this->cache_blocks = cache_blocks;
     this->max_blocks   = max_blocks;
     this->is_ready     = false;
-    this->cache_size   = 0;
     this->data_offset  = 0;
+    this->allocate_cache();
 }
 
 BlockStorageDevice::~BlockStorageDevice() {
@@ -89,12 +89,16 @@ int BlockStorageDevice::set_block_size(const int blk_size) {
             return -1;
     }
 
+    this->allocate_cache();
+
+    return 0;
+}
+
+void BlockStorageDevice::allocate_cache() {
     this->cache_size = this->cache_blocks * this->raw_blk_size;
 
     // allocate data cache and fill it with zeroes
     this->data_cache = std::unique_ptr<char[]>(new char[this->cache_size] ());
-
-    return 0;
 }
 
 int BlockStorageDevice::set_fpos(const uint64_t lba) {
