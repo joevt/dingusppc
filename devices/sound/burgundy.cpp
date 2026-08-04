@@ -49,6 +49,8 @@ uint32_t BurgundyCodec::snd_ctrl_read(uint32_t offset, int size) {
     switch (offset) {
     case AWAC_SOUND_CTRL_REG:
         value = this->snd_ctrl_reg;
+        LOG_F(INFO, "%s: read  %-20s @%02x.%c = %0*x", this->name.c_str(), "AWAC_SOUND_CTRL_REG",
+            offset, SIZE_ARG(size), size * 2, value);
         break;
     case AWAC_CODEC_CTRL_REG:
         value = this->last_ctrl_data;
@@ -65,6 +67,8 @@ uint32_t BurgundyCodec::snd_ctrl_read(uint32_t offset, int size) {
                 + 500000000
             )  / 1000000000 + this->frame_count
         );
+        //LOG_F(INFO, "%s: read  %-20s @%02x.%c = %0*x", this->name.c_str(), "AWAC_FRAME_COUNT",
+        //    offset, SIZE_ARG(size), size * 2, value);
         break;
     default:
         LOG_F(ERROR, "%s: read  @%02x.%c", this->name.c_str(),
@@ -83,6 +87,8 @@ void BurgundyCodec::snd_ctrl_write(uint32_t offset, uint32_t value, int size) {
 
     switch (offset) {
     case AWAC_SOUND_CTRL_REG:
+        LOG_F(INFO, "%s: write %-20s @%02x.%c = %0*x", this->name.c_str(), "AWAC_SOUND_CTRL_REG",
+            offset, SIZE_ARG(size), size * 2, value);
         this->snd_ctrl_reg = BYTESWAP_32(value);
         //this->set_sample_rate((this->snd_ctrl_reg >> 8) & 7);
         break;
@@ -112,6 +118,8 @@ void BurgundyCodec::snd_ctrl_write(uint32_t offset, uint32_t value, int size) {
     case AWAC_FRAME_COUNT:
         this->frame_count = BYTESWAP_32(value);
         this->frame_count_start_time = TimerManager::get_instance()->current_time_ns();
+        LOG_F(INFO, "%s: write %-20s @%02x.%c = %0*x", this->name.c_str(), "AWAC_FRAME_COUNT",
+            offset, SIZE_ARG(size), size * 2, value);
         break;
     default:
         LOG_F(ERROR, "%s: write @%02x.%c = %0*x", this->name.c_str(),
