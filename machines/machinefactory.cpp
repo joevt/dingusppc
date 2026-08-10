@@ -864,7 +864,7 @@ bail_out:
     return file_size;
 }
 
-string MachineFactory::machine_name_from_rom(char *rom_data, size_t rom_size) {
+string MachineFactory::machine_name_from_rom(char *rom_data, size_t rom_size, bool fix_checksums) {
     uint32_t date = 0;
     uint16_t major_version = 0;
     uint16_t minor_version = 0;
@@ -876,6 +876,14 @@ string MachineFactory::machine_name_from_rom(char *rom_data, size_t rom_size) {
     uint32_t nw_config_checksum_stored   = 0; uint32_t nw_config_checksum_calculated   = 0;
     uint32_t nw_recovery_checksum_stored = 0; uint32_t nw_recovery_checksum_calculated = 0;
     uint32_t nw_romimage_checksum_stored = 0; uint32_t nw_romimage_checksum_calculated = 0;
+
+    uint32_t* ow_checksum_stored_p = nullptr;
+    uint64_t* ow_checksum64_stored_p = nullptr;
+    uint32_t* nw_start_checksum_stored_p = nullptr;
+    uint32_t* nw_config_checksum_stored_p = nullptr;
+    uint32_t* nw_recovery_checksum_stored_p = nullptr;
+    uint32_t* nw_romimage_checksum_stored_p = nullptr;
+
     uint16_t nw_config_signature = 0;
     bool has_nw_config = false;
     bool is_nw = false;
@@ -913,36 +921,53 @@ string MachineFactory::machine_name_from_rom(char *rom_data, size_t rom_size) {
         firmware_version = READ_DWORD_BE_A(&rom_data[4]);
         {
             nw_recovery_checksum_calculated = adler32(&rom_data[0x8000], 0x77ffc);
-            nw_recovery_checksum_stored = READ_DWORD_BE_A(&rom_data[0x7fffc]);
+            nw_recovery_checksum_stored_p = (uint32_t*)&rom_data[0x7fffc];
+            nw_recovery_checksum_stored = READ_DWORD_BE_A(nw_recovery_checksum_stored_p);
             nw_romimage_checksum_calculated = adler32(&rom_data[0x80000], 0x7fffc);
-            nw_romimage_checksum_stored = READ_DWORD_BE_A(&rom_data[0xffffc]);
+            nw_romimage_checksum_stored_p = (uint32_t*)&rom_data[0xffffc];
+            nw_romimage_checksum_stored = READ_DWORD_BE_A(nw_romimage_checksum_stored_p);
         }
 
         if (has_nw_config) {
             nw_start_checksum_calculated = adler32(&rom_data[0], 0x3efc);
-            nw_start_checksum_stored = READ_DWORD_BE_A(&rom_data[0x3efc]);
+            nw_start_checksum_stored_p = (uint32_t*)&rom_data[0x3efc];
+            nw_start_checksum_stored = READ_DWORD_BE_A(nw_start_checksum_stored_p);
             nw_config_checksum_calculated = adler32(&rom_data[0x3f00], 0x7c);
-            nw_config_checksum_stored = READ_DWORD_BE_A(&rom_data[0x3f7c]);
+            nw_config_checksum_stored_p = (uint32_t*)&rom_data[0x3f7c];
+            nw_config_checksum_stored = READ_DWORD_BE_A(nw_config_checksum_stored_p);
             nw_subconfig_checksum_calculated = adler32(&rom_data[0x3f0c], 0x70);
             nw_product_id = (READ_WORD_BE_A(&rom_data[0x3f02]) << 8) | rom_data[0x3f13];
         }
         else {
             firmware_version &= 0xffff; // the upper 2 bytes might be a machine type: 0=iMac, 1=PowerMac, 2=PowerBook
             nw_start_checksum_calculated = adler32(&rom_data[0], 0x3ffc);
-            nw_start_checksum_stored = READ_DWORD_BE_A(&rom_data[0x3ffc]);
+            nw_start_checksum_stored_p = (uint32_t*)&rom_data[0x3ffc];
+            nw_start_checksum_stored = READ_DWORD_BE_A(nw_start_checksum_stored_p);
             nw_config_checksum_calculated = 0;
             nw_config_checksum_stored = 0;
             nw_subconfig_checksum_calculated = 0;
             nw_product_id = 0;
         }
-        if (nw_start_checksum_calculated != nw_start_checksum_stored)
+        if (nw_start_checksum_calculated != nw_start_checksum_stored) {
             snprintf(expected_start, sizeof(expected_start), " (expected 0x%04x)", nw_start_checksum_stored);
-        if (nw_config_checksum_calculated != nw_config_checksum_stored)
+            if (fix_checksums)
+                WRITE_DWORD_BE_A(nw_start_checksum_stored_p, nw_start_checksum_calculated);
+        }
+        if (nw_config_checksum_calculated != nw_config_checksum_stored) {
             snprintf(expected_config, sizeof(expected_config), " (expected 0x%04x)", nw_config_checksum_stored);
-        if (nw_recovery_checksum_calculated != nw_recovery_checksum_stored)
+            if (fix_checksums)
+                WRITE_DWORD_BE_A(nw_config_checksum_stored_p, nw_config_checksum_calculated);
+        }
+        if (nw_recovery_checksum_calculated != nw_recovery_checksum_stored) {
             snprintf(expected_recovery, sizeof(expected_recovery), " (expected 0x%04x)", nw_recovery_checksum_stored);
-        if (nw_romimage_checksum_calculated != nw_romimage_checksum_stored)
+            if (fix_checksums)
+                WRITE_DWORD_BE_A(nw_recovery_checksum_stored_p, nw_recovery_checksum_calculated);
+        }
+        if (nw_romimage_checksum_calculated != nw_romimage_checksum_stored) {
             snprintf(expected_romimage, sizeof(expected_romimage), " (expected 0x%04x)", nw_romimage_checksum_stored);
+            if (fix_checksums)
+                WRITE_DWORD_BE_A(nw_romimage_checksum_stored_p, nw_romimage_checksum_calculated);
+        }
     }
     else {
         date = 0;
@@ -952,18 +977,26 @@ string MachineFactory::machine_name_from_rom(char *rom_data, size_t rom_size) {
             minor_version = READ_WORD_BE_A(&rom_data[0x12]);
         firmware_version = (major_version << 16) | minor_version;
         ow_checksum_calculated = oldworldchecksum(&rom_data[4], std::min(rom_size - 4, (size_t)0x2ffffc));
-        ow_checksum_stored = READ_DWORD_BE_A(&rom_data[0]);
-        if (ow_checksum_calculated != ow_checksum_stored)
+        ow_checksum_stored_p = (uint32_t*)&rom_data[0];
+        ow_checksum_stored = READ_DWORD_BE_A(ow_checksum_stored_p);
+        if (ow_checksum_calculated != ow_checksum_stored) {
             snprintf(expected_ow, sizeof(expected_ow), " (expected 0x%08x)", ow_checksum_stored);
+            if (fix_checksums)
+                WRITE_DWORD_BE_A(ow_checksum_stored_p, ow_checksum_calculated);
+        }
 
         if (rom_size >= 0x400000) {
             /* read ConfigInfo offset from file */
             config_info_offset = READ_DWORD_BE_A(&rom_data[0x300080]);
             if (0x300000ULL + config_info_offset <= rom_size - 0x64 - 16) {
                 ow_checksum64_calculated = oldworldchecksum64(&rom_data[0], rom_size, 0x300000 + config_info_offset);
-                ow_checksum64_stored = READ_QWORD_BE_A(&rom_data[0x300020 + config_info_offset]);
-                if (ow_checksum64_calculated != ow_checksum64_stored)
+                ow_checksum64_stored_p = (uint64_t*)(&rom_data[0x300020 + config_info_offset]);
+                ow_checksum64_stored = READ_QWORD_BE_A(ow_checksum64_stored_p);
+                if (ow_checksum64_calculated != ow_checksum64_stored) {
                     snprintf(expected_ow64, sizeof(expected_ow64), " (expected 0x%016llx)", ow_checksum64_stored);
+                    if (fix_checksums)
+                        WRITE_QWORD_BE_A(ow_checksum64_stored_p, ow_checksum64_calculated);
+                }
 
                 /* read ConfigInfo.BootstrapVersion field as C string */
                 memcpy(rom_id_str, &rom_data[0x300064 + config_info_offset], 16);
