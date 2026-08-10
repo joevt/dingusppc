@@ -82,7 +82,7 @@ public:
     MachineFactory() = delete;
 
     static size_t read_boot_rom(std::string& rom_filepath, char *rom_data);
-    static std::string machine_name_from_rom(char *rom_data, size_t rom_size);
+    static std::string machine_name_from_rom(char *rom_data, size_t rom_size, bool fix_checksums = false);
 
     static int create(std::string& mach_id, std::vector<std::string> &app_args);
     static int create_machine_for_id(std::string& id, char *rom_data, size_t rom_size, std::vector<std::string> &app_args);
