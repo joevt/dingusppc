@@ -221,18 +221,22 @@ void MPC106PCI::pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDet
     case GrackleReg::MSAR1:
     case GrackleReg::MSAR2:
         this->mem_start[(reg_offs >> 2) & 1] = value;
+        LOG_F(INFO, "Grackle: mem_start[%d] = %08X", (reg_offs >> 2) & 1, value);
         break;
     case GrackleReg::EMSAR1:
     case GrackleReg::EMSAR2:
         this->ext_mem_start[(reg_offs >> 2) & 1] = value;
+        LOG_F(INFO, "Grackle: ext_mem_start[%d] = %08X", (reg_offs >> 2) & 1, value);
         break;
     case GrackleReg::MEAR1:
     case GrackleReg::MEAR2:
         this->mem_end[(reg_offs >> 2) & 1] = value;
+        LOG_F(INFO, "Grackle: mem_end[%d] = %08X", (reg_offs >> 2) & 1, value);
         break;
     case GrackleReg::EMEAR1:
     case GrackleReg::EMEAR2:
         this->ext_mem_end[(reg_offs >> 2) & 1] = value;
+        LOG_F(INFO, "Grackle: ext_mem_end[%d] = %08X", (reg_offs >> 2) & 1, value);
         break;
     case GrackleReg::MBER:
         this->mem_bank_en = value & 0xFFU;
