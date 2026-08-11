@@ -135,7 +135,7 @@ include_directories("${PROJECT_SOURCE_DIR}"
                     "${PROJECT_SOURCE_DIR}/cpu/ppc"
                     "${PROJECT_SOURCE_DIR}/debugger"
                     "${PROJECT_SOURCE_DIR}/utils"
-					"${PROJECT_SOURCE_DIR}/thirdparty/loguru/"
+                    "${PROJECT_SOURCE_DIR}/thirdparty/loguru/"
                     "${PROJECT_SOURCE_DIR}/thirdparty/CLI11/"
                     "${PROJECT_SOURCE_DIR}/thirdparty/cubeb/include")
 
