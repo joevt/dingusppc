@@ -160,6 +160,7 @@ int main(int argc, char** argv) {
     string deterministic_mode = "strict";
     string start_date;
     string keyboard_string = "Eng_USA";
+    string cpu_timing_mode = "fixed";
 
     const std::map<std::string, int> kbd_map{
         {"Eng_USA", 0}, {"Eng_GBR", 1}, {"Fra_FRA", 10}, {"Deu_DEU", 20},
@@ -198,6 +199,11 @@ int main(int argc, char** argv) {
         "Start in realtime mode (guest time follows the wall clock)");
     emu->add_flag("--idle-cpu-save", start_idle_cpu_save,
         "Sleep an idle guest in realtime mode to save host CPU");
+    emu->add_option("--cpu-timing", cpu_timing_mode,
+        "Select CPU instruction timing (fixed: 16 ns/instruction; "
+        "per-machine: derive from core frequency)")
+        ->check(CLI::IsMember({"fixed", "per-machine"}))
+        ->capture_default_str();
 
     bool              log_to_stderr = false;
     loguru::Verbosity log_verbosity = loguru::Verbosity_INFO;
@@ -268,6 +274,10 @@ int main(int argc, char** argv) {
     if (auto start_time = parse_start_date(start_date, is_deterministic))
         ViaCuda::set_start_time(*start_time);
 
+    set_cpu_timing_mode(cpu_timing_mode == "per-machine"
+        ? PPC_CPU_TimingMode::PerMachine
+        : PPC_CPU_TimingMode::Fixed);
+
     /* initialize logging */
     loguru::g_preamble_date    = false;
     loguru::g_preamble_time    = false;
@@ -333,6 +343,7 @@ int main(int argc, char** argv) {
 
     cout << "BootROM path: " << bootrom_path << endl;
     cout << "Execution mode: " << execution_mode << endl;
+    cout << "CPU timing: " << cpu_timing_mode << endl;
     if (is_deterministic) {
         cout << "Using deterministic execution mode; disk, NVRAM, and PRAM changes will not be saved." << endl;
         if (deterministic_interactive) {
