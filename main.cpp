@@ -168,14 +168,17 @@ int main(int argc, char** argv) {
         ->check(CLI::IsMember({"fixed", "per-machine"}))
         ->capture_default_str();
 
-    bool              log_to_stderr = false;
+    bool              log_to_file   = false;
     loguru::Verbosity log_verbosity = loguru::Verbosity_INFO;
     bool              log_no_uptime = false;
     bool              log_thread    = false;
-    emu->add_flag("--log-to-stderr", log_to_stderr,
-        "Send internal logging to stderr (instead of dingusppc.log)");
+    std::string       log_stderr_verbosity;
+    emu->add_option("-v", log_stderr_verbosity,
+        "Adjust console logging verbosity [OFF (default), ERROR, WARNING, INFO, 0-9]");
+    emu->add_flag("--log-to-file", log_to_file,
+        "Send logging to file dingusppc.log");
     emu->add_option("--log-verbosity", log_verbosity,
-        "Adjust logging verbosity (default is 0 a.k.a. INFO)")
+        "Adjust file logging verbosity (default is 0 a.k.a. INFO)")
         ->check(CLI::Number);
     emu->add_flag("--log-no-uptime", log_no_uptime,
         "Disable the uptime preamble of logged messages");
@@ -212,7 +215,20 @@ int main(int argc, char** argv) {
     auto properties = list_cmd->add_subcommand("properties", "List available properties");
     properties->add_option("device", machine_list, "machine or device to list");
 
-    CLI11_PARSE(app, argc, argv);
+    /* initialize logging */
+    loguru::g_preamble_date    = false;
+    loguru::g_preamble_time    = false;
+    loguru::g_preamble_thread  = false;
+    loguru::g_preamble_uptime  = false;
+    loguru::g_stderr_verbosity = loguru::Verbosity_OFF;
+    loguru::init(argc, argv); /* this will remove -v argument */
+
+    CLI11_PARSE(app, argc, argv); /* this will change the working directory */
+
+    loguru::g_preamble_thread  = log_thread;
+    loguru::g_preamble_uptime  = !log_no_uptime;
+    if (log_to_file)
+        loguru::add_file("dingusppc.log", loguru::Append, log_verbosity);
 
     deterministic_interactive = deterministic_mode == "interactive";
 
@@ -240,21 +256,6 @@ int main(int argc, char** argv) {
     set_cpu_timing_mode(cpu_timing_mode == "per-machine"
         ? PPC_CPU_TimingMode::PerMachine
         : PPC_CPU_TimingMode::Fixed);
-
-    /* initialize logging */
-    loguru::g_preamble_date    = false;
-    loguru::g_preamble_time    = false;
-    loguru::g_preamble_thread  = log_thread;
-    loguru::g_preamble_uptime  = !log_no_uptime;
-
-    if (execution_mode == interpreter && !log_to_stderr) {
-        loguru::g_stderr_verbosity = loguru::Verbosity_OFF;
-        loguru::init(argc, argv);
-        loguru::add_file("dingusppc.log", loguru::Append, log_verbosity);
-    } else {
-        loguru::g_stderr_verbosity = log_verbosity;
-        loguru::init(argc, argv);
-    }
 
     auto rom_data = std::unique_ptr<char[]>(new char[4 * 1024 * 1024]);
     memset(&rom_data[0], 0, static_cast<size_t>(4 * 1024 * 1024));
