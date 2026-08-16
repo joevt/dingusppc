@@ -630,12 +630,10 @@ uint64_t increment_instruction_period()
 
 uint64_t decrement_instruction_period()
 {
-    if (g_instruction_period > 0) {
-        uint64_t time_now = get_virt_time_ns();
-        g_instruction_period -= 1;
-        set_virt_time_ns(time_now);
-        power_off(po_exec_switch);
-    }
+    uint64_t time_now = get_virt_time_ns();
+    g_instruction_period = (g_instruction_period < 2) ? 1 : g_instruction_period - 1;
+    set_virt_time_ns(time_now);
+    power_off(po_exec_switch);
     return g_instruction_period;
 }
 
