@@ -139,7 +139,7 @@ void ppc_exception_handler(Except_Type exception_type, uint32_t srr1_bits) {
     mmu_change_mode();
 
     if (exception_type != Except_Type::EXC_EXT_INT && exception_type != Except_Type::EXC_DECR) {
-        if (!power_on && power_off_reason == po_endian_switch) [[unlikely]] {
+        if (!power_on && power_off_reason == po_exec_switch) [[unlikely]] {
             power_on = true;
         }
         longjmp(exc_env, 2); /* return to the main execution loop. */
