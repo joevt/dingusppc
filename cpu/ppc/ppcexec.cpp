@@ -390,7 +390,7 @@ uint64_t get_virt_time_ns()
 void set_virt_time_ns(uint64_t time_now)
 {
     if (g_realtime.load(std::memory_order_relaxed)) {
-        g_nanoseconds_base.store(cpu_now_ns() - time_now - 5000, std::memory_order_relaxed);
+        g_nanoseconds_base.store(cpu_now_ns() - time_now, std::memory_order_relaxed);
     } else {
         g_virt_time = time_now << VIRT_TIME_FRAC_BITS;
     }
