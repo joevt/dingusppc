@@ -419,7 +419,7 @@ void Sc53C94::update_command_reg(uint8_t cmd)
         SCSI_LOG_F(CURIO, "%s: CMD_RESET_BUS", this->name.c_str());
     }
 
-    if (this->on_reset && (cmd & CMD_OPCODE) != CMD_NOP) {
+    if (this->on_reset && (cmd & CMD_OPCODE) != CMD_NOP && (cmd & CMD_OPCODE) != CMD_CLEAR_FIFO) {
         SCSI_LOG_F(WARNING, "%s: command register blocked after RESET!", this->name.c_str());
         return;
     }
@@ -477,6 +477,7 @@ void Sc53C94::exec_command()
         exec_next_command();
         break;
     case CMD_CLEAR_FIFO:
+        this->on_reset = false; // unblock the command register
         SCSI_LOG_IF_F(CURIO, "fifo_pos:%d->%d in %s (cleared)", this->data_fifo_pos, 0, __func__);
         this->data_fifo_pos = 0; // set the bottom of the data FIFO to zero
         this->data_fifo[0] = 0;
