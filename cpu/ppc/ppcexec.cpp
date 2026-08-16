@@ -90,7 +90,7 @@ const char * get_po_name(Po_Cause reason) {
     onename(po_entered_debugger)
     onename(po_signal_interrupt)
     onename(po_benchmark_exception)
-    onename(po_endian_switch)
+    onename(po_exec_switch)
     default: return "unknown";
     }
 #undef onename
@@ -261,7 +261,7 @@ void ppc_msr_did_change(uint32_t old_msr_val, uint32_t new_msr_val, bool set_nex
             ppc_next_instruction_address = ppc_state.pc + 4;
         }
 #else
-        power_off(po_endian_switch);
+        power_off(po_exec_switch);
 #endif
     }
 }
@@ -271,7 +271,7 @@ void ppc_change_endian(bool newLE) {
     if (ppc_state.is_LE != newLE) {
         LOG_F(INFO, "changed endian to %s", newLE ? "LE" : "BE");
         ppc_state.is_LE = newLE;
-        power_off(po_endian_switch);
+        power_off(po_exec_switch);
     }
 #else
     if (newLE) {
@@ -533,7 +533,7 @@ void ppc_exec()
         [[likely]] {
             ppc_exec_inner<main, big_end>(0, 0);
         }
-        if (!power_on && power_off_reason == po_endian_switch) [[unlikely]] {
+        if (!power_on && power_off_reason == po_exec_switch) [[unlikely]] {
             power_on = true;
         }
     }
@@ -587,7 +587,7 @@ void ppc_exec_until(volatile uint32_t goal_addr) {
         [[likely]] {
             ppc_exec_inner<until, big_end>(goal_addr, 0);
         }
-        if (!power_on && power_off_reason == po_endian_switch) [[unlikely]] {
+        if (!power_on && power_off_reason == po_exec_switch) [[unlikely]] {
             power_on = true;
         }
         if (ppc_state.pc == goal_addr)
@@ -619,7 +619,7 @@ void ppc_exec_dbg(volatile uint32_t start_addr, volatile uint32_t size)
         [[likely]] {
             ppc_exec_inner<debug, big_end>(start_addr, size);
         }
-        if (!power_on && power_off_reason == po_endian_switch) [[unlikely]] {
+        if (!power_on && power_off_reason == po_exec_switch) [[unlikely]] {
             power_on = true;
         }
     }
