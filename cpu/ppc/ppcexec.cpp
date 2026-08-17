@@ -399,7 +399,7 @@ int increment_icnt_factor()
     uint64_t time_now = get_virt_time_ns();
     icnt_factor += 1;
     set_virt_time_ns(time_now);
-    force_cycle_counter_reload();
+    power_off(po_exec_switch);
     return icnt_factor;
 }
 
@@ -409,7 +409,7 @@ int decrement_icnt_factor()
         uint64_t time_now = get_virt_time_ns();
         icnt_factor -= 1;
         set_virt_time_ns(time_now);
-        force_cycle_counter_reload();
+        power_off(po_exec_switch);
     }
     return icnt_factor;
 }
@@ -424,7 +424,7 @@ bool toggle_g_realtime()
     uint64_t time_now = get_virt_time_ns();
     g_realtime = !g_realtime;
     set_virt_time_ns(time_now);
-    force_cycle_counter_reload();
+    power_off(po_exec_switch);
     return g_realtime;
 }
 
