@@ -564,11 +564,11 @@ static bool guest_is_idle()
     return false;
 }
 
-static FixedNanoseconds process_events()
+static void process_events_real()
 {
     exec_timer.store(false);
     uint64_t next_ns = TimerManager::get_instance()->process_timers();
-    if (g_realtime.load(std::memory_order_relaxed) && g_idle_cpu_save.load(std::memory_order_relaxed) && guest_is_idle()) {
+    if (g_idle_cpu_save.load(std::memory_order_relaxed) && guest_is_idle()) {
         // The guest is idling: sleep until the next scheduled event
         // instead of executing its idle path. Guest time is wall-clock
         // based in realtime mode, so the sleep advances guest time and
@@ -587,17 +587,22 @@ static FixedNanoseconds process_events()
             // machine-check storm at the external-interrupt vector.
             // 6 ms per 16 ms window keeps Mac OS X DP3 healthy at ~7%
             // host CPU.
-            constexpr uint64_t burst_ns = 6000000ULL;  // 6 ms
             uint64_t time_now = TimerManager::get_instance()->current_time_ns();
             int64_t slice_ns = next_ns - time_now;
             const int64_t sleep_ns = std::min((int64_t)IDLE_MAX_SLEEP_NS, slice_ns);
             g_idle_throttle_active.store(true, std::memory_order_relaxed);
             if (sleep_ns > 0)
                 std::this_thread::sleep_for(std::chrono::nanoseconds(sleep_ns));
-            return (time_now + burst_ns) << VIRT_TIME_FRAC_BITS;
+            return;
         }
     }
     g_idle_throttle_active.store(false, std::memory_order_relaxed);
+}
+
+static uint64_t process_events()
+{
+    exec_timer.store(false);
+    uint64_t next_ns = TimerManager::get_instance()->process_timers();
     return (
         (
             next_ns ?
@@ -749,14 +754,25 @@ typedef enum {
     debug,
 } ppc_exec_type_t;
 
+typedef enum {
+    virt,
+    real,
+} ppc_time_type_t;
+
 // inner interpreter loop
-template <ppc_exec_type_t exec_type, endian_switch endian>
+template <ppc_exec_type_t exec_type, endian_switch endian, ppc_time_type_t time_type>
 static void ppc_exec_inner(uint32_t start_addr, uint32_t size)
 {
-    FixedNanoseconds event_deadline = 0;
-    // Keep these hot-loop values in registers.
-    FixedNanoseconds virt_time = g_virt_time;
-    FixedNanoseconds instruction_period = g_instruction_period;
+    struct EmptyDummy {};
+    std::conditional_t<time_type == virt, FixedNanoseconds, EmptyDummy> event_deadline;
+    std::conditional_t<time_type == virt, FixedNanoseconds, EmptyDummy> virt_time;
+    std::conditional_t<time_type == virt, FixedNanoseconds, EmptyDummy> instruction_period;
+
+    if constexpr (time_type == virt) {
+        event_deadline = 0;
+        virt_time = g_virt_time;
+        instruction_period = g_instruction_period;
+    }
     uint32_t eb_start, eb_end = 0;
     uint32_t opcode;
     PPCOpcode* opcode_grabber = ppc_opcode_grabber;
@@ -788,29 +804,43 @@ static void ppc_exec_inner(uint32_t start_addr, uint32_t size)
         // active, so this single condition reduces to plain exec_timer
         // handling and avoids an atomic load and branch on every
         // instruction.
-        virt_time += instruction_period;
-        g_virt_time = virt_time;
-        if ((!g_realtime && virt_time >= event_deadline) || exec_timer.load(std::memory_order_relaxed)) [[unlikely]] {
-            event_deadline = process_events();
-            virt_time = g_virt_time;
-            instruction_period = g_instruction_period;
+        if constexpr (time_type == virt) {
+            virt_time += instruction_period;
+            g_virt_time = virt_time;
+            if (virt_time >= event_deadline || exec_timer.load(std::memory_order_relaxed)) [[unlikely]] {
+                event_deadline = process_events();
+                virt_time = g_virt_time;
+                instruction_period = g_instruction_period;
+            }
+        }
+        if constexpr (time_type == real) {
+            if (exec_timer.load(std::memory_order_relaxed)) [[unlikely]] {
+                process_events_real();
+            }
         }
 
         if (exec_flags) {
             if ((exec_flags & EXEF_SLEEP) && !(exec_flags & EXEF_EXCEPTION)) [[unlikely]] {
                 while (power_on && (exec_flags & EXEF_SLEEP)) {
-                    event_deadline = process_events();
-                    virt_time = g_virt_time;
-                    instruction_period = g_instruction_period;
+                    if constexpr (time_type == virt) {
+                        event_deadline = process_events();
+                        virt_time = g_virt_time;
+                        instruction_period = g_instruction_period;
+                    }
+                    if constexpr (time_type == real) {
+                        process_events_real();
+                    }
                     if (!(exec_flags & EXEF_SLEEP)) {
                         break;
                     }
-                    if (event_deadline > virt_time) {
-                        virt_time = event_deadline;
-                    } else {
-                        virt_time += instruction_period;
+                    if constexpr (time_type == virt) {
+                        if (event_deadline > virt_time) {
+                            virt_time = event_deadline;
+                        } else {
+                            virt_time += instruction_period;
+                        }
+                        g_virt_time = virt_time;
                     }
-                    g_virt_time = virt_time;
                 }
             }
             if (exec_flags & EXEF_OPC_DECODER) [[unlikely]] {
@@ -847,8 +877,10 @@ static void ppc_exec_inner(uint32_t start_addr, uint32_t size)
 /** Execute PPC code as long as power is on. */
 
 // inner interpreter loop
-template void ppc_exec_inner<main, big_end>(uint32_t start_addr, uint32_t size);
-template void ppc_exec_inner<main, little_end>(uint32_t start_addr, uint32_t size);
+template void ppc_exec_inner<main, big_end   , virt>(uint32_t start_addr, uint32_t size);
+template void ppc_exec_inner<main, big_end   , real>(uint32_t start_addr, uint32_t size);
+template void ppc_exec_inner<main, little_end, virt>(uint32_t start_addr, uint32_t size);
+template void ppc_exec_inner<main, little_end, real>(uint32_t start_addr, uint32_t size);
 
 // outer interpreter loop
 void ppc_exec()
@@ -862,11 +894,17 @@ void ppc_exec()
     while (power_on) {
 #if SUPPORTS_PPC_LITTLE_ENDIAN_MODE
         if (ppc_state.is_LE)
-            ppc_exec_inner<main, little_end>(0, 0);
+            if (g_realtime)
+                ppc_exec_inner<main, little_end, real>(0, 0);
+            else
+                ppc_exec_inner<main, little_end, virt>(0, 0);
         else
 #endif
         [[likely]] {
-            ppc_exec_inner<main, big_end>(0, 0);
+            if (g_realtime)
+                ppc_exec_inner<main, big_end, real>(0, 0);
+            else
+                ppc_exec_inner<main, big_end, virt>(0, 0);
         }
         if (!power_on && power_off_reason == po_exec_switch) [[unlikely]] {
             power_on = true;
@@ -888,8 +926,12 @@ void ppc_exec_single()
     uint8_t* pc_real = mmu_translate_imem(ppc_state.pc ATPCP); // &pcp
     uint32_t opcode = ppc_read_instruction(pc_real);
     ppc_main_opcode(ppc_opcode_grabber, opcode);
-    g_virt_time += g_instruction_period;
-    process_events();
+    if (!g_realtime) {
+        g_virt_time += g_instruction_period;
+        process_events();
+    } else {
+        process_events_real();
+    }
 
     if (exec_flags) {
         ppc_state.pc = ppc_next_instruction_address;
@@ -902,8 +944,10 @@ void ppc_exec_single()
 /** Execute PPC code until goal_addr is reached. */
 
 // inner interpreter loop
-template void ppc_exec_inner<until, big_end>(uint32_t start_addr, uint32_t size);
-template void ppc_exec_inner<until, little_end>(uint32_t start_addr, uint32_t size);
+template void ppc_exec_inner<until, big_end   , virt>(uint32_t start_addr, uint32_t size);
+template void ppc_exec_inner<until, big_end   , real>(uint32_t start_addr, uint32_t size);
+template void ppc_exec_inner<until, little_end, virt>(uint32_t start_addr, uint32_t size);
+template void ppc_exec_inner<until, little_end, real>(uint32_t start_addr, uint32_t size);
 
 // outer interpreter loop
 void ppc_exec_until(volatile uint32_t goal_addr) {
@@ -916,11 +960,17 @@ void ppc_exec_until(volatile uint32_t goal_addr) {
     while (power_on) {
 #if SUPPORTS_PPC_LITTLE_ENDIAN_MODE
         if (ppc_state.is_LE)
-            ppc_exec_inner<until, little_end>(goal_addr, 0);
+            if (g_realtime)
+                ppc_exec_inner<until, little_end, real>(goal_addr, 0);
+            else
+                ppc_exec_inner<until, little_end, virt>(goal_addr, 0);
         else
 #endif
         [[likely]] {
-            ppc_exec_inner<until, big_end>(goal_addr, 0);
+            if (g_realtime)
+                ppc_exec_inner<until, big_end, real>(goal_addr, 0);
+            else
+                ppc_exec_inner<until, big_end, virt>(goal_addr, 0);
         }
         if (!power_on && power_off_reason == po_exec_switch) [[unlikely]] {
             power_on = true;
@@ -933,8 +983,10 @@ void ppc_exec_until(volatile uint32_t goal_addr) {
 /** Execute PPC code until control is reached the specified region. */
 
 // inner interpreter loop
-template void ppc_exec_inner<debug, big_end>(uint32_t start_addr, uint32_t size);
-template void ppc_exec_inner<debug, little_end>(uint32_t start_addr, uint32_t size);
+template void ppc_exec_inner<debug, big_end   , virt>(uint32_t start_addr, uint32_t size);
+template void ppc_exec_inner<debug, big_end   , real>(uint32_t start_addr, uint32_t size);
+template void ppc_exec_inner<debug, little_end, virt>(uint32_t start_addr, uint32_t size);
+template void ppc_exec_inner<debug, little_end, real>(uint32_t start_addr, uint32_t size);
 
 // outer interpreter loop
 void ppc_exec_dbg(volatile uint32_t start_addr, volatile uint32_t size)
@@ -948,11 +1000,17 @@ void ppc_exec_dbg(volatile uint32_t start_addr, volatile uint32_t size)
     while (power_on && (ppc_state.pc < start_addr || ppc_state.pc >= start_addr + size)) {
 #if SUPPORTS_PPC_LITTLE_ENDIAN_MODE
         if (ppc_state.is_LE)
-            ppc_exec_inner<debug, little_end>(start_addr, size);
+            if (g_realtime)
+                ppc_exec_inner<debug, little_end, real>(start_addr, size);
+            else
+                ppc_exec_inner<debug, little_end, virt>(start_addr, size);
         else
 #endif
         [[likely]] {
-            ppc_exec_inner<debug, big_end>(start_addr, size);
+            if (g_realtime)
+                ppc_exec_inner<debug, big_end, real>(start_addr, size);
+            else
+                ppc_exec_inner<debug, big_end, virt>(start_addr, size);
         }
         if (!power_on && power_off_reason == po_exec_switch) [[unlikely]] {
             power_on = true;
