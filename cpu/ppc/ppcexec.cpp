@@ -445,7 +445,7 @@ static void ppc_exec_inner(uint32_t start_addr, uint32_t size)
     uint8_t* pc_real;
 
     while (power_on) {
-        if (exec_type == debug)
+        if constexpr (exec_type == debug)
             if (ppc_state.pc >= start_addr && ppc_state.pc < start_addr + size)
                 break;
 
@@ -484,7 +484,7 @@ static void ppc_exec_inner(uint32_t start_addr, uint32_t size)
             // define next execution block
             eb_start = ppc_next_instruction_address;
             if (!(exec_flags & EXEF_RFI) && (eb_start & PPC_PAGE_MASK) == page_start) {
-                if (endian == big_end)
+                if constexpr (endian == big_end)
                     INCPC((int)eb_start - (int)ppc_state.pc);
                 else
                     pc_real = mmu_translate_imem(eb_start ATPCP); // &pcp
@@ -497,13 +497,13 @@ static void ppc_exec_inner(uint32_t start_addr, uint32_t size)
             exec_flags = 0;
         } else [[likely]] {
             ppc_state.pc += 4;
-            if (endian == big_end)
+            if constexpr (endian == big_end)
                 INCPC(4);
             else
                 pc_real = mmu_translate_imem(ppc_state.pc ATPCP); // &pcp
         }
 
-        if (exec_type == until)
+        if constexpr (exec_type == until)
             if (ppc_state.pc == start_addr)
                 break;
     }
