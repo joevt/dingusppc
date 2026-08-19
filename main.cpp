@@ -115,6 +115,7 @@ int main(int argc, char** argv) {
     bool debugger_enter = false;
     bool deterministic_interactive = false;
     bool start_realtime = false;
+    bool start_idle_cpu_save = false;
     string deterministic_mode = "strict";
     string keyboard_string = "Eng_USA";
 
@@ -146,6 +147,8 @@ int main(int argc, char** argv) {
         ->check(CLI::IsMember({"strict", "interactive"}));
     emu->add_flag("--realtime", start_realtime,
         "Start in realtime mode (guest time follows the wall clock)");
+    emu->add_flag("--idle-cpu-save", start_idle_cpu_save,
+        "Sleep an idle guest in realtime mode to save host CPU");
 
     bool              log_to_stderr = false;
     loguru::Verbosity log_verbosity = loguru::Verbosity_INFO;
@@ -317,6 +320,9 @@ int main(int argc, char** argv) {
 
     if (start_realtime) {
         toggle_g_realtime();
+    }
+    if (start_idle_cpu_save) {
+        set_g_idle_cpu_save(true);
     }
 
     while (true) {
