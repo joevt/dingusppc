@@ -155,6 +155,7 @@ int main(int argc, char** argv) {
     bool debugger_skip = true;
     bool debugger_enter = false;
     bool deterministic_interactive = false;
+    bool start_realtime = false;
     string deterministic_mode = "strict";
     string start_date;
     string keyboard_string = "Eng_USA";
@@ -179,7 +180,7 @@ int main(int argc, char** argv) {
         ->check(WorkingDirectory)->capture_default_str();
     auto bootrom_opt = emu->add_option("-b,--bootrom", bootrom_path, "Specifies BootROM path")
         ->check(CLI::ExistingFile)->capture_default_str();
-    emu->add_flag("--realtime", g_realtime,
+    emu->add_flag("--realtime", start_realtime,
         "Advance guest timers using the host clock");
     auto deterministic_opt = emu->add_flag("--deterministic", is_deterministic,
         "Use deterministic execution");
@@ -236,7 +237,7 @@ int main(int argc, char** argv) {
     CLI11_PARSE(app, argc, argv);
 
     deterministic_interactive = deterministic_mode == "interactive";
-    if (g_realtime && is_deterministic && !deterministic_interactive) {
+    if (start_realtime && is_deterministic && !deterministic_interactive) {
         return app.exit(CLI::ValidationError("--realtime",
             "Use --deterministic-mode=interactive with realtime timing"));
     }
@@ -333,7 +334,7 @@ int main(int argc, char** argv) {
 
     cout << "BootROM path: " << bootrom_path << endl;
     cout << "Execution mode: " << execution_mode << endl;
-    if (g_realtime)
+    if (start_realtime)
         cout << "Guest timers use the host clock." << endl;
     if (is_deterministic) {
         cout << "Using deterministic execution mode; disk, NVRAM, and PRAM changes will not be saved." << endl;
@@ -371,6 +372,10 @@ int main(int argc, char** argv) {
     signal(SIGABRT, sigabrt_handler);
 
     keyboard_id = kbd_map.at(keyboard_string);
+
+    if (start_realtime) {
+        toggle_g_realtime();
+    }
 
     while (true) {
         run_machine(
