@@ -737,7 +737,6 @@ extern int decrement_icnt_factor();
 extern int get_icnt_factor();
 
 /* realtime clock control */
-extern bool g_realtime;
 extern bool toggle_g_realtime();
 
 /* force_cycle_counter_reload */
