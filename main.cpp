@@ -156,6 +156,7 @@ int main(int argc, char** argv) {
     bool debugger_enter = false;
     bool deterministic_interactive = false;
     bool start_realtime = false;
+    bool start_idle_cpu_save = false;
     string deterministic_mode = "strict";
     string start_date;
     string keyboard_string = "Eng_USA";
@@ -182,6 +183,8 @@ int main(int argc, char** argv) {
         ->check(CLI::ExistingFile)->capture_default_str();
     emu->add_flag("--realtime", start_realtime,
         "Advance guest timers using the host clock");
+    emu->add_flag("--idle-cpu-save", start_idle_cpu_save,
+        "Sleep an idle guest in realtime mode to save host CPU");
     auto deterministic_opt = emu->add_flag("--deterministic", is_deterministic,
         "Use deterministic execution");
     emu->add_option("--start-date", start_date,
@@ -375,6 +378,9 @@ int main(int argc, char** argv) {
 
     if (start_realtime) {
         toggle_g_realtime();
+    }
+    if (start_idle_cpu_save) {
+        set_g_idle_cpu_save(true);
     }
 
     while (true) {
