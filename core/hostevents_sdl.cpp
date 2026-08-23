@@ -246,7 +246,7 @@ void EventManager::poll_events() {
                     host_input = true;
                     this->_keyboard_signal.emit(ke);
                 } else {
-                    LOG_F(WARNING, "Unknown key %x pressed", event.key.key);
+                    LOG_F(WARNING, "Unknown key 0x%X pressed", event.key.key);
                 }
             }
             break;
@@ -470,7 +470,7 @@ void EventManager::post_keyboard_state_events() {
             ke.flags = KEYBOARD_EVENT_DOWN;
             this->_keyboard_signal.emit(ke);
         } else {
-            LOG_F(WARNING, "        Unknown key %x pressed", keyevent.key);
+            LOG_F(WARNING, "        Unknown key 0x%X pressed", keyevent.key);
         }
     }
     if (!count)
