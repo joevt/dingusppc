@@ -644,6 +644,13 @@ uint64_t get_instruction_period()
     return g_instruction_period;
 }
 
+void branch_folding()
+{
+    if (!g_realtime.load(std::memory_order_relaxed)) {
+        g_virt_time -= g_instruction_period;
+    }
+}
+
 // In realtime mode the interpreter loop must not poll the clock: guest
 // time follows the host clock, so a timer's guest-time deadline is a
 // fixed wall-clock instant. A dedicated thread sleeps until that instant
