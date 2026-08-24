@@ -757,7 +757,6 @@ static void ppc_exec_inner(uint32_t start_addr, uint32_t size)
 {
     FixedNanoseconds event_deadline = 0;
     // Keep these hot-loop values in registers.
-    FixedNanoseconds virt_time = g_virt_time;
     FixedNanoseconds instruction_period = g_instruction_period;
     uint32_t eb_start, eb_end = 0;
     uint32_t opcode;
@@ -790,11 +789,9 @@ static void ppc_exec_inner(uint32_t start_addr, uint32_t size)
         // active, so this single condition reduces to plain exec_timer
         // handling and avoids an atomic load and branch on every
         // instruction.
-        virt_time += instruction_period;
-        g_virt_time = virt_time;
-        if ((!g_realtime && virt_time >= event_deadline) || exec_timer.load(std::memory_order_relaxed)) [[unlikely]] {
+        g_virt_time += instruction_period;
+        if ((!g_realtime && g_virt_time >= event_deadline) || exec_timer.load(std::memory_order_relaxed)) [[unlikely]] {
             event_deadline = process_events();
-            virt_time = g_virt_time;
             instruction_period = g_instruction_period;
         }
 
@@ -802,17 +799,15 @@ static void ppc_exec_inner(uint32_t start_addr, uint32_t size)
             if ((exec_flags & EXEF_SLEEP) && !(exec_flags & EXEF_EXCEPTION)) [[unlikely]] {
                 while (power_on && (exec_flags & EXEF_SLEEP)) {
                     event_deadline = process_events();
-                    virt_time = g_virt_time;
                     instruction_period = g_instruction_period;
                     if (!(exec_flags & EXEF_SLEEP)) {
                         break;
                     }
-                    if (event_deadline > virt_time) {
-                        virt_time = event_deadline;
+                    if (event_deadline > g_virt_time) {
+                        g_virt_time = event_deadline;
                     } else {
-                        virt_time += instruction_period;
+                        g_virt_time += instruction_period;
                     }
-                    g_virt_time = virt_time;
                 }
             }
             if (exec_flags & EXEF_OPC_DECODER) [[unlikely]] {
