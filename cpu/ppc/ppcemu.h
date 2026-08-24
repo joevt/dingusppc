@@ -742,6 +742,7 @@ void set_reg(std::string reg_name, uint64_t val); /* set reg_name to val */
 extern uint64_t increment_instruction_period();
 extern uint64_t decrement_instruction_period();
 extern uint64_t get_instruction_period();
+extern void branch_folding();
 
 /* toggle_g_realtime */
 extern bool toggle_g_realtime();
