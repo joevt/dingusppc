@@ -36,6 +36,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <loguru.hpp>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_AWACS = loguru::Verbosity_INFO
+    };
+}
+
 AwacsBase::AwacsBase(const std::string name) : HWComponent(name) {
     supports_types(HWCompType::SND_CODEC);
 
@@ -46,6 +52,7 @@ AwacsBase::AwacsBase(const std::string name) : HWComponent(name) {
 }
 
 void AwacsBase::set_sample_rate(int sr_id) {
+    VLOG_SCOPE_F(loguru::Verbosity_AWACS, "%s: set_sample_rate sr_id:%d", this->name.c_str(), sr_id);
     if (sr_id > this->max_sr_id) {
         LOG_F(ERROR, "%s: invalid sample rate ID %d!", this->name.c_str(), sr_id);
     } else {
@@ -59,6 +66,8 @@ void AwacsBase::dma_out_start() {
 
     if (this->out_stream_ready && this->out_sample_rate != this->cur_sample_rate)
         reopen = true;
+
+    VLOG_SCOPE_F(loguru::Verbosity_AWACS, "%s: dma_out_start reopen:%d", this->name.c_str(), (int)reopen);
 
     if (reopen) {
         snd_server->close_out_stream();
@@ -86,6 +95,7 @@ void AwacsBase::dma_out_start() {
 }
 
 void AwacsBase::dma_out_stop() {
+    VLOG_SCOPE_F(loguru::Verbosity_AWACS, "%s: dma_out_stop out_stream_ready:%d", this->name.c_str(), (int)out_stream_ready);
     if (this->out_stream_ready) {
         snd_server->close_out_stream();
         this->out_stream_ready   = false;
@@ -94,6 +104,7 @@ void AwacsBase::dma_out_stop() {
 }
 
 void AwacsBase::dma_out_pause() {
+    VLOG_SCOPE_F(loguru::Verbosity_AWACS, "%s: dma_out_pause", this->name.c_str());
     this->out_stream_running = false;
 }
 
@@ -210,8 +221,11 @@ uint32_t AwacsScreamer::snd_ctrl_read(uint32_t offset, int size) {
     default:
         LOG_F(ERROR, "%s: read  @%02x.%c", this->name.c_str(),
             offset, SIZE_ARG(size));
+        return value;
     }
 
+    LOG_F(AWACS, "%s: read  @%02x.%c", this->name.c_str(),
+        offset, SIZE_ARG(size));
     return value;
 }
 
@@ -251,7 +265,10 @@ void AwacsScreamer::snd_ctrl_write(uint32_t offset, uint32_t value, int size) {
     default:
         LOG_F(ERROR, "%s: write @%02x.%c = %0*x", this->name.c_str(),
             offset, SIZE_ARG(size), size * 2, value);
+        return;
     }
+    LOG_F(AWACS, "%s: write @%02x.%c = %0*x", this->name.c_str(),
+        offset, SIZE_ARG(size), size * 2, value);
 }
 
 static const DeviceDescription Screamer_Descriptor = {
