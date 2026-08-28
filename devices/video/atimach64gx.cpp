@@ -855,9 +855,11 @@ void AtiMach64Gx::crtc_update()
     //LOG_F(INFO, "VPLL frequency: %f MHz", vpll_freq * 1e-6);
     LOG_F(INFO, "Pixel (dot) clock: %f MHz", this->pixel_clock * 1e-6);
     LOG_F(INFO, "Refresh rate: %f Hz", this->refresh_rate);
-    LOG_F(INFO, "Framebuffer offset: %x", extract_bits<uint32_t>(
-        this->regs[ATI_CRTC_OFF_PITCH], ATI_CRTC_OFFSET, ATI_CRTC_OFFSET_size) * 8);
-    LOG_F(INFO, "Framebuffer pitch: %x (%x)", new_fb_pitch_reg, fb_pitch);
+    LOG_F(INFO, "Framebuffer offset: 0x%x",
+        extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH],
+            ATI_CRTC_OFFSET, ATI_CRTC_OFFSET_size) * 8
+    );
+    LOG_F(INFO, "Framebuffer pitch: %d (%d)", new_fb_pitch_reg, fb_pitch);
 
     this->stop_refresh_task();
     this->start_refresh_task();
