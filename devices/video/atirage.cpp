@@ -1089,11 +1089,11 @@ void ATIRage::crtc_update() {
     LOG_F(INFO, "VPLL frequency: %f MHz", vpll_freq * 1e-6);
     LOG_F(INFO, "Pixel (dot) clock: %f MHz", this->pixel_clock * 1e-6);
     LOG_F(INFO, "Refresh rate: %f Hz", this->refresh_rate);
-    LOG_F(INFO, "Framebuffer offset: %x",
+    LOG_F(INFO, "Framebuffer offset: 0x%x",
         extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH],
-        ATI_CRTC_OFFSET, ATI_CRTC_OFFSET_size) * 8
+            ATI_CRTC_OFFSET, ATI_CRTC_OFFSET_size) * 8
     );
-    LOG_F(INFO, "Framebuffer pitch: %x (%x)",
+    LOG_F(INFO, "Framebuffer pitch: %d (%d)",
         extract_bits<uint32_t>(this->regs[ATI_CRTC_OFF_PITCH],
         ATI_CRTC_PITCH, ATI_CRTC_PITCH_size), fb_pitch
     );
