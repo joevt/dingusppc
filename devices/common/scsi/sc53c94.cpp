@@ -933,6 +933,8 @@ void Sc53C94::update_irq()
         this->status = (this->status & ~STAT_INT) | (new_irq << 7);
         SCSI_LOG_IF_F(CURIO, "status |= STAT_INT(%d) = %02x in %s", new_irq, this->status, __func__);
         this->int_ctrl->ack_int(this->irq_id, new_irq);
+    } else {
+        SCSI_LOG_IF_F(CURIO, "STAT_INT(%d) unchanged so status(%02x) is unchanged in %s", new_irq, this->status, __func__);
     }
 }
 
