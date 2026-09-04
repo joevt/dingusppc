@@ -486,6 +486,7 @@ void Sc53C94::exec_command()
     case CMD_RESET_DEVICE:
         reset_device();
         this->on_reset = true; // block the command register
+        this->update_irq();
         return;
     case CMD_RESET_BUS:
         SCSI_LOG_F(CURIO, "%s: resetting SCSI bus...", this->name.c_str());
