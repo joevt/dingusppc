@@ -430,7 +430,7 @@ void AtaHardDisk::prepare_identify_info() {
         ident_48bitlba     = 100, // total_sectors
     };
 
-    uint16_t    *buf_ptr = (uint16_t *)this->data_buf;
+    uint16_t *buf_ptr = (uint16_t *)this->data_buf;
 
     std::memset(this->data_buf, 0, sizeof(this->data_buf));
 
