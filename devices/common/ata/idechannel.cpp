@@ -164,6 +164,10 @@ int IdeChannel::xfer_to(DmaChannel *ch_obj, uint8_t *buf, int len) {
     return this->devices[this->cur_dev]->push_data(buf, len);
 }
 
+bool IdeChannel::supports_dma() {
+    return this->channel_obj != nullptr;
+}
+
 void IdeChannel::assert_dmareq(uint64_t delay) {
     if (this->dmareq_timer.active)
         LOG_F(WARNING, "%s: dmareq_timer is already active", this->get_name_and_unit_address().c_str());
