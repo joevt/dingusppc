@@ -48,6 +48,8 @@ public:
 
     // IdeChannel methods
 
+    bool supports_dma();
+
     template <class T>
     HWComponent* set_property(const std::string &value, int32_t unit_address);
 

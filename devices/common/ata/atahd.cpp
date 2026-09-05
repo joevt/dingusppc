@@ -389,6 +389,8 @@ int AtaHardDisk::perform_command() {
 
 void AtaHardDisk::prepare_identify_info() {
 
+    bool supports_dma = this->host_obj->supports_dma();
+
     enum ident : int {
         ident_config       =   0, // ATA device, non-removable media, non-removable drive
         ident_cylinders    =   1, // cylinders
@@ -435,7 +437,7 @@ void AtaHardDisk::prepare_identify_info() {
     std::memset(this->data_buf, 0, sizeof(this->data_buf));
 
     WRITE_WORD_LE_A(&buf_ptr[ident_config], 0x0040); // ATA device, non-removable media, non-removable drive
-    WRITE_WORD_LE_A(&buf_ptr[ident_capabilities], 0x0300); // report DMA and LBA support
+    WRITE_WORD_LE_A(&buf_ptr[ident_capabilities], 0x0200 + (supports_dma ? 0x100 : 0)); // report DMA and LBA support
 
     // Maximum number of logical sectors per data block that the device supports
     // for READ_MULTIPLE/WRITE_MULTIPLE commands.
@@ -453,17 +455,19 @@ void AtaHardDisk::prepare_identify_info() {
 
     WRITE_WORD_LE_A(&buf_ptr[ident_pio], 0x0200); // max. PIO mode for a basic device
 
-    // report validity for the MWDMA fields
-    WRITE_WORD_LE_A(&buf_ptr[ident_extension], 0x0002);
-
     WRITE_DWORD_LE_U(&buf_ptr[ident_curcapacity], (uint32_t)std::min(this->total_sectors, (uint64_t)REAL_CHS_LIMIT));
 
     // report LBA capacity
     WRITE_DWORD_LE_A(&buf_ptr[ident_capacity], (uint32_t)std::min(this->total_sectors, ((uint64_t(1))<<48) - 1));
 
     WRITE_WORD_LE_A(&buf_ptr[ident_multidma], ((1 << this->cur_dma_mode) << 8) | 7);
-    WRITE_WORD_LE_A(&buf_ptr[ident_mindma], 120); // minimum MWDMA cycle time (ns)
-    WRITE_WORD_LE_A(&buf_ptr[ident_sugdma], 120); // recommended MWDMA cycle time (ns)
+
+    if (supports_dma) {
+    // report validity for the MWDMA fields
+        WRITE_WORD_LE_A(&buf_ptr[ident_extension], 0x0002);
+        WRITE_WORD_LE_A(&buf_ptr[ident_mindma], 120); // minimum MWDMA cycle time (ns)
+        WRITE_WORD_LE_A(&buf_ptr[ident_sugdma], 120); // recommended MWDMA cycle time (ns)
+    }
 
     if (this->total_sectors >= (1<<28)) {
         WRITE_WORD_LE_A(&buf_ptr[ident_featsupp2], 0x4400); // 0x400 LBA48 support; 0x2000 FLUSH_CACHE_EXT support
