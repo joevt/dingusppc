@@ -53,7 +53,8 @@ uint32_t PsxCtrl::read(uint32_t rgn_start, uint32_t offset, int size)
     case PsxReg::Sys_Config:
         return this->sys_config;
     default:
-        LOG_F(WARNING, "PSX: read from unsupported control register at 0x%X", offset);
+        LOG_F(WARNING, "PSX: read  @%02x.%c",
+            offset, SIZE_ARG(size));
         return 0;
     }
 }
@@ -87,7 +88,8 @@ void PsxCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int siz
         this->map_phys_ram();
         break;
     default:
-        LOG_F(WARNING, "PSX: write to unsupported/read-only control register at 0x%X", offset);
+        LOG_F(WARNING, "PSX: write @%02x.%c = %0*x",
+            offset, SIZE_ARG(size), size * 2, value);
     };
 }
 
