@@ -958,7 +958,11 @@ string MachineFactory::machine_name_from_rom(char *rom_data, size_t rom_size) {
         if (uint8_t(major_version) >= 0x7A)
             minor_version = READ_WORD_BE_A(&rom_data[0x12]);
         firmware_version = (major_version << 16) | minor_version;
-        ow_checksum_calculated = oldworldchecksum(&rom_data[4], std::min(rom_size - 4, (size_t)0x2ffffc));
+        size_t checksum_size = (uint8_t(major_version) >= 0x7A) ?
+            0x300000 // entire ROM or 3 MB for Mac Portable and later
+        :
+            0x40000; // 256K for Classic ROM and earlier
+        ow_checksum_calculated = oldworldchecksum(&rom_data[4], std::min(rom_size, checksum_size) - 4);
         ow_checksum_stored = READ_DWORD_BE_A(&rom_data[0]);
         if (ow_checksum_calculated != ow_checksum_stored)
             snprintf(expected_ow, sizeof(expected_ow), " (expected 0x%08x)", ow_checksum_stored);
