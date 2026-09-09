@@ -79,7 +79,7 @@ bool AdbMouse::get_register_0(uint8_t buttons, bool force) {
         uint8_t number_bits, total_bits;
         // if the mouse is in standard protocol then only send first 2 bytes
         // BUGBUG: what should tablet do here?
-        if (this->device_class == MOUSE && this->dev_handler_id == 1) {
+        if (this->device_class == MOUSE && this->dev_handler_id != 4) {
             number_bits = total_bits = 7;
         } else {
             number_bits = this->num_bits;
