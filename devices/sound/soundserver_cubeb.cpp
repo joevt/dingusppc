@@ -48,11 +48,22 @@ typedef enum {
 class SoundServer::Impl {
 public:
     Status status = SND_SERVER_DOWN;
-    cubeb *cubeb_ctx;
-    cubeb_stream *out_stream;
+    cubeb *cubeb_ctx = nullptr;
+    cubeb_stream *out_stream = nullptr;
 
     TimerInfo deterministic_poll_timer;
     timer_cb deterministic_poll_cb;
+
+    // Only one thing may walk the output DBDMA program, so arm this drain only
+    // when no host stream is pulling from it. Cancelled by close_out_stream().
+    void start_dma_drain(const char *reason) {
+        if (this->deterministic_poll_timer.active) {
+            return;
+        }
+        TimerManager::get_instance()->add_cyclic_timer(this->deterministic_poll_timer,
+            MSECS_TO_NSECS(10), this->deterministic_poll_cb);
+        LOG_F(9, "%s; falling back to cyclic DMA drain.", reason);
+    }
 };
 
 SoundServer::SoundServer(): impl(std::make_unique<Impl>())
@@ -191,6 +202,14 @@ int SoundServer::open_out_stream(uint32_t sample_rate, DmaOutChannel *dma_ch)
         LOG_F(9, "Deterministic sound output callback set up.");
         return 0;
     }
+
+    // No context to open a stream on, so drain the channel instead.
+    if (!impl->cubeb_ctx) {
+        impl->start_dma_drain("No host audio backend");
+        impl->status = SND_STREAM_OPENED;
+        return 0;
+    }
+
     int res;
     uint32_t latency_frames;
     cubeb_stream_params params = {
@@ -204,7 +223,9 @@ int SoundServer::open_out_stream(uint32_t sample_rate, DmaOutChannel *dma_ch)
     res = cubeb_get_min_latency(impl->cubeb_ctx, &params, &latency_frames);
     if (res != CUBEB_OK) {
         LOG_F(ERROR, "Could not get minimum latency, error: %d", res);
-        return -1;
+        impl->start_dma_drain("No host audio output stream");
+        impl->status = SND_STREAM_OPENED;
+        return 0;
     } else {
         LOG_F(9, "Minimum sound latency: %d frames", latency_frames);
     }
@@ -214,7 +235,9 @@ int SoundServer::open_out_stream(uint32_t sample_rate, DmaOutChannel *dma_ch)
                             sound_out_callback, status_callback, dma_ch);
     if (res != CUBEB_OK) {
         LOG_F(ERROR, "Could not open sound output stream, error: %d", res);
-        return -1;
+        impl->start_dma_drain("No host audio output stream");
+        impl->status = SND_STREAM_OPENED;
+        return 0;
     }
 
     LOG_F(9, "Sound output stream opened.");
@@ -228,20 +251,21 @@ int SoundServer::start_out_stream()
 {
     if (is_deterministic) {
         LOG_F(9, "Starting sound output deterministic polling.");
-        TimerManager::get_instance()->add_cyclic_timer(
-            impl->deterministic_poll_timer, MSECS_TO_NSECS(10), impl->deterministic_poll_cb);
+        impl->start_dma_drain("Deterministic sound output");
         return 0;
     }
+
+    // No host stream: the drain armed by open_out_stream() advances the channel.
+    if (!impl->out_stream) {
+        return 0;
+    }
+
     int res = cubeb_stream_start(impl->out_stream);
     if (res != CUBEB_OK) {
         // Fall back to draining the guest sound DMA via a cyclic timer so
         // that the guest sound driver does not stall waiting for DMA progress
         // that the failed host stream will never provide.
-        if (!impl->deterministic_poll_timer.active) {
-            TimerManager::get_instance()->add_cyclic_timer(
-                impl->deterministic_poll_timer, MSECS_TO_NSECS(10), impl->deterministic_poll_cb);
-            LOG_F(9, "Host sound output stream start failed; falling back to cyclic DMA drain.");
-        }
+        impl->start_dma_drain("Host sound output stream failed to start");
     }
     return res;
 }
