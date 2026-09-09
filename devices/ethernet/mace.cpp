@@ -111,6 +111,9 @@ void MaceController::write(uint8_t reg_offset, uint8_t value)
             value &= ~IAC_PHYADDR;
         if (value & (IAC_LOGADDR | IAC_PHYADDR))
             this->addr_ptr = 0;
+        // ADDRCHG is a handshake: the chip clears it once the selector is latched and it is
+        // ready for the address bytes, before those bytes arrive through LADRF / PADR.
+        value &= ~IAC_ADDRCHG;
         this->addr_cfg = value;
         break;
     case MaceReg::Log_Addr_Flt:
