@@ -370,7 +370,7 @@ uint32_t MacIoTwo::mio_ctrl_read(uint32_t offset, int size) {
     if (!((offset | size) & 3)) // aligned DWORD reads --> fast path
         return BYTESWAP_32(value);
     else {
-        uint32_t mask = (1ULL << (size * 8)) - 1;
+        uint32_t mask = uint32_t((1ULL << (size * 8)) - 1);
         if (((offset & 3) + size) <= 4) // partial register reads
             return BYTESWAP_SIZED(value >> ((offset & 3) * 8), size) & mask;
         else { // spanning reads; don't make much sense but the HW supports them anyway
@@ -385,7 +385,7 @@ uint32_t MacIoTwo::mio_ctrl_read(uint32_t offset, int size) {
 }
 
 void MacIoTwo::mio_ctrl_write(uint32_t offset, uint32_t value, int size) {
-    uint32_t mask = (1ULL << (size * 8)) - 1;
+    uint32_t mask = uint32_t((1ULL << (size * 8)) - 1);
 
     if (!((offset | size) & 3)) // aligned DWORD writes --> fast path
         value = BYTESWAP_32(value);
