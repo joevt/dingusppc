@@ -131,28 +131,28 @@ protected:
     void switch_drive_mode(int mode);
 
 private:
-    uint8_t     has_disk;
-    uint8_t     eject_latch;
-    uint8_t     motor_stat;     // spindle motor status: 1 - on, 0 - off
-    uint8_t     drive_mode;     // drive mode: 0 - GCR, 1 - MFM
-    uint8_t     is_ready;
-    int         step_dir;       // step direction -1/+1
-    int         cur_track;      // track number the head is currently at
-    int         cur_head;       // current head number: 1 - upper, 0 - lower
-    int         cur_sector;     // current sector number
-    int         next_sector;    // next sector number
+    uint8_t     has_disk    = 0;
+    uint8_t     eject_latch = 0;
+    uint8_t     motor_stat  = 0;    // spindle motor status: 1 - on, 0 - off
+    uint8_t     drive_mode  = 0;    // drive mode: 0 - GCR, 1 - MFM
+    uint8_t     is_ready    = 0;
+    int         step_dir    = 1;    // step direction -1/+1
+    int         cur_track   = 0;    // track number the head is currently at
+    int         cur_head    = 0;    // current head number: 1 - upper, 0 - lower
+    int         cur_sector  = 0;    // current sector number
+    int         next_sector = 0;    // next sector number
 
     uint64_t    motor_on_time = 0;  // time in ns the spindle motor was switched on
     uint64_t    track_start_time = 0;
     uint64_t    sector_start_time = 0;
 
     // physical parameters of the currently inserted disk
-    uint8_t     media_kind;
-    uint8_t     wr_protect = 0;
-    uint8_t     format_byte;
-    int         rec_method;
-    int         num_tracks;
-    int         num_sides;
+    uint8_t     media_kind  = 0;
+    uint8_t     wr_protect  = 0;    // an empty drive is not write-protected
+    uint8_t     format_byte = 0;
+    int         rec_method  = 0;
+    int         num_tracks  = 80;   // so the step path has a bound
+    int         num_sides   = 2;
     int         sectors_per_track[80];
     int         rpm_per_track[80];
     int         track2lblk[80];  // convert track number to first logical block number
