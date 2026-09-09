@@ -219,7 +219,8 @@ inline uint32_t conv_wr_data(uint32_t v1, uint32_t v2, const AccessDetails detai
     No endian swappping is performed.
  */
 #define REG_READ_HELPER(val_hi, val_lo, pos, size) \
+    (uint32_t( \
     ((((uint64_t)(val_hi) << 32) | (val_lo)) >> (8 - (pos) - (size)) * 8) & \
-    ((1ULL << ((size) * 8)) - 1) // apply size-dependent mask
+    ((1ULL << ((size) * 8)) - 1) )) // apply size-dependent mask
 
 #endif /* ENDIAN_SWAP_H */
