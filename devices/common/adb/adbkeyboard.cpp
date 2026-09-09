@@ -57,8 +57,12 @@ bool AdbKeyboard::get_register_0() {
         return false;
     }
     uint8_t* out_buf = this->host_obj->get_output_buf();
+    // The power key fills BOTH bytes of register 0 from one press: 0x7F,0x7F down and
+    // 0xFF,0xFF up.  Every other key fills one byte and takes the 0xFF filler in the other.
+    bool power_report = !this->pending_events.empty() &&
+                        (this->pending_events.front()->key & 0x7F) == AdbKey_Power;
     out_buf[0] = this->consume_pending_event();
-    out_buf[1] = this->consume_pending_event();
+    out_buf[1] = power_report ? out_buf[0] : this->consume_pending_event();
     this->host_obj->set_output_count(2);
 
     if (this->pending_events.empty()) {
