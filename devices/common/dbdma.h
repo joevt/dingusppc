@@ -167,6 +167,7 @@ private:
 
     bool     cmd_in_progress = false;
     bool     is_paused       = false;
+    bool     is_waiting      = false;   // waiting for the current command's wait condition
     uint8_t  cur_cmd;
     DMACmd * cur_host = nullptr;   // host virtual address of current command
     bool     cur_is_writable = false;  // current command is writable

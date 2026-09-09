@@ -67,6 +67,10 @@ void DMAChannel::interpret_cmd() {
         // if there is no data remaining to transfer then the command is finished
         // and the program should procede to the next command
         this->finish_cmd();
+
+        // don't fetch the next command while waiting
+        if (this->is_waiting)
+            return;
     }
 
     this->cur_host = fetch_cmd(this->cmd_ptr, &cmd_struct, &this->cur_is_writable);
@@ -136,8 +140,9 @@ void DMAChannel::interpret_cmd() {
 }
 
 void DMAChannel::interpret_until_blocked() {
-    // Execute ready commands until a transfer is queued or the channel becomes idle/dead.
-    while (this->is_active()) {
+    // Execute ready commands until a transfer is queued, the channel starts waiting
+    // or the channel becomes idle/dead.
+    while (this->is_active() && !this->is_waiting) {
         this->interpret_cmd();
         if (this->cmd_in_progress)
             break;
@@ -176,6 +181,8 @@ void DMAChannel::finish_cmd() {
                 }
             }
 
+            // the channel stops interpreting while the wait condition is true
+            this->is_waiting = cond;
             if (cond)
                 return;
         }
@@ -398,6 +405,7 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
                     this->abort();
                     this->update_irq(this->cur_host->cmd_bits);
                     this->cmd_in_progress = false;
+                    this->is_waiting      = false;
                 }
                 this->ch_stat &= ~(CH_STAT_RUN | CH_STAT_ACTIVE | CH_STAT_DEAD);
             }
@@ -420,6 +428,13 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
                 this->ch_stat |= CH_STAT_ACTIVE;
                 this->resume();
             }
+        }
+
+        // wait conditions are evaluated from s0...s7, and WAKE releases the channel anyway
+        if (this->is_waiting && this->is_active() &&
+            ((mask & 0xFF) || (mask & data & CH_STAT_WAKE))) {
+            this->is_waiting = false;
+            this->resume();
         }
         break;
     case DMAReg::CH_STAT:
@@ -446,6 +461,11 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
         break;
     case DMAReg::WAIT_SELECT:
         this->wait_select = value & 0xFF00FFUL;
+        // the wait condition changed
+        if (this->is_waiting && this->is_active()) {
+            this->is_waiting = false;
+            this->resume();
+        }
         break;
     default:
         LOG_F(WARNING, "%s: Unsupported DMA channel register write at 0x%X",
@@ -599,6 +619,7 @@ void DMAChannel::start() {
     this->queue_len = 0;
 
     this->cmd_in_progress = false;
+    this->is_waiting      = false;
 
     if (this->dev_obj != nullptr)
         this->dev_obj->notify(this, DMA_MSG_START);
