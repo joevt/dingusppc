@@ -180,28 +180,30 @@ void Swim3Ctrl::write(uint8_t reg_offset, uint8_t value)
     case Swim3Reg::Setup:
         this->setup_reg = value;
         break;
-    case Swim3Reg::Status_Mode0:
-        // ones in value clear the corresponding bits in the mode register
-        if ((this->mode_reg & value) & (SWIM3_GO | SWIM3_GO_STEP)) {
-            if (value & SWIM3_GO_STEP) {
-                stop_stepping();
-            } else {
-                stop_disk_access();
-            }
-        }
+    case Swim3Reg::Status_Mode0: {
+        // ones in value clear the corresponding bits in the mode register.  DO_ACTION and
+        // DO_SEEK are independent bits and one write may carry both, so stop each of them.
+        uint8_t stopped = this->mode_reg & value;
         this->mode_reg &= ~value;
+        if (stopped & SWIM3_GO_STEP)
+            stop_stepping();
+        if (stopped & SWIM3_GO)
+            stop_disk_access();
         break;
-    case Swim3Reg::Handshake_Mode1:
-        // ones in value set the corresponding bits in the mode register
-        if ((this->mode_reg ^ value) & (SWIM3_GO | SWIM3_GO_STEP)) {
-            if (value & SWIM3_GO_STEP) {
-                start_stepping();
-            } else {
-                start_disk_access();
-            }
-        }
+    }
+    case Swim3Reg::Handshake_Mode1: {
+        // ones in value set the corresponding bits in the mode register.  A write here can
+        // only set, so an action starts on the 0->1 edge, not on every write that differs.
+        // Latch before dispatching: one store may carry the action bit and INTR_ENABLE, and a
+        // one-step seek completes inside start_stepping(), so update_irq() needs the new bit.
+        uint8_t started = (uint8_t)(~this->mode_reg) & value;
         this->mode_reg |= value;
+        if (started & SWIM3_GO_STEP)
+            start_stepping();
+        if (started & SWIM3_GO)
+            start_disk_access();
         break;
+    }
     case Swim3Reg::Step:
         this->step_count = value;
         break;
@@ -255,12 +257,14 @@ void Swim3Ctrl::start_stepping()
         return;
     }
 
-    if (this->mode_reg & SWIM3_GO_STEP || this->step_timer.active) {
+    // the timer says whether a sequencer is running; the mode bits are the driver's, and
+    // SWIM3_GO_STEP is already latched by the write that got us here
+    if (this->step_timer.active) {
         LOG_F(ERROR, "SWIM3: another stepping action is running!");
         return;
     }
 
-    if (this->mode_reg & SWIM3_GO || this->access_timer.active) {
+    if (this->access_timer.active) {
         LOG_F(ERROR, "SWIM3: stepping attempt while disk access is in progress!");
         return;
     }
@@ -270,8 +274,6 @@ void Swim3Ctrl::start_stepping()
         LOG_F(WARNING, "SWIM3: invalid command address on the phase lines!");
         return;
     }
-
-    this->mode_reg |= SWIM3_GO_STEP;
 
     // step count > 1 requires periodic task
     if (this->step_count > 1) {
@@ -299,12 +301,14 @@ void Swim3Ctrl::stop_stepping()
 
 void Swim3Ctrl::start_disk_access()
 {
-    if (this->mode_reg & SWIM3_GO || this->access_timer.active) {
+    if (this->access_timer.active) {
         LOG_F(ERROR, "SWIM3: another disk access is running!");
         return;
     }
 
-    if (this->mode_reg & SWIM3_GO_STEP || this->step_timer.active) {
+    // as in start_stepping(): a seek is in progress only while its timer is; the driver may
+    // leave SWIM3_GO_STEP set after a seek of its own has timed out
+    if (this->step_timer.active) {
         LOG_F(ERROR, "SWIM3: disk access attempt while stepping is in progress!");
         return;
     }
@@ -314,7 +318,6 @@ void Swim3Ctrl::start_disk_access()
         return;
     }
 
-    this->mode_reg |= SWIM3_GO;
     LOG_F(9, "SWIM3: disk access started!");
 
     this->target_sect = this->first_sec;
