@@ -441,7 +441,7 @@ int EsccChannel::xfer_from(DmaChannel *ch_obj, uint8_t *buf, int len) {
 
     int bytes_moved = 0;
 
-    while (this->chario->rcv_char_available_now()) {
+    while (len > 0 && this->chario->rcv_char_available_now()) {
         *buf++ = this->receive_byte();
         len--;
         bytes_moved++;
