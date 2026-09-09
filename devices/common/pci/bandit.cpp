@@ -275,10 +275,38 @@ inline void BanditHost::cfg_setup(uint32_t offset, int size, int &bus_num,
     else {
         uint32_t idsel = this->config_addr & 0xFFFFF800U;
         if (!SINGLE_BIT_SET(idsel)) {
-            for (dev_num = -1, idsel = this->config_addr; idsel; idsel >>= 1, dev_num++) {}
-            LOG_F(ERROR, "%s: config_addr 0x%08x does not contain valid IDSEL",
-                  this->name.c_str(), (uint32_t)this->config_addr);
+            // a type-0 cycle drives AD[31:11] from the address register and is claimed by
+            // every device whose IDSEL is high. If more than one device is selected then
+            // results are undefined.
+            int found_count = 0;
+            int max_dev = 0xFF;
+            for (int d = 11; d < 32; d++) {
+                if (idsel & (1U << d)) {
+                    max_dev = d;
+                    PCIBase *found_device;
+                    if ((found_device = pci_find_device(d, fun_num))) {
+                        found_count++;
+                        dev_num = d;
+                        device = found_device;
+                    }
+                }
+            }
+            if (found_count == 1) {
+                return;
+            }
             device = NULL;
+            if (found_count == 0) {
+                // Copland scans Chaos devices AD[31:11] with AD[10] also set.
+                // Prefer IDSEL that is not AD[10] for logging purposes.
+                uint32_t try_idsel = idsel & ~0x10000;
+                if (SINGLE_BIT_SET(try_idsel)) {
+                    dev_num = WHAT_BIT_SET(try_idsel);
+                    return;
+                }
+            }
+            LOG_F(ERROR, "%s: config_addr 0x%08x asserts IDSEL for %d present devices (wiring conflict)",
+                this->name.c_str(), (uint32_t)this->config_addr, found_count);
+            dev_num = max_dev;
             return;
         }
         dev_num = WHAT_BIT_SET(idsel);
