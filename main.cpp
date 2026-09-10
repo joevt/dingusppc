@@ -194,6 +194,8 @@ int main(int argc, char** argv) {
         ->take_all();
     emu->add_option("--setpram", NVram::pram_patches, "Patch PRAM")
         ->take_all();
+    emu->add_option("--startup-keys", EventManager::startup_keys, "Specify keys to be pressed at startup")
+        ->take_all();
 
     uint32_t profiling_interval_ms = 0;
 #ifdef CPU_PROFILING
