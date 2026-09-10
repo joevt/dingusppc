@@ -754,8 +754,9 @@ void ViaCuda::autopoll_handler() {
     this->sample_power_switch();
 
     if (this->do_post_keyboard_state_events && !(!this->old_tip || !this->treq)) {
-        EventManager::get_instance()->post_keyboard_state_events();
+        EventManager::get_instance()->post_keyboard_state_events(this->do_post_startup_keys);
         this->do_post_keyboard_state_events = false;
+        this->do_post_startup_keys = false;
     }
 
     // Don't send async packets while the host has TIP asserted - that
