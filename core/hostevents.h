@@ -146,6 +146,7 @@ public:
     void poll_events();
     void set_keyboard_locale(uint32_t keyboard_id);
     void post_keyboard_state_events();
+    void list_keyboard_keys();
     void post_cdrom_event(CdromImageEvent& event) {
         _cdrom_signal.emit(event);
     }
