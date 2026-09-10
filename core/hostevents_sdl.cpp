@@ -809,3 +809,14 @@ static int get_sdl_event_key_code(const SDL_KeyboardEvent &event, uint32_t kbd_l
     }
     return -1;
 }
+
+void EventManager::list_keyboard_keys() {
+    // need to initialize the video driver to get consistant names from SDL_GetScancodeName
+    if (!SDL_GetCurrentVideoDriver())
+        SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) && SDL_CreateWindow("InitWindow", 1, 1, SDL_WINDOW_HIDDEN);
+    for (int scan_code = 0; scan_code < SDL_SCANCODE_COUNT; scan_code++) {
+        const char* key_name = SDL_GetScancodeName(SDL_Scancode(scan_code));
+        if (key_name && key_name[0] > ' ')
+            printf("0x%03X %s\n", (int)scan_code, key_name);
+    }
+}

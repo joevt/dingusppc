@@ -219,6 +219,7 @@ int main(int argc, char** argv) {
 
     auto machines = list_cmd->add_subcommand("machines", "List supported machines");
     auto properties = list_cmd->add_subcommand("properties", "List available properties");
+    auto keyboard_keys = list_cmd->add_subcommand("keys", "List keyboard keys");
     properties->add_option("device", machine_list, "machine or device to list");
 
     /* initialize logging */
@@ -243,6 +244,8 @@ int main(int argc, char** argv) {
             MachineFactory::list_machines();
         if (*properties)
             MachineFactory::list_properties(machine_list);
+        if (*keyboard_keys)
+            EventManager::get_instance()->list_keyboard_keys();
         return 0;
     }
 
