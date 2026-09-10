@@ -36,6 +36,8 @@ namespace loguru {
 
 EventManager* EventManager::event_manager;
 
+std::vector<std::string> EventManager::startup_keys;
+
 static int get_sdl_event_key_code(const SDL_KeyboardEvent& event, uint32_t kbd_locale);
 
 constexpr SDL_Keymod KMOD_ALL = (SDL_Keymod)(
@@ -540,10 +542,13 @@ void EventManager::poll_events() {
         mark_host_input();
 }
 
-void EventManager::post_keyboard_state_events() {
+void EventManager::post_keyboard_state_events(bool with_startup_keys) {
     int count;
     int numkeys;
-    const bool *states = SDL_GetKeyboardState(&numkeys);
+    const bool *org_states = SDL_GetKeyboardState(&numkeys);
+    std::vector<bool> states;
+    states.assign(org_states, org_states + numkeys);
+
     SDL_Keymod modstate = SDL_GetModState();
 
     SDL_KeyboardEvent keyevent = { .type = SDL_EVENT_KEY_DOWN };
@@ -572,39 +577,50 @@ void EventManager::post_keyboard_state_events() {
         { SDL_SCANCODE_UNKNOWN      , SDL_KMOD_NONE   , (AdbKey)0           }
     };
 
+    if (with_startup_keys) {
+        LOG_F(INFO, "Startup keys to add to current keyboard state:");
+        if (startup_keys.empty())
+            LOG_F(INFO, "    (none)");
+        else {
+            for (const auto &the_key : startup_keys) {
+                scancode = SDL_GetScancodeFromName(the_key.c_str());
+                if (scancode == SDL_SCANCODE_UNKNOWN) {
+                    LOG_F(ERROR, "    Unknown: %s", the_key.c_str());
+                    continue;
+                }
+                Modifier_t *mod = modifiers;
+                for (; mod->scancode != SDL_SCANCODE_UNKNOWN && mod->scancode != scancode; mod++);
+                if (mod->scancode == scancode) {
+                    LOG_F(INFO, "    Modifier: %s", SDL_GetScancodeName(scancode));
+                    modstate |= mod->keymod;
+                } else {
+                    LOG_F(INFO, "    Key: %s", SDL_GetScancodeName(scancode));
+                    states[scancode] = true;
+                }
+            }
+        }
+    }
+
     LOG_F(INFO, "Current keyboard state:");
 
-    LOG_F(INFO, "    Modifiers:");
     count = 0;
     for (Modifier_t *mod = modifiers; mod->scancode != SDL_SCANCODE_UNKNOWN; mod++) {
         if (!(modstate & mod->keymod))
             continue;
-        LOG_F(INFO, "        Modifier: %s", SDL_GetScancodeName(mod->scancode));
+        LOG_F(INFO, "    Modifier: %s", SDL_GetScancodeName(mod->scancode));
         count++;
         ke.key = swap_command_option(mod->adbkey);
         ke.flags = KEYBOARD_EVENT_DOWN;
         this->_keyboard_signal.emit(ke);
+        states[mod->scancode] = false;
     }
-    if (!count)
-        LOG_F(INFO, "        (none)");
 
-    LOG_F(INFO, "    Keys and Modifiers:");
-    count = 0;
     for (int i = 0; i < numkeys; i++) {
         if (!states[i])
             continue;
-
+        LOG_F(INFO, "    Key: %s", SDL_GetScancodeName(scancode));
         count++;
         scancode = (SDL_Scancode)i;
-
-        Modifier_t *mod = modifiers;
-        for (; mod->scancode != SDL_SCANCODE_UNKNOWN && mod->scancode != scancode; mod++);
-        if (mod->scancode == scancode) {
-            LOG_F(INFO, "        Modifier: %s", SDL_GetScancodeName(scancode));
-            continue;
-        }
-
-        LOG_F(INFO, "        Key: %s", SDL_GetScancodeName(scancode));
         keyevent.scancode = scancode;
         keyevent.key = SDL_GetKeyFromScancode(scancode, modstate, false);
         keyevent.mod = modstate;
@@ -615,11 +631,12 @@ void EventManager::post_keyboard_state_events() {
             ke.flags = KEYBOARD_EVENT_DOWN;
             this->_keyboard_signal.emit(ke);
         } else {
-            LOG_F(WARNING, "        Unknown key 0x%X pressed", keyevent.key);
+            LOG_F(WARNING, "    Unknown key 0x%X pressed", keyevent.key);
         }
     }
+
     if (!count)
-        LOG_F(INFO, "        (none)");
+        LOG_F(INFO, "    (none)");
 }
 
 static int get_sdl_event_key_code(const SDL_KeyboardEvent &event, uint32_t kbd_locale)
