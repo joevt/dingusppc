@@ -152,7 +152,7 @@ protected:
     void finish_cmd();
     DBDMA_State dbdma_loop_iteration();
     void dbdma_loop_timed(bool is_immediate = false);
-    void schedule_cmd(bool is_immediate = false);
+    void schedule_cmd(int when);
 
     void xfer_quad(bool is_store);
     void update_irq(uint8_t cmd_bits);
