@@ -284,22 +284,25 @@ void DMAChannel::dbdma_loop_timed(bool is_immediate) {
     }
 }
 
-void DMAChannel::schedule_cmd(bool is_immediate) {
-    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: schedule_cmd(%s) (ChannelStatus 0x%04x)",
-        this->get_name().c_str(), is_immediate ? "immediate" : "", this->ch_stat);
+void DMAChannel::schedule_cmd(int when) {
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: schedule_cmd(%d) (ChannelStatus 0x%04x)",
+        this->get_name().c_str(), when, this->ch_stat);
 
-    if (is_immediate)
+    if (when < 0)
         this->dbdma_loop_timed(true);
 
     std::lock_guard<std::mutex> lk(this->interpret_mtx);
     if (this->interpret_timer_id) {
-        LOG_F(DBDMA, "%s: interpret_timer_id is already running", this->get_name().c_str());
+        LOG_F(DBDMA, "%s: timer interpret is already running", this->get_name().c_str());
         return;
     }
     LOG_F(DBDMA, "%s: schedule_cmd: add timer interpret", this->get_name().c_str());
-    this->interpret_timer_id = TimerManager::get_instance()->add_oneshot_timer(500, [this](uint64_t, uint64_t) {
-        this->dbdma_loop_timed();
-    });
+    this->interpret_timer_id = TimerManager::get_instance()->add_oneshot_timer(
+        when < 0 ? 500 : when,
+        [this](uint64_t, uint64_t) {
+            this->dbdma_loop_timed();
+        }
+    );
 }
 
 void DMAChannel::xfer_quad(bool is_store) {
@@ -494,6 +497,7 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
                             VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: notify flush", this->get_name().c_str());
                             this->dev_obj->notify(this, DMA_MSG_FLUSH);
                         }
+                        schedule_cmd(0);
                     } else {
                         LOG_F(DBDMA, "%s: Attempt to flush when not doing INPUT",
                             this->get_name().c_str());
@@ -676,7 +680,7 @@ void DMAChannel::xfer_retry() {
     VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: xfer_retry() (ChannelStatus 0x%04x)",
         this->get_name().c_str(), this->ch_stat);
     this->xfer_retry_internal();
-    this->schedule_cmd();
+    this->schedule_cmd(500);
 }
 
 bool DMAChannel::dma_is_ready() {
@@ -722,7 +726,7 @@ DmaPullResult DMAChannel::pull_data(uint32_t req_len, uint32_t *avail_len, uint8
         );
     }
 
-    this->schedule_cmd(this->is_threaded);
+    this->schedule_cmd(this->is_threaded ? -1 : 500);
 
     return DmaPullResult::MoreData;
 }
@@ -751,7 +755,7 @@ DmaPushResult DMAChannel::push_data(const char* src_ptr, int len) {
         );
     }
 
-    this->schedule_cmd();
+    this->schedule_cmd(500);
 
     return DmaPushResult::PushedData;
 }
@@ -788,7 +792,7 @@ void DMAChannel::start() {
     if (this->start_cb)
         this->start_cb();
 
-    this->schedule_cmd();
+    this->schedule_cmd(0);
 }
 
 void DMAChannel::resume() {
@@ -799,7 +803,7 @@ void DMAChannel::resume() {
         return;
     }
 
-    this->schedule_cmd();
+    this->schedule_cmd(0);
 }
 
 void DMAChannel::abort() {
