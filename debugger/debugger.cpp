@@ -31,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <debugger/kgmacros.h>
 #endif
 #include <debugger/symbols.h>
+#include <debugger/symbolsopenfirmware.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/common/ofnvram.h>
 #include <devices/floppy/swim3.h>
@@ -121,11 +122,12 @@ static void show_help() {
     cout << "                    X can be any number or a known register name" << endl;
     cout << "                    disas with no arguments defaults to disas 1,pc" << endl;
     cout << "  da N,X         -- shortcut for disas" << endl;
-#ifdef ENABLE_68K_DEBUGGER
     cout << "  context X      -- switch to the debugging context X." << endl;
-    cout << "                    X can be either 'ppc' (default), '68k'," << endl;
-    cout << "                    or 'auto'." << endl;
+    cout << "                    X can be either 'ppc' (default)," << endl;
+#ifdef ENABLE_68K_DEBUGGER
+    cout << "                    '68k' for 68K emulator," << endl;
 #endif
+    cout << "                    'of' for Open Firmware, or 'auto'." << endl;
     cout << "  printenv       -- print current NVRAM settings." << endl;
     cout << "  setenv V N     -- set NVRAM variable V to value N." << endl;
     cout << endl;
@@ -171,7 +173,45 @@ typedef enum {
     dppc_debug_context_PPC = 1,
     dppc_debug_context_68K,
     dppc_debug_context_auto,
+    dppc_debug_context_Open_Firmware,
 } DPPCDebugContext;
+
+constexpr auto EMU_68K_START_PHYS       = 0xfff60000;
+constexpr auto EMU_68K_SIZE_PHYS        =    0xa0000;
+constexpr auto EMU_68K_START            = 0x68000000;
+constexpr auto EMU_68K_SIZE             =  0x2000000; // includes 0x69xxxxxx
+
+constexpr auto EMU_68K_TABLE_START_PHYS = 0xfff80000;
+constexpr auto EMU_68K_TABLE_START      = 0x68080000;
+constexpr auto EMU_68K_TABLE_SIZE       =    0x80000;
+
+static DPPCDebugContext get_context() {
+
+#ifdef ENABLE_68K_DEBUGGER
+    if (ppc_state.pc >= EMU_68K_START && ppc_state.pc <= EMU_68K_START + EMU_68K_SIZE - 1) {
+/*
+        // Don't check physical address since 0x69xxxxxx points to RAM instead of ROM.
+        uint32_t pcp;
+        mmu_translate_imem(ppc_state.pc, &pcp);
+        if (pcp >= EMU_68K_START_PHYS && pcp <= EMU_68K_START_PHYS + EMU_68K_SIZE_PHYS - 1) {
+            return dppc_debug_context_68K;
+        }
+*/
+        return dppc_debug_context_68K;
+    }
+#endif // ENABLE_68K_DEBUGGER
+
+    {
+        int offset;
+        uint32_t pcp;
+        mmu_translate_imem(ppc_state.pc, &pcp);
+        std::string name = get_name_OpenFirmware(ppc_state.pc, pcp, &offset, false);
+        if (!name.empty())
+            return dppc_debug_context_Open_Firmware;
+    }
+
+    return dppc_debug_context_PPC;
+}
 
 #ifdef ENABLE_68K_DEBUGGER
 
@@ -326,30 +366,6 @@ static void disasm_68k_out(DisasmContext68K &ctx) {
     }
 }
 
-constexpr auto EMU_68K_START_PHYS       = 0xfff60000;
-constexpr auto EMU_68K_SIZE_PHYS        =    0xa0000;
-constexpr auto EMU_68K_START            = 0x68000000;
-constexpr auto EMU_68K_SIZE             =  0x2000000; // includes 0x69xxxxxx
-
-constexpr auto EMU_68K_TABLE_START_PHYS = 0xfff80000;
-constexpr auto EMU_68K_TABLE_START      = 0x68080000;
-constexpr auto EMU_68K_TABLE_SIZE       =    0x80000;
-
-static DPPCDebugContext get_context() {
-    if (ppc_state.pc >= EMU_68K_START && ppc_state.pc <= EMU_68K_START + EMU_68K_SIZE - 1) {
-/*
-        // Don't check physical address since 0x69xxxxxx points to RAM instead of ROM.
-        uint32_t pcp;
-        mmu_translate_imem(ppc_state.pc, &pcp);
-        if (pcp >= EMU_68K_START_PHYS && pcp <= EMU_68K_START_PHYS + EMU_68K_SIZE_PHYS - 1) {
-            return dppc_debug_context_68K;
-        }
-*/
-        return dppc_debug_context_68K;
-    }
-    return dppc_debug_context_PPC;
-}
-
 /** Execute ppc until the 68k opcode table is reached. */
 bool exec_upto_68k_opcode(bool check_ppc) {
     while (power_on) {
@@ -467,6 +483,89 @@ void print_68k_regs()
 }
 
 #endif // ENABLE_68K_DEBUGGER
+
+bool exec_upto_Open_Firmware_word(bool check_ppc)
+{
+    while (power_on) {
+        int offset;
+        uint32_t pcp;
+        mmu_translate_imem(ppc_state.pc, &pcp);
+        std::string name = get_name_OpenFirmware(ppc_state.pc, pcp, &offset, false);
+        if (!name.empty() && offset == 0)
+            return true;
+
+        if (check_ppc && get_context() != dppc_debug_context_Open_Firmware) {
+            // we've left Open Firmware
+            return false;
+        }
+        ppc_exec_single();
+    }
+    return false;
+}
+
+static void disasm_Open_Firmware_in()
+{
+    int offset;
+    uint32_t address = ppc_state.pc;
+    uint32_t phys_addr;
+    mmu_translate_imem(address, &phys_addr);
+    std::string name = get_name_OpenFirmware(address, phys_addr, &offset, true);
+
+    cout << COUT08X << address;
+    if (phys_addr != address)
+        cout << "->" << COUT08X << phys_addr;
+    else
+        cout << "          ";
+
+    if (!name.empty()) {
+        int stack_indent = (0x400 - (ppc_state.gpr[30] & 0x3ff)) / 2;
+        cout << " " << setw(stack_indent) << left << setfill(' ') << "" << name;
+
+        uint32_t data_stack_top = ppc_state.gpr[31];
+        if ((data_stack_top & 3) == 0 && (data_stack_top & 0x3ff) != 4) {
+            cout << " " << setw(100 - stack_indent - (int)name.length()) << left << setfill(' ') << "";
+            cout << " ;";
+            cout << " in{" << COUTX;
+            //cout << " @" << data_stack_top;
+            uint32_t data_stack = ((ppc_state.gpr[31] + 0x3ff) & -0x400) - 4;
+            uint32_t data_stack_p;
+            while (data_stack >= data_stack_top) {
+                if (mmu_translate_dbg(data_stack, data_stack_p))
+                    cout << " " << mem_read_dbg(data_stack, 4);
+                else
+                    cout << " ?";
+                data_stack -= 4;
+            }
+            cout << " " << ppc_state.gpr[20];
+            cout << " }" << dec;
+        }
+    }
+}
+
+static void disasm_Open_Firmware_out()
+{
+    cout << endl;
+}
+
+static void exec_single_Open_Firmware(bool check_ppc)
+{
+    ppc_exec_single();
+    exec_upto_Open_Firmware_word(check_ppc);
+}
+
+static void exec_until_Open_Firmware_word(const std::string &word)
+{
+    while (power_on) {
+        exec_single_Open_Firmware(false);
+        int offset;
+        uint32_t address = ppc_state.pc;
+        uint32_t phys_addr;
+        mmu_translate_imem(address, &phys_addr);
+        std::string name = get_name_OpenFirmware(address, phys_addr, &offset, false);
+        if (name == word)
+            break;
+    }
+}
 
 static void dump_mem(string& params) {
     int cell_size, chars_per_line;
@@ -1233,6 +1332,22 @@ void DppcDebugger::enter_debugger() {
                     }
                 } else
 #endif
+                if (
+                    (
+                        context == dppc_debug_context_Open_Firmware ||
+                        (context == dppc_debug_context_auto && get_context() == dppc_debug_context_Open_Firmware)
+                    ) && exec_upto_Open_Firmware_word(context == dppc_debug_context_auto)
+                ) {
+                    if (!power_on)
+                        break;
+                    if (!is_sq) {
+                        disasm_Open_Firmware_in();
+                    }
+                    exec_single_Open_Firmware(context == dppc_debug_context_auto);
+                    if (!is_sq) {
+                        disasm_Open_Firmware_out();
+                    }
+                } else
                 {
                     if (!power_on)
                         break;
@@ -1261,7 +1376,6 @@ void DppcDebugger::enter_debugger() {
                 ss >> addr_str;
             }
             try {
-                addr = str2addr(addr_str);
 #ifdef ENABLE_68K_DEBUGGER
                 if (
                     (
@@ -1269,10 +1383,20 @@ void DppcDebugger::enter_debugger() {
                         (context == dppc_debug_context_auto && get_context() == dppc_debug_context_68K)
                     ) && exec_upto_68k_opcode(context == dppc_debug_context_auto)
                 ) {
+                    addr = str2addr(addr_str);
                     exec_until_68k(addr);
                 } else
 #endif
+                if (
+                    (
+                        context == dppc_debug_context_Open_Firmware ||
+                        (context == dppc_debug_context_auto && get_context() == dppc_debug_context_Open_Firmware)
+                    )
+                ) {
+                    exec_until_Open_Firmware_word(addr_str);
+                } else
                 {
+                    addr = str2addr(addr_str);
                     ppc_exec_until(addr);
                 }
             } catch (invalid_argument& exc) {
@@ -1423,6 +1547,8 @@ void DppcDebugger::enter_debugger() {
                 context = dppc_debug_context_68K;
             } else if (expr_str == "auto" || expr_str == "AUTO") {
                 context = dppc_debug_context_auto;
+            } else if (expr_str == "of" || expr_str == "OF") {
+                context = dppc_debug_context_Open_Firmware;
             } else {
                 cout << "Unknown debugging context: " << expr_str << endl;
             }
