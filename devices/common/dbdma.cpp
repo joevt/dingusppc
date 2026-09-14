@@ -78,13 +78,14 @@ void DMAChannel::interpret_cmd() {
     }
 
     this->cur_host = fetch_cmd(this->cmd_ptr, &cmd_struct, &this->cur_is_writable);
+    this->cur_guest = this->cmd_ptr;
 
     this->ch_stat &= ~CH_STAT_WAKE; // clear wake bit (DMA spec, 5.5.3.4)
 
     this->cur_cmd = DBDMA_Cmd(cmd_struct.cmd_key >> 4);
 
-    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: interpret_cmd() (ChannelStatus 0x%04x)",
-        this->get_name().c_str(), this->ch_stat);
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: interpret_cmd() (CommandPtr 0x%08x  ChannelStatus 0x%04x)",
+        this->get_name().c_str(), this->cur_guest, this->ch_stat);
     if (loguru::Verbosity_DBDMA <= loguru::current_verbosity_cutoff()) {
         dump_program(this->cmd_ptr, 1, true);
     }
@@ -163,8 +164,8 @@ void DMAChannel::interpret_until_blocked() {
 }
 
 void DMAChannel::update_cmd() {
-    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: update_cmd() (ChannelStatus 0x%04x)",
-        this->get_name().c_str(), this->ch_stat);
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: update_cmd() (CommandPtr 0x%08x  ChannelStatus 0x%04x)",
+        this->get_name().c_str(), this->cur_guest, this->ch_stat);
     if (this->cur_is_writable) {
         if (this->cur_cmd < DBDMA_Cmd::STOP)
             WRITE_WORD_LE_A(&this->cur_host->xfer_stat, this->ch_stat | CH_STAT_ACTIVE);
@@ -177,8 +178,8 @@ void DMAChannel::update_cmd() {
 }
 
 void DMAChannel::finish_cmd() {
-    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: finish_cmd() (ChannelStatus 0x%04x)",
-        this->get_name().c_str(), this->ch_stat);
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: finish_cmd() (CommandPtr 0x%08x  ChannelStatus 0x%04x)",
+        this->get_name().c_str(), this->cur_guest, this->ch_stat);
 
     bool   branch_taken = false;
 
