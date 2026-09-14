@@ -168,6 +168,7 @@ private:
     bool     is_paused       = false;
     DBDMA_Cmd cur_cmd;
     DMACmd * cur_host = nullptr;   // host virtual address of current command
+    uint32_t cur_guest = 0;
     bool     cur_is_writable = false;  // current command is writable
 
     // Interrupt related stuff
