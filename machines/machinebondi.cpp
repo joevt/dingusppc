@@ -102,6 +102,7 @@ static const PropMap name ## _settings = { \
     {"cdr_config", new StrProperty("Ide1/@0")}, \
     {"pci_GPU", new StrProperty( #gpu )}, \
     {"pci_dev_max", new IntProperty(0xF, 0, 0x1F)}, \
+    {"GrackleBondi/@12/@0 mon_id", new StrProperty("MacColor21in")}, \
     {"GrackleBondi/@12/@0 edid", new StrProperty( \
         "00ffffffffffff000610019d01010101" \
         "00080101081b1428e866e99c574c9626" \
