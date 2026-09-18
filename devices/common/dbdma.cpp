@@ -275,12 +275,12 @@ void DMAChannel::dbdma_loop_timed(bool is_immediate) {
     if (!is_immediate) {
         if (continue_loop) {
             LOG_F(DBDMA, "%s: dbdma_loop_timed: add timer interpret", this->get_name().c_str());
-            this->interpret_timer_id = TimerManager::get_instance()->add_oneshot_timer(500, [this](uint64_t, uint64_t) {
+            TimerManager::get_instance()->add_oneshot_timer(this->interpret_timer, 500, [this](uint64_t, uint64_t) {
                 this->dbdma_loop_timed();
             });
         }
         else
-            this->interpret_timer_id = 0;
+            this->interpret_timer.active = 0;
     }
 }
 
@@ -292,12 +292,12 @@ void DMAChannel::schedule_cmd(int when) {
         this->dbdma_loop_timed(true);
 
     std::lock_guard<std::mutex> lk(this->interpret_mtx);
-    if (this->interpret_timer_id) {
+    if (this->interpret_timer.active) {
         LOG_F(DBDMA, "%s: timer interpret is already running", this->get_name().c_str());
         return;
     }
     LOG_F(DBDMA, "%s: schedule_cmd: add timer interpret", this->get_name().c_str());
-    this->interpret_timer_id = TimerManager::get_instance()->add_oneshot_timer(
+    TimerManager::get_instance()->add_oneshot_timer(this->interpret_timer,
         when < 0 ? 500 : when,
         [this](uint64_t, uint64_t) {
             this->dbdma_loop_timed();
@@ -388,10 +388,10 @@ void DMAChannel::update_irq(uint8_t cmd_bits) {
             if (cond) {
                 if (this->int_ctrl) {
                     std::lock_guard<std::mutex> lk(interrupt_mtx);
-                    if (!this->interrupt_timer_id) {
+                    if (!this->interrupt_timer.active) {
                         LOG_F(DBDMA, "%s: update_irq: add timer interrupt", this->get_name().c_str());
-                        this->interrupt_timer_id = TimerManager::get_instance()->add_immediate_timer([this](uint64_t, uint64_t) {
-                            this->interrupt_timer_id = 0;
+                        TimerManager::get_instance()->add_immediate_timer(this->interrupt_timer, [this](uint64_t, uint64_t) {
+                            this->interrupt_timer.active = 0;
                             this->int_ctrl->ack_dma_int(this->irq_id, 1);
                         });
                     }

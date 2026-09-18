@@ -364,7 +364,7 @@ private:
     uint32_t    swatch_int_mask     = 0;
     uint32_t    swatch_int_stat     = 0;
     uint32_t    cursor_line         = 0;
-    uint32_t    cursor_task_id      = 0;
+    TimerInfo   cursor_timer;
 
     std::unique_ptr<uint8_t[]>      vram_ptr = nullptr;
     DisplayID*                      disp_id = nullptr;

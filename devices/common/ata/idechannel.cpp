@@ -169,8 +169,11 @@ bool IdeChannel::supports_dma() {
 }
 
 void IdeChannel::assert_dmareq(uint64_t delay) {
-    TimerManager::get_instance()->add_oneshot_timer(delay, [this](uint64_t, uint64_t) {
+    if (this->dmareq_timer.active)
+        LOG_F(WARNING, "%s: dmareq_timer is already active", this->get_name_and_unit_address().c_str());
+    TimerManager::get_instance()->add_oneshot_timer(this->dmareq_timer, delay, [this](uint64_t, uint64_t) {
         //LOG_F(INFO, "%s: DMAREQ asserted", this->name.c_str());
+        this->dmareq_timer.active = false;
         this->channel_obj->xfer_retry();
     });
 }

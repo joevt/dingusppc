@@ -93,9 +93,9 @@ AMIC::AMIC(const std::string &dev_name)
 
 AMIC::~AMIC()
 {
-    if (this->pseudo_vbl_tid) {
-        TimerManager::get_instance()->cancel_timer(this->pseudo_vbl_tid);
-        this->pseudo_vbl_tid = 0;
+    if (this->pseudo_vbl_timer.active) {
+        TimerManager::get_instance()->cancel_timer(this->pseudo_vbl_timer);
+        this->pseudo_vbl_timer.active = 0;
     }
 }
 
@@ -108,7 +108,7 @@ PostInitResultType AMIC::device_postinit()
     mem_ctrl->add_mmio_region(0x50F00000, 0x00040000, this);
 
     // AMIC drives the VIA CA1 internally to generate 60.15 Hz interrupts
-    this->pseudo_vbl_tid = TimerManager::get_instance()->add_cyclic_timer(
+    TimerManager::get_instance()->add_cyclic_timer(pseudo_vbl_timer,
         static_cast<uint64_t>((1.0f/60.15) * NS_PER_SEC + 0.5f),
         [this](uint64_t, uint64_t) {
             this->viacuda->assert_ctrl_line(ViaLine::CA1);
@@ -856,7 +856,10 @@ void AmicSndOutDma::update_irq() {
     uint8_t new_level = !!((this->dma_out_ctrl >> 4) & this->dma_out_ctrl);
     if (new_level != this->irq_level) {
         this->irq_level = new_level;
-        TimerManager::get_instance()->add_immediate_timer([this](uint64_t, uint64_t) {
+        if (this->interrupt_timer.active)
+            LOG_F(ERROR, "AMIC: interrupt_timer is already active");
+        TimerManager::get_instance()->add_immediate_timer(interrupt_timer, [this](uint64_t, uint64_t) {
+            interrupt_timer.active = 0;
             this->int_ctrl->ack_dma_int(this->snd_dma_irq_id, this->irq_level);
         });
     }

@@ -265,7 +265,7 @@ private:
     // 53C825
     uint8_t     chip_id = 0;
     uint8_t     my_bus_id = 0;
-    uint32_t    my_timer_id = 0;
+    TimerInfo   my_timer;
 
     uint8_t     cmd_fifo[2];
     uint8_t     data_fifo[DATA_FIFO_MAX];
@@ -293,7 +293,7 @@ private:
     uint8_t     phase_latch = 0;
 
     // sequencer state
-    uint32_t    seq_timer_id = 0;
+    TimerInfo   seq_timer;
     uint32_t    cur_state = 0;
     uint32_t    next_state = 0;
     SeqDesc*    cmd_steps = nullptr;

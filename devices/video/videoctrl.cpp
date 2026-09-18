@@ -113,13 +113,13 @@ void VideoCtrlBase::start_refresh_task() {
     this->refresh_interval = static_cast<uint64_t>(1.0f / this->refresh_rate * NS_PER_SEC + 0.5);
     this->vbl_duration = static_cast<uint64_t>((double)this->hori_total * this->vert_blank /
         this->pixel_clock * NS_PER_SEC + 0.5);
-    this->refresh_task_id = TimerManager::get_instance()->add_cyclic_timer(
+    TimerManager::get_instance()->add_cyclic_timer(this->refresh_timer,
         this->refresh_interval,
         [this](uint64_t timeout_ns, uint64_t time_now) {
             // assert VBL interrupt
             this->vbl_cb(1);
-            if (this->vbl_end_task_id)
-                TimerManager::get_instance()->cancel_timer(this->vbl_end_task_id);
+            if (this->vbl_end_timer.active)
+                TimerManager::get_instance()->cancel_timer(this->vbl_end_timer);
             uint64_t frame_base_ns;
             if (timeout_ns + this->refresh_interval <= time_now) {
                 frame_base_ns = time_now;
@@ -128,10 +128,10 @@ void VideoCtrlBase::start_refresh_task() {
                 frame_base_ns = timeout_ns;
                 this->update_screen();
             }
-            this->vbl_end_task_id = TimerManager::get_instance()->add_absolute_timer(
+            TimerManager::get_instance()->add_absolute_timer(this->vbl_end_timer,
                 frame_base_ns + this->vbl_duration, 0,
                 [this](uint64_t, uint64_t) {
-                    this->vbl_end_task_id = 0;
+                    this->vbl_end_timer.active = 0;
                     // deassert VBL interrupt
                     this->vbl_cb(0);
                 }
@@ -141,13 +141,13 @@ void VideoCtrlBase::start_refresh_task() {
 }
 
 void VideoCtrlBase::stop_refresh_task() {
-    if (this->refresh_task_id) {
-        TimerManager::get_instance()->cancel_timer(this->refresh_task_id);
-        this->refresh_task_id = 0;
+    if (this->refresh_timer.active) {
+        TimerManager::get_instance()->cancel_timer(this->refresh_timer);
+        this->refresh_timer.active = 0;
     }
-    if (this->vbl_end_task_id) {
-        TimerManager::get_instance()->cancel_timer(this->vbl_end_task_id);
-        this->vbl_end_task_id = 0;
+    if (this->vbl_end_timer.active) {
+        TimerManager::get_instance()->cancel_timer(this->vbl_end_timer);
+        this->vbl_end_timer.active = 0;
     }
 }
 

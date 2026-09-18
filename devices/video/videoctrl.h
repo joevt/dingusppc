@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef VIDEO_CTRL_H
 #define VIDEO_CTRL_H
 
+#include <core/timermanager.h>
 #include <devices/common/hwcomponent.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/common/pci/pcidevice.h>
@@ -125,8 +126,8 @@ protected:
     // Framebuffer parameters
     uint8_t*    fb_ptr = nullptr;
     int         fb_pitch = 0;
-    uint32_t    refresh_task_id = 0;
-    uint32_t    vbl_end_task_id = 0;
+    TimerInfo   refresh_timer;
+    TimerInfo   vbl_end_timer;
     uint64_t    refresh_interval = 0;
     uint64_t    vbl_duration = 0;
 

@@ -893,15 +893,15 @@ void Sc53C825::exec_command()
         // assert RST line
         this->bus_obj->assert_ctrl_line(this->my_bus_id, SCSI_CTRL_RST);
         // release RST line after 25 us
-        if (my_timer_id) {
-            TimerManager::get_instance()->cancel_timer(this->my_timer_id);
-            my_timer_id = 0;
+        if (my_timer.active) {
+            TimerManager::get_instance()->cancel_timer(this->my_timer);
+            my_timer.active = 0;
         }
-        my_timer_id = TimerManager::get_instance()->add_oneshot_timer(
+        TimerManager::get_instance()->add_oneshot_timer(my_timer,
             USECS_TO_NSECS(25),
             [this](uint64_t, uint64_t) {
                 SCSI_LOG_F(CURIO, "%s: release SCSI_CTRL_RST", this->name.c_str());
-                my_timer_id = 0;
+                my_timer.active = 0;
                 this->bus_obj->release_ctrl_line(this->my_bus_id, SCSI_CTRL_RST);
         });
         if (!(config1 & CFG1_DISR)) {
@@ -1078,27 +1078,27 @@ uint8_t Sc53C825::fifo_pop()
 
 void Sc53C825::seq_defer_state(uint64_t delay_ns)
 {
-    if (this->seq_timer_id) {
-        TimerManager::get_instance()->cancel_timer(this->seq_timer_id);
-        this->seq_timer_id = 0;
+    if (this->seq_timer.active) {
+        TimerManager::get_instance()->cancel_timer(this->seq_timer);
+        this->seq_timer.active = 0;
     }
 
     if (delay_ns) {
-        this->seq_timer_id = TimerManager::get_instance()->add_oneshot_timer(
+        TimerManager::get_instance()->add_oneshot_timer(this->seq_timer,
             delay_ns,
             [this](uint64_t, uint64_t) {
                 // re-enter the sequencer with the state specified in next_state
-                this->seq_timer_id = 0;
+                this->seq_timer.active = 0;
                 this->cur_state = this->next_state;
                 SCSI_LOG_F(CURIO, "%s: state changed to %s in %s seq_defer_state timer",
                     this->name.c_str(), get_name_sequence(this->cur_state), __func__);
                 this->sequencer();
         });
     } else {
-        this->seq_timer_id = TimerManager::get_instance()->add_immediate_timer(
+        TimerManager::get_instance()->add_immediate_timer(this->seq_timer,
             [this](uint64_t, uint64_t) {
                 // re-enter the sequencer with the state specified in next_state
-                this->seq_timer_id = 0;
+                this->seq_timer.active = 0;
                 this->cur_state = this->next_state;
                 SCSI_LOG_F(CURIO, "%s: state changed to %s in %s seq_defer_state timer",
                     this->name.c_str(), get_name_sequence(this->cur_state), __func__);
@@ -1358,8 +1358,8 @@ void Sc53C825Dev::notify(ScsiNotification notif_type, int param)
         SCSIDEV_LOG_F(CURIO, "%s: CONFIRM_SEL", this->name.c_str());
         if (this->ctrl_obj->target_id == param) {
             // cancel selection timeout timer
-            TimerManager::get_instance()->cancel_timer(this->ctrl_obj->seq_timer_id);
-            this->ctrl_obj->seq_timer_id = 0;
+            TimerManager::get_instance()->cancel_timer(this->ctrl_obj->seq_timer);
+            this->ctrl_obj->seq_timer.active = 0;
             this->ctrl_obj->cur_state = SeqState::SEL_END;
             SCSIDEV_LOG_F(CURIO, "%s: state changed to %s in %s CONFIRM_SEL",
                 this->name.c_str(), get_name_sequence(this->ctrl_obj->cur_state), __func__);

@@ -976,7 +976,7 @@ static void update_timebase(uint64_t mask, uint64_t new_val)
 bool decrementer_enabled = true;
 #endif
 
-static uint32_t decrementer_timer_id = 0;
+static TimerInfo decrementer_timer;
 
 static void update_decrementer(bool update_time_stamp, uint32_t oldval, uint32_t newval);
 
@@ -988,7 +988,7 @@ static void trigger_decrementer_exception(uint64_t = 0, uint64_t = 0) {
 
 #ifdef POSTPONE_DECREMENTER
     if (in_lwarx || in_exception) {
-        decrementer_timer_id = TimerManager::get_instance()->add_oneshot_timer(400, trigger_decrementer_exception);
+        TimerManager::get_instance()->add_oneshot_timer(decrementer_timer, 400, trigger_decrementer_exception);
         return;
     }
 #endif
@@ -1006,7 +1006,7 @@ static void trigger_decrementer_exception(uint64_t = 0, uint64_t = 0) {
 
 static void trigger_timed_decrementer_exception(uint64_t, uint64_t) {
     VLOG_SCOPE_F(loguru::Verbosity_DECREMENTER, "trigger_timed_decrementer_exception");
-    decrementer_timer_id = 0;
+    decrementer_timer.active = 0;
     uint32_t new_val = calc_dec_value();
     LOG_F(DECREMENTER, "decrementer: %08X", new_val);
     if (new_val >= 0 && new_val != uint32_t(-1)) {
@@ -1019,7 +1019,7 @@ static void trigger_timed_decrementer_exception(uint64_t, uint64_t) {
 
 static void trigger_immediate_decrementer_exception(uint64_t, uint64_t) {
     VLOG_SCOPE_F(loguru::Verbosity_DECREMENTER, "trigger_immediate_decrementer_exception");
-    decrementer_timer_id = 0;
+    decrementer_timer.active = 0;
     update_decrementer(false, ppc_state.spr[SPR::DEC_S], ppc_state.spr[SPR::DEC_S]);
     trigger_decrementer_exception();
 }
@@ -1032,16 +1032,16 @@ static void update_decrementer(bool update_time_stamp, uint32_t oldval, uint32_t
 
     dec_exception_pending = false;
 
-    VLOG_SCOPE_F(loguru::Verbosity_DECREMENTER, "update_decrementer val:%08X->%08X timer:%d timestamp:%lld",
-        oldval, newval, decrementer_timer_id, dec_wr_timestamp);
+    VLOG_SCOPE_F(loguru::Verbosity_DECREMENTER, "update_decrementer val:%08X->%08X timer:%llu timestamp:%lld",
+        oldval, newval, uint64_t(&decrementer_timer), dec_wr_timestamp);
 
-    if (decrementer_timer_id) {
-        TimerManager::get_instance()->cancel_timer(decrementer_timer_id);
+    if (decrementer_timer.active) {
+        TimerManager::get_instance()->cancel_timer(decrementer_timer);
     }
 
     if (bit_changed(oldval, newval, 31) && bit_set(newval, 31)) {
         LOG_F(DECREMENTER, "immediate decrementer exception");
-        decrementer_timer_id = TimerManager::get_instance()->add_immediate_timer(
+        TimerManager::get_instance()->add_immediate_timer(decrementer_timer,
             trigger_immediate_decrementer_exception
         );
         return;
@@ -1061,7 +1061,7 @@ static void update_decrementer(bool update_time_stamp, uint32_t oldval, uint32_t
     uint32_t time_out_lo;
     _u32xu64(newval, tbr_period_ns, time_out, time_out_lo);
     LOG_F(DECREMENTER, "ticks: 0x%08X, interrupt after %llu ns", newval, time_out);
-    decrementer_timer_id = TimerManager::get_instance()->add_oneshot_timer(
+    TimerManager::get_instance()->add_oneshot_timer(decrementer_timer,
         time_out,
         trigger_timed_decrementer_exception
     );

@@ -29,6 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef DB_DMA_H
 #define DB_DMA_H
 
+#include <core/timermanager.h>
 #include <devices/common/dmacore.h>
 
 #include <cinttypes>
@@ -169,7 +170,7 @@ protected:
 private:
     std::function<void(void)> start_cb = nullptr; // DMA channel start callback
     std::function<void(void)> stop_cb  = nullptr; // DMA channel stop callback
-    uint32_t interpret_timer_id = 0;
+    TimerInfo interpret_timer;
     std::mutex interpret_mtx;
     std::mutex dbdma_loop_mtx;
 
@@ -193,7 +194,7 @@ private:
     // Interrupt related stuff
     InterruptCtrl* int_ctrl = nullptr;
     uint64_t       irq_id   = 0;
-    uint32_t       interrupt_timer_id = 0;
+    TimerInfo      interrupt_timer;
     std::mutex     interrupt_mtx;
 
     uint64_t unsupported_register_read = 0;

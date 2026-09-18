@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef ATA_HARD_DISK_H
 #define ATA_HARD_DISK_H
 
+#include <core/timermanager.h>
 #include <devices/common/ata/atabasedevice.h>
 #include <utils/metaimgfile.h>
 
@@ -87,6 +88,8 @@ private:
     uint8_t     cur_dma_mode     = 2; // current multi-word DMA mode
 
     char * buffer = new char[1 <<17];
+    
+    TimerInfo signal_ready_timer;
 };
 
 #endif // ATA_HARD_DISK_H
