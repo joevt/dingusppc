@@ -35,8 +35,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace loguru {
     enum : Verbosity {
-        Verbosity_DDC = loguru::Verbosity_INFO,
-        Verbosity_LEVELS = loguru::Verbosity_INFO,
+        Verbosity_DDC = loguru::Verbosity_9,
+        Verbosity_LEVELS = loguru::Verbosity_9,
     };
 }
 
