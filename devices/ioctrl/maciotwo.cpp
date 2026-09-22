@@ -541,8 +541,8 @@ static const std::vector<std::string> Heathrow_Subdevices = {
 };
 
 static const std::vector<std::string> Paddington_Subdevices = {
-    "NVRAM@60000", "ViaCuda@16000", "MeshHeathrow@10000", "Escc@13000", "Swim3@15000", "Ide0@20000", "Ide1@21000",
-    "BigMacPaddington@11000"
+    "MeshHeathrow@10000", "BigMacPaddington@11000", "Escc@13000", "BurgundySnd@14000",
+    "Swim3@15000", "ViaCuda@16000", "Ide0@20000", "Ide1@21000", "NVRAM@60000",
 };
 
 static const DeviceDescription OHare_Descriptor = {

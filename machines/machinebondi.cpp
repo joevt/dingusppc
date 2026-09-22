@@ -65,8 +65,6 @@ int MachineBondi::initialize(const std::string &id) {
     MacIoTwo* mio_obj = dynamic_cast<MacIoTwo*>(gMachineObj->get_comp_by_name("Paddington"));
     mio_obj->set_media_bay_id(0x30);
 
-    grackle_obj->add_device(DEV_FUN(0x10,0), mio_obj);
-
     // configure RAM slots
     // First ram slot is enumerated twice for some reason, the second slot is never
     // enumerated, so make sure both slots have the same RAM.
@@ -119,8 +117,8 @@ imac_settings(bondi, AtiRagePro)
 imac_settings(prototype, AtiRageGW)
 
 static std::vector<std::string> bondi_devices = {
+    "GrackleBondi@FE000000",
     "BootRomNW@FFF00000",
-    "GrackleBondi@FE000000", "BurgundySnd@14000", "Paddington@10"
 };
 
 static const DeviceDescription MachineBondi_descriptor = {
