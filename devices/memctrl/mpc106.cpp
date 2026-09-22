@@ -368,7 +368,7 @@ static const PropMap GrackleBondi_Properties = {
     {"pci_B1"   , new StrProperty("")},
     {"pci_C1"   , new StrProperty("")},
     {"pci_GPU"  , new StrProperty("")},
-    {"pci_PERCH", new StrProperty("")},
+    {"pci_PERCH", new StrProperty("OptiOhci")},
 };
 
 static const PropMap GrackleLombard_Properties = {
@@ -384,12 +384,12 @@ static const DeviceDescription GrackleGossamer_Descriptor = {
 };
 
 static const DeviceDescription GrackleYosemite_Descriptor = {
-    MPC106::create, {}, GrackleYosemite_Properties,
+    MPC106::create, {"Dec21154Yosemite@D"}, GrackleYosemite_Properties,
     HWCompType::MEM_CTRL | HWCompType::MMIO_DEV | HWCompType::PCI_HOST
 };
 
 static const DeviceDescription GrackleBondi_Descriptor = {
-    MPC106::create, {}, GrackleBondi_Properties,
+    MPC106::create, {"Paddington@10"}, GrackleBondi_Properties,
     HWCompType::MEM_CTRL | HWCompType::MMIO_DEV | HWCompType::PCI_HOST
 };
 
