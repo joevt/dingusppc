@@ -289,6 +289,24 @@ const char* spr_index31[32] = {
     "", "", "", "l2cr", "", "ictc", "thrm1", "thrm2", "thrm3", "pir",
 };
 
+std::string get_spr_name(int reg) {
+    auto spr_high = reg >> 5;
+    auto spr_low  = reg & 31;
+    const char* thename;
+    switch (spr_high) {
+    case  0: thename = spr_index0 [spr_low]; break;
+    case  8: thename = spr_index8 [spr_low]; break;
+    case 16: thename = spr_index16[spr_low]; break;
+    case 29: thename = spr_index29[spr_low]; break;
+    case 30: thename = spr_index30[spr_low]; break;
+    case 31: thename = spr_index31[spr_low]; break;
+    default: thename = nullptr;
+    }
+    if (thename && thename[0])
+        return thename;
+    return std::to_string(reg);
+}
+
 /** various formatting helpers. */
 void fmt_oneop(PPCDisasmContext* ctx, const char* opc, int src) {
     ctx->instr_str = my_sprintf("%-7s r%d", opc, src);

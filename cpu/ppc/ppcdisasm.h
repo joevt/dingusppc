@@ -41,6 +41,7 @@ typedef struct PPCDisasmContext {
 std::string disassemble_single(PPCDisasmContext* ctx);
 
 int test_ppc_disasm(void);
+std::string get_spr_name(int reg);
 
 /** sign-extend an integer. */
 #define SIGNEXT(x, sb) ((x) | (((x) & (1 << (sb))) ? ~((1 << (sb)) - 1) : 0))
