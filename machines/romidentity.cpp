@@ -229,7 +229,7 @@ rom_info rom_identity[] = {
     rom( 0x008100, 0x55402f54, "Kihei"          , "P7"       , nullptr  , "iMac G3 (Slot Loading)"                            ) // PowerMac2,1
     rom( 0x008100, 0xf88e2d56, "P7"             , "P7"       , nullptr  , "iMac G3 (Slot Loading)"                            ) // PowerMac2,1
     rom( 0x008200, 0x141d2d96, "P51"            , "P51"      , nullptr  , "iMac G3 (Summer 2000)"                             ) // PowerMac2,2
-    rom( 0x008200, 0x41ef2e95, "Perigee"        , "P51"      , nullptr  , "iMac G3 (Summer 2000)"                             ) // PowerMac2,2
+    rom( 0x008200, 0x41ef2e95, "Perigee"        , "P51"      , nullptr  , "iMac G3 (Summer 2000)"                             ) // PowerMac2,2 // 2000-06-12 330f3
     rom( 0x008201, 0x4a862e17, "P51_15"         , "P51"      , nullptr  , "iMac G3 (Summer 2000)"                             ) // PowerMac2,2
     rom( 0x008201, 0x78582f16, "Perigee_15"     , "P51"      , nullptr  , "iMac G3 (Summer 2000)"                             ) // PowerMac2,2
     rom( 0x010100,          0, nullptr          , "P52"      , nullptr  , "iMac G3 (2001)"                                    ) // PowerMac4,1
