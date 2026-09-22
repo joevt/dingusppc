@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/timermanager.h>
 #include <core/mathutils.h>
 #include <cpu/ppc/ppcdechelpers.h>
+#include <cpu/ppc/ppcdisasm.h>
 #include <cpu/ppc/ppcemu.h>
 #include <cpu/ppc/ppcmmu.h>
 
@@ -35,7 +36,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace loguru {
     enum : Verbosity {
-        Verbosity_DECREMENTER = loguru::Verbosity_9
+        Verbosity_DECREMENTER = loguru::Verbosity_9,
+        Verbosity_THRM_EXCEPTION = loguru::Verbosity_INFO,
+        Verbosity_THRM_WRITE = loguru::Verbosity_INFO,
+        Verbosity_THRM_READ_INVALID = loguru::Verbosity_9,
+        Verbosity_THRM_READ_VALID = loguru::Verbosity_INFO,
     };
 }
 
@@ -876,6 +881,7 @@ void dppc_interpreter::ppc_mtmsr(uint32_t opcode) {
         ppc_exception_handler(Except_Type::EXC_DECR, 0);
     } else if ((ppc_state.msr & MSR::EE) && thrm_exception_pending) {
         thrm_exception_pending = false;
+        LOG_F(THRM_EXCEPTION, "MTMSR: thermal interrupt exception triggered");
         ppc_exception_handler(Except_Type::EXC_THRM_MGMT_INT, 0);
     } else if (ppc_state.msr & MSR::POW) [[unlikely]] {
         bool enter_sleep = false;
@@ -1106,10 +1112,12 @@ static void update_thermal(uint64_t, uint64_t) {
 
     if (interrupt && enabled) {
         if (ppc_state.msr & MSR::EE) {
+            LOG_F(THRM_EXCEPTION, "thermal exception triggered");
             thrm_exception_pending = false;
             ppc_exception_handler(Except_Type::EXC_THRM_MGMT_INT, 0);
         }
         else {
+            LOG_F(THRM_EXCEPTION, "thermal exception pending");
             thrm_exception_pending = true;
         }
     }
@@ -1191,14 +1199,36 @@ void dppc_interpreter::ppc_mfspr(uint32_t opcode) {
     case SPR::THRM2: {
         uint32_t val = ppc_state.spr[ref_spr];
         ppc_state.gpr[reg_d] = val;
+        uint32_t t_interrupt     = (val >> 31) &    1;
+        uint32_t t_int_valid     = (val >> 30) &    1;
+        uint32_t threshold       = (val >> 23) & 0x7F;
+        uint32_t t_int_direction = (val >>  2) &    1;
+        uint32_t t_int_enable    = (val >>  1) &    1;
+        uint32_t valid           = (val >>  0) &    1;
+        if (ppc_state.spr[ref_spr] & (1<<30))
+            LOG_F(THRM_READ_VALID,
+                "read  %s = %08x ; %s %d°C (interrupt %s, %s ; interrupt %s, %sinterrupt)",
+                get_spr_name(ref_spr).c_str(), ppc_state.spr[ref_spr],
+                t_int_direction ? "<" : ">", threshold, t_int_enable ? "enabled" : "disabled",
+                valid ? "valid" : "invalid",
+                t_int_valid ? "valid" : "invalid", t_interrupt ? "" : "no ");
+        else
+            LOG_F(THRM_READ_INVALID,
+                "read  %s = %08x ; %s %d°C (interrupt %s, %s ; interrupt %s, %sinterrupt)",
+                get_spr_name(ref_spr).c_str(), ppc_state.spr[ref_spr],
+                t_int_direction ? "<" : ">", threshold, t_int_enable ? "enabled" : "disabled",
+                valid ? "valid" : "invalid",
+                t_int_valid ? "valid" : "invalid", t_interrupt ? "" : "no ");
         break;
     }
     case SPR::THRM3:
         ppc_state.gpr[reg_d] = ppc_state.spr[ref_spr];
+        LOG_F(THRM_READ_VALID, "read  %s = %08x", get_spr_name(ref_spr).c_str(), ppc_state.spr[ref_spr]);
         break;
     default:
         // FIXME: Unknown SPR should be noop or illegal instruction.
         ppc_state.gpr[reg_d] = ppc_state.spr[ref_spr];
+        //LOG_F(WARNING, "read  %s = %08x", get_spr_name(ref_spr).c_str(), ppc_state.spr[ref_spr]);
     }
 }
 
@@ -1306,6 +1336,14 @@ void dppc_interpreter::ppc_mtspr(uint32_t opcode) {
     case SPR::THRM1:
     case SPR::THRM2: {
         ppc_state.spr[ref_spr] = val & 0x3F800007;
+//      uint32_t t_interrupt     = (val >> 31) &    1;
+//      uint32_t t_int_valid     = (val >> 30) &    1;
+        uint32_t threshold       = (val >> 23) & 0x7F;
+        uint32_t t_int_direction = (val >>  2) &    1;
+        uint32_t t_int_enable    = (val >>  1) &    1;
+        uint32_t valid           = (val >>  0) &    1;
+        LOG_F(THRM_WRITE, "write %s = %08x ; %s %d°C (interrupt %s, %s)", get_spr_name(ref_spr).c_str(), ppc_state.spr[ref_spr],
+            t_int_direction ? "<" : ">", threshold, t_int_enable ? "enabled" : "disabled", valid ? "valid" : "invalid");
 
         if (thermal_timer.active)
             TimerManager::get_instance()->cancel_timer(thermal_timer);
@@ -1317,6 +1355,11 @@ void dppc_interpreter::ppc_mtspr(uint32_t opcode) {
         ppc_state.spr[SPR::THRM1] &= ~(3<<30);
         ppc_state.spr[SPR::THRM2] &= ~(3<<30);
 
+        uint32_t sampled_interval_timer_value = (val >> 1) & 0x1FFF;
+        uint32_t enabled = val & 1;
+        LOG_F(THRM_WRITE, "write %s = %08x ; %d cycles (%s)", get_spr_name(ref_spr).c_str(), ppc_state.spr[ref_spr],
+            sampled_interval_timer_value, enabled ? "enabled" : "disabled");
+
         if (thermal_timer.active)
             TimerManager::get_instance()->cancel_timer(thermal_timer);
         TimerManager::get_instance()->add_oneshot_timer(thermal_timer, USECS_TO_NSECS(20), update_thermal);
@@ -1325,6 +1368,7 @@ void dppc_interpreter::ppc_mtspr(uint32_t opcode) {
     default:
         // FIXME: Unknown SPR should be noop or illegal instruction.
         ppc_state.spr[ref_spr] = val;
+        //LOG_F(WARNING, "write %s = %08x", get_spr_name(ref_spr).c_str(), ppc_state.spr[ref_spr]);
     }
 }
 
