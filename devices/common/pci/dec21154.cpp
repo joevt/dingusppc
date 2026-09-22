@@ -121,9 +121,9 @@ void DecPciBridge::pci_cfg_write(uint32_t reg_offs, uint32_t value, const Access
 
 static const PropMap Dec21154Yosemite_Properties = {
     {"pci_FireWire",
-        new StrProperty("")},
+        new StrProperty("")}, // "TiPciLynx"
     {"pci_UltraATA",
-        new StrProperty("")},
+        new StrProperty("CmdAta")},
     {"pci_J11",
         new StrProperty("")},
     {"pci_J10",
@@ -131,7 +131,7 @@ static const PropMap Dec21154Yosemite_Properties = {
     {"pci_J9",
         new StrProperty("")},
     {"pci_USB",
-        new StrProperty("")},
+        new StrProperty("OptiOhci")},
 };
 
 static const DeviceDescription Dec21154_Descriptor = {
@@ -139,7 +139,7 @@ static const DeviceDescription Dec21154_Descriptor = {
 };
 
 static const DeviceDescription Dec21154Yosemite_Descriptor = {
-    DecPciBridge::create, {}, Dec21154Yosemite_Properties, HWCompType::PCI_HOST | HWCompType::PCI_DEV
+    DecPciBridge::create, {"Paddington@5"}, Dec21154Yosemite_Properties, HWCompType::PCI_HOST | HWCompType::PCI_DEV
 };
 
 REGISTER_DEVICE(Dec21154, Dec21154_Descriptor);
