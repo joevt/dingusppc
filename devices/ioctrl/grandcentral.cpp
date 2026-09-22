@@ -403,7 +403,7 @@ void GrandCentral::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value
                 break;
             }
             if ((offset & 0xFF) < 0x60) {
-                LOG_F(ERROR, "%s: SCC write @%x.%c = %0*x", this->name.c_str(),
+                LOG_F(ERROR, "%s: ESCC compatible write @%x.%c = %0*x", this->name.c_str(),
                     offset, SIZE_ARG(size), size * 2, value);
                 break;
             }
