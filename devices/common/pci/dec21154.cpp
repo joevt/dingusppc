@@ -53,7 +53,7 @@ uint32_t DecPciBridge::pci_cfg_read(uint32_t reg_offs, const AccessDetails detai
 
     switch (reg_offs) {
     case CHIP_CTRL:
-        return (this->arb_ctrl << 16) | (this-> diag_ctrl << 8) | this->chip_ctrl;
+        return (this->arb_ctrl << 16) | (this->diag_ctrl << 8) | this->chip_ctrl;
     case PSERR_EVENT_DIS:
         return (this->gpio_out_en << 16) | (this->gpio_out_data << 8) | this->pserr_event_dis;
     case SEC_CLK_CTRL:
