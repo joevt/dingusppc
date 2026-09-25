@@ -383,7 +383,7 @@ void DMAChannel::update_irq(uint8_t cmd_bits) {
                 }
             }
             if (cond) {
-                if (int_ctrl) {
+                if (this->int_ctrl) {
                     std::lock_guard<std::mutex> lk(interrupt_mtx);
                     if (!this->interrupt_timer.active) {
                         LOG_F(DBDMA, "%s: update_irq: add timer interrupt", this->get_name().c_str());
