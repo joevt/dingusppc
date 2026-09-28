@@ -113,7 +113,10 @@ void MaceController::write(uint8_t reg_offset, uint8_t value)
             this->addr_ptr = 0;
         // ADDRCHG is a handshake: the chip clears it once the selector is latched and it is
         // ready for the address bytes, before those bytes arrive through LADRF / PADR.
-        value &= ~IAC_ADDRCHG;
+        if (value & IAC_ADDRCHG) {
+            LOG_F(INFO, "%s: address changing", this->name.c_str());
+            value &= ~IAC_ADDRCHG;
+        }
         this->addr_cfg = value;
         break;
     case MaceReg::Log_Addr_Flt:
