@@ -215,6 +215,7 @@ private:
     uint64_t    key_ups = 0;
     uint8_t     buttons_state = 0;
     uint32_t    kbd_locale = 0;
+    bool        caps_lock_state = false;
 };
 
 #endif // EVENT_MANAGER_H

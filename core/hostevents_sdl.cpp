@@ -368,6 +368,12 @@ void EventManager::poll_events() {
                     this->_keyboard_signal.emit(ke);
                     return;
                 }
+                if (event.key.key == SDLK_CAPSLOCK &&
+                    ((!!(event.key.mod & SDL_KMOD_CAPS)) != (event.type == SDL_EVENT_KEY_DOWN))
+                ) {
+                    // Caps Lock is a special case, since it's a toggle key
+                    return;
+                }
                 int key_code = get_sdl_event_key_code(event.key, this->kbd_locale);
                 if (key_code != -1) {
                     KeyboardEvent ke{};
@@ -379,10 +385,8 @@ void EventManager::poll_events() {
                         ke.flags = KEYBOARD_EVENT_UP;
                         key_ups++;
                     }
-                    // Caps Lock is a special case, since it's a toggle key
                     if (ke.key == AdbKey_CapsLock) {
-                        ke.flags = event.key.mod & SDL_KMOD_CAPS ?
-                            KEYBOARD_EVENT_DOWN : KEYBOARD_EVENT_UP;
+                        this->caps_lock_state = (ke.flags == KEYBOARD_EVENT_DOWN);
                     }
                     host_input = true;
                     this->_keyboard_signal.emit(ke);
@@ -524,6 +528,19 @@ void EventManager::poll_events() {
 
         default:
             LOG_F(HOSTEVENTS, "event: 0x%X = %s", event.type, get_event_name(event.type));
+            switch (event.type) {
+                case SDL_EVENT_WINDOW_FOCUS_GAINED: {
+                    SDL_Keymod modstate = SDL_GetModState();
+                    if ( !!(modstate & SDL_KMOD_CAPS) != this->caps_lock_state) {
+                        this->caps_lock_state = !!(modstate & SDL_KMOD_CAPS);
+                        KeyboardEvent ke{};
+                        ke.key = AdbKey_CapsLock;
+                        ke.flags = this->caps_lock_state ? KEYBOARD_EVENT_DOWN : KEYBOARD_EVENT_UP;
+                        this->_keyboard_signal.emit(ke);
+                    }
+                    break;
+                }
+            }
             if (event.type >= SDL_EVENT_WINDOW_FIRST && event.type <= SDL_EVENT_WINDOW_LAST) {
                 WindowEvent we{};
                 we.sub_type = event.type;
@@ -611,6 +628,8 @@ void EventManager::post_keyboard_state_events(bool with_startup_keys) {
         count++;
         ke.key = swap_command_option(mod->adbkey);
         ke.flags = KEYBOARD_EVENT_DOWN;
+        if (ke.key == AdbKey_CapsLock)
+            this->caps_lock_state = (ke.flags == KEYBOARD_EVENT_DOWN);
         this->_keyboard_signal.emit(ke);
         states[mod->scancode] = false;
     }
