@@ -35,6 +35,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_SWIM3      = loguru::Verbosity_9,
+        Verbosity_SELECTDISK = loguru::Verbosity_9,
+    };
+}
+
 using namespace Swim3;
 
 static std::string get_reg_name(uint8_t reg_offset)
@@ -78,6 +85,7 @@ Swim3Ctrl::Swim3Ctrl()
 
 void Swim3Ctrl::reset()
 {
+    LOG_F(SELECTDISK, "SWIM3: reset");
     this->setup_reg  = 0;
     this->selected_drive = nullptr;
     this->mode_reg   = 0;
@@ -204,12 +212,15 @@ uint8_t Swim3Ctrl::read(uint8_t reg_offset)
         value = this->step_count;
         break;
     case Swim3Reg::Current_Track:
+        LOG_F(SWIM3, "SWIM3: get side:%d track:%d", this->cur_track >> 7, this->cur_track & 0x7F);
         value = this->cur_track;
         break;
     case Swim3Reg::Current_Sector:
+        LOG_F(SWIM3, "SWIM3: get valid:%d sector:%d", this->cur_sector >> 7, this->cur_sector & 0x7F);
         value = this->cur_sector;
         break;
     case Swim3Reg::Gap_Format:
+        LOG_F(SWIM3, "SWIM3: get format:%d", this->format);
         value = this->format;
         break;
     case Swim3Reg::First_Sector:
@@ -224,7 +235,10 @@ uint8_t Swim3Ctrl::read(uint8_t reg_offset)
     default:
         LOG_F(ERROR, "SWIM3: read  %-15s %x.b = %02x", get_reg_name(reg_offset).c_str(), reg_offset, value);
         value = 0;
+        return value;
     }
+
+    LOG_F(SWIM3, "SWIM3: read  %-15s %x.b = %02x", get_reg_name(reg_offset).c_str(), reg_offset, value);
     return value;
 }
 
@@ -242,6 +256,7 @@ void Swim3Ctrl::write(uint8_t reg_offset, uint8_t value)
     case Swim3Reg::First_Sector:
     case Swim3Reg::Sectors_To_Xfer:
     case Swim3Reg::Interrupt_Mask:
+        LOG_F(SWIM3, "SWIM3: write %-15s %x.b = %02x", get_reg_name(reg_offset).c_str(), reg_offset, value);
         break;
     default:
         LOG_F(ERROR, "SWIM3: write %-15s %x.b = %02x", get_reg_name(reg_offset).c_str(), reg_offset, value);
@@ -434,6 +449,8 @@ void Swim3Ctrl::disk_access()
         this->cur_track  = ((hdr.side & 1) << 7) | (hdr.track & 0x7F);
         this->cur_sector = 0x80 /* CRC/checksum valid */ | (hdr.sector & 0x7F);
         this->format = hdr.format;
+        LOG_F(SWIM3, "SWIM3: set side:%d track:%d valid:%d sector:%d format:%d",
+            this->cur_track >> 7, this->cur_track & 0x7F, this->cur_sector >> 7, this->cur_sector & 0x7F, this->format);
         // generate ID_read interrupt
         this->int_flags |= INT_ID_READ;
         update_irq();
@@ -538,6 +555,7 @@ void Swim3Ctrl::mode_change(uint8_t new_mode)
 
         switch (new_mode & (SWIM3_DRIVE_1 | SWIM3_DRIVE_2)) {
         case 0:
+            LOG_F(SELECTDISK, "SWIM3: no drive selected");
 #ifdef motor_off
             if (this->drive_1)
                 this->drive_1->set_motor_stat(0);
@@ -546,6 +564,7 @@ void Swim3Ctrl::mode_change(uint8_t new_mode)
 #endif
             break;
         case SWIM3_DRIVE_1:
+            LOG_F(SELECTDISK, "SWIM3: selected drive 1");
 #ifdef motor_off
             if (this->drive_2)
                 this->drive_2->set_motor_stat(0);
@@ -554,6 +573,7 @@ void Swim3Ctrl::mode_change(uint8_t new_mode)
                 this->selected_drive = this->drive_1.get();
             break;
         case SWIM3_DRIVE_2:
+            LOG_F(SELECTDISK, "SWIM3: selected drive 2");
 #ifdef motor_off
             if (this->drive_1)
                 this->drive_1->set_motor_stat(0);
