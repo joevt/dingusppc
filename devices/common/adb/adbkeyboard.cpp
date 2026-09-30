@@ -34,6 +34,12 @@ AdbKeyboard::AdbKeyboard(std::string name) : AdbDevice(name) {
 }
 
 void AdbKeyboard::event_handler(const KeyboardEvent& event) {
+    // PSW is a wire, so it follows the key immediately; the data-line report below still
+    // waits its turn in the queue like every other key.
+    if ((event.key & 0x7F) == AdbKey_Power && this->host_obj != nullptr) {
+        this->host_obj->set_power_switch(!(event.flags & KEYBOARD_EVENT_UP));
+    }
+
     this->keys_down.set(event.key, !(event.flags & KEYBOARD_EVENT_UP));
     this->pending_events.push_back(std::make_unique<KeyboardEvent>(event));
 
@@ -50,6 +56,9 @@ void AdbKeyboard::reset() {
     this->led_state      = 7;    // LEDs off (active low)
     this->pending_events.clear();
     this->keys_down.reset();
+    // A bus reset drops the power-switch line along with the queued reports.
+    if (this->host_obj != nullptr)
+        this->host_obj->set_power_switch(false);
 }
 
 bool AdbKeyboard::get_register_0() {
