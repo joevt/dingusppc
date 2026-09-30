@@ -110,7 +110,7 @@ public:
 
     virtual void connect(DmaChannel *ch_obj) { this->channel_obj = ch_obj; }
     virtual void notify(DmaChannel *ch_obj, DmaMsg msg) {}
-    virtual int  xfer_from(DmaChannel *ch_obj, uint8_t *buf, int len) { return len; }
+    virtual int  xfer_from(DmaChannel *ch_obj, uint8_t *buf, int len) { return 0; }
     virtual int  xfer_to(DmaChannel *ch_obj, uint8_t *buf, int len) { return len; }
     virtual int  tell_xfer_size(DmaChannel *ch_obj) { return 0; }
 
