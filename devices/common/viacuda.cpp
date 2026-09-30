@@ -26,6 +26,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/mathutils.h>
 #include <core/memaccess.h>
 #include <core/timermanager.h>
+#include <devices/common/adb/adbdevice.h>      // ADB_ADDR_KBD
+#include <devices/common/adb/adbkeyboard.h>    // AdbKey_Command / AdbKey_Control
 #include <cpu/ppc/ppcemu.h>
 #include <devices/common/adb/adbbus.h>
 #include <devices/common/hwcomponent.h>
@@ -567,16 +569,59 @@ template void ViaCuda::append_data(uint8_t data);
 template void ViaCuda::append_data(uint16_t data);
 template void ViaCuda::append_data(uint32_t data);
 
+void ViaCuda::adb_snoop_keyboard(uint8_t cmd_byte, const uint8_t* data, int count) {
+    if (data == nullptr || count <= 0)
+        return;
+    // Talk register 0, addressed to the keyboard.  Talk is (cmd & 0xC) == 0xC; the register
+    // is the low two bits; the device address is the high nibble.
+    if (((cmd_byte >> 4) & 0xF) != ADB_ADDR_KBD)
+        return;
+    if ((cmd_byte & 0xC) != 0xC || (cmd_byte & 3) != 0)
+        return;
+
+    for (int i = 0; i < count; i++) {
+        uint8_t code = data[i] & 0x7F;
+        bool    down = !(data[i] & 0x80);
+        switch (code) {
+        case AdbKey_Command: this->kbd_cmd_down  = down; break;
+        case AdbKey_Control: this->kbd_ctrl_down = down; break;
+        default: break;
+        }
+    }
+}
+
+void ViaCuda::sample_power_switch() {
+    if (this->adb_bus_obj == nullptr)
+        return;
+
+    bool psw = this->adb_bus_obj->get_power_switch();
+    if (psw == this->power_sw_prev)
+        return;
+    this->power_sw_prev = psw;
+
+    if (psw && this->kbd_cmd_down && this->kbd_ctrl_down) {
+        LOG_F(INFO, "Cuda: Command-Control-Power, restarting");
+        power_off(po_restart);
+    }
+}
+
 void ViaCuda::process_adb_command() {
     uint8_t adb_stat;
 
     adb_stat = this->adb_bus_obj->process_command(&this->in_buf[1],
                                                   this->in_count - 1);
+    // The master sees the reply to a command it issued itself.
+    this->adb_snoop_keyboard(this->in_buf[1], this->adb_bus_obj->get_output_buf(),
+                             this->adb_bus_obj->get_output_count());
     response_header(CUDA_PKT_ADB, adb_stat | ADB_STAT_RESPONSE);
     this->append_data(this->adb_bus_obj->get_output_buf(), this->adb_bus_obj->get_output_count());
 }
 
 void ViaCuda::autopoll_handler() {
+    // The Cuda firmware reads its port A on every pass of the idle loop, so this precedes
+    // the TIP early return below.  A level, not a queued edge: no press can be lost.
+    this->sample_power_switch();
+
     if (this->do_post_keyboard_state_events && !(!this->old_tip || !this->treq)) {
         EventManager::get_instance()->post_keyboard_state_events();
         this->do_post_keyboard_state_events = false;
@@ -596,6 +641,9 @@ void ViaCuda::autopoll_handler() {
         if (!this->old_tip || !this->treq) {
             LOG_F(WARNING, "Cuda transaction probably in progress");
         }
+
+        this->adb_snoop_keyboard(poll_command, this->adb_bus_obj->get_output_buf(),
+                                 this->adb_bus_obj->get_output_count());
 
         // prepare autopoll packet
         response_header(CUDA_PKT_ADB, ADB_STAT_OK | ADB_STAT_AUTOPOLL | ADB_STAT_RESPONSE);
