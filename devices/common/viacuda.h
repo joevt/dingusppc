@@ -296,6 +296,16 @@ private:
 
     void autopoll_handler();
 
+    // The Cuda firmware's reset watcher (Command-Control-Power).  On PowerSurge the
+    // emergency restart is the microcontroller's, so it works with the machine hung.  Cuda
+    // is the ADB master, so the modifiers come from the reports it relayed, not a Talk R2.
+    void adb_snoop_keyboard(uint8_t cmd_byte, const uint8_t* data, int count);
+    void sample_power_switch();
+
+    bool kbd_cmd_down  = false;   // Command (0x37) held, per the reports Cuda relayed
+    bool kbd_ctrl_down = false;   // Control (0x36) held
+    bool power_sw_prev = false;   // last sampled level of the connector's PSW line
+
     /* I2C related methods */
     void i2c_simple_transaction(uint8_t dev_addr, const uint8_t* in_buf, int in_bytes);
     void i2c_comb_transaction(uint8_t dev_addr, uint8_t sub_addr, uint8_t dev_addr1,
