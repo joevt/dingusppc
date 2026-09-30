@@ -63,6 +63,11 @@ public:
     // 0 if no device responded.
     uint8_t poll();
 
+    // The connector's power-switch line ("PSW", mini-DIN pin 2), hard-wired from the
+    // keyboard's power key to the power controller.  Not a data line, and live with the bus down.
+    void set_power_switch(bool asserted) { this->power_switch = asserted; }
+    bool get_power_switch() const { return this->power_switch; }
+
     // callbacks meant to be called by devices
     const uint8_t*  get_input_buf() { return this->input_buf; }
     uint8_t*        get_output_buf() { return this->output_buf; }
@@ -74,6 +79,7 @@ private:
     std::vector<AdbDevice*> devices;
 
     bool            got_answer = false;
+    bool            power_switch = false;   // connector pin 2, not the data line
     const uint8_t*  input_buf = nullptr;
     uint8_t         output_buf[ADB_MAX_DATA_SIZE] = {};
     uint8_t         input_count = 0;
