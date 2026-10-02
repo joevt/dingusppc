@@ -31,6 +31,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <cinttypes>
 #include <vector>
 
+bool disable_branch_folding = false;
+
 static int junction_temperature = 24;
 static TimerInfo thermal_timer;
 
@@ -1303,7 +1305,7 @@ void dppc_interpreter::ppc_bc(uint32_t opcode) {
             ppc_next_instruction_address = br_bd;
         else {
             ppc_next_instruction_address = uint32_t(ppc_state.pc + br_bd);
-            if (br_bd)
+            if (br_bd && !disable_branch_folding)
                 branch_folding();
         }
         exec_flags = EXEF_BRANCH;
