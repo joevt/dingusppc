@@ -62,7 +62,7 @@ void HMC::write(uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int /*s
                 this->ctrl_reg & ~bit;
             if (this->bit_pos >= HMC_CTRL_BITS) {
                 this->bit_pos = 0;
-                uint8_t new_bank_config = (this->ctrl_reg >> HMC_RAM_CFG_POS) & 3;
+                BANK_CFG new_bank_config = BANK_CFG((this->ctrl_reg >> HMC_RAM_CFG_POS) & 3);
                 if (new_bank_config != this->bank_config) {
                     this->bank_config = new_bank_config;
                     this->remap_ram_regions();
@@ -79,16 +79,16 @@ void HMC::remap_ram_regions() {
     uint32_t bank_b_addr;
 
     switch (this->bank_config) {
-    case BANK_CFG_128MB:
+    case BANK_CFG::_128MB:
         bank_b_addr = BANK_B_START;
         break;
-    case BANK_CFG_2MB:
+    case BANK_CFG::_2MB:
         bank_b_addr = this->mb_bank_size + BANK_SIZE_2MB;
         break;
-    case BANK_CFG_8MB:
+    case BANK_CFG::_8MB:
         bank_b_addr = this->mb_bank_size + BANK_SIZE_8MB;
         break;
-    case BANK_CFG_32MB:
+    case BANK_CFG::_32MB:
         bank_b_addr = this->mb_bank_size + BANK_SIZE_32MB;
         break;
     }
