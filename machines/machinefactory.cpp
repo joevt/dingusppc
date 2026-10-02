@@ -105,6 +105,7 @@ const map<string, PropHelpItem> gPropHelp = {
     {"rom",               {PropertyDevice , "specifies path to NuBus or PCI ROM image"}},
     {"serial_backend",    {PropertyDevice , "specifies the backend for the serial port"}},
     {"echo_to_stdout",    {PropertyDevice , "specifies if the serial backend should echo to stdout"}},
+    {"text_pacing",       {PropertyDevice , "specifies if the serial backend should throttle input for Open Firmware"}},
     {"emmo",              {PropertyMachine, "enables/disables factory HW tests during startup"}},
     {"cpu",               {PropertyMachine, "specifies CPU"}},
     {"cpu_freq",          {PropertyMachine, "specifies CPU frequency in MHz"}},
