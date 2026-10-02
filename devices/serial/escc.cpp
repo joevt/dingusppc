@@ -248,6 +248,12 @@ HWComponent* EsccChannel::set_property(const std::string &property, const std::s
             return this;
         }
     }
+    if (property == "text_pacing") {
+        if (this->override_property(property, value)) {
+            this->chario->set_text_pacing(get_property_bin(property));
+            return this;
+        }
+    }
 
     return nullptr;
 }
@@ -656,6 +662,7 @@ static const std::vector<std::string> CharIoBackends = {"null", "stdio", "socket
 static const PropMap EsccChannel_Properties = {
     {"serial_backend", new StrProperty("null", CharIoBackends)},
     {"echo_to_stdout", new BinProperty(0)},
+    {"text_pacing", new BinProperty(0)},
 };
 
 static const DeviceDescription EsccChannel_Descriptor = {

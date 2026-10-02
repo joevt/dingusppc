@@ -63,12 +63,24 @@ public:
     bool get_echo_to_stdout() {
         return this->echo_to_stdout;
     }
+    void set_text_pacing(bool pacing) {
+        if (pacing) {
+            chars_consecutive_max = 15;
+            chars_consecutive_reset = 800;
+        }
+        else {
+            // max is never reached (because it is greater than reset)
+            // so characters are allways accepted
+            chars_consecutive_max = 1 << 30;
+            chars_consecutive_reset = 1 << 29;
+        }
+    }
 
 private:
     std::string name;
     int     consecutivechars = 0;
-    int     chars_consecutive_max = 15;
-    int     chars_consecutive_reset = 800;
+    int     chars_consecutive_max = 1 << 30;
+    int     chars_consecutive_reset = 1 << 29;
     bool    echo_to_stdout = false;
 };
 
