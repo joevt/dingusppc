@@ -68,11 +68,15 @@ enum {
 };
 
 /* Motherboard RAM size constants. */
+
+enum class BANK_CFG {
+    _128MB  = 0, // 12 x 12 address maxtrix (reset config)
+    _2MB    = 1, //  9 x  9 address maxtrix
+    _8MB    = 2, // 10 x 10 address maxtrix
+    _32MB   = 3, // 11 x 11 address maxtrix
+};
+
 enum {
-    BANK_CFG_128MB  = 0, // 12 x 12 address maxtrix (reset config)
-    BANK_CFG_2MB    = 1, //  9 x  9 address maxtrix
-    BANK_CFG_8MB    = 2, // 10 x 10 address maxtrix
-    BANK_CFG_32MB   = 3, // 11 x 11 address maxtrix
     BANK_SIZE_2MB   = 0x200000,
     BANK_SIZE_4MB   = 0x400000,
     BANK_SIZE_8MB   = 0x800000,
@@ -108,7 +112,7 @@ protected:
 private:
     int         bit_pos     = 0;
     uint64_t    ctrl_reg    = 0;
-    uint8_t     bank_config = BANK_CFG_128MB;
+    BANK_CFG    bank_config = BANK_CFG::_128MB;
 
     uint32_t    mb_bank_start   = -1;
     uint32_t    bank_a_start    = -1;
