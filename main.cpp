@@ -54,6 +54,7 @@ using namespace std;
 
 extern bool g_auto_grab_mouse;
 extern bool g_swap_command_option;
+extern bool disable_branch_folding;
 
 static void sigint_handler(int signum) {
     power_off(po_signal_interrupt);
@@ -191,6 +192,9 @@ int main(int argc, char** argv) {
         "per-machine: derive from core frequency)")
         ->check(CLI::IsMember({"fixed", "per-machine"}))
         ->capture_default_str();
+    emu->add_flag("--disable-branch-folding", disable_branch_folding,
+        "Disable CPU branch folding timing compensation used for "
+        "more accurate CPU clock frequency calculaction");
     auto deterministic_opt = emu->add_flag("--deterministic", is_deterministic,
         "Use deterministic execution");
     emu->add_option("--start-date", start_date,
