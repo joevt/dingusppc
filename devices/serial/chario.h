@@ -57,12 +57,19 @@ public:
     bool is_consecutive_char();
     void increment_consecutive_chars();
     void reset_consecutive_chars();
+    void set_echo_to_stdout(bool echo) {
+        this->echo_to_stdout = echo;
+    }
+    bool get_echo_to_stdout() {
+        return this->echo_to_stdout;
+    }
 
 private:
     std::string name;
     int     consecutivechars = 0;
     int     chars_consecutive_max = 15;
     int     chars_consecutive_reset = 800;
+    bool    echo_to_stdout = false;
 };
 
 /** Null character I/O backend. */
