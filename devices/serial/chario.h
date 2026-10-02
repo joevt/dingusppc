@@ -48,13 +48,19 @@ public:
 
     virtual int rcv_enable() { return 0; }
     virtual void rcv_disable() {}
-    virtual bool rcv_char_available() = 0;
+    virtual bool rcv_char_available();
     virtual bool rcv_char_available_now() = 0;
     virtual int xmit_char(uint8_t c) = 0;
     virtual int rcv_char(uint8_t *c) = 0;
+    bool is_consecutive_char();
+    void increment_consecutive_chars();
+    void reset_consecutive_chars();
 
 private:
     std::string name;
+    int     consecutivechars = 0;
+    int     chars_consecutive_max = 15;
+    int     chars_consecutive_reset = 800;
 };
 
 /** Null character I/O backend. */
@@ -63,7 +69,6 @@ public:
     CharIoNull(const std::string &name) : CharIoBackEnd(name) {}
     ~CharIoNull() = default;
 
-    bool rcv_char_available();
     bool rcv_char_available_now();
     int xmit_char(uint8_t c);
     int rcv_char(uint8_t *c);
@@ -77,7 +82,6 @@ public:
 
     int rcv_enable();
     void rcv_disable();
-    bool rcv_char_available();
     bool rcv_char_available_now();
     int xmit_char(uint8_t c);
     int rcv_char(uint8_t *c);
@@ -85,7 +89,6 @@ public:
 private:
     static void mysig_handler(int signum);
     bool    stdio_inited;
-    int     consecutivechars = 0;
 };
 
 /** Socket character I/O backend. */
@@ -96,7 +99,6 @@ public:
 
     int rcv_enable();
     void rcv_disable();
-    bool rcv_char_available();
     bool rcv_char_available_now();
     int xmit_char(uint8_t c);
     int rcv_char(uint8_t *c);
@@ -106,7 +108,6 @@ private:
     int     sockfd = -1;
     int     acceptfd = -1;
     std::string path;
-    int     consecutivechars = 0;
 };
 
 /** Socket cache which servives machine shutdown/restart. */

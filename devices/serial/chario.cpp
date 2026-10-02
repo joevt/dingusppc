@@ -40,12 +40,35 @@ CharIoBackEnd::~CharIoBackEnd()
     LOG_F(INFO, "Deleted %s", this->name.c_str());
 }
 
-//======================== NULL character I/O backend ========================
-bool CharIoNull::rcv_char_available()
+bool CharIoBackEnd::rcv_char_available()
 {
+    if (this->is_consecutive_char())
+        return this->rcv_char_available_now();
     return false;
 }
 
+bool CharIoBackEnd::is_consecutive_char()
+{
+    if (consecutivechars >= this->chars_consecutive_max) {
+        this->increment_consecutive_chars();
+        return false;
+    }
+    return true;
+}
+
+void CharIoBackEnd::increment_consecutive_chars()
+{
+    consecutivechars++;
+    if (consecutivechars >= chars_consecutive_reset)
+        this->reset_consecutive_chars();
+}
+
+void CharIoBackEnd::reset_consecutive_chars()
+{
+    consecutivechars = 0;
+}
+
+//======================== NULL character I/O backend ========================
 bool CharIoNull::rcv_char_available_now()
 {
     return false;
@@ -126,17 +149,16 @@ void CharIoStdin::rcv_disable() {
     LOG_F(INFO, "Winterm: receiver disabled");
 }
 
-bool CharIoStdin::rcv_char_available()
-{
-    return this->rcv_char_available_now();
-}
-
 bool CharIoStdin::rcv_char_available_now() {
     DWORD events;
     INPUT_RECORD buffer;
 
     PeekConsoleInput(hInput, &buffer, 1, &events);
-    return !!(events > 0);
+    if (events > 0)
+        this->increment_consecutive_chars();
+    else
+        this->reset_consecutive_chars();
+    return events > 0;
 }
 
 int CharIoStdin::xmit_char(uint8_t c) {
@@ -227,17 +249,6 @@ void CharIoStdin::rcv_disable()
     this->stdio_inited = false;
 }
 
-bool CharIoStdin::rcv_char_available()
-{
-    if (consecutivechars >= 15) {
-        consecutivechars++;
-        if (consecutivechars >= 400)
-            consecutivechars = 0;
-        return 0;
-    }
-    return this->rcv_char_available_now();
-}
-
 bool CharIoStdin::rcv_char_available_now()
 {
     fd_set readfds;
@@ -250,9 +261,9 @@ bool CharIoStdin::rcv_char_available_now()
 
     int sel_rv = select(1, &readfds, NULL, NULL, &timeout);
     if (sel_rv > 0)
-        consecutivechars++;
+        this->increment_consecutive_chars();
     else
-        consecutivechars = 0;
+        this->reset_consecutive_chars();
     return sel_rv > 0;
 }
 
@@ -362,16 +373,6 @@ void CharIoSocket::rcv_disable()
     this->socket_inited = false;
 }
 
-bool CharIoSocket::rcv_char_available()
-{
-    if (consecutivechars >= 15) {
-        consecutivechars++;
-        if (consecutivechars >= 800)
-            consecutivechars = 0;
-        return 0;
-    }
-    return this->rcv_char_available_now();
-}
 
 bool CharIoSocket::rcv_char_available_now()
 {
@@ -455,7 +456,7 @@ bool CharIoSocket::rcv_char_available_now()
             if (FD_ISSET(this->acceptfd, &readfds)) {
                 // LOG_F(INFO, "socket \"%s\" accept read havechars", this->path.c_str());
                 havechars = true;
-                consecutivechars++;
+                this->increment_consecutive_chars();
             } // if read
 
             if (FD_ISSET(this->acceptfd, &writefds)) {
@@ -468,7 +469,7 @@ bool CharIoSocket::rcv_char_available_now()
         } // if this->acceptfd
     }
     else
-        consecutivechars = 0;
+        this->reset_consecutive_chars();
     return havechars;
 }
 
