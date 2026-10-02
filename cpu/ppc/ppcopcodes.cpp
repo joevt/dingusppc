@@ -1042,8 +1042,8 @@ static void update_decrementer(bool update_time_stamp, uint32_t oldval, uint32_t
 static void update_thermal(uint64_t, uint64_t) {
 
     uint32_t val = ppc_state.spr[SPR::THRM3];
-    auto sampled_interval_timer_value = (val >> 1) & 0x1FFF;
-    auto enabled = val & 1;
+    //uint32_t sampled_interval_timer_value = (val >> 1) & 0x1FFF;
+    uint32_t enabled = val & 1;
 
     bool interrupt = false;
     for (int the_reg = 0; the_reg < 2; the_reg++) {
