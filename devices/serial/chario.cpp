@@ -466,20 +466,14 @@ int CharIoSocket::xmit_char(uint8_t c)
 
     if (this->acceptfd != -1) {
         int sent = (int)send(this->acceptfd, &c, 1, 0);
-        if (sent == -1) {
-            LOG_F(INFO, "socket \"%s\" accept write err: %s", this->path.c_str(), strerror(errno));
-        }
-        if (sent == 1) {
-            /*
-            if (c < ' ') {
-                LOG_F(INFO, "socket \"%s\" accept write '\\x%02X'", this->path.c_str(), c);
-            } else {
-                LOG_F(INFO, "socket \"%s\" accept write '%c'", this->path.c_str(), c);
+        if (sent != 1) {
+            if (sent == -1) {
+                LOG_F(INFO, "socket \"%s\" accept write err: %s", this->path.c_str(), strerror(errno));
             }
-            */
-        }
-        else {
-            LOG_F(INFO, "socket \"%s\" accept write %d", this->path.c_str(), sent);
+            else {
+                LOG_F(INFO, "socket \"%s\" accept write %d", this->path.c_str(), sent);
+            }
+            this->close_accept_fd();
         }
     }
     return 0;
@@ -492,27 +486,25 @@ int CharIoSocket::rcv_char(uint8_t *c)
 
     if (this->acceptfd != -1) {
         int received = (int)recv(this->acceptfd, c, 1, 0);
-        if (received == -1) {
-            LOG_F(INFO, "socket \"%s\" accept read err: %s", this->path.c_str(), strerror(errno));
-        }
-        else if (received == 1) {
-            /*
-            if (c) {
-                if (*c < ' ') {
-                    LOG_F(INFO, "socket \"%s\" accept write '\\x%02X'", this->path.c_str(), *c);
-                } else {
-                    LOG_F(INFO, "socket \"%s\" accept read '%c'", this->path.c_str(), *c);
-                }
-            } else {
+        if (received != 1) {
+            if (received == -1) {
+                LOG_F(ERROR, "socket \"%s\" accept read err: %s", this->path.c_str(), strerror(errno));
+            }
+            else {
                 LOG_F(INFO, "socket \"%s\" accept read %d", this->path.c_str(), received);
             }
-            */
-        }
-        else {
-            LOG_F(INFO, "socket \"%s\" accept read %d", this->path.c_str(), received);
+            this->close_accept_fd();
         }
     }
     return 0;
+}
+
+void CharIoSocket::close_accept_fd()
+{
+    LOG_F(INFO, "socket \"%s\" accept close", this->path.c_str());
+    close(acceptfd);
+    acceptfd = -1;
+    SocketCache::get_instance()->sockets[this->path].acceptfd = acceptfd;
 }
 
 void CharIoSocket::check_all_fds(int &sel_rv, fd_set (&fds)[3])
