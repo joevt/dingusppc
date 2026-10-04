@@ -651,6 +651,7 @@ void mmu_change_mode()
         switch (mmu_mode) {
             case 1: // user mode can't disable translations
                 mmu_mode = 0;
+                [[fallthrough]];
             case 0: // real address mode
                 pCurITLB1 = &itlb1_mode1[0];
                 pCurITLB2 = &itlb2_mode1[0];
@@ -674,6 +675,7 @@ void mmu_change_mode()
         switch (mmu_mode) {
             case 1: // user mode can't disable translations
                 mmu_mode = 0;
+                [[fallthrough]];
             case 0: // real address mode
                 pCurDTLB1 = &dtlb1_mode1[0];
                 pCurDTLB2 = &dtlb2_mode1[0];
