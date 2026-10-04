@@ -106,6 +106,7 @@ public:
 
 private:
     void check_all_fds(int &sel_rv, fd_set (&sets)[3]);
+    void close_accept_fd();
 
     bool    socket_inited = false;
     int     sockfd = -1;
