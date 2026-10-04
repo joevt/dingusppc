@@ -1032,7 +1032,7 @@ void dppc_interpreter::ppc_mfspr(uint32_t opcode) {
             ppc_illegalop(opcode);
             return;
         }
-        // fallthrough
+        [[fallthrough]];
     case SPR::DEC_S:
     {
         uint32_t val = calc_dec_value();
