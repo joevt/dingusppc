@@ -32,6 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #else
 #include <termios.h>
 #include <signal.h>
+#include <sys/select.h>
 #endif
 
 enum {
@@ -104,6 +105,8 @@ public:
     int rcv_char(uint8_t *c);
 
 private:
+    void check_all_fds(int &sel_rv, fd_set (&sets)[3]);
+
     bool    socket_inited = false;
     int     sockfd = -1;
     int     acceptfd = -1;
