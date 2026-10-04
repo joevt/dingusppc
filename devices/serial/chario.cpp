@@ -373,40 +373,24 @@ void CharIoSocket::rcv_disable()
     this->socket_inited = false;
 }
 
+constexpr int fdsread = 0;
+constexpr int fdswrite = 1;
+constexpr int fdserror = 2;
+static const char* fds_names[3] = { "read", "write", "error" };
 
 bool CharIoSocket::rcv_char_available_now()
 {
     int sel_rv = 0;
     bool havechars = false;
-    fd_set readfds;
-    fd_set writefds;
-    fd_set errorfds;
+    fd_set fds[3];
 
-    int sockmax = 0;
     if (this->sockfd != -1) {
-        FD_ZERO(&readfds);
-        FD_SET(this->sockfd, &readfds);
-        if (this->sockfd > sockmax) sockmax = this->sockfd;
-        if (this->acceptfd != -1) {
-            FD_SET(this->acceptfd, &readfds);
-            if (this->acceptfd > sockmax) sockmax = this->acceptfd;
-        }
-        writefds = readfds;
-        errorfds = readfds;
-
-        struct timeval timeout;
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 0;
-
-        sel_rv = select(sockmax + 1, &readfds, &writefds, &errorfds, &timeout);
-        if (sel_rv == -1) {
-            LOG_F(INFO, "socket \"%s\" select err: %s", this->path.c_str(), strerror(errno));
-        }
+        this->check_all_fds(sel_rv, fds);
     }
 
     if (sel_rv > 0) {
         if (this->sockfd != -1) {
-             if (FD_ISSET(this->sockfd, &readfds)) {
+             if (FD_ISSET(this->sockfd, &fds[fdsread])) {
                 uint8_t c;
                 int received = (int)recv(this->sockfd, &c, 1, 0);
                 if (received == -1) {
@@ -443,27 +427,27 @@ bool CharIoSocket::rcv_char_available_now()
                 }
             } // if read
 
-            if (FD_ISSET(this->sockfd, &writefds)) {
+            if (FD_ISSET(this->sockfd, &fds[fdswrite])) {
                 LOG_F(INFO, "socket \"%s\" sock write", this->path.c_str());
             }
 
-            if (FD_ISSET(this->sockfd, &errorfds)) {
+            if (FD_ISSET(this->sockfd, &fds[fdserror])) {
                 LOG_F(INFO, "socket \"%s\" sock error", this->path.c_str());
             }
         } // if this->sockfd
 
         if (this->acceptfd != -1) {
-            if (FD_ISSET(this->acceptfd, &readfds)) {
+            if (FD_ISSET(this->acceptfd, &fds[fdsread])) {
                 // LOG_F(INFO, "socket \"%s\" accept read havechars", this->path.c_str());
                 havechars = true;
                 this->increment_consecutive_chars();
             } // if read
 
-            if (FD_ISSET(this->acceptfd, &writefds)) {
+            if (FD_ISSET(this->acceptfd, &fds[fdswrite])) {
                 // LOG_F(INFO, "socket \"%s\" accept write", this->path.c_str()); // this is usually always true
             }
 
-            if (FD_ISSET(this->acceptfd, &errorfds)) {
+            if (FD_ISSET(this->acceptfd, &fds[fdserror])) {
                 LOG_F(INFO, "socket \"%s\" accept error", this->path.c_str());
             }
         } // if this->acceptfd
@@ -529,6 +513,43 @@ int CharIoSocket::rcv_char(uint8_t *c)
         }
     }
     return 0;
+}
+
+void CharIoSocket::check_all_fds(int &sel_rv, fd_set (&fds)[3])
+{
+    int fd_max = -1;
+
+    FD_ZERO(&fds[fdsread]);
+    if (this->sockfd != -1) {
+        FD_SET(this->sockfd, &fds[fdsread]);
+        if (this->sockfd > fd_max) fd_max = this->sockfd;
+    }
+    if (this->acceptfd != -1) {
+        FD_SET(this->acceptfd, &fds[fdsread]);
+        if (this->acceptfd > fd_max) fd_max = this->acceptfd;
+    }
+
+    fds[fdswrite] = fds[fdsread];
+    fds[fdserror] = fds[fdsread];
+
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+
+    sel_rv = select(fd_max + 1, &fds[fdsread], &fds[fdswrite], &fds[fdserror], &timeout);
+    if (sel_rv == -1) {
+        LOG_F(INFO, "socket \"%s\" select err: %s", this->path.c_str(), strerror(errno));
+    } else {
+        for (int set = 0; set < 3; set++) {
+            for (int fd = 0; fd <= fd_max; fd++) {
+                if (FD_ISSET(fd, &fds[set])) {
+                    if ((sel_rv != 1 && sel_rv != 2) || fd == this->sockfd || set == fdserror)
+                        LOG_F(INFO, "socket \"%s\" sock %d:%sfd %s", this->path.c_str(), fd,
+                            (fd == this->sockfd) ? "sock" : (fd == this->acceptfd) ? "accept" : "", fds_names[set]);
+                }
+            }
+        }
+    }
 }
 
 SocketCache::SocketCache()
