@@ -37,7 +37,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace loguru {
     enum : Verbosity {
-        Verbosity_DBDMA = loguru::Verbosity_9
+        Verbosity_DBDMA = loguru::Verbosity_INFO
     };
 }
 
