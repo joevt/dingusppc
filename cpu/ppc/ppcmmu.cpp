@@ -1864,7 +1864,6 @@ uint64_t mem_read_dbg(uint32_t virt_addr, uint32_t size) {
 
 void mem_write_dbg(uint32_t virt_addr, uint64_t value, int size) {
     uint32_t save_dsisr, save_dar;
-    uint64_t ret_val;
 
     // save MMU-related CPU state
     save_dsisr            = ppc_state.spr[SPR::DSISR];
