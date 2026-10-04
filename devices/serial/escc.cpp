@@ -37,11 +37,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace loguru {
     enum : Verbosity {
-        Verbosity_ESCCCHANNEL_CRC_RESET_CODES = loguru::Verbosity_9,
-        Verbosity_ESCCCHANNEL_COMMAND_CODES = loguru::Verbosity_9,
-        Verbosity_ESCCCHANNEL_RESET_HIGHEST_IUS = loguru::Verbosity_9,
-        Verbosity_ESCCCHANNEL_REGISTER = loguru::Verbosity_9,
-        Verbosity_ESCCCHANNEL_BAUD = loguru::Verbosity_9,
+        Verbosity_ESCCCHANNEL_CRC_RESET_CODES = loguru::Verbosity_INFO,
+        Verbosity_ESCCCHANNEL_COMMAND_CODES = loguru::Verbosity_INFO,
+        Verbosity_ESCCCHANNEL_RESET_HIGHEST_IUS = loguru::Verbosity_INFO,
+        Verbosity_ESCCCHANNEL_REGISTER = loguru::Verbosity_INFO,
+        Verbosity_ESCCCHANNEL_BAUD = loguru::Verbosity_INFO,
     };
 }
 
