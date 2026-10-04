@@ -96,7 +96,7 @@ namespace MeshScsi {
 class MeshBase {
 public:
     MeshBase()  = default;
-    ~MeshBase() = default;
+    virtual ~MeshBase() = default;
     virtual uint8_t read(uint8_t reg_offset) = 0;
     virtual void    write(uint8_t reg_offset, uint8_t value) = 0;
 };
