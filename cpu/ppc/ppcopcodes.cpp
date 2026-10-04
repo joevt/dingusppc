@@ -1032,7 +1032,7 @@ void dppc_interpreter::ppc_mfspr(uint32_t opcode) {
             ppc_exception_handler(Except_Type::EXC_PROGRAM, Exc_Cause::ILLEGAL_OP);
             return;
         }
-        // fallthrough
+        [[fallthrough]];
     case SPR::DEC_S:
     {
         uint32_t val = calc_dec_value();
