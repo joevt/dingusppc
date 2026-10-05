@@ -334,7 +334,8 @@ void Sixty6Video::enable_display()
     // get pixel depth
     switch (this->pixel_format) {
     default:
-        LOG_F(ERROR, "Sixty6: Invalid pixel format %d!", this->pixel_format);
+        // pixel_format is set to 0 before it is set to 1, 2, or 3, so this is not an error.
+        //LOG_F(ERROR, "Sixty6: Invalid pixel format %d!", this->pixel_format);
         [[fallthrough]];
     case 1:
         this->pixel_depth = 8;
