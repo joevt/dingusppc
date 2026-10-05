@@ -274,8 +274,10 @@ void Sixty6Video::iodev_write(uint32_t address, uint16_t value)
                     }
 
                     int new_pixel_format = (this->control_1 >> 4) & 3;
-                    if (new_pixel_format != this->pixel_format)
+                    if (new_pixel_format != this->pixel_format) {
+                        LOG_F(INFO, "Sixty6: Pixel format: %d", new_pixel_format);
                         this->changed = true;
+                    }
 
                     if (1) { // (value & 0x49) == 0x49
                         if (this->changed) {
