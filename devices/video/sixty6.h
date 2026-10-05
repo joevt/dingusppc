@@ -82,13 +82,20 @@ enum Sixty6Reg : uint32_t {
     INT_COUNT_H = 0x96, // 2 bits
 
     CONTROL_1   = 0x97, // 8 bits // 0x00, 0x02, 0x40, 0x48, 0x49, 0x79
-                            // 0x01: ?
-                            // 0x02: hardware cursor enable (read-only as 0 for sixty6)
-                            // 0x04: zoom
-                            // 0x08: ?
-                            // 0x30: pixel depth: 0 = 8-bit indexed, 2 = 16 bit, 3 = 32 bit
-                            // 0x40: interrupt enable
-                            // 0x80: interrupt
+                            // 0x01: chip state: (0) idle / (1) operating
+                            // 0x02: HW cursor: (0) disabled / (1) enabled ; (read-only as 0 for sixty6)
+                            // 0x0C: convolution mode:
+                            //       (0) no convolution
+                            //       (1) zoom
+                            //       (2) all pixels convolution
+                            //       (3) all pixels convolution except those with alpha = 1
+                            // 0x30: pixel depth:
+                            //       (0) YUV422?
+                            //       (1) 8-bit indexed
+                            //       (2) 16-bit
+                            //       (3) = 32-bit
+                            // 0x40: interrupts: (0) disabled / (1) enabled
+                            // 0x80: interrupt status: (0) deasserted / (1) asserted
     CONTROL_2   = 0x98, // 8 bits // 0x02, 0x03
                             // 0x01: ?
                             // 0x02: ?
