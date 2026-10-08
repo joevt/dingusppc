@@ -1710,7 +1710,8 @@ void ppc_cpu_init(MemCtrlBase* mem_ctrl, const PPC_CPU_Config& config)
         ppc_state.spr[SPR::DEC_S] = 0xFFFFFFFFUL;
         ppc_change_endian((new_msr_val & MSR::LE) != 0);
     }
-    ppc_msr_did_change(new_msr_val, new_msr_val, false);
+    new_msr_val |= config.msr_set_bits;
+    ppc_msr_did_change(0, new_msr_val, false);
 
     ppc_mmu_init();
 
