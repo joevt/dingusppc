@@ -507,6 +507,7 @@ struct PPC_CPU_Config {
     uint64_t bus_freq_hz;
     uint64_t core_freq_hz;
     uint32_t msr_set_bits = 0;
+    bool     include_601 = false;
 };
 
 enum class PPC_CPU_TimingMode {
