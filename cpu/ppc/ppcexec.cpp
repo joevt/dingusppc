@@ -1640,7 +1640,7 @@ void ppc_cpu_init(MemCtrlBase* mem_ctrl, const PPC_CPU_Config& config)
         break;
     }
     is_601 = (config.version >> 16) == 1;
-    include_601 = is_601;
+    include_601 = config.include_601;
     ppc_pow_mode = PPCPowMode::None;
     ppc_pow_hid0_mask = 0;
 
