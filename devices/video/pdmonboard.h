@@ -66,7 +66,7 @@ public:
     uint8_t get_clut_index();
     uint8_t get_clut_color();
 
-    void init_interrupts(InterruptCtrl *int_ctrl, uint32_t vbl_irq_id) {
+    void init_interrupts(InterruptCtrl *int_ctrl, uint64_t vbl_irq_id) {
         this->int_ctrl = int_ctrl;
         this->irq_id = vbl_irq_id;
     }
