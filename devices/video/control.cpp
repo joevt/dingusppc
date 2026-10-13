@@ -52,7 +52,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 constexpr uint32_t VRAM_BE_APERTURE = 0x800000;
 
 namespace loguru {
-    enum : Verbosity {
+    enum LocalVerbosity : Verbosity {
         Verbosity_CONTROL = loguru::Verbosity_9,
         Verbosity_MONSENSE = loguru::Verbosity_9,
     };
