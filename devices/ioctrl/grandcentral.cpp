@@ -635,6 +635,18 @@ void GrandCentral::ack_int_common(uint64_t irq_id, uint8_t irq_line_state) {
         if (old_events != this->int_events) {
             this->signal_cpu_int();
         }
+        else {
+            LOG_F(INTERRUPT, "%s: interrupt (event unchanged) mask:%08x events:%08x levels:%08x change:%08llx state:%d %s",
+                this->name.c_str(), this->int_mask, this->int_events + 0, this->int_levels + 0, irq_id, irq_line_state,
+                irq_id_to_name(irq_id)
+            );
+        }
+    }
+    else {
+        LOG_F(INTERRUPT, "%s: interrupt (no transition) mask:%08x events:%08x levels:%08x change:%08llx state:%d %s",
+            this->name.c_str(), this->int_mask, this->int_events + 0, this->int_levels + 0, irq_id, irq_line_state,
+            irq_id_to_name(irq_id)
+        );
     }
 }
 

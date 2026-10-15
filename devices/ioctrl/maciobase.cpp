@@ -174,6 +174,24 @@ void MacIoBase::ack_int_common(uint64_t irq_id, uint8_t irq_line_state) {
         if (old_events != this->int_events) {
             this->signal_cpu_int();
         }
+        else {
+            LOG_F(INTERRUPT, "%s: native interrupt (event unchanged) "
+                "events:%08x.%08x levels:%08x.%08x change:%08x.%08x state:%d %s",
+                this->name.c_str(), uint32_t(this->int_events >> 32), uint32_t(this->int_events),
+                uint32_t(this->int_levels >> 32), uint32_t(this->int_levels),
+                uint32_t(irq_id >> 32), uint32_t(irq_id), irq_line_state,
+                irq_id_to_name(irq_id)
+            );
+        }
+    }
+    else {
+        LOG_F(INTERRUPT, "%s: native interrupt (no transition) "
+            "events:%08x.%08x levels:%08x.%08x change:%08x.%08x state:%d %s",
+            this->name.c_str(), uint32_t(this->int_events >> 32), uint32_t(this->int_events),
+            uint32_t(this->int_levels >> 32), uint32_t(this->int_levels),
+            uint32_t(irq_id >> 32), uint32_t(irq_id), irq_line_state,
+            irq_id_to_name(irq_id)
+        );
     }
 }
 
