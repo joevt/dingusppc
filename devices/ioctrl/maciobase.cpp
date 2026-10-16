@@ -136,7 +136,7 @@ void MacIoBase::ack_int_common(uint64_t irq_id, uint8_t irq_line_state) {
     // MACIO_INT_MODE is 0: native mode:   set IRQ bits in int_events on a 0-to-1 transition
     // MACIO_INT_MODE is 1: emulated mode: set IRQ bits in int_events on all transitions
 #if 0
-    LOG_F(INTERRUPT, "%s: native interrupt events:%08x.%08x levels:%08x.%08x change:%08x.%08x state:%d",
+    LOG_F(INTERRUPT, "%s: interrupt events:%08x.%08x levels:%08x.%08x change:%08x.%08x state:%d",
         this->name.c_str(), uint32_t(this->int_events >> 32), uint32_t(this->int_events),
         uint32_t(this->int_levels >> 32), uint32_t(this->int_levels),
         uint32_t(irq_id >> 32), uint32_t(irq_id), irq_line_state
