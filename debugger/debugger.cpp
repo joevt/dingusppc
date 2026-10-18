@@ -867,7 +867,13 @@ static void disasm_in(PPCDisasmContext &ctx, uint32_t address) {
         if (ctx.regs_in.size() > 0) {
             cout << " in{" << COUTX;
             for (auto & reg_name : ctx.regs_in) {
-                cout << " " << reg_name << ":" << get_reg(reg_name);
+                cout << " " << reg_name << ":";
+                try {
+                    uint64_t val = get_reg(reg_name);
+                    cout << val;
+                } catch(std::invalid_argument &exc) {
+                    cout << exc.what();
+                }
             }
             cout << " }" << dec;
         }
@@ -879,7 +885,13 @@ static void disasm_out(PPCDisasmContext &ctx) {
         if (ctx.regs_out.size() > 0) {
             cout << " out{" << COUTX;
             for (auto & reg_name : ctx.regs_out) {
-                cout << " " << reg_name << ":" << get_reg(reg_name);
+                cout << " " << reg_name << ":";
+                try {
+                    uint64_t val = get_reg(reg_name);
+                    cout << val;
+                } catch(std::invalid_argument &exc) {
+                    cout << exc.what();
+                }
             }
             cout << " }" << dec;
         }
