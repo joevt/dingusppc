@@ -99,6 +99,14 @@ int MachineCatalyst::initialize(const std::string &id) {
             .core_freq_hz = core_freq,
         });
     }
+    else if (cpu == "604") {
+        ppc_cpu_init(platinum_obj, {
+            .version = PPC_VER::MPC604,
+            .timebase_freq_hz = 12'500'000ULL,
+            .bus_freq_hz = 50'000'000ULL,
+            .core_freq_hz = 150'000'000ULL, // 150 MHz
+        });
+    }
     else if (cpu == "750") {
         // configure CPU clocks
         uint64_t bus_freq      = 50'000'000ULL;
@@ -129,7 +137,7 @@ static const PropMap pm7200_settings = {
     {"emmo",
         new BinProperty(0)},
     {"cpu",
-        new StrProperty("601", std::vector<std::string>({"601", "750"}))},
+        new StrProperty("601", std::vector<std::string>({"601", "604", "750"}))},
     {"pci_dev_max",
         new IntProperty(0xF, 0, 0x1F)},
 };
