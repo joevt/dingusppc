@@ -636,18 +636,23 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
                 this->swatch_ctrl = value;
             }
             break;
-        case ControlRegs::GBASE:
+        case ControlRegs::GBASE: {
             if (value & ~0x3FFFE0)
                 LOG_F(ERROR, "%s: write GBASE %03x.%c = %0*x", this->name.c_str(),
                     offset, SIZE_ARG(size), size * 2, value);
             else
                 LOG_F(CONTROL, "%s: write GBASE %03x.%c = %0*x", this->name.c_str(),
                     offset, SIZE_ARG(size), size * 2, value);
-            this->fb_base = value & 0x3FFFE0;
-            if (this->display_enabled) {
-                this->enable_display();
+            uint32_t old_value = this->fb_base;
+            uint32_t new_value = value & 0x3FFFE0;
+            if (new_value != old_value) {
+                this->fb_base = new_value;
+                if (this->display_enabled) {
+                    this->enable_display();
+                }
             }
             break;
+        }
         case ControlRegs::ROW_WORDS:
             if (value & ~0x7FE0)
                 LOG_F(ERROR, "%s: write ROW_WORDS %03x.%c = %0*x", this->name.c_str(),
