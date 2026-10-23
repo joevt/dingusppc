@@ -108,13 +108,13 @@ int MachineGazelle::initialize(const std::string &id) {
     // allocate and map physical RAM
     psx_obj->map_phys_ram();
 
-    // configure bus speed
-    psx_obj->set_bus_speed(PSX_BUS_SPEED_50);
-
     // configure CPU clocks
-    uint64_t bus_freq      = 50'000'000ULL;
-    uint64_t timebase_freq = bus_freq / 4;
-    uint64_t core_freq     = GET_INT_PROP("cpu_freq") * 1'000'000ULL; // 225, 250, or 275 MHz
+    uint32_t bus_freq      = 50'000'000ULL;
+    uint32_t timebase_freq = bus_freq / 4;
+    uint32_t core_freq     = GET_INT_PROP("cpu_freq") * 1'000'000ULL; // 225, 250, or 275 MHz
+
+    // configure bus speed
+    psx_obj->set_bus_speed(bus_freq);
 
     // init virtual CPU and request MPC603ev
     ppc_cpu_init(psx_obj, {

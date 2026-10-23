@@ -124,9 +124,7 @@ public:
         this->rom_type = val & 1;
     }
 
-    void set_bus_speed(const uint8_t val) {
-        this->bus_speed = val & 7;
-    }
+    void set_bus_speed(uint32_t bus_freq);
 
     void insert_ram_dimm(int slot_num, uint32_t capacity);
     void map_phys_ram();

@@ -99,11 +99,11 @@ int MachineAlchemy::initialize(const std::string &id) {
     psx_obj->map_phys_ram();
 
     // configure CPU clocks
-    uint64_t bus_freq      = 40'000'000ULL;
-    uint64_t timebase_freq = bus_freq / 4;
-    uint64_t core_freq     = 180'000'000ULL;
+    uint32_t bus_freq      = 40'000'000ULL;
+    uint32_t timebase_freq = bus_freq / 4;
+    uint32_t core_freq     = 180'000'000ULL;
 
-    psx_obj->set_bus_speed(PSX_BUS_SPEED_40);
+    psx_obj->set_bus_speed(bus_freq);
 
     // init virtual CPU and request MPC603e
     ppc_cpu_init(psx_obj, {

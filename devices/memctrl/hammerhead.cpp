@@ -128,6 +128,18 @@ void HammerheadCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, 
     }
 }
 
+void HammerheadCtrl::set_bus_speed(uint32_t bus_freq) {
+    this->bus_speed =
+          (bus_freq < 36'500'000) ?
+            BUS_SPEED_33_MHZ
+        : (bus_freq < 42'000'000) ?
+            BUS_SPEED_40_MHZ
+        : (bus_freq < 47'000'000) ?
+            BUS_SPEED_44_MHZ
+        :
+            BUS_SPEED_50_MHZ;
+}
+
 void HammerheadCtrl::insert_ram_dimm(int slot_num, uint32_t capacity)
 {
     if (slot_num < 0 || slot_num >= 13) {
