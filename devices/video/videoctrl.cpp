@@ -115,6 +115,7 @@ void VideoCtrlBase::start_refresh_task() {
         this->refresh_timer,
         refresh_interval,
         [this, vbl_duration](uint64_t timeout_ns, uint64_t) {
+            this->frame_start_time = timeout_ns;
             this->vbl_cb(1); // assert VBL interrupt
 
             if (this->vbl_end_timer.active) {

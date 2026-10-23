@@ -127,6 +127,7 @@ protected:
     int         fb_pitch = 0;
     TimerInfo   refresh_timer;
     TimerInfo   vbl_end_timer;
+    uint64_t    frame_start_time = 0;
 
     // interrupt suff
     InterruptCtrl* int_ctrl = nullptr;
