@@ -103,7 +103,7 @@ public:
 
     int get_clock_div();
     int get_pix_width();
-    int get_dot_freq();
+    uint32_t get_dot_freq();
     uint8_t get_dbl_buf_cr() { return dbl_buf_cr; }
 
     void set_fb_parameters(int width, int height, uint32_t pitch) {
