@@ -319,6 +319,7 @@ public:
     void map_phys_ram();
 
 protected:
+    void update_fb_ptr();
     void enable_display();
     void change_display();
     void disable_display();
@@ -343,7 +344,7 @@ private:
     uint32_t    pci_address_mask = 0;
 
     // frame buffer controller state
-    uint32_t    fb_addr       = Platinum::VRAM_REGION_BASE;
+    uint32_t    fb_addr       = 0;
     uint32_t    fb_offset     = 0;
     uint32_t    fb_config_1   = Platinum::CFG1_FULL_BANKS + Platinum::CFG1_ROM_SPEED;
     uint32_t    fb_config_2   = Platinum::CFG2_ALL_BITS;
