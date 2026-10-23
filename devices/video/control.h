@@ -132,6 +132,7 @@ protected:
     void enable_display();
     void disable_display();
     void update_fb_ptr();
+    void set_vbl_irq_state(uint8_t irq_line_state);
 
     // HWComponent methods
     PostInitResultType device_postinit() override;

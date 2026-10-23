@@ -201,18 +201,22 @@ PostInitResultType ControlVideo::device_postinit() {
     this->irq_id = this->int_ctrl->register_int(IntSrc::CONTROL);
 
     this->vbl_cb = [this](uint8_t irq_line_state) {
-        if (irq_line_state != !!(this->int_status & VBL_IRQ_STAT)) {
-            if (irq_line_state)
-                this->int_status |= VBL_IRQ_STAT;
-            else
-                this->int_status &= ~VBL_IRQ_STAT;
-
-            if (this->int_enable & VBL_IRQ_EN)
-                this->int_ctrl->ack_int(this->irq_id, irq_line_state);
-        }
+        this->set_vbl_irq_state(irq_line_state);
     };
 
     return PI_SUCCESS;
+}
+
+void ControlVideo::set_vbl_irq_state(uint8_t irq_line_state) {
+    if (irq_line_state != !!(this->int_status & VBL_IRQ_STAT)) {
+        if (irq_line_state)
+            this->int_status |= VBL_IRQ_STAT;
+        else
+            this->int_status &= ~VBL_IRQ_STAT;
+
+        if (this->int_enable & VBL_IRQ_EN)
+            this->int_ctrl->ack_int(this->irq_id, irq_line_state);
+    }
 }
 
 static const char * get_name_controlreg(int offset) {
@@ -730,7 +734,7 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             if ((this->int_enable ^ value) & VBL_IRQ_CLR) {
                 // clear VBL IRQ on a 1-to-0 transition of INT_ENABLE[VBL_IRQ_CLR]
                 if (!(value & VBL_IRQ_CLR))
-                    this->vbl_cb(0);
+                    this->set_vbl_irq_state(0);
             }
             this->int_enable = value & 0x0F; // alternates between 0x04 and 0x0c
             break;
