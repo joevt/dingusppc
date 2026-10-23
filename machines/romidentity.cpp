@@ -271,7 +271,7 @@ rom_info rom_identity[] = {
     rom( 0x018402,          0, nullptr          , "Q86"      , nullptr  , "eMac G4 (2005)"                                    ) // PowerMac6,4
     rom( 0x018403,          0, nullptr          , "Q86"      , nullptr  , "eMac G4 (2005)"                                    ) // PowerMac6,4
     rom( 0x020101, 0xfcaf4eb7, "Q45"            , "Q45"      , nullptr  , "iMac G5"                                           ) // PowerMac8,1
-    rom( 0x020101, 0xfd1f4eb8, "Q45"            , "Q45"      , nullptr  , "iMac G5"                                           ) // PowerMac8,1
+    rom( 0x020101, 0xfd1f4eb8, "Q45"            , "Q45"      , nullptr  , "iMac G5"                                           ) // PowerMac8,1 // 2004-11-08 522f4
     rom( 0x020102,          0, nullptr          , "Q45"      , nullptr  , "iMac G5"                                           ) // PowerMac8,1
     rom( 0x020109, 0x00064ebf, "Q45p"           , nullptr    , nullptr  , "iMac G5"                                           ) // PowerMac8,1
     rom( 0x020109, 0x00764ec0, "Q45p"           , nullptr    , nullptr  , "iMac G5"                                           ) // PowerMac8,1
