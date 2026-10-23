@@ -190,18 +190,18 @@ int AppleRamdac::get_pix_width() {
     return 1 << (((this->dac_cr >> 2) & 3) + 3);
 }
 
-int AppleRamdac::get_dot_freq() {
-    uint8_t m = this->clk_m[this->pll_cr & 1];
-    uint8_t p = this->clk_pn[this->pll_cr & 1] >> 5;
-    uint8_t n = this->clk_pn[this->pll_cr & 1] & 0x1F;
+uint32_t AppleRamdac::get_dot_freq() {
+    uint8_t m = this->clk_m[this->pll_cr & 1];          // 1..255
+    uint8_t p = this->clk_pn[this->pll_cr & 1] >> 5;    // 0..7  -> 1..128
+    uint8_t n = this->clk_pn[this->pll_cr & 1] & 0x1F;  // 1..31 -> 1..33
 
     double dot_freq;
     if (this->dac_vendor == DACULA_VENDOR_ATT)
-        dot_freq = 15000000.0f * (double)m / ((double)n + 2) / (double)(1 << p);
+        dot_freq = 15000000.0f * (double)m / (((double)n + 2) * (double)(1 << p));
     else if (this->dac_vendor == DACULA_VENDOR_SIERRA)
         dot_freq = 14318180.0f * (double)m / ((double)n * (double)(1 << p));
     else {
-        dot_freq = 14318180.0f * (double)m / (double)n / (double)(1 << p);
+        dot_freq = 14318180.0f * (double)m / ((double)n * (double)(1 << p));
         LOG_F(ERROR, "%s: unknown VENDOR_ID", this->name.c_str());
     }
     return static_cast<int>(dot_freq + 0.5f);
