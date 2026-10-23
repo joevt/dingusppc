@@ -80,9 +80,7 @@ public:
 
     // Bus speed is latched after a hard reset from the RA[1:0] pins.
     // The method below allows specifying bus speed during machine initialization.
-    void set_bus_speed(PsxBusSpeed bus_speed) {
-        insert_bits(this->sys_config, bus_speed, 0, 2);
-    }
+    void set_bus_speed(uint32_t bus_freq);
 
     // MMIODevice methods
     uint32_t read(uint32_t rgn_start, uint32_t offset, int size);

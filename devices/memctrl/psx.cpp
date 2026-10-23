@@ -39,7 +39,20 @@ PsxCtrl::PsxCtrl(int bridge_num, std::string name)
     this->add_mmio_region(0xF8000000, 0x70, this);
 
     this->set_revision_id(0x10); // PSX register dump from a 6500 at 68kmla
-    this->set_bus_speed(PSX_BUS_SPEED_50); // set bus speed to 50 MHz by default
+    this->set_bus_speed(50'000'000); // set bus speed to 50 MHz by default
+}
+
+void PsxCtrl::set_bus_speed(uint32_t bus_freq) {
+    PsxBusSpeed bus_speed =
+          (bus_freq < 35'500'000) ?
+            PSX_BUS_SPEED_33
+        : (bus_freq < 39'000'000) ?
+            PSX_BUS_SPEED_38
+        : (bus_freq < 45'000'000) ?
+            PSX_BUS_SPEED_40
+        :
+            PSX_BUS_SPEED_50;
+    insert_bits(this->sys_config, bus_speed, 0, 2);
 }
 
 uint32_t PsxCtrl::read(uint32_t rgn_start, uint32_t offset, int size)

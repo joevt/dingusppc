@@ -115,7 +115,6 @@ int MachineTnt::initialize(const std::string &id) {
 
     memctrl_obj->set_motherboard_id((vci_host ? Hammerhead::MBID_VCI0_PRESENT : 0) |
                                     (pci2_host ? Hammerhead::MBID_PCI2_PRESENT : 0));
-    memctrl_obj->set_bus_speed(Hammerhead::BUS_SPEED_50_MHZ);
 
     // allocate ROM region
     if (!memctrl_obj->add_rom_region(0xFFC00000, 0x400000)) {
@@ -143,42 +142,44 @@ int MachineTnt::initialize(const std::string &id) {
     memctrl_obj->map_phys_ram();
 
     // init virtual CPU
-    std::string cpu = GET_STR_PROP("cpu");
-    if (cpu == "604e")
-        ppc_cpu_init(memctrl_obj, {
-            .version = PPC_VER::MPC604E,
-            .timebase_freq_hz = 12'500'000ULL,
-            .bus_freq_hz = 50'000'000ULL,
-            .core_freq_hz = 200'000'000ULL, // 200 MHz
-        });
-    else if (cpu == "604")
-        ppc_cpu_init(memctrl_obj, {
-            .version = PPC_VER::MPC604,
-            .timebase_freq_hz = 12'500'000ULL,
-            .bus_freq_hz = 50'000'000ULL,
-            .core_freq_hz = 150'000'000ULL, // 150 MHz
-        });
-    else if (cpu == "601")
-        ppc_cpu_init(memctrl_obj, {
-            .version = PPC_VER::MPC601,
-            .timebase_freq_hz = 7'833'600ULL,
-            .bus_freq_hz = 50'000'000ULL,
-            .core_freq_hz = 100'000'000ULL, // 100 MHz
-        });
-    else if (cpu == "750") {
-        // configure CPU clocks
-        uint64_t bus_freq      = 50'000'000ULL;
-        uint64_t timebase_freq = bus_freq / 4;
-        uint64_t core_freq     = bus_freq * 6; // 300 MHz (matches G3 upgrade cards; CPU PLL ratio of 6)
+    uint32_t version;
+    uint32_t timebase_freq;
+    uint32_t bus_freq;
+    uint32_t core_freq;
 
-        // initialize virtual CPU and request MPC750 CPU aka G3
-        ppc_cpu_init(memctrl_obj, {
-            .version = PPC_VER::MPC750,
-            .timebase_freq_hz = timebase_freq,
-            .bus_freq_hz = bus_freq,
-            .core_freq_hz = core_freq,
-        });
+    std::string cpu = GET_STR_PROP("cpu");
+    if (cpu == "604e") {
+        version = PPC_VER::MPC604E;
+        timebase_freq = 12'500'000;
+        bus_freq = 50'000'000;
+        core_freq = 200'000'000; // 200 MHz
     }
+    else if (cpu == "604") {
+        version = PPC_VER::MPC604;
+        timebase_freq = 12'500'000;
+        bus_freq = 50'000'000;
+        core_freq = 150'000'000; // 150 MHz
+    }
+    else if (cpu == "601") {
+        version = PPC_VER::MPC601;
+        timebase_freq = 7'833'600;
+        bus_freq = 50'000'000;
+        core_freq = 100'000'000; // 100 MHz
+    }
+    else if (cpu == "750") {
+        version = PPC_VER::MPC750;
+        bus_freq = 50'000'000;
+        timebase_freq = bus_freq / 4;
+        core_freq = bus_freq * 6; // 300 MHz (matches G3 upgrade cards; CPU PLL ratio of 6)
+    }
+
+    memctrl_obj->set_bus_speed(bus_freq);
+    ppc_cpu_init(memctrl_obj, {
+        .version = version,
+        .timebase_freq_hz = timebase_freq,
+        .bus_freq_hz = bus_freq,
+        .core_freq_hz = core_freq,
+    });
 
     return 0;
 }
