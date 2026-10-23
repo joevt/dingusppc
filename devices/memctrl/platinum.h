@@ -135,7 +135,7 @@ enum PlatinumReg : uint32_t {
     VRAM_REFRESH    = 0x1B, // VRAM Refresh Timing
 
     // Swatch timing generator registers
-    SWATCH_CONFIG   = 0x20, // Swatch Mode ; 0xff0 ; pxffc for 1280 modes
+    SWATCH_CONFIG   = 0x20, // Swatch Mode ; 0xff0 ; 0xffc for 1280 modes
     SWATCH_INT_MASK = 0x21, // Interrupt Mask ; 4
     SWATCH_INT_STAT = 0x22, // Interrupt Status ; 0
     CLR_CURSOR_INT  = 0x23, // Clear Cursor Interrupt ; 0
