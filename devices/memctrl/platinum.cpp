@@ -197,7 +197,7 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
         value = this->pci_address_mask;
         break;
     case PlatinumReg::FB_BASE_ADDR:
-        value = this->fb_addr;
+        value = Platinum::VRAM_REGION_BASE | this->fb_addr;
         break;
     case PlatinumReg::ROW_WORDS:
         value = this->row_words;
@@ -357,12 +357,21 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         this->pci_address_mask = value;
         break;
     case PlatinumReg::FB_BASE_ADDR:
-        if (this->fb_addr != value) {
-            this->fb_addr = value;
-            this->fb_offset = value & 0x3FFFFF;
+    {
+        // These are the bits that will be stored to the FB_BASE_ADDR register.
+        uint32_t new_addr = value & 0x3FFFE0;
+
+        // This is a hint from the guest OS that we'll use because we don't know
+        //  how to calculate base address without it.
+        uint32_t new_offset = value & 0x10;
+
+        if (this->fb_addr != new_addr || this->fb_offset != new_offset) {
+            this->fb_addr = new_addr;
+            this->fb_offset = new_offset;
             this->change_display();
         }
         break;
+    }
     case PlatinumReg::ROW_WORDS:
         this->row_words = value & 0x7FF8;
         this->change_display();
@@ -605,6 +614,18 @@ void PlatinumCtrl::map_phys_ram() {
 }
 
 // ====================== Framebuffer controller stuff =======================
+void PlatinumCtrl::update_fb_ptr()
+{
+    // FIXME: Calculate fb_ptr without using fb_offset. Similar problem as ControlVideo::update_fb_ptr.
+    this->fb_ptr = &this->vram_ptr[this->fb_addr] + 16 + this->fb_offset;
+#if 0
+    // FIXME: Implement double buffer
+    if (this->dacula->get_dbl_buf_cr() == 0 && this->vram_banks == 3) {
+        this->fb_ptr += 0x200000;
+    }
+#endif
+}
+
 void PlatinumCtrl::enable_display() {
     bool did_size_change = false;
     bool did_refresh_rate_change = false;
@@ -645,7 +666,7 @@ void PlatinumCtrl::enable_display() {
     this->vert_total = this->vert_blank + new_height;
 
     // set framebuffer parameters
-    this->fb_ptr   = &this->vram_ptr[this->fb_offset] + 16;
+    this->update_fb_ptr();
     this->fb_pitch = this->row_words;
     if (this->fb_config_1 & CFG1_INTERLACE) {
         this->fb_pitch >>= 1;
