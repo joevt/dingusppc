@@ -292,8 +292,8 @@ enum {
     BIG_ENDIAN_BUS          = 1,
 };
 
-constexpr auto VRAM_REGION_BASE     = 0xF1000000UL;
-constexpr auto PLATINUM_IOREG_BASE  = 0xF8000000UL;
+constexpr uint32_t VRAM_REGION_BASE     = 0xF1000000U;
+constexpr uint32_t PLATINUM_IOREG_BASE  = 0xF8000000U;
 
 } // namespace Platinum
 
