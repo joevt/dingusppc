@@ -117,9 +117,7 @@ ControlVideo::ControlVideo(const std::string &dev_name)
         }
     };
     this->radacal->video_mode_ctrl_cb = [this]() {
-        if (this->display_enabled) {
-            this->enable_display();
-        }
+        this->change_display();
     };
 
     // attach IOBus Device #2 0xF301B000 ; register RaDACal with the I/O controller
@@ -559,9 +557,7 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             else
                 LOG_F(CONTROL, "%s: write PIPE_DELAY %03x.%c = %0*x", this->name.c_str(),
                     offset, SIZE_ARG(size), size * 2, value);
-            if (this->display_enabled) {
-                this->enable_display();
-            }
+            this->change_display();
             break;
         case ControlRegs::HEQ:
             this->swatch_params[(offset >> 4) - ControlRegs::VFPEQ] = value & 0xFFU;
@@ -571,9 +567,7 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             else
                 LOG_F(CONTROL, "%s: write HEQ %03x.%c = %0*x", this->name.c_str(),
                     offset, SIZE_ARG(size), size * 2, value);
-            if (this->display_enabled) {
-                this->enable_display();
-            }
+            this->change_display();
             break;
         case ControlRegs::VFPEQ:
         case ControlRegs::VFP:
@@ -596,9 +590,7 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             else
                 LOG_F(CONTROL, "%s: write %s %03x.%c = %0*x", this->name.c_str(),
                     get_name_controlreg(offset), offset, SIZE_ARG(size), size * 2, value);
-            if (this->display_enabled) {
-                this->enable_display();
-            }
+            this->change_display();
             break;
         case ControlRegs::CNTTST:
             this->cnt_tst = value & 0xFFF;
@@ -651,9 +643,7 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             uint32_t new_value = value & 0x3FFFE0;
             if (new_value != old_value) {
                 this->fb_base = new_value;
-                if (this->display_enabled) {
-                    this->enable_display();
-                }
+                this->change_display();
             }
             break;
         }
@@ -665,9 +655,7 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
                 LOG_F(CONTROL, "%s: write ROW_WORDS %03x.%c = %0*x", this->name.c_str(),
                     offset, SIZE_ARG(size), size * 2, value);
             this->row_words = value & 0x7FE0;
-            if (this->display_enabled) {
-                this->enable_display();
-            }
+            this->change_display();
             break;
         case ControlRegs::MON_SENSE: {
                 // This is a nine-bit register (bits 6-8 are read-only sense
@@ -709,9 +697,7 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
                 LOG_F(CONTROL, "%s: write GSC_DIVIDE %03x.%c = %0*x", this->name.c_str(),
                     offset, SIZE_ARG(size), size * 2, value);
             this->clock_divider = value & 3;
-            if (this->display_enabled) {
-                this->enable_display();
-            }
+            this->change_display();
             break;
         case ControlRegs::REFRESH_COUNT:
             if (value & ~0x3FF)
@@ -876,6 +862,12 @@ void ControlVideo::disable_display()
 {
     this->crtc_on = false;
     LOG_F(INFO, "%s: display disabled", this->name.c_str());
+}
+
+void ControlVideo::change_display() {
+    if (this->display_enabled) {
+        this->enable_display();
+    }
 }
 
 // ========================== Device registry stuff ==========================
