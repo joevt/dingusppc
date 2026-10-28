@@ -337,6 +337,7 @@ private:
     uint32_t    bank_base[8] = {};
     uint32_t    bank_size[8] = {};
     uint32_t    gp_sw_scratch = 0;
+    uint32_t    pci_address_mask = 0;
 
     // frame buffer controller state
     uint32_t    fb_addr       = Platinum::VRAM_REGION_BASE;

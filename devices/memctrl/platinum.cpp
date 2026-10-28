@@ -184,6 +184,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::GP_SW_SCRATCH:
         value = this->gp_sw_scratch;
         break;
+    case PlatinumReg::PCI_ADDR_MASK:
+        value = this->pci_address_mask;
+        break;
     case PlatinumReg::FB_BASE_ADDR:
         value = this->fb_addr;
         break;
@@ -325,6 +328,9 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         break;
     case PlatinumReg::GP_SW_SCRATCH:
         this->gp_sw_scratch = value;
+        break;
+    case PlatinumReg::PCI_ADDR_MASK:
+        this->pci_address_mask = value;
         break;
     case PlatinumReg::FB_BASE_ADDR:
         if (this->fb_addr != value) {
