@@ -405,12 +405,14 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         break;
     case PlatinumReg::SWATCH_INT_STAT:
         break;
+    case PlatinumReg::CLR_CURSOR_INT:
+        this->update_irq(0, SWATCH_INT_CURSOR);
+        break;
     case PlatinumReg::CURSOR_LINE:
         this->cursor_line = value & 0x7FF;
         if (this->swatch_int_mask & SWATCH_INT_CURSOR)
             this->enable_cursor_int();
         break;
-    //case PlatinumReg::CLR_CURSOR_INT:
     //case PlatinumReg::CLR_ANIM_INT:
     //case PlatinumReg::CLR_VBL_INT:
     //case PlatinumReg::ANIMATE_LINE:
