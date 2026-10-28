@@ -162,6 +162,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::ROM_TIMING:
         value = (this->rom_we << 4) | this->rom_timing;
         break;
+    case PlatinumReg::CACHE_CONFIG:
+        value = this->cache_config;
+        break;
     case PlatinumReg::DRAM_TIMING:
         value = this->dram_timing;
         break;
@@ -177,9 +180,6 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::BANK_6_BASE:
     case PlatinumReg::BANK_7_BASE:
         value = this->bank_base[(offset >> 4) - PlatinumReg::BANK_0_BASE];
-        break;
-    case PlatinumReg::CACHE_CONFIG:
-        value = 0; // report no L2 cache installed
         break;
     case PlatinumReg::FB_BASE_ADDR:
         value = this->fb_addr;
@@ -300,6 +300,9 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         this->rom_we = new_rom_we;
         break;
     }
+    case PlatinumReg::CACHE_CONFIG:
+        this->cache_config = (this->cache_config & ~7) | (value & 7);
+        break;
     case PlatinumReg::DRAM_TIMING:
         this->dram_timing = value & 0x1FFF;
         break;
