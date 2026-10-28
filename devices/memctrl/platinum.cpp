@@ -226,10 +226,12 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
         break;
     //case PlatinumReg::CLR_ANIM_INT:
     //case PlatinumReg::CLR_VBL_INT:
-    //case PlatinumReg::CURSOR_LINE:
     //case PlatinumReg::ANIMATE_LINE:
     //case PlatinumReg::COUNTER_TEST:
        //break;
+    case PlatinumReg::CURSOR_LINE:
+        value = this->cursor_line;
+        break;
     case PlatinumReg::SWATCH_HSERR:
     case PlatinumReg::SWATCH_HLFLN:
     case PlatinumReg::SWATCH_HEQ:
@@ -402,7 +404,6 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
     //case PlatinumReg::CLR_CURSOR_INT:
     //case PlatinumReg::CLR_ANIM_INT:
     //case PlatinumReg::CLR_VBL_INT:
-    //case PlatinumReg::CURSOR_LINE:
     //case PlatinumReg::ANIMATE_LINE:
     //case PlatinumReg::COUNTER_TEST:
         //break;
