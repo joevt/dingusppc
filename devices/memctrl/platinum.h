@@ -32,6 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <devices/common/hwcomponent.h>
 #include <devices/common/mmiodevice.h>
+#include <devices/memctrl/bootrom.h>
 #include <devices/memctrl/memctrlbase.h>
 #include <devices/video/appleramdac.h>
 #include <devices/video/displayid.h>
@@ -332,6 +333,7 @@ private:
     // memory controller state
     uint32_t    rom_timing   = 0;
     bool        rom_we       = false;
+    BootRom*    boot_rom     = nullptr;
     uint32_t    cache_config = 0; // bit 5 (ro): 0 = no L2 cache installed; bit 3,4 (ro): cache size
     uint32_t    dram_timing  = Platinum::DT_DEFAULT;
     uint32_t    dram_refresh = Platinum::DRAM_REFRESH_INTERVAL_DEFAULT;
