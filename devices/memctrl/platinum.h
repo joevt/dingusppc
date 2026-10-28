@@ -364,6 +364,7 @@ private:
     // video timing generator (Swatch) state
     uint32_t    swatch_config       = 0xFFD;
     uint32_t    swatch_params[17]   = {};
+    uint32_t    counter_test        = 0;
     uint32_t    timing_adjust       = 0;
     uint32_t    power_down_ctrl     = 0;
 
