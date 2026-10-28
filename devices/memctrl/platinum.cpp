@@ -187,6 +187,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::ROW_WORDS:
         value = this->row_words;
         break;
+    case PlatinumReg::CLOCK_DIVISOR:
+        value = this->clock_divisor;
+        break;
     case PlatinumReg::MON_ID_SENSE:
         value = this->mon_sense;
         break;
