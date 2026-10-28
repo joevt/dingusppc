@@ -211,6 +211,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::FB_RESET:
         value = this->fb_reset;
         break;
+    case PlatinumReg::DBL_BUF_CNTL:
+        value = (this->rw_buf_sel << 2) | (this->disp_buf_sel << 1) | this->dbl_buf_en;
+        break;
     case PlatinumReg::FB_TEST:
         value = this->fb_test;
         break;
@@ -398,6 +401,11 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             LOG_F(ERROR, "%s: display reset written with 0x%X", this->name.c_str(), value);
         }
 
+        break;
+    case PlatinumReg::DBL_BUF_CNTL:
+        this->rw_buf_sel   = extract_bits(value, 2, 1);
+        this->disp_buf_sel = extract_bits(value, 1, 1);
+        this->dbl_buf_en   = extract_bits(value, 0, 1);
         break;
     case PlatinumReg::FB_TEST:
         this->fb_test =
