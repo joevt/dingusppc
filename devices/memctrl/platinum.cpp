@@ -162,6 +162,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::ROM_TIMING:
         value = (this->rom_we << 4) | this->rom_timing;
         break;
+    case PlatinumReg::DRAM_TIMING:
+        value = this->dram_timing;
+        break;
     case PlatinumReg::DRAM_REFRESH:
         value = this->dram_refresh;
         break;
