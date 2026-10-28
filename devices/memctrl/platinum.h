@@ -330,6 +330,7 @@ private:
 
     // memory controller state
     uint32_t    rom_timing   = 0;
+    bool        rom_we       = false;
     uint32_t    dram_timing  = Platinum::DT_DEFAULT;
     uint32_t    dram_refresh = Platinum::DRAM_REFRESH_INTERVAL_DEFAULT;
     uint32_t    bank_base[8] = {};
