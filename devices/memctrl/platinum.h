@@ -336,6 +336,7 @@ private:
     uint32_t    dram_refresh = Platinum::DRAM_REFRESH_INTERVAL_DEFAULT;
     uint32_t    bank_base[8] = {};
     uint32_t    bank_size[8] = {};
+    uint32_t    gp_sw_scratch = 0;
 
     // frame buffer controller state
     uint32_t    fb_addr       = Platinum::VRAM_REGION_BASE;
