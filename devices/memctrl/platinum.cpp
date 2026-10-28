@@ -202,6 +202,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::MON_ID_SENSE:
         value = this->mon_sense;
         break;
+    case PlatinumReg::FB_RESET:
+        value = this->fb_reset;
+        break;
     case PlatinumReg::FB_TEST:
         value = this->fb_test;
         break;
