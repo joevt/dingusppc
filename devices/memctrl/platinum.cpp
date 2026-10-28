@@ -233,7 +233,6 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
         this->update_irq(0, SWATCH_INT_CURSOR);
         value = 0;
         break;
-    //case PlatinumReg::ANIMATE_LINE:
     //case PlatinumReg::COUNTER_TEST:
        //break;
     case PlatinumReg::CLR_ANIM_INT:
@@ -246,6 +245,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
         break;
     case PlatinumReg::CURSOR_LINE:
         value = this->cursor_line;
+        break;
+    case PlatinumReg::ANIMATE_LINE:
+        value = this->animate_line;
         break;
     case PlatinumReg::SWATCH_HSERR:
     case PlatinumReg::SWATCH_HLFLN:
@@ -445,9 +447,11 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         if (this->swatch_int_mask & SWATCH_INT_CURSOR)
             this->enable_cursor_int();
         break;
-    //case PlatinumReg::ANIMATE_LINE:
     //case PlatinumReg::COUNTER_TEST:
         //break;
+    case PlatinumReg::ANIMATE_LINE:
+        this->cursor_line = value & 0x7FF;
+        break;
     case PlatinumReg::SWATCH_HSERR:
     case PlatinumReg::SWATCH_HLFLN:
     case PlatinumReg::SWATCH_HSP:
