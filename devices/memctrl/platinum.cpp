@@ -159,6 +159,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
             (3<<28) | // Revision: 3
             (0<<24);  // Vendor ID: 0=VTI, 1=TI
         break;
+    case PlatinumReg::ROM_TIMING:
+        value = (this->rom_we << 4) | this->rom_timing;
+        break;
     case PlatinumReg::DRAM_REFRESH:
         value = this->dram_refresh;
         break;
@@ -261,9 +264,12 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
     }
 
     switch (offset >> 4) {
-    case PlatinumReg::ROM_TIMING:
-        this->rom_timing = value;
+    case PlatinumReg::ROM_TIMING: {
+        bool new_rom_we = (value >> 4) & 1;
+        this->rom_timing = value & 0xF;
+        this->rom_we = new_rom_we;
         break;
+    }
     case PlatinumReg::DRAM_TIMING:
         this->dram_timing = value & 0x1FFF;
         break;
