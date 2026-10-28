@@ -181,6 +181,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::BANK_7_BASE:
         value = this->bank_base[(offset >> 4) - PlatinumReg::BANK_0_BASE];
         break;
+    case PlatinumReg::GP_SW_SCRATCH:
+        value = this->gp_sw_scratch;
+        break;
     case PlatinumReg::FB_BASE_ADDR:
         value = this->fb_addr;
         break;
@@ -319,6 +322,9 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
     case PlatinumReg::BANK_7_BASE:
         this->bank_base[(offset >> 4) - PlatinumReg::BANK_0_BASE] = value & 0xFF700000U;
         this->map_phys_ram();
+        break;
+    case PlatinumReg::GP_SW_SCRATCH:
+        this->gp_sw_scratch = value;
         break;
     case PlatinumReg::FB_BASE_ADDR:
         if (this->fb_addr != value) {
