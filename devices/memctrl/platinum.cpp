@@ -154,6 +154,11 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::CPU_ID:
         value = this->cpu_id;
         break;
+    case PlatinumReg::ASIC_REVISION:
+        value =
+            (3<<28) | // Revision: 3
+            (0<<24);  // Vendor ID: 0=VTI, 1=TI
+        break;
     case PlatinumReg::DRAM_REFRESH:
         value = this->dram_refresh;
         break;
