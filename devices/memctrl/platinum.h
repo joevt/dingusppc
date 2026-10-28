@@ -348,6 +348,9 @@ private:
     uint32_t    row_words     = 0;
     uint32_t    fb_reset      = Platinum::FB_RESET_DEFAULT;
     int         reset_step    = 0;
+    bool        rw_buf_sel    = false;
+    bool        disp_buf_sel  = false;
+    bool        dbl_buf_en    = false;
     uint32_t    fb_test       = Platinum::DAFB_VERSION_PLATINUM << Platinum::DAFB_VERSION_NUMBER_pos;
     uint32_t    vram_refresh  = Platinum::VRAM_REFRESH_INTERVAL_DEFAULT;
     uint32_t    vram_size     = 0;
