@@ -214,6 +214,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::SWATCH_CONFIG:
         value = this->swatch_config;
         break;
+    case PlatinumReg::SWATCH_INT_MASK:
+        value = this->swatch_int_mask;
+        break;
     case PlatinumReg::SWATCH_INT_STAT:
         value = this->swatch_int_stat;
         break;
