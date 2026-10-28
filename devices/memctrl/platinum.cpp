@@ -184,6 +184,9 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::FB_BASE_ADDR:
         value = this->fb_addr;
         break;
+    case PlatinumReg::ROW_WORDS:
+        value = this->row_words;
+        break;
     case PlatinumReg::MON_ID_SENSE:
         value = this->mon_sense;
         break;
