@@ -44,6 +44,10 @@ PlatinumCtrl::PlatinumCtrl(const std::string &dev_name)
     // add MMIO region for the configuration and status registers
     this->add_mmio_region(PLATINUM_IOREG_BASE, 0x500, this);
 
+    // get boot rom device
+    boot_rom = dynamic_cast<BootRom*>(
+        gMachineObj->get_comp_by_type(HWCompType::ROM));
+
     // initialize the CPUID register with the following CPU:
     // PowerPC 601 @ 90 MHz, bus frequency: 45 MHz
     this->cpu_id =
@@ -319,6 +323,9 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
     switch (offset >> 4) {
     case PlatinumReg::ROM_TIMING: {
         bool new_rom_we = (value >> 4) & 1;
+        if (new_rom_we != this->rom_we) {
+            boot_rom->set_rom_write_enable(new_rom_we);
+        }
         this->rom_timing = value & 0xF;
         this->rom_we = new_rom_we;
         break;
