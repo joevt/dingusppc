@@ -403,6 +403,8 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         if (this->swatch_int_mask & SWATCH_INT_VBL)
             LOG_F(INFO, "%s: VBL interrupt enabled", this->name.c_str());
         break;
+    case PlatinumReg::SWATCH_INT_STAT:
+        break;
     case PlatinumReg::CURSOR_LINE:
         this->cursor_line = value & 0x7FF;
         if (this->swatch_int_mask & SWATCH_INT_CURSOR)
