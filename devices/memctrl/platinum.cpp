@@ -101,6 +101,10 @@ PostInitResultType PlatinumCtrl::device_postinit() {
     this->disp_id = dynamic_cast<DisplayID*>(this->get_comp_by_type(HWCompType::DISPLAY));
 
     this->vbl_cb = [this](uint8_t irq_line_state) {
+        if (irq_line_state) {
+            // vertical blank start is line 0
+            this->enable_cursor_int();
+        }
         this->update_irq(irq_line_state, SWATCH_INT_VBL);
     };
 
@@ -427,11 +431,18 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
     case PlatinumReg::SWATCH_CONFIG:
         this->swatch_config = (this->swatch_config & ~0xFFU) | (value & 0xFFU);
         break;
-    case PlatinumReg::SWATCH_INT_MASK:
-        this->swatch_int_mask = value;
-        if (this->swatch_int_mask & SWATCH_INT_VBL)
-            LOG_F(INFO, "%s: VBL interrupt enabled", this->name.c_str());
+    case PlatinumReg::SWATCH_INT_MASK: {
+        uint32_t old_value = this->swatch_int_mask;
+        this->swatch_int_mask = value & 7;
+        if ((value ^ old_value) & SWATCH_INT_CURSOR) {
+            LOG_F(INFO, "%s: Cursor interrupt %sabled", this->name.c_str(), (value & SWATCH_INT_CURSOR) ? "en" : "dis");
+            this->enable_cursor_int();
+        }
+        if ((value ^ old_value) & SWATCH_INT_VBL) {
+            LOG_F(INFO, "%s: VBL interrupt %sabled", this->name.c_str(), (value & SWATCH_INT_VBL) ? "en" : "dis");
+        }
         break;
+    }
     case PlatinumReg::SWATCH_INT_STAT:
         break;
     case PlatinumReg::CLR_CURSOR_INT:
@@ -445,8 +456,7 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         break;
     case PlatinumReg::CURSOR_LINE:
         this->cursor_line = value & 0x7FF;
-        if (this->swatch_int_mask & SWATCH_INT_CURSOR)
-            this->enable_cursor_int();
+        this->enable_cursor_int();
         break;
     case PlatinumReg::ANIMATE_LINE:
         this->cursor_line = value & 0x7FF;
@@ -705,19 +715,16 @@ void PlatinumCtrl::change_display() {
 }
 
 void PlatinumCtrl::enable_cursor_int() {
-    if (!(this->swatch_int_mask & SWATCH_INT_CURSOR))
-        return;
-
-    uint64_t cursor_int_freq = static_cast<uint64_t>((1.0f / (double)this->pixel_clock) *
-        this->hori_total * this->cursor_line * NS_PER_SEC + 0.5f);
-    LOG_F(INFO, "%s: cursor interrupt frequency %lld ns", this->name.c_str(),
-        cursor_int_freq);
-
     if (this->cursor_timer.active)
         TimerManager::get_instance()->cancel_timer(this->cursor_timer);
-
-    TimerManager::get_instance()->add_cyclic_timer(this->cursor_timer,
-        cursor_int_freq,
+    if (!(this->swatch_int_mask & SWATCH_INT_CURSOR))
+        return;
+    uint64_t cursor_int_time = this->frame_start_time + static_cast<uint64_t>
+        (double(this->hori_total) * this->cursor_line * NS_PER_SEC / this->pixel_clock + 0.5);
+    if (cursor_int_time < TimerManager::get_instance()->current_time_ns())
+        return;
+    TimerManager::get_instance()->add_absolute_timer(this->cursor_timer,
+        cursor_int_time, 0,
         [this](uint64_t, uint64_t) {
             this->update_irq(1, SWATCH_INT_CURSOR); // generate cursor interrupt
         }
