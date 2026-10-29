@@ -322,6 +322,7 @@ protected:
     void change_display();
     void disable_display();
     void enable_cursor_int();
+    void enable_animate_int();
     void update_irq(uint8_t irq_line_state, uint8_t irq_mask);
 
 private:
@@ -374,6 +375,7 @@ private:
     uint32_t    cursor_line         = 0;
     uint32_t    animate_line        = 0;
     TimerInfo   cursor_timer;
+    TimerInfo   animate_timer;
 
     std::unique_ptr<uint8_t[]>      vram_ptr = nullptr;
     DisplayID*                      disp_id = nullptr;
