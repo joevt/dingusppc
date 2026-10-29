@@ -293,6 +293,59 @@ enum {
     BIG_ENDIAN_BUS          = 1,
 };
 
+enum class QDA_OP {
+    FILL,
+    COPY,
+    PAT,
+};
+
+enum class QDA_TYPE {
+    NORMAL,
+    EXTRAS,
+};
+
+enum class QDA_DIR {
+    REVERSE = 0,
+    FORWARD = 1,
+};
+
+enum class QDA_DEPTH {
+    BPP__8 = 0,
+    BPP_16 = 1,
+    BPP_32 = 2,
+};
+
+enum class QDA_EXPAND {
+    NO_EXPAND = 0,
+    DO_EXPAND = 1,
+};
+
+enum class QDA_COLORIZE {
+    NO_COLORIZE = 0,
+    DO_COLORIZE = 1,
+};
+
+enum class QDA_FILL {
+    NO_FILL = 0,
+    DO_FILL = 1,
+};
+
+enum class QDA_PAT {
+    NO_PAT = 0,
+    DO_PAT = 1,
+};
+
+enum class QDA_ROP {
+    SRC_COPY        = 0,
+    SRC_OR          = 1,
+    SRC_XOR         = 2,
+    SRC_BIC         = 3,
+    NOT_SRC_COPY    = 4,
+    NOT_SRC_OR      = 5,
+    NOT_SRC_XOR     = 6,
+    NOT_SRC_BIC     = 7,
+};
+
 constexpr uint32_t VRAM_REGION_BASE     = 0xF1000000U;
 constexpr uint32_t PLATINUM_IOREG_BASE  = 0xF8000000U;
 
@@ -326,6 +379,11 @@ protected:
     void enable_cursor_int();
     void enable_animate_int();
     void update_irq(uint8_t irq_line_state, uint8_t irq_mask);
+    void do_qda();
+    template <Platinum::QDA_OP op, Platinum::QDA_TYPE type, Platinum::QDA_DIR dir, class T> void do_op();
+    bool setup_ptr(Platinum::QDA_DIR dir, uint32_t pixel_size,
+        uint32_t row_bytes, uint32_t base, bool is_dst, uint32_t h, uint32_t v,
+        void* &p, int &stride, bool &is_fb);
 
 private:
     uint32_t    cpu_id;
@@ -379,6 +437,34 @@ private:
     uint32_t    animate_line        = 0;
     TimerInfo   cursor_timer;
     TimerInfo   animate_timer;
+
+    // QuickDraw Acceleration
+    uint32_t                qda_fg_color           = 0;
+    uint32_t                qda_bg_color           = 0;
+    uint32_t                qda_src_base           = 0;
+    uint32_t                qda_dst_base           = 0;
+    uint32_t                qda_src_row_bytes      = 0;
+    uint32_t                qda_dst_row_bytes      = 0;
+    uint32_t                qda_dst_h_size         = 0;
+    uint32_t                qda_dst_v_size         = 0;
+    Platinum::QDA_DIR       qda_processing_dir     = Platinum::QDA_DIR::REVERSE;
+    Platinum::QDA_DEPTH     qda_dst_depth          = Platinum::QDA_DEPTH::BPP__8;
+    uint32_t                qda_bit_offset         = 0;
+    uint32_t                qda_pattern_v_pixels   = 0;
+    uint32_t                qda_pattern_h_pixels   = 0;
+    bool                    qda_interrupt_enable   = false;
+    bool                    qda_last_command       = false;
+    Platinum::QDA_EXPAND    qda_expand             = Platinum::QDA_EXPAND::NO_EXPAND;
+    Platinum::QDA_COLORIZE  qda_colorize           = Platinum::QDA_COLORIZE::NO_COLORIZE;
+    Platinum::QDA_FILL      qda_fill               = Platinum::QDA_FILL::NO_FILL;
+    Platinum::QDA_PAT       qda_pattern_operation  = Platinum::QDA_PAT::NO_PAT;
+    Platinum::QDA_ROP       qda_pattern_op_rop     = Platinum::QDA_ROP::SRC_COPY;
+    bool                    qda_cmd_in_progress    = false;
+    bool                    qda_interrupt_status   = false;
+    bool                    qda_go_multiple        = false;
+    bool                    qda_go                 = false;
+    uint32_t                qda_ptr                = 0;
+    TimerInfo               qda_timer;
 
     std::unique_ptr<uint8_t[]>      vram_ptr = nullptr;
     DisplayID*                      disp_id = nullptr;
