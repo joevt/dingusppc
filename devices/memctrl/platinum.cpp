@@ -87,6 +87,10 @@ PlatinumCtrl::PlatinumCtrl(const std::string &dev_name)
     this->dacula->cursor_update_cb = [this]() {
         this->draw_fb = true;
     };
+    this->dacula->buffer_update_cb = [this]() {
+        this->draw_fb = true;
+        this->update_fb_ptr();
+    };
     this->dacula->video_mode_ctrl_cb = [this]() {
         this->change_display();
     };
