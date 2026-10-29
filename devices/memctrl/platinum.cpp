@@ -254,6 +254,10 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::TIMING_ADJUST:
         value = this->timing_adjust;
         break;
+    case PlatinumReg::CURRENT_LINE:
+        value = this->pixel_clock * (TimerManager::get_instance()->current_time_ns() - this->frame_start_time) /
+            (this->hori_total * 1000);
+        break;
     case PlatinumReg::IRIDIUM_CONFIG:
         value = this->iridium_cfg;
         break;
