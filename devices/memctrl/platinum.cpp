@@ -73,6 +73,7 @@ PlatinumCtrl::PlatinumCtrl(const std::string &dev_name)
     };
     this->dacula->cursor_ctrl_cb = [this](bool cursor_on) {
         this->draw_fb = true;
+        this->update_fb_ptr();
         if (cursor_on) {
             this->dacula->measure_hw_cursor(this->fb_ptr - 16);
             this->cursor_ovl_cb = [this](uint8_t *dst_buf, int dst_pitch) {
