@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <core/memaccess.h>
 #include <core/timermanager.h>
+#include <cpu/ppc/ppcmmu.h>
 #include <devices/deviceregistry.h>
 #include <devices/ioctrl/macio.h>
 #include <devices/memctrl/platinum.h>
@@ -30,6 +31,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <loguru.hpp>
 
 #include <cinttypes>
+
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_PLATOP = loguru::Verbosity_9,
+    };
+}
 
 using namespace Platinum;
 
@@ -290,6 +297,52 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
         value = this->pixel_clock * (TimerManager::get_instance()->current_time_ns() - this->frame_start_time) /
             (this->hori_total * 1000);
         break;
+    case PlatinumReg::FG_COLOR:
+        value = this->qda_fg_color;
+        break;
+    case PlatinumReg::BG_COLOR:
+        value = this->qda_bg_color;
+        break;
+    case PlatinumReg::SRC_BASE:
+        value = this->qda_src_base;
+        break;
+    case PlatinumReg::DST_BASE:
+        value = this->qda_dst_base;
+        break;
+    case PlatinumReg::ROW_BYTES:
+        value = (this->qda_dst_row_bytes << 16) | this->qda_src_row_bytes;
+        break;
+    case PlatinumReg::DST_SIZE:
+        value = (this->qda_dst_v_size << 16) | this->qda_dst_h_size;
+        break;
+    case PlatinumReg::QDA_CNTL:
+        value =
+            (uint32_t(this->qda_processing_dir) << 21) |
+            (uint32_t(this->qda_dst_depth) << 19) |
+            (this->qda_bit_offset << 16) |
+            (this->qda_pattern_v_pixels << 8) |
+            this->qda_pattern_h_pixels;
+        break;
+    case PlatinumReg::QDA_CMD:
+        value =
+            ((int)this->qda_interrupt_enable << 31) |
+            ((int)this->qda_last_command << 30) |
+            ((int)this->qda_expand << 18) |
+            ((int)this->qda_colorize << 17) |
+            ((int)this->qda_fill << 16) |
+            ((int)this->qda_pattern_operation << 3) |
+             (int)this->qda_pattern_op_rop;
+        break;
+    case PlatinumReg::QDA_STATUS:
+        value =
+            (this->qda_cmd_in_progress << 31) |
+            (this->qda_interrupt_status << 30) |
+            (this->qda_go_multiple << 1) |
+            this->qda_go;
+        break;
+    case PlatinumReg::QDA_PTR:
+        value = this->qda_ptr;
+        break;
     case PlatinumReg::IRIDIUM_CONFIG:
         value = this->iridium_cfg;
         break;
@@ -516,6 +569,62 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         break;
     case PlatinumReg::TIMING_ADJUST:
         this->timing_adjust = value & 0xFFF;
+        break;
+    case PlatinumReg::FG_COLOR:
+        this->qda_fg_color = value;
+        break;
+    case PlatinumReg::BG_COLOR:
+        this->qda_bg_color = value;
+        break;
+    case PlatinumReg::SRC_BASE:
+        this->qda_src_base = value;
+        break;
+    case PlatinumReg::DST_BASE:
+        this->qda_dst_base = value;
+        break;
+    case PlatinumReg::ROW_BYTES:
+        this->qda_dst_row_bytes = extract_bits(value, 16, 16);
+        this->qda_src_row_bytes = extract_bits(value, 0, 16);
+        break;
+    case PlatinumReg::DST_SIZE:
+        this->qda_dst_v_size = extract_bits(value, 16, 16);
+        this->qda_dst_h_size = extract_bits(value, 0, 16);
+        break;
+    case PlatinumReg::QDA_CNTL:
+        this->qda_processing_dir = QDA_DIR(extract_bits(value, 21, 1));
+        this->qda_dst_depth = QDA_DEPTH(extract_bits(value, 19, 2));
+        this->qda_bit_offset = extract_bits(value, 16, 3);
+        this->qda_pattern_v_pixels = extract_bits(value, 8, 6);
+        this->qda_pattern_h_pixels = extract_bits(value, 0, 6);
+        break;
+    case PlatinumReg::QDA_CMD:
+        this->qda_interrupt_enable = extract_bits(value, 31, 1);
+        this->qda_last_command = extract_bits(value, 30, 1);
+        this->qda_expand = (Platinum::QDA_EXPAND)extract_bits(value, 18, 1);
+        this->qda_colorize = (Platinum::QDA_COLORIZE)extract_bits(value, 17, 1);
+        this->qda_fill = (Platinum::QDA_FILL)extract_bits(value, 16, 1);
+        this->qda_pattern_operation = (Platinum::QDA_PAT)extract_bits(value, 3, 1);
+        this->qda_pattern_op_rop = (Platinum::QDA_ROP)extract_bits(value, 0, 3);
+        break;
+    case PlatinumReg::QDA_STATUS:
+        this->qda_go_multiple = extract_bits(value, 1, 1);
+        if (this->qda_go_multiple)
+            LOG_F(ERROR, "%s: go multiple is not implemented", this->name.c_str());
+        this->qda_go = extract_bits(value, 0, 1);
+        if (this->qda_go && !qda_timer.active) {
+            TimerManager::get_instance()->add_immediate_timer(this->qda_timer,
+                [this](uint64_t, uint64_t) {
+                    this->do_qda();
+                }
+            );
+        } else {
+            LOG_F(ERROR, "%s: qda command already in progress!", this->name.c_str());
+        }
+        break;
+    case PlatinumReg::QDA_PTR:
+        this->qda_ptr = value;
+        if (this->qda_ptr)
+            LOG_F(ERROR, "%s: command list register is not implemented", this->name.c_str());
         break;
     case PlatinumReg::IRIDIUM_CONFIG:
         if (!(value & 1))
@@ -797,6 +906,417 @@ void PlatinumCtrl::update_irq(uint8_t irq_line_state, uint8_t irq_mask) {
         if (this->swatch_int_mask & irq_mask)
             this->int_ctrl->ack_int(this->irq_id, irq_line_state);
     }
+}
+
+// ====================== QuickDraw Acceleration stuff =======================
+
+void PlatinumCtrl::do_qda() {
+    this->qda_go = false;
+    this->qda_cmd_in_progress = true; {
+
+        #define OPVARIANT(expand,type,pat,dir,depth) ( \
+            ((((((((int(expand) \
+            ) << 1) | int(type) \
+            ) << 1) | int(pat) \
+            ) << 1) | int(dir) \
+            ) << 2) | int(depth) \
+        )
+
+        #define DOOP(expand,pat,op,type,dir,T) \
+            case OPVARIANT(QDA_EXPAND::expand, QDA_TYPE::type, QDA_PAT::pat, QDA_DIR::dir, \
+                QDA_DEPTH((sizeof(T)==1)?0:(sizeof(T)==2)?1:(sizeof(T)==4)?2:3) \
+            ): \
+                this->do_op<QDA_OP::op, QDA_TYPE::type, QDA_DIR::dir, T>(); break;
+
+        if (this->qda_fill == QDA_FILL::DO_FILL) {
+            switch (OPVARIANT(0, 0, 0, this->qda_processing_dir, this->qda_dst_depth)) {
+                DOOP(NO_EXPAND, NO_PAT, FILL, NORMAL, REVERSE, uint8_t )
+                DOOP(NO_EXPAND, NO_PAT, FILL, NORMAL, REVERSE, uint16_t)
+                DOOP(NO_EXPAND, NO_PAT, FILL, NORMAL, REVERSE, uint32_t)
+                DOOP(NO_EXPAND, NO_PAT, FILL, NORMAL, FORWARD, uint8_t )
+                DOOP(NO_EXPAND, NO_PAT, FILL, NORMAL, FORWARD, uint16_t)
+                DOOP(NO_EXPAND, NO_PAT, FILL, NORMAL, FORWARD, uint32_t)
+            }
+        } // fill
+        else {
+            switch (OPVARIANT(
+                this->qda_expand,
+                (
+                    this->qda_colorize == QDA_COLORIZE::NO_COLORIZE &&
+                    this->qda_pattern_op_rop == QDA_ROP::SRC_COPY
+                ) ? QDA_TYPE::NORMAL : QDA_TYPE::EXTRAS,
+                this->qda_pattern_operation,
+                this->qda_processing_dir,
+                this->qda_dst_depth))
+            {
+                DOOP(NO_EXPAND, NO_PAT, COPY, NORMAL, REVERSE, uint8_t )
+                DOOP(NO_EXPAND, NO_PAT, COPY, NORMAL, REVERSE, uint16_t)
+                DOOP(NO_EXPAND, NO_PAT, COPY, NORMAL, REVERSE, uint32_t)
+                DOOP(NO_EXPAND, NO_PAT, COPY, NORMAL, FORWARD, uint8_t )
+                DOOP(NO_EXPAND, NO_PAT, COPY, NORMAL, FORWARD, uint16_t)
+                DOOP(NO_EXPAND, NO_PAT, COPY, NORMAL, FORWARD, uint32_t)
+
+                DOOP(NO_EXPAND, DO_PAT, PAT , NORMAL, REVERSE, uint8_t )
+                DOOP(NO_EXPAND, DO_PAT, PAT , NORMAL, REVERSE, uint16_t)
+                DOOP(NO_EXPAND, DO_PAT, PAT , NORMAL, REVERSE, uint32_t)
+                DOOP(NO_EXPAND, DO_PAT, PAT , NORMAL, FORWARD, uint8_t )
+                DOOP(NO_EXPAND, DO_PAT, PAT , NORMAL, FORWARD, uint16_t)
+                DOOP(NO_EXPAND, DO_PAT, PAT , NORMAL, FORWARD, uint32_t)
+
+                DOOP(NO_EXPAND, NO_PAT, COPY, EXTRAS, REVERSE, uint8_t )
+                DOOP(NO_EXPAND, NO_PAT, COPY, EXTRAS, REVERSE, uint16_t)
+                DOOP(NO_EXPAND, NO_PAT, COPY, EXTRAS, REVERSE, uint32_t)
+                DOOP(NO_EXPAND, NO_PAT, COPY, EXTRAS, FORWARD, uint8_t )
+                DOOP(NO_EXPAND, NO_PAT, COPY, EXTRAS, FORWARD, uint16_t)
+                DOOP(NO_EXPAND, NO_PAT, COPY, EXTRAS, FORWARD, uint32_t)
+
+                DOOP(NO_EXPAND, DO_PAT, PAT , EXTRAS, REVERSE, uint8_t )
+                DOOP(NO_EXPAND, DO_PAT, PAT , EXTRAS, REVERSE, uint16_t)
+                DOOP(NO_EXPAND, DO_PAT, PAT , EXTRAS, REVERSE, uint32_t)
+                DOOP(NO_EXPAND, DO_PAT, PAT , EXTRAS, FORWARD, uint8_t )
+                DOOP(NO_EXPAND, DO_PAT, PAT , EXTRAS, FORWARD, uint16_t)
+                DOOP(NO_EXPAND, DO_PAT, PAT , EXTRAS, FORWARD, uint32_t)
+
+                default:
+                {
+                    LOG_F(ERROR, "%s: unimplemented op: %s%s%s%s%s%s", this->name.c_str(),
+                        this->qda_fill == QDA_FILL::DO_FILL                 ? "fill, " : "",
+                        this->qda_colorize == QDA_COLORIZE::DO_COLORIZE     ? "colorize, " : "",
+                        this->qda_expand == QDA_EXPAND::DO_EXPAND           ? "expand, " : "",
+                        this->qda_pattern_operation == QDA_PAT::DO_PAT      ? "pattern, " : "",
+                        this->qda_pattern_op_rop == QDA_ROP::SRC_COPY       ? "SRC_COPY, " :
+                        this->qda_pattern_op_rop == QDA_ROP::SRC_OR         ? "SRC_OR, " :
+                        this->qda_pattern_op_rop == QDA_ROP::SRC_XOR        ? "SRC_XOR, " :
+                        this->qda_pattern_op_rop == QDA_ROP::SRC_BIC        ? "SRC_BIC, " :
+                        this->qda_pattern_op_rop == QDA_ROP::NOT_SRC_COPY   ? "NOT_SRC_COPY, " :
+                        this->qda_pattern_op_rop == QDA_ROP::NOT_SRC_OR     ? "NOT_SRC_OR, " :
+                        this->qda_pattern_op_rop == QDA_ROP::NOT_SRC_XOR    ? "NOT_SRC_XOR, " :
+                        this->qda_pattern_op_rop == QDA_ROP::NOT_SRC_BIC    ? "NOT_SRC_BIC, " : "",
+                        this->qda_dst_depth == QDA_DEPTH::BPP__8            ? "8bpp" :
+                        this->qda_dst_depth == QDA_DEPTH::BPP_16            ? "16bpp" :
+                        this->qda_dst_depth == QDA_DEPTH::BPP_32            ? "32bpp" : ""
+                    );
+                }
+            }
+        } // else not fill
+    } this->qda_cmd_in_progress = false;
+
+    this->qda_interrupt_status = true;
+    if (this->qda_interrupt_enable) {
+        this->int_ctrl->ack_int(this->irq_id, 1);
+    }
+}
+
+template <QDA_OP op, QDA_TYPE type, QDA_DIR dir, class T>
+void PlatinumCtrl::do_op() {
+    uint32_t dst_w = this->qda_dst_h_size;
+    uint32_t dst_h = this->qda_dst_v_size;
+    void *dst_p; int dst_stride; bool dst_is_fb;
+    if (!this->setup_ptr(dir, sizeof(T), this->qda_dst_row_bytes, this->qda_dst_base, true,
+        dst_w, dst_h, dst_p, dst_stride, dst_is_fb)
+    )
+        return;
+    T *dst = (T*)dst_p;
+
+    T src_pixel;
+    if constexpr (op == QDA_OP::FILL) {
+        #ifdef __LITTLE_ENDIAN__
+        if constexpr (sizeof(T) == 1) src_pixel = this->qda_fg_color;
+        if constexpr (sizeof(T) == 2) src_pixel = BYTESWAP_16(this->qda_fg_color);
+        if constexpr (sizeof(T) == 4) src_pixel = BYTESWAP_32(this->qda_fg_color);
+        #else
+        src_pixel = this->qda_fg_color;
+        #endif
+
+        LOG_F(PLATOP, "%s: fill %x (%zx)  size:%dx%d  row_bytes:%d  stride:%d  %s", this->name.c_str(),
+            this->qda_dst_base, size_t(dst),
+            dst_w, dst_h,
+            this->qda_dst_row_bytes,
+            dst_stride,
+            (dir == QDA_DIR::FORWARD) ? "FORWARD" : (dir == QDA_DIR::REVERSE) ? "REVERSE" : "?"
+        );
+    }
+
+    void *src_p; int src_stride; bool src_is_fb; T *src;
+    if constexpr (op == QDA_OP::COPY) {
+        if (!this->setup_ptr(dir, sizeof(T), this->qda_src_row_bytes, this->qda_src_base, false,
+            dst_w, dst_h, src_p, src_stride, src_is_fb)
+        )
+            return;
+        src = (T*)src_p;
+        LOG_F(PLATOP, "%s: copy %x -> %x (%zx -> %zx)  size:%dx%d  row_bytes:%d,%d  stride:%d,%d  %s", this->name.c_str(),
+            this->qda_src_base, this->qda_dst_base, size_t(src), size_t(dst),
+            dst_w, dst_h,
+            this->qda_src_row_bytes, this->qda_dst_row_bytes,
+            src_stride, dst_stride,
+            (dir == QDA_DIR::FORWARD) ? "FORWARD" : (dir == QDA_DIR::REVERSE) ? "REVERSE" : "?"
+        );
+    }
+
+    uint32_t pat_w, pat_h, pat_x, pat_y, pat_start_x; int32_t pat_return; T *pat_0_start;
+    if constexpr (op == QDA_OP::PAT) {
+        pat_w = this->qda_pattern_h_pixels << 3;
+        pat_h = this->qda_pattern_v_pixels << 3;
+        uint32_t pat_offset = this->qda_src_base & (pat_w * pat_h * sizeof(T) - 1);
+        uint32_t pat_rb = this->qda_src_row_bytes;
+
+        if (!this->setup_ptr(dir, sizeof(T), pat_rb, this->qda_src_base - pat_offset, false,
+            pat_w, pat_h, src_p, src_stride, src_is_fb)
+        )
+            return;
+        src = (T*)((uint8_t*)src_p + pat_offset);
+
+        pat_x = (pat_offset % pat_rb) / sizeof(T);
+        pat_y = pat_offset / pat_rb;
+        src_stride = (pat_x - (pat_x + dst_w) % pat_w) * sizeof(T) + pat_rb;
+        if constexpr (dir == QDA_DIR::REVERSE) {
+            src_stride = -src_stride;
+        }
+
+        LOG_F(PLATOP, "%s: pat %x -> %x (%zx -> %zx)  size:%dx%d -> %dx%d  pos:%ux%u  row_bytes:%d,%d  stride:%d,%d  %s",
+            this->name.c_str(),
+            this->qda_src_base, this->qda_dst_base, size_t(src), size_t(dst),
+            pat_w, pat_h, dst_w, dst_h, pat_x, pat_y,
+            pat_rb, this->qda_dst_row_bytes,
+            src_stride, dst_stride,
+            (dir == QDA_DIR::FORWARD) ? "FORWARD" : (dir == QDA_DIR::REVERSE) ? "REVERSE" : "?"
+        );
+
+        pat_0_start = (T*)((uint8_t*)src_p + pat_x * sizeof(T));
+        pat_x = pat_w - pat_x; // x remaining
+        pat_y = pat_h - pat_y; // y remaining
+        pat_start_x = pat_x;
+        if constexpr (dir == QDA_DIR::FORWARD) {
+            pat_return = -pat_w * sizeof(T);
+        }
+        else if constexpr (dir == QDA_DIR::REVERSE) {
+            pat_return = pat_w * sizeof(T);
+        }
+    }
+
+    LOG_F(PLATOP, "%s:     options: %s%s%s%s%s%s", this->name.c_str(),
+        this->qda_fill == QDA_FILL::DO_FILL                 ? "fill, " : "",
+        this->qda_colorize == QDA_COLORIZE::DO_COLORIZE     ? "colorize, " : "",
+        this->qda_expand == QDA_EXPAND::DO_EXPAND           ? "expand, " : "",
+        this->qda_pattern_operation == QDA_PAT::DO_PAT      ? "pattern, " : "",
+        this->qda_pattern_op_rop == QDA_ROP::SRC_COPY       ? "SRC_COPY, " :
+        this->qda_pattern_op_rop == QDA_ROP::SRC_OR         ? "SRC_OR, " :
+        this->qda_pattern_op_rop == QDA_ROP::SRC_XOR        ? "SRC_XOR, " :
+        this->qda_pattern_op_rop == QDA_ROP::SRC_BIC        ? "SRC_BIC, " :
+        this->qda_pattern_op_rop == QDA_ROP::NOT_SRC_COPY   ? "NOT_SRC_COPY, " :
+        this->qda_pattern_op_rop == QDA_ROP::NOT_SRC_OR     ? "NOT_SRC_OR, " :
+        this->qda_pattern_op_rop == QDA_ROP::NOT_SRC_XOR    ? "NOT_SRC_XOR, " :
+        this->qda_pattern_op_rop == QDA_ROP::NOT_SRC_BIC    ? "NOT_SRC_BIC, " : "",
+        this->qda_dst_depth == QDA_DEPTH::BPP__8            ? "8bpp" :
+        this->qda_dst_depth == QDA_DEPTH::BPP_16            ? "16bpp" :
+        this->qda_dst_depth == QDA_DEPTH::BPP_32            ? "32bpp" : ""
+    );
+
+    constexpr int inc = (dir == QDA_DIR::FORWARD) ? sizeof(T) : - sizeof(T);
+
+    T fg_color;
+    T bg_color;
+    bool expand;
+    bool colorize;
+    QDA_ROP rop;
+    if constexpr (type == QDA_TYPE::EXTRAS) {
+        expand = this->qda_expand == QDA_EXPAND::DO_EXPAND;
+        /*
+            TODO: Implement the expand feature.
+            Src is 1bpp bit map using this->qda_bit_offset is the first bit (0=leftmost) of byte.
+            1=black qda_fg_color
+            0=white qda_bg_color
+        */
+        colorize = this->qda_colorize == QDA_COLORIZE::DO_COLORIZE;
+        if (colorize) {
+            fg_color = this->qda_fg_color;
+            bg_color = this->qda_bg_color;
+        }
+        rop = this->qda_pattern_op_rop;
+    }
+
+    for ( ; dst_h > 0; dst_h--) {
+        for (int x = dst_w; x > 0; x--) {
+            if constexpr (op == QDA_OP::COPY || op == QDA_OP::PAT) {
+                src_pixel = *src;
+                src = (T*)((uint8_t*)src + inc);
+                if constexpr (op == QDA_OP::PAT) {
+                    pat_x--;
+                    if (pat_x == 0) {
+                        pat_x = pat_w;
+                        src = (T*)((uint8_t*)src + pat_return);
+                    }
+                }
+
+                if constexpr (type == QDA_TYPE::EXTRAS) {
+                    T dst_pixel = *dst;
+
+                    if (expand) {
+                        if (colorize) {
+                            switch (rop) {
+                            case QDA_ROP::SRC_COPY    : src_pixel = ( src_pixel & fg_color) | (~src_pixel & bg_color); break;
+                            case QDA_ROP::SRC_OR      : src_pixel = ( src_pixel & fg_color) | (~src_pixel & dst_pixel); break;
+                            case QDA_ROP::SRC_XOR     : src_pixel =   src_pixel ^ dst_pixel; break;
+                            case QDA_ROP::SRC_BIC     : src_pixel = ( src_pixel & bg_color) | (~src_pixel & dst_pixel); break;
+                            case QDA_ROP::NOT_SRC_COPY: src_pixel = (~src_pixel & fg_color) | ( src_pixel & bg_color); break;
+                            case QDA_ROP::NOT_SRC_OR  : src_pixel = (~src_pixel & fg_color) | ( src_pixel & dst_pixel); break;
+                            case QDA_ROP::NOT_SRC_XOR : src_pixel =  ~src_pixel ^ dst_pixel; break;
+                            case QDA_ROP::NOT_SRC_BIC : src_pixel = (~src_pixel & bg_color) | ( src_pixel & dst_pixel); break;
+                            }
+                        }
+                    }
+                    else if constexpr (sizeof(T) == 1) {
+                        if (!colorize) {
+                            switch (rop) {
+                            case QDA_ROP::SRC_COPY    : src_pixel = src_pixel; break;
+                            case QDA_ROP::SRC_OR      : src_pixel = src_pixel  | dst_pixel; break;
+                            case QDA_ROP::SRC_XOR     : src_pixel = src_pixel  ^ dst_pixel; break;
+                            case QDA_ROP::SRC_BIC     : src_pixel = ~src_pixel & dst_pixel; break;
+                            case QDA_ROP::NOT_SRC_COPY: break; // n/a
+                            case QDA_ROP::NOT_SRC_OR  : src_pixel = ~src_pixel | dst_pixel; break;
+                            case QDA_ROP::NOT_SRC_XOR : src_pixel = ~src_pixel ^ dst_pixel; break;
+                            case QDA_ROP::NOT_SRC_BIC : src_pixel = src_pixel  & dst_pixel; break;
+                            }
+                        } else {
+                            switch (rop) {
+                            case QDA_ROP::SRC_COPY    : break; // n/a
+                            case QDA_ROP::SRC_OR      : src_pixel = (~src_pixel & (dst_pixel ^ fg_color)) ^ fg_color; break;
+                            case QDA_ROP::SRC_XOR     : src_pixel =   src_pixel ^ dst_pixel; break;
+                            case QDA_ROP::SRC_BIC     : src_pixel = (~src_pixel & (dst_pixel ^ bg_color)) ^ bg_color; break;
+                            case QDA_ROP::NOT_SRC_COPY: break; // n/a
+                            case QDA_ROP::NOT_SRC_OR  : src_pixel = (src_pixel & (dst_pixel ^ fg_color)) ^ fg_color; break;
+                            case QDA_ROP::NOT_SRC_XOR : src_pixel = ~src_pixel^ dst_pixel; break;
+                            case QDA_ROP::NOT_SRC_BIC : src_pixel = (src_pixel & (dst_pixel ^ bg_color)) ^ bg_color; break;
+                            }
+                        }
+                    } // indexed color
+                    else {
+                        T inv_src_pixel = src_pixel ^ ((sizeof(T)==2) ? 0x7FFF : 0xFFFFFF);
+                        if (!colorize) {
+                            switch (rop) {
+                            case QDA_ROP::SRC_COPY    : src_pixel = src_pixel; break;
+                            case QDA_ROP::SRC_OR      : src_pixel = src_pixel & dst_pixel; break;
+                            case QDA_ROP::SRC_XOR     : src_pixel = inv_src_pixel ^ dst_pixel; break;
+                            case QDA_ROP::SRC_BIC     : src_pixel = inv_src_pixel | dst_pixel; break;
+                            case QDA_ROP::NOT_SRC_COPY: src_pixel = inv_src_pixel; break;
+                            case QDA_ROP::NOT_SRC_OR  : src_pixel = inv_src_pixel & dst_pixel; break;
+                            case QDA_ROP::NOT_SRC_XOR : src_pixel = src_pixel ^ dst_pixel; break;
+                            case QDA_ROP::NOT_SRC_BIC : src_pixel = src_pixel | dst_pixel; break;
+                            }
+                        } else {
+                            switch (rop) {
+                            case QDA_ROP::SRC_COPY    : src_pixel = (inv_src_pixel & fg_color) | (src_pixel & bg_color); break;
+                            case QDA_ROP::SRC_OR      : src_pixel = (src_pixel & (dst_pixel ^ fg_color)) ^ fg_color; break;
+                            case QDA_ROP::SRC_XOR     : src_pixel = inv_src_pixel ^ dst_pixel; break;
+                            case QDA_ROP::SRC_BIC     : src_pixel = (src_pixel & (dst_pixel ^ bg_color)) ^ bg_color; break;
+                            case QDA_ROP::NOT_SRC_COPY: src_pixel = (src_pixel & fg_color) | (inv_src_pixel & bg_color); break;
+                            case QDA_ROP::NOT_SRC_OR  : src_pixel = (inv_src_pixel & (dst_pixel ^ fg_color)) ^ fg_color; break;
+                            case QDA_ROP::NOT_SRC_XOR : src_pixel = src_pixel ^ dst_pixel; break;
+                            case QDA_ROP::NOT_SRC_BIC : src_pixel = (inv_src_pixel & (dst_pixel ^ bg_color)) ^ bg_color; break;
+                            }
+                        }
+                    } // direct color
+                } // EXTRAS
+            } // COPY || PAT
+
+            *dst = src_pixel;
+            dst = (T*)((uint8_t*)dst + inc);
+        }
+        dst = (T*)((uint8_t*)dst + dst_stride);
+        if constexpr (op == QDA_OP::COPY) {
+            src = (T*)((uint8_t*)src + src_stride);
+        }
+        if constexpr (op == QDA_OP::PAT) {
+            pat_x = pat_start_x;
+            pat_y--;
+            if (pat_y) {
+               src = (T*)((uint8_t*)src + src_stride);
+            } else {
+                pat_y = pat_h;
+                src = pat_0_start;
+            }
+        }
+    }
+    if (dst_is_fb)
+        this->draw_fb = true;
+}
+
+template void PlatinumCtrl::do_op<QDA_OP::FILL, QDA_TYPE::NORMAL, QDA_DIR::REVERSE, uint8_t >();
+template void PlatinumCtrl::do_op<QDA_OP::FILL, QDA_TYPE::NORMAL, QDA_DIR::REVERSE, uint16_t>();
+template void PlatinumCtrl::do_op<QDA_OP::FILL, QDA_TYPE::NORMAL, QDA_DIR::REVERSE, uint32_t>();
+template void PlatinumCtrl::do_op<QDA_OP::FILL, QDA_TYPE::NORMAL, QDA_DIR::FORWARD, uint8_t >();
+template void PlatinumCtrl::do_op<QDA_OP::FILL, QDA_TYPE::NORMAL, QDA_DIR::FORWARD, uint16_t>();
+template void PlatinumCtrl::do_op<QDA_OP::FILL, QDA_TYPE::NORMAL, QDA_DIR::FORWARD, uint32_t>();
+
+template void PlatinumCtrl::do_op<QDA_OP::COPY, QDA_TYPE::NORMAL, QDA_DIR::REVERSE, uint8_t >();
+template void PlatinumCtrl::do_op<QDA_OP::COPY, QDA_TYPE::NORMAL, QDA_DIR::REVERSE, uint16_t>();
+template void PlatinumCtrl::do_op<QDA_OP::COPY, QDA_TYPE::NORMAL, QDA_DIR::REVERSE, uint32_t>();
+template void PlatinumCtrl::do_op<QDA_OP::COPY, QDA_TYPE::NORMAL, QDA_DIR::FORWARD, uint8_t >();
+template void PlatinumCtrl::do_op<QDA_OP::COPY, QDA_TYPE::NORMAL, QDA_DIR::FORWARD, uint16_t>();
+template void PlatinumCtrl::do_op<QDA_OP::COPY, QDA_TYPE::NORMAL, QDA_DIR::FORWARD, uint32_t>();
+
+template void PlatinumCtrl::do_op<QDA_OP::PAT , QDA_TYPE::NORMAL, QDA_DIR::REVERSE, uint8_t >();
+template void PlatinumCtrl::do_op<QDA_OP::PAT , QDA_TYPE::NORMAL, QDA_DIR::REVERSE, uint16_t>();
+template void PlatinumCtrl::do_op<QDA_OP::PAT , QDA_TYPE::NORMAL, QDA_DIR::REVERSE, uint32_t>();
+template void PlatinumCtrl::do_op<QDA_OP::PAT , QDA_TYPE::NORMAL, QDA_DIR::FORWARD, uint8_t >();
+template void PlatinumCtrl::do_op<QDA_OP::PAT , QDA_TYPE::NORMAL, QDA_DIR::FORWARD, uint16_t>();
+template void PlatinumCtrl::do_op<QDA_OP::PAT , QDA_TYPE::NORMAL, QDA_DIR::FORWARD, uint32_t>();
+
+template void PlatinumCtrl::do_op<QDA_OP::COPY, QDA_TYPE::EXTRAS, QDA_DIR::REVERSE, uint8_t >();
+template void PlatinumCtrl::do_op<QDA_OP::COPY, QDA_TYPE::EXTRAS, QDA_DIR::REVERSE, uint16_t>();
+template void PlatinumCtrl::do_op<QDA_OP::COPY, QDA_TYPE::EXTRAS, QDA_DIR::REVERSE, uint32_t>();
+template void PlatinumCtrl::do_op<QDA_OP::COPY, QDA_TYPE::EXTRAS, QDA_DIR::FORWARD, uint8_t >();
+template void PlatinumCtrl::do_op<QDA_OP::COPY, QDA_TYPE::EXTRAS, QDA_DIR::FORWARD, uint16_t>();
+template void PlatinumCtrl::do_op<QDA_OP::COPY, QDA_TYPE::EXTRAS, QDA_DIR::FORWARD, uint32_t>();
+
+template void PlatinumCtrl::do_op<QDA_OP::PAT , QDA_TYPE::EXTRAS, QDA_DIR::REVERSE, uint8_t >();
+template void PlatinumCtrl::do_op<QDA_OP::PAT , QDA_TYPE::EXTRAS, QDA_DIR::REVERSE, uint16_t>();
+template void PlatinumCtrl::do_op<QDA_OP::PAT , QDA_TYPE::EXTRAS, QDA_DIR::REVERSE, uint32_t>();
+template void PlatinumCtrl::do_op<QDA_OP::PAT , QDA_TYPE::EXTRAS, QDA_DIR::FORWARD, uint8_t >();
+template void PlatinumCtrl::do_op<QDA_OP::PAT , QDA_TYPE::EXTRAS, QDA_DIR::FORWARD, uint16_t>();
+template void PlatinumCtrl::do_op<QDA_OP::PAT , QDA_TYPE::EXTRAS, QDA_DIR::FORWARD, uint32_t>();
+
+bool PlatinumCtrl::setup_ptr(Platinum::QDA_DIR dir, uint32_t pixel_size,
+    uint32_t row_bytes, uint32_t base, bool is_dst, uint32_t h, uint32_t v,
+    void* &p, int &stride, bool &is_fb)
+{
+    int span = (v - 1) * row_bytes + h * pixel_size;
+
+    uint32_t base_top_left;
+    if (dir == QDA_DIR::REVERSE) {
+        base_top_left = base + pixel_size - span;
+        stride = h * pixel_size - row_bytes;
+    } else {
+        base_top_left = base;
+        stride = row_bytes - h * pixel_size;
+    }
+
+    MapDmaResult res = mmu_map_dma_mem(base_top_left, span, true);
+    if (is_dst && !res.is_writable) {
+        LOG_F(ERROR, "%s: qda is not writable", this->name.c_str());
+        is_fb = false;
+        return false;
+    }
+
+    if (res.type & RT_MMIO) {
+        if (res.dev_obj == this) {
+            p = &this->vram_ptr[base_top_left - res.dev_base];
+            if (is_dst)
+                is_fb = true;
+        } else {
+            LOG_F(ERROR, "%s: qda other MMIO device is not supported", this->name.c_str());
+            is_fb = false;
+            return false;
+        }
+    }
+    else {
+        is_fb = false;
+        p = res.host_va;
+    }
+    if (dir == QDA_DIR::REVERSE) {
+        p = (uint8_t*)p + span - pixel_size;
+    }
+    return true;
 }
 
 // ========================== Device registry stuff ==========================
