@@ -104,6 +104,7 @@ PostInitResultType PlatinumCtrl::device_postinit() {
         if (irq_line_state) {
             // vertical blank start is line 0
             this->enable_cursor_int();
+            this->enable_animate_int();
         }
         this->update_irq(irq_line_state, SWATCH_INT_VBL);
     };
@@ -438,6 +439,10 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             LOG_F(INFO, "%s: Cursor interrupt %sabled", this->name.c_str(), (value & SWATCH_INT_CURSOR) ? "en" : "dis");
             this->enable_cursor_int();
         }
+        if ((value ^ old_value) & SWATCH_INT_ANIM) {
+            LOG_F(INFO, "%s: Anim interrupt %sabled", this->name.c_str(), (value & SWATCH_INT_ANIM) ? "en" : "dis");
+            this->enable_animate_int();
+        }
         if ((value ^ old_value) & SWATCH_INT_VBL) {
             LOG_F(INFO, "%s: VBL interrupt %sabled", this->name.c_str(), (value & SWATCH_INT_VBL) ? "en" : "dis");
         }
@@ -460,6 +465,7 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         break;
     case PlatinumReg::ANIMATE_LINE:
         this->cursor_line = value & 0x7FF;
+        this->enable_animate_int();
         break;
     case PlatinumReg::COUNTER_TEST:
         this->counter_test = value & 0xFFF;
@@ -727,6 +733,23 @@ void PlatinumCtrl::enable_cursor_int() {
         cursor_int_time, 0,
         [this](uint64_t, uint64_t) {
             this->update_irq(1, SWATCH_INT_CURSOR); // generate cursor interrupt
+        }
+    );
+}
+
+void PlatinumCtrl::enable_animate_int() {
+    if (this->animate_timer.active)
+        TimerManager::get_instance()->cancel_timer(this->animate_timer);
+    if (!(this->swatch_int_mask & SWATCH_INT_ANIM))
+        return;
+    uint64_t animate_int_time = this->frame_start_time + static_cast<uint64_t>
+        (double(this->hori_total) * this->animate_line * NS_PER_SEC / this->pixel_clock + 0.5);
+    if (animate_int_time < TimerManager::get_instance()->current_time_ns())
+        return;
+    TimerManager::get_instance()->add_absolute_timer(this->animate_timer,
+        animate_int_time, 0,
+        [this](uint64_t, uint64_t) {
+            this->update_irq(1, SWATCH_INT_ANIM); // generate animation interrupt
         }
     );
 }
