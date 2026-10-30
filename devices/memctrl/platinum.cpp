@@ -365,9 +365,6 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
 {
     static uint8_t vid_enable_seq[] = {3, 2, 0};
 
-    uint8_t mon_dirs = 0;
-    uint8_t mon_levels = 0;
-
     if (rgn_start == VRAM_REGION_BASE) {
         if (offset < this->vram_size) {
             this->draw_fb = true;
@@ -452,13 +449,15 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         this->vmem_fp_mode = value & 1;
         break;
     case PlatinumReg::MON_ID_SENSE:
+    {
         value &= 7;
-        mon_dirs        = value ^ 7;
-        mon_levels      = (this->fb_test >> SENSE_LINE_OUTPUT_DATA_pos) & 7;
-        mon_levels      = (mon_levels & mon_dirs) | (mon_dirs ^ 7);
+        uint8_t mon_dirs = value ^ 7;
+        uint8_t mon_levels = (this->fb_test >> SENSE_LINE_OUTPUT_DATA_pos) & 7;
+        mon_levels = (mon_levels & mon_dirs) | (mon_dirs ^ 7);
         this->mon_sense = (mon_dirs << 3) |
             (this->disp_id->read_monitor_sense(mon_levels, mon_dirs) ^ 7);
         break;
+    }
     case PlatinumReg::FB_RESET:
         value &= 7;
         if (value == 7 && this->crtc_on) {
