@@ -34,7 +34,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace loguru {
     enum : Verbosity {
+        Verbosity_PLATINUM = loguru::Verbosity_9,
         Verbosity_PLATOP = loguru::Verbosity_9,
+        Verbosity_PLATCURSOR = loguru::Verbosity_9,
     };
 }
 
@@ -152,6 +154,91 @@ HWComponent* PlatinumCtrl::set_property(const std::string &property, const std::
     return nullptr;
 }
 
+static const char * reg_name(uint32_t offset) {
+    static char buf[10];
+    switch (offset >> 4) {
+    #define one_reg(x) case PlatinumReg::x: return #x;
+        one_reg(CPU_ID)
+        one_reg(ASIC_REVISION)
+        one_reg(ROM_TIMING)
+        one_reg(CACHE_CONFIG)
+        one_reg(DRAM_TIMING)
+        one_reg(DRAM_REFRESH)
+        one_reg(BANK_0_BASE)
+        one_reg(BANK_1_BASE)
+        one_reg(BANK_2_BASE)
+        one_reg(BANK_3_BASE)
+        one_reg(BANK_4_BASE)
+        one_reg(BANK_5_BASE)
+        one_reg(BANK_6_BASE)
+        one_reg(BANK_7_BASE)
+        one_reg(GP_SW_SCRATCH)
+        one_reg(PCI_ADDR_MASK)
+        one_reg(FB_BASE_ADDR)
+        one_reg(ROW_WORDS)
+        one_reg(CLOCK_DIVISOR)
+        one_reg(FB_CONFIG_1)
+        one_reg(FB_CONFIG_2)
+        one_reg(VMEM_PAGE_MODE)
+        one_reg(MON_ID_SENSE)
+        one_reg(FB_RESET)
+        one_reg(DBL_BUF_CNTL)
+        one_reg(FB_TEST)
+        one_reg(VRAM_REFRESH)
+        one_reg(SWATCH_CONFIG)
+        one_reg(SWATCH_INT_MASK)
+        one_reg(SWATCH_INT_STAT)
+        one_reg(CLR_CURSOR_INT)
+        one_reg(CLR_ANIM_INT)
+        one_reg(CLR_VBL_INT)
+        one_reg(CURSOR_LINE)
+        one_reg(ANIMATE_LINE)
+        one_reg(COUNTER_TEST)
+        one_reg(SWATCH_HSERR)
+        one_reg(SWATCH_HLFLN)
+        one_reg(SWATCH_HEQ)
+        one_reg(SWATCH_HSP)
+        one_reg(SWATCH_HBWAY)
+        one_reg(SWATCH_HBRST)
+        one_reg(SWATCH_HBP)
+        one_reg(SWATCH_HAL)
+        one_reg(SWATCH_HFP)
+        one_reg(SWATCH_HPIX)
+        one_reg(SWATCH_VHLINE)
+        one_reg(SWATCH_VSYNC)
+        one_reg(SWATCH_VBPEQ)
+        one_reg(SWATCH_VBP)
+        one_reg(SWATCH_VAL)
+        one_reg(SWATCH_VFP)
+        one_reg(SWATCH_VFPEQ)
+        one_reg(TIMING_ADJUST)
+        one_reg(CURRENT_LINE)
+        one_reg(FG_COLOR)
+        one_reg(BG_COLOR)
+        one_reg(SRC_BASE)
+        one_reg(DST_BASE)
+        one_reg(ROW_BYTES)
+        one_reg(DST_SIZE)
+        one_reg(QDA_CNTL)
+        one_reg(QDA_CMD)
+        one_reg(QDA_STATUS)
+        one_reg(QDA_PTR)
+        one_reg(IRIDIUM_CONFIG)
+        one_reg(POWER_DOWN_CTRL)
+        default: snprintf(buf, sizeof(buf), "unknown%X", offset);
+    }
+}
+
+#define LOG_READ_COMMON(verbosity, extra_format, ...) \
+    LOG_F(verbosity, "%s: read  %-15s %03x.%c" extra_format, this->name.c_str(), reg_name(offset), offset, \
+        SIZE_ARG(size), ##__VA_ARGS__)
+#define LOG_READ() \
+    LOG_READ_COMMON(PLATINUM, " = %0*x", size * 2, value)
+#define LOG_READ_UNKNOWN() \
+    LOG_READ_COMMON(WARNING, " = %0*x", size * 2, value)
+#define LOG_READ_UNEXPECTED() \
+    LOG_READ_COMMON(WARNING, " = %08x -> %0*x", value, size * 2, result)
+
 uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     uint32_t value;
 
@@ -174,23 +261,29 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     switch (offset >> 4) {
     case PlatinumReg::CPU_ID:
         value = this->cpu_id;
+        LOG_READ();
         break;
     case PlatinumReg::ASIC_REVISION:
         value =
             (3<<28) | // Revision: 3
             (0<<24);  // Vendor ID: 0=VTI, 1=TI
+        LOG_READ();
         break;
     case PlatinumReg::ROM_TIMING:
         value = (this->rom_we << 4) | this->rom_timing;
+        LOG_READ();
         break;
     case PlatinumReg::CACHE_CONFIG:
         value = this->cache_config;
+        LOG_READ();
         break;
     case PlatinumReg::DRAM_TIMING:
         value = this->dram_timing;
+        LOG_READ();
         break;
     case PlatinumReg::DRAM_REFRESH:
         value = this->dram_refresh;
+        LOG_READ();
         break;
     case PlatinumReg::BANK_0_BASE:
     case PlatinumReg::BANK_1_BASE:
@@ -201,58 +294,78 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::BANK_6_BASE:
     case PlatinumReg::BANK_7_BASE:
         value = this->bank_base[(offset >> 4) - PlatinumReg::BANK_0_BASE];
+        LOG_READ();
         break;
     case PlatinumReg::GP_SW_SCRATCH:
         value = this->gp_sw_scratch;
+        LOG_READ();
         break;
     case PlatinumReg::PCI_ADDR_MASK:
         value = this->pci_address_mask;
+        LOG_READ();
         break;
     case PlatinumReg::FB_BASE_ADDR:
         value = Platinum::VRAM_REGION_BASE | this->fb_addr;
+        LOG_READ();
         break;
     case PlatinumReg::ROW_WORDS:
         value = this->row_words;
+        LOG_READ();
         break;
     case PlatinumReg::CLOCK_DIVISOR:
         value = this->clock_divisor;
+        LOG_READ();
         break;
     case PlatinumReg::FB_CONFIG_1:
         value =  this->fb_config_1;
+        LOG_READ();
         break;
     case PlatinumReg::FB_CONFIG_2:
         value = this->fb_config_2;
+        LOG_READ();
         break;
     case PlatinumReg::VMEM_PAGE_MODE:
         value = this->vmem_fp_mode;
+        LOG_READ();
         break;
     case PlatinumReg::MON_ID_SENSE:
         value = this->mon_sense;
+        LOG_READ();
         break;
     case PlatinumReg::FB_RESET:
         value = this->fb_reset;
+        LOG_READ();
         break;
     case PlatinumReg::DBL_BUF_CNTL:
         value = (this->rw_buf_sel << 2) | (this->disp_buf_sel << 1) | this->dbl_buf_en;
+        LOG_READ();
         break;
     case PlatinumReg::FB_TEST:
         value = this->fb_test;
+        LOG_READ();
         break;
     case PlatinumReg::VRAM_REFRESH:
         value = this->vram_refresh;
+        LOG_READ();
         break;
     case PlatinumReg::SWATCH_CONFIG:
         value = this->swatch_config;
+        LOG_READ();
         break;
     case PlatinumReg::SWATCH_INT_MASK:
         value = this->swatch_int_mask;
+        LOG_READ();
         break;
     case PlatinumReg::SWATCH_INT_STAT:
         value = this->swatch_int_stat;
+        #if 0
+        LOG_READ();
+        #endif
         break;
     case PlatinumReg::CLR_CURSOR_INT:
-        this->update_irq(0, SWATCH_INT_CURSOR);
         value = 0;
+        LOG_READ_COMMON(PLATCURSOR, " = %0*x", size * 2, value);
+        this->update_irq(0, SWATCH_INT_CURSOR);
         break;
     case PlatinumReg::CLR_ANIM_INT:
         value = 0;
@@ -264,12 +377,15 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
         break;
     case PlatinumReg::CURSOR_LINE:
         value = this->cursor_line;
+        LOG_READ();
         break;
     case PlatinumReg::ANIMATE_LINE:
         value = this->animate_line;
+        LOG_READ();
         break;
     case PlatinumReg::COUNTER_TEST:
         value = this->counter_test;
+        LOG_READ();
         break;
     case PlatinumReg::SWATCH_HSERR:
     case PlatinumReg::SWATCH_HLFLN:
@@ -289,31 +405,40 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
     case PlatinumReg::SWATCH_VFP:
     case PlatinumReg::SWATCH_VFPEQ:
         value = this->swatch_params[REG_TO_INDEX(offset >> 4)];
+        LOG_READ();
         break;
     case PlatinumReg::TIMING_ADJUST:
         value = this->timing_adjust;
+        LOG_READ();
         break;
     case PlatinumReg::CURRENT_LINE:
         value = this->pixel_clock * (TimerManager::get_instance()->current_time_ns() - this->frame_start_time) /
             (this->hori_total * 1000);
+        LOG_READ();
         break;
     case PlatinumReg::FG_COLOR:
         value = this->qda_fg_color;
+        LOG_READ();
         break;
     case PlatinumReg::BG_COLOR:
         value = this->qda_bg_color;
+        LOG_READ();
         break;
     case PlatinumReg::SRC_BASE:
         value = this->qda_src_base;
+        LOG_READ();
         break;
     case PlatinumReg::DST_BASE:
         value = this->qda_dst_base;
+        LOG_READ();
         break;
     case PlatinumReg::ROW_BYTES:
         value = (this->qda_dst_row_bytes << 16) | this->qda_src_row_bytes;
+        LOG_READ();
         break;
     case PlatinumReg::DST_SIZE:
         value = (this->qda_dst_v_size << 16) | this->qda_dst_h_size;
+        LOG_READ();
         break;
     case PlatinumReg::QDA_CNTL:
         value =
@@ -322,6 +447,7 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
             (this->qda_bit_offset << 16) |
             (this->qda_pattern_v_pixels << 8) |
             this->qda_pattern_h_pixels;
+        LOG_READ();
         break;
     case PlatinumReg::QDA_CMD:
         value =
@@ -332,6 +458,7 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
             ((int)this->qda_fill << 16) |
             ((int)this->qda_pattern_operation << 3) |
              (int)this->qda_pattern_op_rop;
+        LOG_READ();
         break;
     case PlatinumReg::QDA_STATUS:
         value =
@@ -339,26 +466,32 @@ uint32_t PlatinumCtrl::read(uint32_t rgn_start, uint32_t offset, int size) {
             (this->qda_interrupt_status << 30) |
             (this->qda_go_multiple << 1) |
             this->qda_go;
+        LOG_READ();
         break;
     case PlatinumReg::QDA_PTR:
         value = this->qda_ptr;
+        LOG_READ();
         break;
     case PlatinumReg::IRIDIUM_CONFIG:
         value = this->iridium_cfg;
+        LOG_READ();
         break;
     case PlatinumReg::POWER_DOWN_CTRL:
         value = this->power_down_ctrl;
+        LOG_READ();
         break;
     default:
-        LOG_F(WARNING, "%s: unknown register read at offset 0x%X", this->name.c_str(),
-              offset);
         value = 0;
+        LOG_READ_UNKNOWN();
     }
 
     if (size == 4 && !(offset & 3))
         return value;
-    else
-        return extract_with_wrap_around(value, offset, size);
+    else {
+        uint32_t result = extract_with_wrap_around(value, offset, size);
+        LOG_READ_UNEXPECTED();
+        return result;
+    }
 }
 
 void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
@@ -374,6 +507,9 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
                   this->name.c_str(), VRAM_REGION_BASE + offset);
         return;
     }
+
+    LOG_F(PLATINUM, "%s: write %-15s %03x.%c = %0*x", this->name.c_str(),
+        reg_name(offset), offset, SIZE_ARG(size), size * 2, value);
 
     switch (offset >> 4) {
     case PlatinumReg::ROM_TIMING: {
@@ -436,7 +572,6 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         this->change_display();
         break;
     case PlatinumReg::FB_CONFIG_1:
-        LOG_F(INFO, "%s: write FB_CONFIG_1 %03x.%c = %0*x", this->name.c_str(), offset, SIZE_ARG(size), size * 2, value);
         this->fb_config_1 =
             (this->fb_config_1 & ~(CFG1_FULL_BANKS | CFG1_VID_ENABLE | CFG1_INTERLACE | CFG1_SAM_512BIT | CFG1_VRAMS_2MBIT)) |
             (value             &  (CFG1_FULL_BANKS | CFG1_VID_ENABLE | CFG1_INTERLACE | CFG1_SAM_512BIT | CFG1_VRAMS_2MBIT));
@@ -495,6 +630,9 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
         this->dbl_buf_en   = extract_bits(value, 0, 1);
         break;
     case PlatinumReg::FB_TEST:
+        if (value & SENSE_LINE_OUTPUT_DATA) {
+            LOG_F(PLATINUM, "%s: attempt to set Sense Line Output Data to non-zero value", this->name.c_str());
+        }
         this->fb_test =
             (this->fb_test & ~(SENSE_LINE_OUTPUT_DATA | SYNCS_OUTPUT_ENABLE | FORCED_SYNC_LEVELS)) |
             (value         &  (SENSE_LINE_OUTPUT_DATA | SYNCS_OUTPUT_ENABLE | FORCED_SYNC_LEVELS));
@@ -636,8 +774,11 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             LOG_F(INFO, "%s: power down mode enabled", this->name.c_str());
         break;
     default:
-        LOG_F(WARNING, "%s: unknown register write at offset 0x%X", this->name.c_str(),
-              offset);
+        LOG_F(ERROR, "%s: unknown register", this->name.c_str());
+    }
+
+    if ((offset & 3) || (size != 4)) {
+        LOG_F(ERROR, "%s: bad offset or size", this->name.c_str());
     }
 }
 
@@ -731,6 +872,7 @@ void PlatinumCtrl::update_fb_ptr()
 {
     // FIXME: Calculate fb_ptr without using fb_offset. Similar problem as ControlVideo::update_fb_ptr.
     this->fb_ptr = &this->vram_ptr[this->fb_addr] + 16 + this->fb_offset;
+    LOG_F(PLATINUM, "%s: base:0x%X fb_ptr:0x%zX", this->name.c_str(), this->fb_addr, size_t(this->fb_ptr));
 #if 0
     // FIXME: Implement double buffer
     if (this->dacula->get_dbl_buf_cr() == 0 && this->vram_banks == 3) {
@@ -822,6 +964,7 @@ void PlatinumCtrl::enable_display() {
         this->blank_on = true;
         this->crtc_on = false;
         this->blank_display();
+        LOG_F(PLATINUM, "%s: display not enabled", this->name.c_str());
         return;
     }
 
@@ -853,6 +996,7 @@ void PlatinumCtrl::enable_display() {
 void PlatinumCtrl::disable_display() {
     this->crtc_on = false;
     this->blank_display();
+    LOG_F(PLATINUM, "%s: display disabled", this->name.c_str());
 }
 
 void PlatinumCtrl::change_display() {
