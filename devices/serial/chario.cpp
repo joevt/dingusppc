@@ -448,7 +448,7 @@ bool CharIoSocket::rcv_char_available_now()
             }
         } // if this->acceptfd
     }
-    else
+    if (!havechars)
         this->reset_consecutive_chars();
     return havechars;
 }
