@@ -479,11 +479,18 @@ int CharIoSocket::xmit_chars(uint8_t *buf, int len)
 int CharIoSocket::rcv_chars(uint8_t *buf, int len)
 {
     if (this->acceptfd != -1) {
-        int received = (int)recv(this->acceptfd, buf, len, 0);
+        // The emulator's CPU thread must NEVER block so use MSG_DONTWAIT.
+        int received = (int)recv(this->acceptfd, buf, len, MSG_DONTWAIT);
         if (received <= 0) {
             if (received == -1) {
-                LOG_F(INFO, "%s: socket \"%s\" accept read err: %s",
-                    this->get_name().c_str(), this->path.c_str(), strerror(errno));
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    LOG_F(INFO, "%s: socket \"%s\" accept read err: %s",
+                        this->get_name().c_str(), this->path.c_str(), strerror(errno));
+                }
+                else {
+                    LOG_F(ERROR, "%s: socket \"%s\" accept read err: %s",
+                        this->get_name().c_str(), this->path.c_str(), strerror(errno));
+                }
             }
             else {
                 LOG_F(INFO, "%s: socket \"%s\" accept read %d", this->get_name().c_str(), this->path.c_str(), received);
