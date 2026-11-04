@@ -409,6 +409,10 @@ if (g_auto_grab_mouse) {
         this->update_window_title();
         break;
 
+    case DPPC_WINDOWEVENT_FPS_TOGGLE:
+        this->set_show_fps(!this->get_show_fps());
+        break;
+
     }
 }
 
@@ -562,6 +566,18 @@ if (g_auto_grab_mouse) {
         impl->cursor_rect.x = cursor_x * impl->renderer_scale_x + impl->dest_rect.x;
         impl->cursor_rect.y = cursor_y * impl->renderer_scale_y + impl->dest_rect.y;
         SDL_RenderTexture(impl->renderer, impl->cursor_texture, NULL, &impl->cursor_rect);
+    }
+
+    if (this->get_show_fps()) {
+        float scale_x, scale_y;
+        SDL_GetRenderScale(impl->renderer, &scale_x, &scale_y);
+        SDL_SetRenderScale(impl->renderer, impl->default_scale_x, impl->default_scale_y);
+        SDL_SetRenderDrawColor(impl->renderer, 255, 255, 0, 255);
+        float y_pos = std::round(impl->drawable_h / impl->default_scale_y);
+        SDL_RenderDebugTextFormat(impl->renderer, 5.0, y_pos - 30, "virt:%7.2f Hz", video_ctrl->get_fps_virt());
+        SDL_RenderDebugTextFormat(impl->renderer, 5.0, y_pos - 20, "real:%7.2f Hz", video_ctrl->get_fps_real());
+        SDL_RenderDebugTextFormat(impl->renderer, 5.0, y_pos - 10, "draw:%7.2f Hz", video_ctrl->get_fps_draw());
+        SDL_SetRenderScale(impl->renderer, scale_x, scale_y);
     }
 
     SDL_RenderPresent(impl->renderer);

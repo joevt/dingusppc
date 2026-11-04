@@ -92,6 +92,9 @@ public:
     void convert_frame_32bpp(uint8_t *dst_buf, int dst_pitch, bool swapper = false);
 
     double get_refresh_rate() { return this->refresh_rate; };
+    double get_fps_virt();
+    double get_fps_real();
+    double get_fps_draw();
 
 protected:
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
@@ -145,6 +148,13 @@ protected:
 
 private:
     Display display;
+
+    unsigned int frame_virt = 0;
+    unsigned int frame_real = 0;
+    unsigned int frame_draw = 0;
+    uint64_t times_virt[8];
+    uint64_t times_real[8];
+    uint64_t times_draw[8];
 };
 
 class PCIVideoCtrl : public PCIDevice, public VideoCtrlBase {

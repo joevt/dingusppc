@@ -369,6 +369,16 @@ void EventManager::poll_events() {
                     this->_keyboard_signal.emit(ke);
                     break;
                 }
+                // Control-V: overlay
+                if (event.key.key == SDLK_V && (event.key.mod & KMOD_ALL) == SDL_KMOD_LCTRL) {
+                    if (event.type == SDL_EVENT_KEY_UP) {
+                        WindowEvent we;
+                        we.sub_type = DPPC_WINDOWEVENT_FPS_TOGGLE;
+                        we.window_id = event.key.windowID;
+                        this->_window_signal.emit(we);
+                    }
+                    return;
+                }
                 if (event.key.key == SDLK_CAPSLOCK &&
                     ((!!(event.key.mod & SDL_KMOD_CAPS)) != (event.type == SDL_EVENT_KEY_DOWN))
                 ) {

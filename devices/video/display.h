@@ -84,6 +84,8 @@ public:
     void update_window_title();
     void toggle_mouse_grab();
     void update_mouse_grab(bool will_be_grabbed);
+    bool get_show_fps() { return this->show_fps; }
+    bool set_show_fps(bool do_show_fps) { this->show_fps = do_show_fps; }
 private:
     class Impl; // Holds private fields
     std::unique_ptr<Impl> impl;
@@ -95,6 +97,7 @@ private:
     bool is_set_full_screen = false;
     double scale_full_screen;
     double scale_window;
+    bool show_fps = false;
 };
 
 #endif // DISPLAY_H

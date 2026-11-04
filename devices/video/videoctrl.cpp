@@ -23,6 +23,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <core/memaccess.h>
 #include <core/timermanager.h>
+#include <cpu/ppc/ppcemu.h>
 #include <devices/common/hwinterrupt.h>
 #include <devices/video/displayid.h>
 #include <devices/video/videoctrl.h>
@@ -133,6 +134,12 @@ void VideoCtrlBase::start_refresh_task() {
                 }
             );
 
+            this->times_virt[(this->frame_virt++) & 7] = timeout_ns;
+            uint64_t host_time = cpu_now_ns();
+            this->times_real[(this->frame_real++) & 7] = host_time;
+            if (this->draw_fb)
+                this->times_draw[(this->frame_draw++) & 7] = host_time;
+
             this->update_screen();
         }
     );
@@ -145,6 +152,27 @@ void VideoCtrlBase::stop_refresh_task() {
     if (this->vbl_end_timer.active) {
         TimerManager::get_instance()->cancel_timer(this->vbl_end_timer);
     }
+}
+
+double VideoCtrlBase::get_fps_virt() {
+    if (this->frame_virt >= 8)
+        return 7000000000.0 / (this->times_virt[(this->frame_virt - 1) & 7] - this->times_virt[this->frame_virt & 7]);
+    else
+        return 0;
+}
+
+double VideoCtrlBase::get_fps_real() {
+    if (this->frame_real >= 8)
+        return 7000000000.0 / (this->times_real[(this->frame_real - 1) & 7] - this->times_real[this->frame_real & 7]);
+    else
+        return 0;
+}
+
+double VideoCtrlBase::get_fps_draw() {
+    if (this->frame_draw >= 8)
+        return 7000000000.0 / (this->times_draw[(this->frame_draw - 1) & 7] - this->times_draw[this->frame_draw & 7]);
+    else
+        return 0;
 }
 
 void VideoCtrlBase::get_palette_color(uint8_t index, uint8_t& r, uint8_t& g,
