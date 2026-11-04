@@ -79,6 +79,8 @@ public:
     template <VideoCtrlBase::fb_endian endian>
     void convert_frame_32bpp(uint8_t *dst_buf, int dst_pitch, bool swapper = false);
 
+    double get_refresh_rate() { return this->refresh_rate; };
+
 protected:
 #if SUPPORTS_MEMORY_CTRL_ENDIAN_MODE
     virtual bool framebuffer_in_main_memory(void) {

@@ -61,6 +61,7 @@ public:
     double          drawable_h;
     SDL_FRect       dest_rect;
     SDL_ScaleMode   scale_mode = SDL_SCALEMODE_NEAREST;
+    double          refresh_rate = 0;
 };
 
 Display::Display(): impl(std::make_unique<Impl>()) {
@@ -454,16 +455,21 @@ void Display::update_window_title()
     SDL_GetWindowSize(impl->display_wnd, &width, &height);
     bool is_grabbed = SDL_GetWindowRelativeMouseMode(impl->display_wnd);
 
-    std::string new_window_title = "DingusPPC Display " +
-        std::to_string(impl->display_w) + "x" + std::to_string(impl->display_h)
-        + " " + std::to_string(int(std::round(impl->renderer_scale_x * 100))) + "%";
-    if (is_grabbed)
-        new_window_title += " (Grabbed, Ctrl+G to release)";
-    else if (!g_auto_grab_mouse || impl->guest_cursor_drawn)
-        new_window_title += " (Press Ctrl+G to grab)";
+    char new_window_title[200];
+    snprintf(new_window_title, sizeof(new_window_title), "DingusPPC Display %dx%d %.2fHz %d%%%s",
+        impl->display_w, impl->display_h,
+        impl->refresh_rate,
+        int(std::round(impl->renderer_scale_x * 100)),
+        is_grabbed ?
+            " (Grabbed, Ctrl+G to release)"
+        : (!g_auto_grab_mouse || impl->guest_cursor_drawn) ?
+            " (Press Ctrl+G to grab)"
+        :
+            ""
+    );
 
-    if (new_window_title != old_window_title)
-        SDL_SetWindowTitle(impl->display_wnd, new_window_title.c_str());
+    if (old_window_title != new_window_title)
+        SDL_SetWindowTitle(impl->display_wnd, new_window_title);
 }
 
 void Display::blank() {
@@ -542,6 +548,14 @@ if (g_auto_grab_mouse) {
         this->update_window_title();
     }
 }
+
+    {
+        double refresh_rate = video_ctrl->get_refresh_rate();
+        if (impl->refresh_rate != refresh_rate) {
+            impl->refresh_rate = refresh_rate;
+            this->update_window_title();
+        }
+    }
 
     // draw HW cursor if enabled
     if (draw_hw_cursor) {
