@@ -758,6 +758,7 @@ template <field_rc rec> extern void power_srq(uint32_t opcode);
 // G5+ instructions
 
 extern uint64_t get_virt_time_ns(void);
+extern uint64_t cpu_now_ns(void);
 
 extern void ppc_main_opcode(PPCOpcode* ppc_opcode_grabber, uint32_t opcode);
 extern void ppc_exec(void);

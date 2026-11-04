@@ -396,11 +396,11 @@ void ppc_main_opcode(PPCOpcode *opcodeGrabber, uint32_t opcode)
 #endif
 }
 
-static long long cpu_now_ns() {
+uint64_t cpu_now_ns() {
 #ifdef __APPLE__
     return clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
 #else
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+    return (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 #endif
 }
