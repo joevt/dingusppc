@@ -774,6 +774,8 @@ static int get_sdl_event_key_code(const SDL_KeyboardEvent &event, uint32_t kbd_l
     case SDLK_PRINTSCREEN:  return AdbKey_F13;
     case SDLK_SCROLLLOCK:   return AdbKey_F14;
     case SDLK_PAUSE:        return AdbKey_F15;
+
+    case SDLK_F19:          return AdbKey_Power;
     }
 
     // International keyboard support - check by scancode
