@@ -321,6 +321,10 @@ uint32_t AMIC::read(uint32_t /*rgn_start*/, uint32_t offset, int size)
     }
 
     switch(offset) {
+    case AMICReg::Ariel_Clut_Index:
+        return this->def_vid->get_clut_index();
+    case AMICReg::Ariel_Clut_Color:
+        return this->def_vid->get_clut_color();
     case AMICReg::Ariel_Config:
         return this->def_vid->get_vdac_config();
     case AMICReg::VIA2_Slot_IFR:

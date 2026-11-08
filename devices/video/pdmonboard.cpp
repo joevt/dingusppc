@@ -117,6 +117,24 @@ void PdmOnboardVideo::set_clut_color(uint8_t color)
     }
 }
 
+uint8_t PdmOnboardVideo::get_clut_index()
+{
+    return this->clut_index;
+    this->comp_index = 0;
+}
+
+uint8_t PdmOnboardVideo::get_clut_color()
+{
+    uint8_t color = this->clut_color[this->comp_index++];
+    if (this->comp_index >= 3) {
+        this->clut_index++;
+        this->comp_index = 0;
+        this->get_palette_color(this->clut_index, this->clut_index,
+            clut_color[0], clut_color[1], clut_color[2]);
+    }
+    return color;
+}
+
 void PdmOnboardVideo::set_depth_internal(int width)
 {
     switch (this->pixel_depth) {
