@@ -275,16 +275,21 @@ PPCOpcode* ppc_opcode_grabber = OpcodeGrabberNoFPU;
 /** Exception helpers. */
 
 void ppc_illegalop(uint32_t opcode) {
-    // Zero values are used as sentinels in the TNT ROM and are thus somewhat
-    // common, don't log them.
-    // Example: ciexit in Old World Open Firmware uses opcode 0.
-    if (opcode) {
-        PPCDisasmContext ctx;
-        ctx.instr_code = opcode;
-        ctx.instr_addr = 0;
-        ctx.simplified = false;
-        auto op_name = disassemble_single(&ctx);
-        LOG_F(WARNING, "Illegal opcode exception raised for 0x%08x (decoded as %s). The PC was 0x%08x.", opcode, op_name.c_str(), ppc_state.pc);
+    switch (opcode) {
+        case 0:
+            // Zero values are used as sentinels in the TNT ROM and are thus somewhat
+            // common, don't log them.
+            // Example: ciexit in Old World Open Firmware uses opcode 0.
+        case 0x7d0c42e6: // `mftbl r8` used by MacsBug on pm6100
+            break;
+        default:
+            PPCDisasmContext ctx;
+            ctx.instr_code = opcode;
+            ctx.instr_addr = 0;
+            ctx.simplified = false;
+            auto op_name = disassemble_single(&ctx);
+            LOG_F(WARNING, "Illegal opcode exception raised for 0x%08x (decoded as %s). The PC was 0x%08x.",
+                opcode, op_name.c_str(), ppc_state.pc);
     }
 
     ppc_exception_handler(Except_Type::EXC_PROGRAM, Exc_Cause::ILLEGAL_OP);
