@@ -363,7 +363,7 @@ rom_info rom_identity[] = {
     rom( 0x20c400, 0x75d02ea2, "Tangent"        , "P21"      , nullptr  , "Power Mac G4 (Digital Audio)"                      ) // PowerMac3,4 // 2001-10-11 428f1
     rom( 0x20c500, 0x4b5e2dab, "P57"            , "P57"      , nullptr  , "Power Mac G4 Quicksilver"                          ) // PowerMac3,5
     rom( 0x20c500, 0x75d02ea2, "NiChrome"       , "P57"      , nullptr  , "Power Mac G4 Quicksilver"                          ) // PowerMac3,5
-    rom( 0x20c500, 0x79302eaa, "NiChrome"       , "P57"      , nullptr  , "Power Mac G4 Quicksilver"                          ) // PowerMac3,5 // 2001-08-16 425f1
+    rom( 0x20c500, 0x79302eaa, "NiChrome"       , "P57"      , nullptr  , "Power Mac G4 Quicksilver"                          ) // PowerMac3,5 // 2001-08-16 425f1 // 2001-12-21 433f2
     rom( 0x20c600, 0x6ac22d3f, "P58_133"        , "P58"      , nullptr  , "Power Mac G4 (Mirrored Drive Doors)"               ) // PowerMac3,6
     rom( 0x20c600, 0x6e5a2d67, "P58_133"        , "P58"      , nullptr  , "Power Mac G4 (Mirrored Drive Doors)"               ) // PowerMac3,6 // 2002-09-30 448f2
     rom( 0x20c600, 0x79302eaa, "Moj"            , "P58"      , nullptr  , "Power Mac G4 (Mirrored Drive Doors)"               ) // PowerMac3,6
