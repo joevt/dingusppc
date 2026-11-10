@@ -135,6 +135,9 @@ void VideoCtrlBase::start_refresh_task() {
             this->times_virt[(this->frame_virt++) & 7] = timeout_ns;
             uint64_t host_time = cpu_now_ns();
             this->times_real[(this->frame_real++) & 7] = host_time;
+            if (!this->draw_fb && times_draw[(this->frame_draw - 1) & 7] + 1000000000 <= host_time) {
+                this->draw_fb = true;
+            }
             if (this->draw_fb)
                 this->times_draw[(this->frame_draw++) & 7] = host_time;
 
