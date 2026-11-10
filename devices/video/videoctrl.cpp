@@ -69,7 +69,10 @@ void VideoCtrlBase::blank_display() {
 void VideoCtrlBase::update_screen()
 {
     if (this->blank_on) {
-        this->display.blank();
+        if (this->draw_fb) {
+            this->display.blank();
+            this->draw_fb = false;
+        }
         return;
     }
     if (this->draw_fb) {
@@ -86,6 +89,9 @@ void VideoCtrlBase::update_screen()
             this->convert_fb_cb, this->cursor_ovl_cb,
             this->vidc_cursor_on, cursor_x, cursor_y,
             this->draw_fb_is_dynamic);
+        if (this->draw_fb_is_dynamic) {
+            this->draw_fb = false;
+        }
     } else if (this->draw_fb_is_dynamic) {
         this->display.update_skipped();
     }

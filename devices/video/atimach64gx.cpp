@@ -808,31 +808,26 @@ void AtiMach64Gx::crtc_update()
     switch (this->pixel_format) {
     case 2:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_4bpp_indexed(dst_buf, dst_pitch);
         };
         break;
     case 3:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_8bpp_indexed(dst_buf, dst_pitch);
         };
         break;
     case 4:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_15bpp<BE>(dst_buf, dst_pitch);
         };
         break;
     case 5:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_24bpp(dst_buf, dst_pitch);
         };
         break;
     case 6:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_32bpp<BE>(dst_buf, dst_pitch);
         };
         break;

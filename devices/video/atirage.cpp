@@ -1036,45 +1036,38 @@ void ATIRage::crtc_update() {
     switch (this->pixel_format) {
     case ATI_PIX_FMT_4BPP:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_4bpp_indexed(dst_buf, dst_pitch);
         };
         break;
     case ATI_PIX_FMT_8BPP:
         if (bit_set(this->regs[ATI_DAC_CNTL], ATI_DAC_DIRECT)) {
             this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-                draw_fb = false;
                 this->convert_frame_8bpp(dst_buf, dst_pitch);
             };
         }
         else {
             this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-                draw_fb = false;
                 this->convert_frame_8bpp_indexed(dst_buf, dst_pitch);
             };
         }
         break;
     case ATI_PIX_FMT_RGB555:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_15bpp<BE>(dst_buf, dst_pitch);
         };
         break;
     case ATI_PIX_FMT_RGB565:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_16bpp<LE>(dst_buf, dst_pitch);
         };
         break;
     case ATI_PIX_FMT_RGB888:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_24bpp(dst_buf, dst_pitch);
         };
         break;
     case ATI_PIX_FMT_ARGB8888:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            draw_fb = false;
             this->convert_frame_32bpp<BE>(dst_buf, dst_pitch);
         };
         break;

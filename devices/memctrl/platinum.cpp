@@ -936,19 +936,16 @@ void PlatinumCtrl::enable_display() {
     switch (this->pixel_depth) {
     case 8:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            this->draw_fb = false;
             this->convert_frame_8bpp_indexed(dst_buf, dst_pitch);
         };
         break;
     case 16:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            this->draw_fb = false;
             this->convert_frame_15bpp<BE>(dst_buf, dst_pitch);
         };
         break;
     case 32:
         this->convert_fb_cb = [this](uint8_t *dst_buf, int dst_pitch) {
-            this->draw_fb = false;
             this->convert_frame_32bpp<BE>(dst_buf, dst_pitch);
         };
         break;
