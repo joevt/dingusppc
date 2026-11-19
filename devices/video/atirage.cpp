@@ -206,6 +206,7 @@ void ATIRage::notify_bar_change(int bar_num)
 {
     switch (bar_num) {
     case 0:
+        // subtract 4096 because the driver maps BAR 2 there
         change_one_bar(this->aperture_base[bar_num],
                        std::min(this->aperture_size[bar_num] - 4096, BE_FB_OFFSET + this->vram_size),
                        this->bars[bar_num] & ~15, bar_num);
