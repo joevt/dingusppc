@@ -165,7 +165,7 @@ ATIRage::ATIRage(const std::string &dev_name, uint16_t dev_id) :
     insert_bits<uint32_t>(this->regs[ATI_GUI_STAT], 32, ATI_FIFO_CNT, ATI_FIFO_CNT_size);
     set_bit(regs[ATI_CRTC_GEN_CNTL], ATI_CRTC_DISPLAY_DIS); // because blank_on is true
 
-    this->draw_fb_is_dynamic = true;
+    this->set_draw_fb_is_dynamic();
 }
 
 HWComponent* ATIRage::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
@@ -508,7 +508,7 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
             || extract_bits(old_value, ATI_CRTC_PIX_WIDTH, ATI_CRTC_PIX_WIDTH_size) !=
             extract_bits(new_value, ATI_CRTC_PIX_WIDTH, ATI_CRTC_PIX_WIDTH_size)
         ) {
-            draw_fb = true;
+            this->set_draw_fb();
             if (bit_set(new_value, ATI_CRTC_ENABLE) &&
                 !bit_set(new_value, ATI_CRTC_DISPLAY_DIS)) {
                 this->crtc_update();
@@ -520,14 +520,14 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
     case ATI_CUR_CLR1:
         new_value = value;
         this->set_cursor_dirty();
-        draw_fb = true;
+        this->set_draw_fb();
         WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
     case ATI_CUR_OFFSET:
         new_value = value;
         if (old_value != new_value)
             this->set_cursor_dirty();
-        draw_fb = true;
+        this->set_draw_fb();
         WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
     case ATI_CUR_HORZ_VERT_OFF:
@@ -537,12 +537,12 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
             extract_bits<uint32_t>(old_value, ATI_CUR_VERT_OFF, ATI_CUR_VERT_OFF_size)
         )
             this->set_cursor_dirty();
-        draw_fb = true;
+        this->set_draw_fb();
         WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
     case ATI_CUR_HORZ_VERT_POSN:
         new_value = value;
-        draw_fb = true;
+        this->set_draw_fb();
         WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
     case ATI_GP_IO:
@@ -621,7 +621,7 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
                                         color_buf[1], color_buf[2], 0xFF);
                 this->dac_wr_index++; // auto-increment color index
                 this->comp_index = 0; // reset color component index
-                draw_fb = true;
+                this->set_draw_fb();
             }
         }
         break;
@@ -632,7 +632,7 @@ void ATIRage::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size) {
                 this->set_cursor_enable(true);
             else
                 this->set_cursor_enable(false);
-            draw_fb = true;
+            this->set_draw_fb();
             WRITE_VALUE_AND_LOG(ATICURSOR);
             return;
         }
@@ -837,11 +837,11 @@ void ATIRage::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int siz
 {
     if (rgn_start == this->aperture_base[0] && offset < this->aperture_size[0]) {
         if (offset < this->framebuffer_size) { // little-endian VRAM region
-            draw_fb = true;
+            this->set_draw_fb();
             return write_mem(&this->vram_ptr[offset], value, size);
         }
         if (offset >= BE_FB_OFFSET) { // big-endian VRAM region
-            draw_fb = true;
+            this->set_draw_fb();
             return write_mem(&this->vram_ptr[offset & (BE_FB_OFFSET - 1)], value, size);
         }
         //if (!bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_APER_REG_DIS)) {
@@ -1019,7 +1019,7 @@ void ATIRage::crtc_update() {
     if (!need_recalc)
         return;
 
-    this->draw_fb = true;
+    this->set_draw_fb();
     LOG_F(INFO, "%s: clock_sel:%d fb_div:%02x", this->get_name_and_unit_address().c_str(),
         clock_sel, this->plls[VCLK0_FB_DIV + clock_sel]);
 
@@ -1413,7 +1413,7 @@ void ATIRage::fill_rect(uint32_t dst_width, uint32_t dst_height, uint32_t color)
         break;
     }
 
-    this->draw_fb = true;
+    this->set_draw_fb();
 }
 
 void ATIRage::start_host_rect(uint32_t dst_width, uint32_t dst_height) {
@@ -1471,7 +1471,7 @@ void ATIRage::write_host_data(uint32_t value, uint32_t size) {
         if (x >= sc_left && x <= sc_right && y >= sc_top && y <= sc_bottom) {
             uint8_t* dst  = &this->vram_ptr[dst_offs + y * dst_pitch + x];
             *dst          = (*dst & ~write_mask) | (pixel & write_mask);
-            this->draw_fb = true;
+            this->set_draw_fb();
         }
 
         if (++this->host_dst_col >= this->host_dst_width) {
@@ -1621,7 +1621,7 @@ void ATIRage::blit_rect(uint32_t dst_width, uint32_t dst_height) {
         }
     }
 
-    this->draw_fb = true;
+    this->set_draw_fb();
 }
 
 // ================================== Device config ====================================

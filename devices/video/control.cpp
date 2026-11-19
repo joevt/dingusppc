@@ -93,10 +93,10 @@ ControlVideo::ControlVideo(const std::string &dev_name)
     };
     this->radacal->set_clut_entry_cb = [this](uint8_t index, uint8_t *colors) {
         this->set_palette_color(index, colors[0], colors[1], colors[2], 0xFF);
-        this->draw_fb = true;
+        this->set_draw_fb();
     };
     this->radacal->cursor_ctrl_cb = [this](bool cursor_on) {
-        this->draw_fb = true;
+        this->set_draw_fb();
         if (cursor_on) {
             this->radacal->measure_hw_cursor(this->fb_ptr - 16);
             this->cursor_ovl_cb = [this](uint8_t *dst_buf, int dst_pitch) {
@@ -108,10 +108,10 @@ ControlVideo::ControlVideo(const std::string &dev_name)
         }
     };
     this->radacal->cursor_update_cb = [this]() {
-        this->draw_fb = true;
+        this->set_draw_fb();
     };
     this->radacal->buffer_update_cb = [this]() {
-        this->draw_fb = true;
+        this->set_draw_fb();
         if (this->display_enabled) {
             this->update_fb_ptr();
         }
@@ -124,7 +124,7 @@ ControlVideo::ControlVideo(const std::string &dev_name)
     GrandCentral* gc_obj = dynamic_cast<GrandCentral*>(gMachineObj->get_comp_by_name("GrandCentralTnt"));
     gc_obj->add_device(0x1B000, this->radacal);
 
-    this->draw_fb_is_dynamic = true;
+    this->set_draw_fb_is_dynamic();
 }
 
 HWComponent* ControlVideo::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
@@ -455,7 +455,7 @@ uint32_t ControlVideo::read(uint32_t rgn_start, uint32_t offset, int size)
 void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
 {
     if (rgn_start == this->vram_base) {
-        this->draw_fb = true;
+        this->set_draw_fb();
         if (offset & VRAM_BE_APERTURE) {
             if (this->enables & VRAM_WIDE_MODE) {
                 // Note: we ignore access to 4MB range at 0xC00000 because it is undefined for VRAM_WIDE_MODE.
@@ -677,7 +677,7 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
                 LOG_F(CONTROL, "%s: write MISC_ENABLES %03x.%c = %0*x", this->name.c_str(),
                     offset, SIZE_ARG(size), size * 2, value);
             if ((this->enables ^ value) & BLANK_DISABLE) {
-                this->draw_fb = true;
+                this->set_draw_fb();
                 if (value & BLANK_DISABLE)
                     this->blank_on = false;
                 else {
@@ -852,7 +852,7 @@ void ControlVideo::enable_display()
         this->crtc_on = false;
     }
 
-    this->draw_fb = true;
+    this->set_draw_fb();
 }
 
 void ControlVideo::disable_display()

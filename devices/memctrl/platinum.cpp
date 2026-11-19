@@ -78,10 +78,10 @@ PlatinumCtrl::PlatinumCtrl(const std::string &dev_name)
     };
     this->dacula->set_clut_entry_cb = [this](uint8_t index, uint8_t *colors) {
         this->set_palette_color(index, colors[0], colors[1], colors[2], 0xFF);
-        this->draw_fb = true;
+        this->set_draw_fb();
     };
     this->dacula->cursor_ctrl_cb = [this](bool cursor_on) {
-        this->draw_fb = true;
+        this->set_draw_fb();
         this->update_fb_ptr();
         if (cursor_on) {
             this->dacula->measure_hw_cursor(this->fb_ptr - 16);
@@ -94,17 +94,17 @@ PlatinumCtrl::PlatinumCtrl(const std::string &dev_name)
         }
     };
     this->dacula->cursor_update_cb = [this]() {
-        this->draw_fb = true;
+        this->set_draw_fb();
     };
     this->dacula->buffer_update_cb = [this]() {
-        this->draw_fb = true;
+        this->set_draw_fb();
         this->update_fb_ptr();
     };
     this->dacula->video_mode_ctrl_cb = [this]() {
         this->change_display();
     };
 
-    this->draw_fb_is_dynamic = true;
+    this->set_draw_fb_is_dynamic();
 }
 
 PostInitResultType PlatinumCtrl::device_postinit() {
@@ -500,7 +500,7 @@ void PlatinumCtrl::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
 
     if (rgn_start == VRAM_REGION_BASE) {
         if (offset < this->vram_size) {
-            this->draw_fb = true;
+            this->set_draw_fb();
             write_mem(&this->vram_ptr[offset], value, size);
         } else
             LOG_F(WARNING, "%s: write to unmapped aperture address 0x%X",
@@ -987,7 +987,7 @@ void PlatinumCtrl::enable_display() {
 
     this->blank_on = false;
     this->crtc_on = true;
-    this->draw_fb = true;
+    this->set_draw_fb();
 }
 
 void PlatinumCtrl::disable_display() {
@@ -1378,7 +1378,7 @@ void PlatinumCtrl::do_op() {
         }
     }
     if (dst_is_fb)
-        this->draw_fb = true;
+        this->set_draw_fb();
 }
 
 template void PlatinumCtrl::do_op<QDA_OP::FILL, QDA_TYPE::NORMAL, QDA_DIR::REVERSE, uint8_t >();

@@ -53,11 +53,13 @@ public:
     // VideoCtrlBase methods
 
     virtual void update_display_connection() {};
+    virtual void draw_fb_changed(bool new_draw_fb) {};
 
     void handle_events(const WindowEvent& wnd_event);
     void create_display_window(int width, int height);
     void blank_display();
     void update_screen(void);
+    void set_draw_fb_is_dynamic();
     void set_draw_fb();
     void set_cursor_dirty();
     void set_cursor_enable(bool enable);
@@ -123,9 +125,11 @@ protected:
     // Implementations may choose to track framebuffer writes and set draw_fb
     // to false if updates can be skipped. If they do this, they should set
     // draw_fb_is_dynamic at initialization time.
+private:
     bool        draw_fb = true;
     bool        draw_fb_is_dynamic = false;
 
+protected:
     uint32_t    palette[256] = {0}; // internal DAC palette in RGBA format
 
     // Framebuffer parameters

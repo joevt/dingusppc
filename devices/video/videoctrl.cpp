@@ -71,7 +71,10 @@ void VideoCtrlBase::update_screen()
     if (this->blank_on) {
         if (this->draw_fb) {
             this->display.blank();
-            this->draw_fb = false;
+            if (this->draw_fb) {
+                this->draw_fb = false;
+                this->draw_fb_changed(this->draw_fb);
+            }
         }
         return;
     }
@@ -90,15 +93,25 @@ void VideoCtrlBase::update_screen()
             this->vidc_cursor_on, cursor_x, cursor_y,
             this->draw_fb_is_dynamic);
         if (this->draw_fb_is_dynamic) {
-            this->draw_fb = false;
+            if (this->draw_fb) {
+                this->draw_fb = false;
+                this->draw_fb_changed(this->draw_fb);
+            }
         }
     } else if (this->draw_fb_is_dynamic) {
         this->display.update_skipped();
     }
 }
 
+void VideoCtrlBase::set_draw_fb_is_dynamic() {
+    this->draw_fb_is_dynamic = true;
+}
+
 void VideoCtrlBase::set_draw_fb() {
-    this->draw_fb = true;
+    if (!this->draw_fb) {
+        this->draw_fb = true;
+        this->draw_fb_changed(this->draw_fb);
+    }
 }
 
 void VideoCtrlBase::set_cursor_dirty() {
@@ -142,7 +155,7 @@ void VideoCtrlBase::start_refresh_task() {
             uint64_t host_time = cpu_now_ns();
             this->times_real[(this->frame_real++) & 7] = host_time;
             if (!this->draw_fb && times_draw[(this->frame_draw - 1) & 7] + 1000000000 <= host_time) {
-                this->draw_fb = true;
+                this->set_draw_fb();
             }
             if (this->draw_fb)
                 this->times_draw[(this->frame_draw++) & 7] = host_time;

@@ -173,7 +173,7 @@ AtiMach64Gx::AtiMach64Gx(const std::string &dev_name)
 
     set_bit(regs[ATI_CRTC_GEN_CNTL], ATI_CRTC_DISPLAY_DIS); // because blank_on is true
 
-    this->draw_fb_is_dynamic = true;
+    this->set_draw_fb_is_dynamic();
 }
 
 HWComponent* AtiMach64Gx::set_property(const std::string &property, const std::string &value, int32_t unit_address) {
@@ -570,7 +570,7 @@ void AtiMach64Gx::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size)
         WRITE_VALUE_AND_LOG(ATIMACH64);
 
         if (bit_changed(old_value, new_value, ATI_CRTC_ENABLE)) {
-            draw_fb = true;
+            this->set_draw_fb();
             this->crtc_update();
         }
         return;
@@ -588,14 +588,14 @@ void AtiMach64Gx::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size)
     case ATI_CUR_CLR1:
         new_value = value;
         this->set_cursor_dirty();
-        draw_fb = true;
+        this->set_draw_fb();
         WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
     case ATI_CUR_OFFSET:
         new_value = value;
         if (old_value != new_value)
             this->set_cursor_dirty();
-        draw_fb = true;
+        this->set_draw_fb();
         WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
     case ATI_CUR_HORZ_VERT_OFF:
@@ -605,12 +605,12 @@ void AtiMach64Gx::write_reg(uint32_t reg_offset, uint32_t value, uint32_t size)
             extract_bits<uint32_t>(old_value, ATI_CUR_VERT_OFF, ATI_CUR_VERT_OFF_size)
         )
             this->set_cursor_dirty();
-        draw_fb = true;
+        this->set_draw_fb();
         WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
     case ATI_CUR_HORZ_VERT_POSN:
         new_value = value;
-        draw_fb = true;
+        this->set_draw_fb();
         WRITE_VALUE_AND_LOG(ATICURSOR);
         return;
     case ATI_DAC_REGS:
@@ -665,7 +665,7 @@ void AtiMach64Gx::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int
 {
     if (rgn_start == this->aperture_base[0]) {
         if (offset < this->vram_size) {
-            draw_fb = true;
+            this->set_draw_fb();
             return write_mem(&this->vram_ptr[offset], value, size);
         }
         if (offset >= this->mm_regs_offset && offset < this->mm_regs_offset + 0x400) {
@@ -793,7 +793,7 @@ void AtiMach64Gx::crtc_update()
     if (!need_recalc)
         return;
 
-    this->draw_fb = true;
+    this->set_draw_fb();
 
     // calculate display refresh rate
     this->refresh_rate = this->pixel_clock / this->hori_total / this->vert_total;
@@ -1017,7 +1017,7 @@ void AtiMach64Gx::rgb514_write_reg(uint8_t reg_addr, uint8_t value)
                                     clut_color[1], clut_color[2], 0xFF);
             this->clut_index++;
             this->comp_index = 0;
-            draw_fb = true;
+            this->set_draw_fb();
         }
         break;
     case Rgb514::CLUT_MASK:
