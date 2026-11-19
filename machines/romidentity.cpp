@@ -90,6 +90,7 @@ rom_info rom_identity[] = {
       .rom_description        = rom_desc },
 
     rom( 0x077d20f2, 0x9feb69b3, 0xdedc602cfc3b9221, "Boot PDM 601 1.0", "pm6100"  , "NuBus Power Mac"            , "Power Mac 6100 & 7100 & 8100"                      )
+    rom( 0x077d21f2, 0x9a5dc01f, 0x410b30fb3fabf403, "Boot STP 601 0.0", nullptr   , "Quadra/Centris PPC Upgrade" , "Apple Power Macintosh Upgrade Card"                )
     rom( 0x077d22f1, 0x9c7c98f7, 0xe9220fe5992ffdf2, "Boot PDM 601 1.0", "pm9150"  , "NuBus Power Mac"            , "Workgroup Server 9150-80"                          )
     rom( 0x077d23f1, 0x9b7a3aad, 0xed510ac937721e25, "Boot PDM 601 1.1", "pm7100"  , "NuBus Power Mac"            , "Power Mac 7100 (newer)"                            )
     rom( 0x077d25f1, 0x9b037f6f, 0xd20052bd25d88bd6, "Boot PDM 601 1.1", "pm9150"  , "NuBus Power Mac"            , "Workgroup Server 9150-120"                         )
