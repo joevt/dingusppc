@@ -276,7 +276,7 @@ void Display::configure_texture() {
 
     impl->disp_texture = SDL_CreateTexture(
         impl->renderer,
-        SDL_PIXELFORMAT_ARGB8888,
+        SDL_PIXELFORMAT_XRGB8888,
         SDL_TEXTUREACCESS_STREAMING,
         impl->display_w, impl->display_h
     );
