@@ -72,17 +72,15 @@ void VideoCtrlBase::update_screen()
         this->display.blank();
         return;
     }
-
-    int cursor_x = 0;
-    int cursor_y = 0;
-    if (this->vidc_cursor_on) {
-        this->vidc_get_cursor_position(cursor_x, cursor_y);
-    }
-
     if (this->draw_fb) {
-        if (this->vidc_cursor_on && this->cursor_dirty) {
-            this->vidc_setup_hw_cursor();
-            this->cursor_dirty = false;
+        int cursor_x = 0;
+        int cursor_y = 0;
+        if (this->vidc_cursor_on) {
+            this->vidc_get_cursor_position(cursor_x, cursor_y);
+            if (this->cursor_dirty) {
+                this->vidc_setup_hw_cursor();
+                this->cursor_dirty = false;
+            }
         }
         this->display.update(
             this->convert_fb_cb, this->cursor_ovl_cb,
