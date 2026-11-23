@@ -30,6 +30,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <cinttypes>
 
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_CONFIG_READ = loguru::Verbosity_9,
+    };
+}
+
 const uint8_t MultiplyDeBruijnBitPosition2[] =
 {
     0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
@@ -204,6 +210,13 @@ void BanditHost::setup_mem_regions(uint32_t base_addr)
         cfg_setup(offset, (unsigned)size, bus_num, dev_num, fun_num, reg_offs, details, device);
         ACCESSDETAILS_FLAGS_SET(details, PCI_CONFIG_READ);
         if (device) {
+            LOG_F(
+                CONFIG_READ,
+                "%s: read PCI device %02x:%02x.%x @%02x.%c = %0*x",
+                this->name.c_str(), bus_num, dev_num, fun_num, reg_offs + ACCESSDETAILS_OFFSET(details),
+                SIZE_ARG(ACCESSDETAILS_SIZE(details)),
+                ACCESSDETAILS_SIZE(details) * 2, BYTESWAP_SIZED(0, ACCESSDETAILS_SIZE(details))
+            );
             uint32_t value = device->pci_cfg_read(reg_offs, details);
             // bytes 4 to 7 are random on bandit but
             // we choose to repeat bytes 0 to 3 like grackle
