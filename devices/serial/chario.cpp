@@ -128,7 +128,7 @@ int CharIoStdin::rcv_enable() {
 
     this->stdio_inited = true;
 
-    LOG_F(INFO, "Winterm: receiver initialized");
+    LOG_F(INFO, "%s: Winterm: receiver initialized", this->get_name().c_str());
 
     return 0;
 }
@@ -146,7 +146,7 @@ void CharIoStdin::rcv_disable() {
 
     this->stdio_inited = false;
 
-    LOG_F(INFO, "Winterm: receiver disabled");
+    LOG_F(INFO, "%s: Winterm: receiver disabled", this->get_name().c_str());
 }
 
 bool CharIoStdin::rcv_char_available_now() {
@@ -303,15 +303,16 @@ CharIoSocket::CharIoSocket(const std::string &name, const std::string &path) : C
         auto& sockinfo = SocketCache::get_instance()->sockets[path];
         this->sockfd = sockinfo.sockfd;
         this->acceptfd = sockinfo.acceptfd;
-        LOG_F(INFO, "using existing socket \"%s\"", path.c_str());
+        LOG_F(INFO, "%s: using existing socket \"%s\"", this->get_name().c_str(), path.c_str());
     } else do {
         rc = unlink(path.c_str());
         if (rc == 0) {
-            LOG_F(INFO, "socket \"%s\" unlinked", path.c_str());
+            LOG_F(INFO, "%s: socket \"%s\" unlinked", this->get_name().c_str(), path.c_str());
         }
         else if (errno != ENOENT) {
             int err = errno;
-            LOG_F(INFO, "socket \"%s\" unlink result:%d err:%d = %s", this->path.c_str(), rc, err, strerror(err));
+            LOG_F(INFO, "%s: socket \"%s\" unlink result:%d err:%d = %s",
+                this->get_name().c_str(), this->path.c_str(), rc, err, strerror(err));
             break;
         }
 
@@ -322,13 +323,13 @@ CharIoSocket::CharIoSocket(const std::string &name, const std::string &path) : C
 
         this->sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
         if (this->sockfd == -1) {
-            LOG_F(INFO, "socket \"%s\" create err: %s", this->path.c_str(), strerror(errno));
+            LOG_F(INFO, "%s: socket \"%s\" create err: %s", this->get_name().c_str(), this->path.c_str(), strerror(errno));
             break;
         }
 
         rc = bind(this->sockfd, (sockaddr*)(&address), sizeof(address));
         if (rc == -1) {
-            LOG_F(INFO, "socket \"%s\" bind err: %s", this->path.c_str(), strerror(errno));
+            LOG_F(INFO, "%s: socket \"%s\" bind err: %s", this->get_name().c_str(), this->path.c_str(), strerror(errno));
             close(this->sockfd);
             this->sockfd = -1;
             break;
@@ -336,13 +337,13 @@ CharIoSocket::CharIoSocket(const std::string &name, const std::string &path) : C
 
         rc = listen(this->sockfd, 1);
         if (rc == -1) {
-            LOG_F(INFO, "socket \"%s\" listen err: %s", this->path.c_str(), strerror(errno));
+            LOG_F(INFO, "%s: socket \"%s\" listen err: %s", this->get_name().c_str(), this->path.c_str(), strerror(errno));
             close(this->sockfd);
             this->sockfd = -1;
             break;
         }
 
-        LOG_F(INFO, "socket \"%s\" listen %d", this->path.c_str(), this->sockfd);
+        LOG_F(INFO, "%s: socket \"%s\" listen %d", this->get_name().c_str(), this->path.c_str(), this->sockfd);
 
         SocketCache::get_instance()->sockets[path].sockfd = this->sockfd;
         SocketCache::get_instance()->sockets[path].acceptfd = -1;
@@ -469,10 +470,11 @@ int CharIoSocket::xmit_char(uint8_t c)
         int sent = (int)send(this->acceptfd, &c, 1, 0);
         if (sent != 1) {
             if (sent == -1) {
-                LOG_F(INFO, "socket \"%s\" accept write err: %s", this->path.c_str(), strerror(errno));
+                LOG_F(INFO, "%s: socket \"%s\" accept write err: %s",
+                    this->get_name().c_str(), this->path.c_str(), strerror(errno));
             }
             else {
-                LOG_F(INFO, "socket \"%s\" accept write %d", this->path.c_str(), sent);
+                LOG_F(INFO, "%s: socket \"%s\" accept write %d", this->get_name().c_str(), this->path.c_str(), sent);
             }
             this->close_accept_fd();
         }
@@ -489,10 +491,11 @@ int CharIoSocket::rcv_char(uint8_t *c)
         int received = (int)recv(this->acceptfd, c, 1, 0);
         if (received != 1) {
             if (received == -1) {
-                LOG_F(ERROR, "socket \"%s\" accept read err: %s", this->path.c_str(), strerror(errno));
+                LOG_F(INFO, "%s: socket \"%s\" accept read err: %s",
+                    this->get_name().c_str(), this->path.c_str(), strerror(errno));
             }
             else {
-                LOG_F(INFO, "socket \"%s\" accept read %d", this->path.c_str(), received);
+                LOG_F(INFO, "%s: socket \"%s\" accept read %d", this->get_name().c_str(), this->path.c_str(), received);
             }
             this->close_accept_fd();
         }
@@ -502,7 +505,7 @@ int CharIoSocket::rcv_char(uint8_t *c)
 
 void CharIoSocket::close_accept_fd()
 {
-    LOG_F(INFO, "socket \"%s\" accept close", this->path.c_str());
+    LOG_F(INFO, "%s: socket \"%s\" accept close", this->get_name().c_str(), this->path.c_str());
     close(acceptfd);
     acceptfd = -1;
     SocketCache::get_instance()->sockets[this->path].acceptfd = acceptfd;
