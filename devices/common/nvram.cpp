@@ -36,8 +36,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 namespace loguru {
     enum : Verbosity {
-        Verbosity_NVRAM_R = loguru::Verbosity_9,
-        Verbosity_NVRAM_W = loguru::Verbosity_9,
+        Verbosity_NVRAM_R = loguru::Verbosity_INFO,
+        Verbosity_NVRAM_W = loguru::Verbosity_INFO,
     };
 }
 
