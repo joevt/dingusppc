@@ -64,6 +64,7 @@ public:
 
     // VideoCtrlBase methods
     void update_display_connection() override;
+    void draw_fb_changed(bool new_draw_fb) override;
 
     // I/O space access methods
     bool pci_io_read(uint32_t offset, uint32_t size, uint32_t* res) override;

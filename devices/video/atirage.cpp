@@ -1181,6 +1181,17 @@ void ATIRage::update_display_connection()
     this->regs[ATI_GP_IO] = ((mon_code & 6) << 11) | ((mon_code & 1) << 8);
 }
 
+void ATIRage::draw_fb_changed(bool new_draw_fb)
+{
+    if (new_draw_fb) {
+        if (this->rgn0_0) this->rgn0_0->type |= RT_RAM;
+        if (this->rgn0_1) this->rgn0_1->type |= RT_RAM;
+    } else {
+        if (this->rgn0_0) this->rgn0_0->type &= ~RT_RAM;
+        if (this->rgn0_1) this->rgn0_1->type &= ~RT_RAM;
+    }
+}
+
 // =================================== Draw Engine =====================================
 void ATIRage::begin_drawing(uint32_t initiator, uint32_t value) {
     switch(initiator) {
