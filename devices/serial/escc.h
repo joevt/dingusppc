@@ -111,6 +111,8 @@ public:
     void write_reg(int reg_num, uint8_t value);
     void send_byte(uint8_t value);
     uint8_t receive_byte();
+    void send_bytes(uint8_t *buf, int len);
+    int receive_bytes(uint8_t *buf, int len);
     uint8_t get_enh_reg();
     void set_enh_reg(uint8_t value);
     void update_baud_rate();

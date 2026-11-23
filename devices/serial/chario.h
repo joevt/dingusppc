@@ -53,8 +53,8 @@ public:
     virtual void rcv_disable() {}
     virtual bool rcv_char_available();
     virtual bool rcv_char_available_now() = 0;
-    virtual int xmit_char(uint8_t c) = 0;
-    virtual int rcv_char(uint8_t *c) = 0;
+    virtual int xmit_chars(uint8_t *buf, int len) = 0;
+    virtual int rcv_chars(uint8_t *buf, int len) = 0;
     bool is_consecutive_char();
     void increment_consecutive_chars();
     void reset_consecutive_chars();
@@ -92,8 +92,8 @@ public:
     ~CharIoNull() = default;
 
     bool rcv_char_available_now();
-    int xmit_char(uint8_t c);
-    int rcv_char(uint8_t *c);
+    int xmit_chars(uint8_t *buf, int len);
+    int rcv_chars(uint8_t *buf, int len);
 };
 
 /** Stdin character I/O backend. */
@@ -105,8 +105,8 @@ public:
     int rcv_enable();
     void rcv_disable();
     bool rcv_char_available_now();
-    int xmit_char(uint8_t c);
-    int rcv_char(uint8_t *c);
+    int xmit_chars(uint8_t *buf, int len);
+    int rcv_chars(uint8_t *buf, int len);
 
 private:
     static void mysig_handler(int signum);
@@ -122,8 +122,8 @@ public:
     int rcv_enable();
     void rcv_disable();
     bool rcv_char_available_now();
-    int xmit_char(uint8_t c);
-    int rcv_char(uint8_t *c);
+    int xmit_chars(uint8_t *buf, int len);
+    int rcv_chars(uint8_t *buf, int len);
 
 private:
     void check_all_fds(int &sel_rv, fd_set (&sets)[3]);

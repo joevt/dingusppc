@@ -866,22 +866,35 @@ uint8_t EsccChannel::read_reg(int reg_num)
 
 void EsccChannel::send_byte(uint8_t value)
 {
-    // TODO: put one byte into the Data FIFO
+    this->send_bytes(&value, 1);
+}
 
-    this->write_regs[WR8] = value;
-    this->chario->xmit_char(value);
+void EsccChannel::send_bytes(uint8_t *buf, int len)
+{
+    // TODO: put bytes into the Data FIFO
+    if (len > 0) {
+        this->write_regs[WR8] = buf[len - 1];
+        this->chario->xmit_chars(buf, len);
+    }
 }
 
 uint8_t EsccChannel::receive_byte()
 {
-    // TODO: remove one byte from the Receive FIFO
-
     uint8_t c;
-
-    if (this->chario->rcv_char_available_now()) {
-        this->chario->rcv_char(&c);
-    } else {
+    int received = this->receive_bytes(&c, 1);
+    if (received == 0)
         c = 0;
+    return c;
+}
+
+int EsccChannel::receive_bytes(uint8_t *buf, int len)
+{
+    // TODO: remove bytes from the Receive FIFO
+    uint8_t c = 0;
+    if (len > 0) {
+        len = this->chario->rcv_chars(buf, len);
+        if (len > 0)
+            c = buf[len-1];
     }
     this->read_regs[RR0] &= ~RR0_RX_CHARACTER_AVAILABLE;
     this->read_regs[RR8] = c;
@@ -1054,10 +1067,13 @@ int EsccChannel::xfer_from(DmaChannel *ch_obj, uint8_t *buf, int len) {
 
     int bytes_moved = 0;
 
-    while (len > 0 && this->chario->rcv_char_available_now()) {
-        *buf++ = this->receive_byte();
-        len--;
-        bytes_moved++;
+    while (len > 0) {
+        int received = this->receive_bytes(buf, len);
+        if (received == 0)
+            break;
+        buf += received;
+        len -= received;
+        bytes_moved += received;
     }
 
     return bytes_moved;

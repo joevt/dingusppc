@@ -74,14 +74,13 @@ bool CharIoNull::rcv_char_available_now()
     return false;
 }
 
-int CharIoNull::xmit_char(uint8_t /*c*/)
+int CharIoNull::xmit_chars(uint8_t *buf, int len)
 {
     return 0;
 }
 
-int CharIoNull::rcv_char(uint8_t *c)
+int CharIoNull::rcv_chars(uint8_t *buf, int len)
 {
-    *c = 0xFF;
     return 0;
 }
 
@@ -161,14 +160,12 @@ bool CharIoStdin::rcv_char_available_now() {
     return events > 0;
 }
 
-int CharIoStdin::xmit_char(uint8_t c) {
-    _write(_fileno(stdout), &c, 1);
-    return 0;
+int CharIoStdin::xmit_chars(uint8_t *buf, int len) {
+    return _write(_fileno(stdout), buf, len);
 }
 
-int CharIoStdin::rcv_char(uint8_t* c) {
-    _read(_fileno(stdin), c, 1);
-    return 0;
+int CharIoStdin::rcv_chars(uint8_t *buf, int len) {
+    return (int)_read(_fileno(stdin), buf, len);
 }
 
 #else // non-Windows OS (Linux, mac OS etc.)
@@ -267,16 +264,14 @@ bool CharIoStdin::rcv_char_available_now()
     return sel_rv > 0;
 }
 
-int CharIoStdin::xmit_char(uint8_t c)
+int CharIoStdin::xmit_chars(uint8_t *buf, int len)
 {
-    write(STDOUT_FILENO, &c, 1);
-    return 0;
+    return (int)write(STDOUT_FILENO, buf, len);
 }
 
-int CharIoStdin::rcv_char(uint8_t *c)
+int CharIoStdin::rcv_chars(uint8_t *buf, int len)
 {
-    read(STDIN_FILENO, c, 1);
-    return 0;
+    return (int)read(STDIN_FILENO, buf, len);
 }
 
 #endif
@@ -458,17 +453,15 @@ bool CharIoSocket::rcv_char_available_now()
     return havechars;
 }
 
-int CharIoSocket::xmit_char(uint8_t c)
+int CharIoSocket::xmit_chars(uint8_t *buf, int len)
 {
     if (this->get_echo_to_stdout())
-        write(STDOUT_FILENO, &c, 1);
+        write(STDOUT_FILENO, buf, len);
 
-    if (this->acceptfd == -1)
-        this->rcv_char_available_now();
-
+    int sent = 0;
     if (this->acceptfd != -1) {
-        int sent = (int)send(this->acceptfd, &c, 1, 0);
-        if (sent != 1) {
+        sent = (int)send(this->acceptfd, buf, len, 0);
+        if (sent < len) {
             if (sent == -1) {
                 LOG_F(INFO, "%s: socket \"%s\" accept write err: %s",
                     this->get_name().c_str(), this->path.c_str(), strerror(errno));
@@ -479,17 +472,15 @@ int CharIoSocket::xmit_char(uint8_t c)
             this->close_accept_fd();
         }
     }
-    return 0;
+    return sent;
 }
 
-int CharIoSocket::rcv_char(uint8_t *c)
-{
-    if (this->acceptfd == -1)
-        this->rcv_char_available_now();
 
+int CharIoSocket::rcv_chars(uint8_t *buf, int len)
+{
     if (this->acceptfd != -1) {
-        int received = (int)recv(this->acceptfd, c, 1, 0);
-        if (received != 1) {
+        int received = (int)recv(this->acceptfd, buf, len, 0);
+        if (received <= 0) {
             if (received == -1) {
                 LOG_F(INFO, "%s: socket \"%s\" accept read err: %s",
                     this->get_name().c_str(), this->path.c_str(), strerror(errno));
@@ -500,7 +491,7 @@ int CharIoSocket::rcv_char(uint8_t *c)
             this->close_accept_fd();
         }
     }
-    return 0;
+    return len;
 }
 
 void CharIoSocket::close_accept_fd()
