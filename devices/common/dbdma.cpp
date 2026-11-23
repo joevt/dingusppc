@@ -63,22 +63,23 @@ DMACmd* DMAChannel::fetch_cmd(uint32_t cmd_addr, DMACmd* p_cmd, bool *is_writabl
     return cmd_host;
 }
 
-void DMAChannel::init_cmd() {
+void DMAChannel::reset_cmd() {
     this->queue_len = 0;
     this->res_count = 0;
-    this->cmd_in_progress = true;
     this->xfer_dir = DMA_DIR_UNDEF;
     this->ch_stat &= ~CH_STAT_FLUSH;
     this->is_flushing = false;
     this->ch_stat &= ~CH_STAT_WAKE; // clear wake bit (DMA spec, 5.5.3.4)
     this->is_waking = false;
+    this->cmd_in_progress = false;
 }
 
 void DMAChannel::interpret_cmd() {
     DMACmd cmd_struct;
     MapDmaResult res;
 
-    init_cmd();
+    this->reset_cmd();
+    this->cmd_in_progress = true;
 
     this->cur_host = fetch_cmd(this->cmd_ptr, &cmd_struct, &this->cur_is_writable);
     this->cur_guest = this->cmd_ptr;
@@ -542,6 +543,9 @@ void DMAChannel::reg_write(uint32_t offset, uint32_t value, int size) {
                     this->update_irq(this->cur_host->cmd_bits);
                 }
                 this->ch_stat &= ~(CH_STAT_RUN | CH_STAT_ACTIVE | CH_STAT_DEAD | CH_STAT_FLUSH);
+                if (this->interpret_timer.active)
+                    TimerManager::get_instance()->cancel_timer(this->interpret_timer);
+                this->reset_cmd();
             }
         } else if (mask & CH_STAT_PAUSE) {
             if (data & CH_STAT_PAUSE) {

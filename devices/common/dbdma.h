@@ -146,7 +146,7 @@ public:
 
 protected:
     static DMACmd* fetch_cmd(uint32_t cmd_addr, DMACmd* p_cmd, bool *is_writable);
-    void init_cmd();
+    void reset_cmd();
     void interpret_cmd();
     void update_cmd();
     void finish_cmd();
