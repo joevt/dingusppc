@@ -248,7 +248,7 @@ bool CharIoStdin::rcv_char_available_now()
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;
 
-    int sel_rv = select(1, &readfds, NULL, NULL, &timeout);
+    int sel_rv = select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout);
     if (sel_rv > 0)
         consecutivechars++;
     else
