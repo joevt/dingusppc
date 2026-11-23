@@ -48,6 +48,7 @@ public:
     CharIoBackEnd(const std::string &name);
     virtual ~CharIoBackEnd();
 
+    std::string& get_name() { return this->name; }
     virtual int rcv_enable() { return 0; }
     virtual void rcv_disable() {}
     virtual bool rcv_char_available();

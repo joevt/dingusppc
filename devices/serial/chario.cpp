@@ -32,12 +32,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 CharIoBackEnd::CharIoBackEnd(const std::string &name)
 {
     this->name = name;
-    LOG_F(INFO, "Created %s", this->name.c_str());
+    LOG_F(INFO, "Created %s", this->get_name().c_str());
 }
 
 CharIoBackEnd::~CharIoBackEnd()
 {
-    LOG_F(INFO, "Deleted %s", this->name.c_str());
+    LOG_F(INFO, "Deleted %s", this->get_name().c_str());
 }
 
 bool CharIoBackEnd::rcv_char_available()
