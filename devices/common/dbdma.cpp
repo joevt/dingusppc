@@ -262,6 +262,17 @@ void DMAChannel::dbdma_loop_timed(bool is_immediate) {
     if (this->is_threaded && !lk.try_lock())
         return;
 
+    VLOG_SCOPE_F(loguru::Verbosity_DBDMA, "%s: dbdma_loop_timed(%s%s%s%s%s len:%d) (ChannelStatus 0x%04x)",
+        this->get_name().c_str(),
+        is_immediate ? " immediate," : "",
+        this->is_active() ? " active," : "",
+        this->is_paused ? " paused," : "",
+        this->is_flushing ? " flush," : "",
+        this->cmd_in_progress ? " in_progress," : "",
+        this->queue_len,
+        this->ch_stat
+    );
+
     bool continue_loop;
     DBDMA_State state = this->dbdma_loop_iteration();
     switch (state) {
