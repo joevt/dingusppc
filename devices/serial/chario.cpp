@@ -76,6 +76,26 @@ void CharIoBackEnd::reset_consecutive_chars()
     this->consecutivechars = 0;
 }
 
+void CharIoBackEnd::set_text_pacing(bool pacing) {
+    if (pacing) {
+        // 3 = receive fifo size
+        // - For pasting into Open Firmware because read-ahead calls
+        // scc-read with a buffer length of 4 but the buffer gets overrun
+        // because scc-read only checks the buffer length once.
+        chars_consecutive_max = 3;
+
+        // Pasting into Open Firmware drops characters if this is too low.
+        // 100 is too low for iMac 1.3f2
+        chars_consecutive_reset = 110;
+    }
+    else {
+        // max is never reached (because it is greater than reset)
+        // so characters are allways accepted
+        chars_consecutive_max = 1 << 30;
+        chars_consecutive_reset = 1 << 29;
+    }
+}
+
 //======================== NULL character I/O backend ========================
 bool CharIoNull::rcv_char_available_now()
 {

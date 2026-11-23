@@ -67,25 +67,7 @@ public:
     bool get_echo_to_stdout() {
         return this->echo_to_stdout;
     }
-    void set_text_pacing(bool pacing) {
-        if (pacing) {
-            // 6 = receive fifo size (3 characters) x 2
-            // For pasting into Open Firmware because read-ahead calls
-            // scc-read with a buffer length of 4 but the buffer gets overrun because
-            // scc-read only checks the buffer length once
-            chars_consecutive_max = 6;
-
-            // Pasting into Open Firmware drops characters if this is too low.
-            // 110 is too low for iMac 1.3f2
-            chars_consecutive_reset = 120;
-        }
-        else {
-            // max is never reached (because it is greater than reset)
-            // so characters are allways accepted
-            chars_consecutive_max = 1 << 30;
-            chars_consecutive_reset = 1 << 29;
-        }
-    }
+    void set_text_pacing(bool pacing);
     void set_receive_cb(receive_cb_t cb) {
         this->receive_cb = cb;
     }
