@@ -99,8 +99,7 @@ int MachinePdm::initialize(const std::string &id) {
     }
 
     // create machine ID register
-    NubusMacID *nubus_macid = new NubusMacID(machine_id);
-    hmc_obj->add_mmio_region(0x5FFFFFFC, 4, nubus_macid);
+    NubusMacID *nubus_macid = new NubusMacID(machine_id, 0x5FFFFFFC);
     this->add_device(0x5FFFFFFC, nubus_macid);
 
     // allocate ROM region

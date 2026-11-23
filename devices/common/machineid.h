@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef MACHINE_ID_H
 #define MACHINE_ID_H
 
+#include <cpu/ppc/ppcmmu.h>
 #include <devices/common/hwcomponent.h>
 #include <devices/common/mmiodevice.h>
 #include <devices/ioctrl/macio.h>
@@ -48,7 +49,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 class NubusMacID : public MMIODevice {
 public:
-    NubusMacID(const uint16_t id)
+    NubusMacID(const uint16_t id, uint32_t address)
         : HWComponent("Nubus-Machine-id")
     {
         this->id[0] = 0xA5;
@@ -56,17 +57,22 @@ public:
         this->id[2] = (id >> 8) & 0xFF;
         this->id[3] = id & 0xFF;
         supports_types(HWCompType::MMIO_DEV);
+
+        this->id_offset = address & ~PPC_PAGE_MASK;
+        MemCtrlBase *mem_ctrl = dynamic_cast<MemCtrlBase *>
+            (gMachineObj->get_comp_by_type(HWCompType::MEM_CTRL));
+        mem_ctrl->add_mmio_region(address & PPC_PAGE_MASK, PPC_PAGE_SIZE, this);
     }
     ~NubusMacID() = default;
 
-    uint32_t read(uint32_t /*rgn_start*/, uint32_t offset, int size) {
-        if (size == 4 && offset == 0) {
+    uint32_t read(uint32_t rgn_start, uint32_t offset, int size) {
+        if (size == 4 && offset == this->id_offset) {
             return *(uint32_t*)this->id;
         }
-        if (size == 1 && offset < 4) {
-            return this->id[offset];
+        if (size == 1 && offset >= this->id_offset && offset < this->id_offset + 4) {
+            return this->id[offset - this->id_offset];
         }
-        ABORT_F("NubusMacID: invalid read size %d, offset %d!", size, offset);
+        LOG_F(ERROR, "NubusMacID: invalid read size %d, address 0x%x!", size, rgn_start + offset);
         return 0;
     }
 
@@ -75,6 +81,7 @@ public:
 
 private:
     uint8_t id[4];
+    uint32_t id_offset;
 };
 
 namespace loguru {
