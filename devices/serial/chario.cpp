@@ -316,7 +316,7 @@ CharIoSocket::CharIoSocket(const std::string &name, const std::string &path) : C
             break;
         }
 
-        rc = listen(this->sockfd, 100);
+        rc = listen(this->sockfd, 1);
         if (rc == -1) {
             LOG_F(INFO, "socket listen err: %s", strerror(errno));
             close(this->sockfd);
