@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <core/bitops.h>
 #include <core/endianswap.h>
 #include <core/memaccess.h>
+#include <cpu/ppc/ppcmmu.h>
 #include <devices/common/hwcomponent.h>
 #include <devices/common/pci/pcidevice.h>
 #include <devices/deviceregistry.h>
@@ -176,7 +177,6 @@ HWComponent* ATIRage::set_property(const std::string &property, const std::strin
                 int vram = this->get_property_int("gfxmem_size");
                 LOG_F(INFO, "%s: setting VRAM to %d MB", this->get_name_and_unit_address().c_str(), vram);
                 this->vram_size = vram << 20; // convert MBs to bytes
-                this->framebuffer_size = std::min(this->vram_size, ((uint32_t)8 << 20) - 0x800);
                 this->vram_ptr = std::unique_ptr<uint8_t[]> (new uint8_t[this->vram_size]);
                 return this;
             }
@@ -189,13 +189,12 @@ HWComponent* ATIRage::set_property(const std::string &property, const std::strin
 void ATIRage::change_one_bar(uint32_t &aperture, uint32_t aperture_size,
                              uint32_t aperture_new, int bar_num) {
     if (aperture != aperture_new) {
-        if (aperture)
-            this->host_instance->pci_unregister_mmio_region(aperture,
-                                                            aperture_size, this);
-
         aperture = aperture_new;
         if (aperture)
-            this->host_instance->pci_register_mmio_region(aperture, aperture_size, this);
+            switch (bar_num) {
+                case 0: this->setup_bar_0(aperture, aperture_size); break;
+                case 2: this->setup_bar_2(aperture, aperture_size); break;
+            }
 
         LOG_F(INFO, "%s: aperture[%d] set to 0x%08X", this->get_name_and_unit_address().c_str(),
               bar_num, aperture);
@@ -779,114 +778,111 @@ bool ATIRage::pci_io_write(uint32_t offset, uint32_t value, uint32_t size) {
     return true;
 }
 
-uint32_t ATIRage::read(uint32_t rgn_start, uint32_t offset, int size)
+void ATIRage::setup_bar_0(uint32_t aperture, uint32_t aperture_size)
 {
-    if (rgn_start == this->aperture_base[0] && offset < this->aperture_size[0]) {
-        if (offset < this->framebuffer_size) { // little-endian VRAM region
-            return read_mem(&this->vram_ptr[offset], size);
-        }
-        if (offset >= BE_FB_OFFSET) { // big-endian VRAM region
-            return read_mem(&this->vram_ptr[uint64_t(offset) - BE_FB_OFFSET], size);
-        }
-        //if (!bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_APER_REG_DIS)) {
-            if (offset >= MM_REGS_0_OFF) { // memory-mapped registers, block 0
-                uint32_t value = BYTESWAP_SIZED(this->read_reg(offset & 0x3FF, size), size);
-#if 0
-                if ((offset & 0x3ff) < (ATI_GP_IO * 4) || (offset & 0x3ff) > (ATI_GP_IO * 4) + 4) {
-                    LOG_F(INFO, "%s: Read: offset=%x, value=%x, size=%x", this->get_name_and_unit_address().c_str(),
-                        offset & 0x3FF, value, size);
-                }
-#endif
-                return value;
-            }
-            if (offset >= MM_REGS_1_OFF
-                //&& bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_EXT_REG_EN)
-            ) { // memory-mapped registers, block 1
-                uint32_t value = BYTESWAP_SIZED(this->read_reg((offset & 0x3FF) + 0x400, size), size);
-#if 0
-                if (((offset & 0x3ff) + 0x400) < (ATI_GP_IO * 4) || ((offset & 0x3ff) + 0x400) > (ATI_GP_IO * 4) + 4) {
-                    LOG_F(INFO, "%s: Read: offset=%x, value=%x, size=%x", this->get_name_and_unit_address().c_str(),
-                        (offset & 0x3FF) + 0x400, value, size
-                    );
-                }
-#endif
-                return value;
-            }
-        //}
-        LOG_F(WARNING, "%s: read  unmapped aperture[0] region %08x.%c",
-              this->get_name_and_unit_address().c_str(), offset, SIZE_ARG(size));
-        return 0;
-    }
+    MemCtrlBase *mem_ctrl = dynamic_cast<MemCtrlBase *>
+        (gMachineObj->get_comp_by_type(HWCompType::MEM_CTRL));
 
-    if (rgn_start == this->aperture_base[2] && offset < this->aperture_size[2]) {
+    if (rgn0_0) { mem_ctrl->remove_region(rgn0_0); rgn0_0 = nullptr; }
+    if (rgn0_1) { mem_ctrl->remove_region(rgn0_1); rgn0_1 = nullptr; }
+    if (rgn0_2) { mem_ctrl->remove_region(rgn0_2); rgn0_2 = nullptr; }
+
+    // little-endian VRAM region
+    // top 0x800 of 8 MiB is for I/O registers but round that up to 4K for DingusPPC MMU memory regions.
+    rgn0_0 = this->host_instance->pci_register_mmio_region(aperture,
+        std::min(this->vram_size, BE_FB_OFFSET - PPC_PAGE_SIZE), this);
+    rgn0_0->read = [this](uint32_t /*rgn_start*/, uint32_t offset, int size) {
+        return read_mem(&this->vram_ptr[offset], size);
+    };
+    rgn0_0->write = [this](uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
+        this->set_draw_fb();
+        return write_mem(&this->vram_ptr[offset], value, size);
+    };
+
+    // big-endian VRAM region
+    rgn0_1 = this->host_instance->pci_register_mmio_region(aperture + BE_FB_OFFSET,
+        std::min(this->vram_size, aperture_size - BE_FB_OFFSET), this);
+    rgn0_1->read = [this](uint32_t /*rgn_start*/, uint32_t offset, int size) {
+        return read_mem(&this->vram_ptr[offset], size);
+    };
+    rgn0_1->write = [this](uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
+        this->set_draw_fb();
+        return write_mem(&this->vram_ptr[offset], value, size);
+    };
+
+    // last 2K of VRAM or memory-mapped registers block 1 or memory-mapped registers block 0
+    rgn0_2 = this->host_instance->pci_register_mmio_region(aperture + BE_FB_OFFSET - PPC_PAGE_SIZE, PPC_PAGE_SIZE, this);
+    rgn0_2->read = [this](uint32_t rgn_start, uint32_t offset, int size) {
+        uint32_t new_offset;
+        if (offset < 0x800) {
+            new_offset += BE_FB_OFFSET - PPC_PAGE_SIZE;
+            if (new_offset < this->vram_size)
+                return read_mem(&this->vram_ptr[new_offset], size);
+        } else {
+            //if (!bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_APER_REG_DIS)) {
+                new_offset = (offset & 0x7FF) ^ 0x400;
+                //if (new_offset < 0x400 || bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_EXT_REG_EN)) {
+                    uint32_t value = BYTESWAP_SIZED(this->read_reg(new_offset, size), size);
+#if 0
+                    if (new_offset < (ATI_GP_IO * 4) || new_offset > (ATI_GP_IO * 4) + 4) {
+                        LOG_F(INFO, "%s: Read: offset=%x, value=%x, size=%x", this->get_name_and_unit_address().c_str(),
+                            new_offset, value, size);
+                    }
+#endif
+                    return value;
+                //}
+            //}
+        }
+        LOG_F(WARNING, "%s: read  unmapped aperture[0] region %08x.%c",
+            this->get_name_and_unit_address().c_str(), rgn_start + offset, SIZE_ARG(size));
+        return (uint32_t)0;
+    };
+    rgn0_2->write = [this](uint32_t rgn_start, uint32_t offset, uint32_t value, int size) {
+        uint32_t new_offset;
+        if (offset < 0x800) {
+            new_offset += BE_FB_OFFSET - PPC_PAGE_SIZE;
+            if (new_offset < this->vram_size)
+                return write_mem(&this->vram_ptr[new_offset], value, size);
+        }  else {
+            //if (!bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_APER_REG_DIS)) {
+                new_offset = (offset & 0x7FF) ^ 0x400;
+                //if (new_offset < 0x400 || bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_EXT_REG_EN)) {
+#if 0
+                    if (new_offset < (ATI_GP_IO * 4) || new_offset > (ATI_GP_IO * 4) + 4) {
+                        LOG_F(INFO, "%s: Write: offset=%x, value=%x, size=%x", this->get_name_and_unit_address().c_str(),
+                            new_offset, BYTESWAP_SIZED(value, size), size);
+                    }
+#endif
+                    return this->write_reg(new_offset, BYTESWAP_SIZED(value, size), size);
+                //}
+            //}
+        }
+        LOG_F(WARNING, "%s: write unmapped aperture[0] region %08x.%c = %0*x",
+            this->get_name_and_unit_address().c_str(), rgn_start + offset, SIZE_ARG(size), size * 2, value);
+    };
+}
+
+void ATIRage::setup_bar_2(uint32_t aperture, uint32_t aperture_size)
+{
+    MemCtrlBase *mem_ctrl = dynamic_cast<MemCtrlBase *>
+        (gMachineObj->get_comp_by_type(HWCompType::MEM_CTRL));
+
+    if (rgn2_0) { mem_ctrl->remove_region(rgn2_0); rgn2_0 = nullptr; }
+
+    rgn2_0 = this->host_instance->pci_register_mmio_region(aperture, aperture_size, this);
+    rgn2_0->read = [this](uint32_t /*rgn_start*/, uint32_t offset, int size) {
         // The documentation for the Rage LT Pro marks the upper 2KB
         // of the 4KB aux. aperture reserved, but it's used by Mac OS
         // anyway for Rage II. Make it wrap around the 2KB boundary
         // instead.
-        offset &= 0x7ff;
-        if (offset >= MM_STDL_REGS_0_OFF) {
-            return BYTESWAP_SIZED(this->read_reg(offset & 0x3FF, size), size);
-        }
-        // Rest of the region is Block 1.
-        return BYTESWAP_SIZED(this->read_reg((offset & 0x3FF) + 0x400, size), size);
-    }
-
-    return PCIBase::read(rgn_start, offset, size);
-}
-
-void ATIRage::write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size)
-{
-    if (rgn_start == this->aperture_base[0] && offset < this->aperture_size[0]) {
-        if (offset < this->framebuffer_size) { // little-endian VRAM region
-            this->set_draw_fb();
-            return write_mem(&this->vram_ptr[offset], value, size);
-        }
-        if (offset >= BE_FB_OFFSET) { // big-endian VRAM region
-            this->set_draw_fb();
-            return write_mem(&this->vram_ptr[offset & (BE_FB_OFFSET - 1)], value, size);
-        }
-        //if (!bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_APER_REG_DIS)) {
-            if (offset >= MM_REGS_0_OFF) { // memory-mapped registers, block 0
-#if 0
-                if ((offset & 0x3ff) < (ATI_GP_IO * 4) || (offset & 0x3ff) > (ATI_GP_IO * 4) + 4) {
-                    LOG_F(INFO, "%s: Write: offset=%x, value=%x, size=%x", this->get_name_and_unit_address().c_str(),
-                        offset & 0x3FF, BYTESWAP_SIZED(value, size), size
-                    );
-                }
-#endif
-                return this->write_reg(offset & 0x3FF, BYTESWAP_SIZED(value, size), size);
-            }
-            if (offset >= MM_REGS_1_OFF
-                //&& bit_set(this->regs[ATI_BUS_CNTL], ATI_BUS_EXT_REG_EN)
-            ) { // memory-mapped registers, block 1
-#if 0
-                if (((offset & 0x3ff) + 0x400) < (ATI_GP_IO * 4) ||
-                    ((offset & 0x3ff) + 0x400) > (ATI_GP_IO * 4) + 4) {
-                    LOG_F(INFO, "%s: Write: offset=%x, value=%x, size=%x", this->get_name_and_unit_address().c_str(),
-                        (offset & 0x3FF) + 0x400, BYTESWAP_SIZED(value, size), size
-                    );
-                }
-#endif
-                return this->write_reg((offset & 0x3FF) + 0x400,
-                                        BYTESWAP_SIZED(value, size), size);
-            }
-        //}
-        LOG_F(WARNING, "%s: write unmapped aperture[0] region %08x.%c = %0*x",
-              this->get_name_and_unit_address().c_str(), offset, SIZE_ARG(size), size * 2, value);
-        return;
-    }
-
-    if (rgn_start == this->aperture_base[2] && offset < this->aperture_size[2]) {
+        offset = (offset & 0x7FF) ^ 0x400;
+        return BYTESWAP_SIZED(this->read_reg(offset, size), size);
+    };
+    rgn2_0->write = [this](uint32_t /*rgn_start*/, uint32_t offset, uint32_t value, int size) {
         // See the note about wrap around above.
-        offset &= 0x7ff;
-        if (offset >= MM_STDL_REGS_0_OFF) {
-            return this->write_reg(offset & 0x3FF, BYTESWAP_SIZED(value, size), size);
-        }
-        return this->write_reg((offset & 0x3FF) + 0x400, BYTESWAP_SIZED(value, size), size);
-    }
-
-    LOG_F(WARNING, "%s: write unmapped aperture region %08x.%c = %0*x",
-          this->get_name_and_unit_address().c_str(), offset, SIZE_ARG(size), size * 2, value);
+        offset = (offset & 0x7FF) ^ 0x400;
+        return this->write_reg(offset, BYTESWAP_SIZED(value, size), size);
+    };
 }
 
 float ATIRage::calc_pll_freq(int scale, int fb_div) const {

@@ -58,10 +58,6 @@ public:
     PostInitResultType device_postinit() override;
     HWComponent* set_property(const std::string &property, const std::string &value, int32_t unit_address = -1) override;
 
-    // MMIODevice methods
-    uint32_t read(uint32_t rgn_start, uint32_t offset, int size) override;
-    void write(uint32_t rgn_start, uint32_t offset, uint32_t value, int size) override;
-
     // PCIDevice methods
     uint32_t pci_cfg_read(uint32_t reg_offs, const AccessDetails details) override;
     void pci_cfg_write(uint32_t reg_offs, uint32_t value, const AccessDetails details) override;
@@ -88,6 +84,8 @@ protected:
 private:
     void change_one_bar(uint32_t &aperture, uint32_t aperture_size,
                         uint32_t aperture_new, int bar_num);
+    void setup_bar_0(uint32_t aperture, uint32_t aperture_size);
+    void setup_bar_2(uint32_t aperture, uint32_t aperture_size);
     void update_interrupt();
 
     void begin_drawing(uint32_t initiator, uint32_t value);
@@ -113,7 +111,6 @@ private:
     // Video RAM variables
     std::unique_ptr<uint8_t[]>  vram_ptr;
     uint32_t    vram_size;
-    uint32_t    framebuffer_size;
 
     // config 0x40
     uint8_t     user_cfg = 8;
@@ -134,6 +131,11 @@ private:
     uint8_t     dac_mask     = 0;  // current DAC mask
     int         comp_index   = 0;  // current color component index
     uint8_t     color_buf[3] = {}; // buffer for storing DAC color components
+
+    AddressMapEntry* rgn0_0 = nullptr;
+    AddressMapEntry* rgn0_1 = nullptr;
+    AddressMapEntry* rgn0_2 = nullptr;
+    AddressMapEntry* rgn2_0 = nullptr;
 };
 
 #endif // ATI_RAGE_H
