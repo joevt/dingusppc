@@ -238,6 +238,7 @@ DBDMA_State DMAChannel::dbdma_loop_iteration() {
         if (this->queue_len > 0) {
             if (this->is_flushing && this->has_started)
                 this->update_cmd();
+            LOG_F(DBDMA, "%s: TRANSFER", this->get_name().c_str());
             return DBDMA_State::TRANSFER;
         }
     }
@@ -245,15 +246,19 @@ DBDMA_State DMAChannel::dbdma_loop_iteration() {
         this->finish_cmd();
     }
     if (this->cmd_in_progress) {
+        LOG_F(DBDMA, "%s: WAITING", this->get_name().c_str());
         return DBDMA_State::WAITING;
     }
     if (!this->is_active()) {
+        LOG_F(DBDMA, "%s: STOPPED", this->get_name().c_str());
         return DBDMA_State::STOPPED;
     }
     if (this->is_paused) {
+        LOG_F(DBDMA, "%s: PAUSED", this->get_name().c_str());
         return DBDMA_State::PAUSED;
     }
     this->interpret_cmd();
+    LOG_F(DBDMA, "%s: FETCH", this->get_name().c_str());
     return DBDMA_State::FETCH;
 }
 
