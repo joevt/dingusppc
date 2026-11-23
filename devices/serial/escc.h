@@ -141,7 +141,7 @@ public:
 
 private:
     EsccController* controller = nullptr;
-    DmaChannel*     dma_channels[2];
+    DmaChannel*     dma_channels[2] = { nullptr };
 
     uint8_t         read_regs[16] = {};
     uint8_t         write_regs[17] = {};
@@ -162,6 +162,7 @@ private:
     uint32_t        init_regs = 0;
 
     std::unique_ptr<CharIoBackEnd>  chario;
+    TimerInfo receive_timer;
 };
 
 /** ESCC Controller class. */

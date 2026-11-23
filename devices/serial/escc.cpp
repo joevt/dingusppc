@@ -342,6 +342,22 @@ void EsccChannel::attach_backend(int id)
         LOG_F(ERROR, "%s: unknown backend ID %d, using NULL instead", this->get_name_and_unit_address().c_str(), id);
         this->chario = std::unique_ptr<CharIoBackEnd> (new CharIoNull(this->get_name_and_unit_address() + "_CharIoNull"));
     }
+
+    if (this->dma_channels[DIR_RX]) {
+        this->chario->set_receive_cb(
+            [this]() {
+                if (!this->receive_timer.active) {
+                    // receive_cb may be called from a thread but our DMA handler
+                    // is not multithreaded so use a timer to call xfer_retry.
+                    TimerManager::get_instance()->add_immediate_timer(this->receive_timer,
+                        [this](uint64_t, uint64_t) {
+                            // re-enter the sequencer with the state specified in next_state
+                            this->dma_channels[DIR_RX]->xfer_retry();
+                    });
+                }
+            }
+        );
+    }
 }
 
 void EsccChannel::reset(bool hw_reset)

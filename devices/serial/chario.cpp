@@ -21,12 +21,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /** Character I/O backend implementations. */
 
+#include <core/timermanager.h>
 #include <devices/serial/chario.h>
 #include <loguru.hpp>
 
 #include <cinttypes>
 #include <cstring>
 #include <memory>
+#include <thread>
+
+namespace loguru {
+    enum : Verbosity {
+        Verbosity_RECEIVETHREAD = loguru::Verbosity_INFO,
+    };
+}
 
 //======================== BASE character I/O backend ========================
 CharIoBackEnd::CharIoBackEnd(const std::string &name)
@@ -170,6 +178,7 @@ int CharIoStdin::rcv_chars(uint8_t *buf, int len) {
 
 #else // non-Windows OS (Linux, mac OS etc.)
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -296,6 +305,8 @@ CharIoSocket::CharIoSocket(const std::string &name, const std::string &path) : C
 
     if (SocketCache::get_instance()->sockets.count(path)) {
         auto& sockinfo = SocketCache::get_instance()->sockets[path];
+        this->pipefd[0] = sockinfo.pipefd[0];
+        this->pipefd[1] = sockinfo.pipefd[1];
         this->sockfd = sockinfo.sockfd;
         this->acceptfd = sockinfo.acceptfd;
         LOG_F(INFO, "%s: using existing socket \"%s\"", this->get_name().c_str(), path.c_str());
@@ -310,6 +321,16 @@ CharIoSocket::CharIoSocket(const std::string &name, const std::string &path) : C
                 this->get_name().c_str(), this->path.c_str(), rc, err, strerror(err));
             break;
         }
+
+#if defined(__APPLE__)
+        signal(SIGPIPE, SIG_IGN);
+#endif
+        if (pipe(this->pipefd) == -1) {
+            LOG_F(INFO, "%s: pipe create err: %s", this->get_name().c_str(), strerror(errno));
+            break;
+        }
+        fcntl(this->pipefd[0], F_SETFL, O_NONBLOCK);
+        fcntl(this->pipefd[1], F_SETFL, O_NONBLOCK);
 
         sockaddr_un address;
         memset(&address, 0, sizeof(address));
@@ -340,13 +361,19 @@ CharIoSocket::CharIoSocket(const std::string &name, const std::string &path) : C
 
         LOG_F(INFO, "%s: socket \"%s\" listen %d", this->get_name().c_str(), this->path.c_str(), this->sockfd);
 
-        SocketCache::get_instance()->sockets[path].sockfd = this->sockfd;
-        SocketCache::get_instance()->sockets[path].acceptfd = -1;
+        auto& sockinfo = SocketCache::get_instance()->sockets[path];
+        sockinfo.pipefd[0] = this->pipefd[0];
+        sockinfo.pipefd[1] = this->pipefd[1];
+        sockinfo.sockfd = this->sockfd;
+        sockinfo.acceptfd = this->acceptfd;
     } while (0);
+    this->start_receive_thread();
 }
 
 
 CharIoSocket::~CharIoSocket() {
+    // sockfd is closed by SocketCache destructor
+    stop_receive_thread();
     this->sockfd = -1;
 }
 
@@ -369,88 +396,37 @@ void CharIoSocket::rcv_disable()
     this->socket_inited = false;
 }
 
-constexpr int fdsread = 0;
-constexpr int fdswrite = 1;
-constexpr int fdserror = 2;
-static const char* fds_names[3] = { "read", "write", "error" };
-
 bool CharIoSocket::rcv_char_available_now()
 {
-    int sel_rv = 0;
-    bool havechars = false;
-    fd_set fds[3];
+    bool has_char = false;
 
-    if (this->sockfd != -1) {
-        this->check_all_fds(sel_rv, fds);
+    fd_set read_fds;
+    int fd_max;
+    int sel_rv;
+
+    if (acceptfd != -1) {
+        fd_max = -1;
+        FD_ZERO(&read_fds);
+        FD_SET(this->acceptfd, &read_fds); if (this->acceptfd > fd_max) fd_max = this->acceptfd;
+
+        struct timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 0;
+
+        sel_rv = select(fd_max + 1, &read_fds, nullptr, nullptr, &timeout);
+        if (sel_rv == -1) {
+            LOG_F(ERROR, "%s: socket \"%s\" select acceptfd err: %s",
+                this->get_name().c_str(), this->path.c_str(), strerror(errno));
+        }
+        else if (sel_rv > 0 && FD_ISSET(this->acceptfd, &read_fds)) {
+            has_char = true;
+        }
     }
-
-    if (sel_rv > 0) {
-        if (this->sockfd != -1) {
-             if (FD_ISSET(this->sockfd, &fds[fdsread])) {
-                uint8_t c;
-                int received = (int)recv(this->sockfd, &c, 1, 0);
-                if (received == -1) {
-                    if (this->acceptfd == -1) {
-                        #if 0
-                            LOG_F(INFO, "socket \"%s\" sock read (not accepted yet) err: %s",
-                                this->path.c_str(), strerror(errno)); // this happens once before accept
-                        #endif
-                    }
-                    else {
-                        LOG_F(INFO, "socket \"%s\" sock read err: %s",
-                            this->path.c_str(), strerror(errno)); // should never happen
-                    }
-                }
-                else if (received == 1) {
-                    LOG_F(INFO, "socket \"%s\" sock read '%c'", this->path.c_str(), c); // should never happen
-                }
-                else {
-                    LOG_F(INFO, "socket \"%s\" sock read %d", this->path.c_str(), received); // should never happen
-                }
-
-                if (this->acceptfd == -1) {
-                    sockaddr_un acceptfdaddr;
-                    memset(&acceptfdaddr, 0, sizeof(acceptfdaddr));
-                    socklen_t len = sizeof(acceptfdaddr);
-                    this->acceptfd = accept(this->sockfd, (struct sockaddr *) &acceptfdaddr, &len);
-                    if (this->acceptfd == -1) {
-                        LOG_F(INFO, "socket \"%s\" accept err: %s", this->path.c_str(), strerror(errno));
-                    }
-                    else {
-                        LOG_F(INFO, "socket \"%s\" accept %d", this->path.c_str(), this->acceptfd);
-                        SocketCache::get_instance()->sockets[this->path].acceptfd = this->acceptfd;
-                    }
-                }
-            } // if read
-
-            if (FD_ISSET(this->sockfd, &fds[fdswrite])) {
-                LOG_F(INFO, "socket \"%s\" sock write", this->path.c_str());
-            }
-
-            if (FD_ISSET(this->sockfd, &fds[fdserror])) {
-                LOG_F(INFO, "socket \"%s\" sock error", this->path.c_str());
-            }
-        } // if this->sockfd
-
-        if (this->acceptfd != -1) {
-            if (FD_ISSET(this->acceptfd, &fds[fdsread])) {
-                // LOG_F(INFO, "socket \"%s\" accept read havechars", this->path.c_str());
-                havechars = true;
-                this->increment_consecutive_chars();
-            } // if read
-
-            if (FD_ISSET(this->acceptfd, &fds[fdswrite])) {
-                // LOG_F(INFO, "socket \"%s\" accept write", this->path.c_str()); // this is usually always true
-            }
-
-            if (FD_ISSET(this->acceptfd, &fds[fdserror])) {
-                LOG_F(INFO, "socket \"%s\" accept error", this->path.c_str());
-            }
-        } // if this->acceptfd
-    }
-    if (!havechars)
+    if (has_char)
+        this->increment_consecutive_chars();
+    else
         this->reset_consecutive_chars();
-    return havechars;
+    return has_char;
 }
 
 int CharIoSocket::xmit_chars(uint8_t *buf, int len)
@@ -475,6 +451,11 @@ int CharIoSocket::xmit_chars(uint8_t *buf, int len)
     return sent;
 }
 
+enum RECEIVE_THREAD_STATE : uint8_t {
+    RECEIVE_THREAD_ACK,
+    RECEIVE_THREAD_WAITING,
+    RECEIVE_THREAD_STOP,
+};
 
 int CharIoSocket::rcv_chars(uint8_t *buf, int len)
 {
@@ -497,6 +478,8 @@ int CharIoSocket::rcv_chars(uint8_t *buf, int len)
             }
             this->close_accept_fd();
         }
+        RECEIVE_THREAD_STATE pipe_message = RECEIVE_THREAD_ACK;
+        write(this->pipefd[1], &pipe_message, 1);
     }
     return len;
 }
@@ -509,40 +492,148 @@ void CharIoSocket::close_accept_fd()
     SocketCache::get_instance()->sockets[this->path].acceptfd = acceptfd;
 }
 
-void CharIoSocket::check_all_fds(int &sel_rv, fd_set (&fds)[3])
+#define LOG_PIPE_MESSAGE(when) \
+    LOG_F(RECEIVETHREAD, "%s: socket \"%s\" pipe received %s while waiting for " when, \
+        this->get_name().c_str(), \
+        this->path.c_str(), \
+        pipe_message == RECEIVE_THREAD_ACK     ? "ACK"     : \
+        pipe_message == RECEIVE_THREAD_WAITING ? "WAITING" : \
+        pipe_message == RECEIVE_THREAD_STOP    ? "STOP"    : \
+                                                 "UNKNOWN" \
+    )
+
+void CharIoSocket::receive_thread_fn()
 {
-    int fd_max = -1;
+    loguru::set_thread_name(this->get_name().c_str());
 
-    FD_ZERO(&fds[fdsread]);
-    if (this->sockfd != -1) {
-        FD_SET(this->sockfd, &fds[fdsread]);
-        if (this->sockfd > fd_max) fd_max = this->sockfd;
+    if (this->sockfd == -1) {
+        LOG_F(ERROR, "%s: no socket for receive_thread", get_name().c_str());
+        return;
     }
-    if (this->acceptfd != -1) {
-        FD_SET(this->acceptfd, &fds[fdsread]);
-        if (this->acceptfd > fd_max) fd_max = this->acceptfd;
-    }
+    LOG_F(INFO, "%s: receive_thread start", get_name().c_str());
 
-    fds[fdswrite] = fds[fdsread];
-    fds[fdserror] = fds[fdsread];
+    fd_set read_fds;
+    int fd_max;
+    int sel_rv;
+    RECEIVE_THREAD_STATE pipe_message = RECEIVE_THREAD_ACK;
 
-    struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 0;
+    while (pipe_message != RECEIVE_THREAD_STOP) {
 
-    sel_rv = select(fd_max + 1, &fds[fdsread], &fds[fdswrite], &fds[fdserror], &timeout);
-    if (sel_rv == -1) {
-        LOG_F(INFO, "socket \"%s\" select err: %s", this->path.c_str(), strerror(errno));
-    } else {
-        for (int set = 0; set < 3; set++) {
-            for (int fd = 0; fd <= fd_max; fd++) {
-                if (FD_ISSET(fd, &fds[set])) {
-                    if ((sel_rv != 1 && sel_rv != 2) || fd == this->sockfd || set == fdserror)
-                        LOG_F(INFO, "socket \"%s\" sock %d:%sfd %s", this->path.c_str(), fd,
-                            (fd == this->sockfd) ? "sock" : (fd == this->acceptfd) ? "accept" : "", fds_names[set]);
+        while (acceptfd == -1 && pipe_message != RECEIVE_THREAD_STOP) {
+            LOG_F(RECEIVETHREAD, "%s: receive_thread waiting for connection", get_name().c_str());
+
+            fd_max = -1;
+            FD_ZERO(&read_fds);
+            FD_SET(this->sockfd, &read_fds); if (this->sockfd > fd_max) fd_max = this->sockfd;
+            FD_SET(this->pipefd[0], &read_fds); if (this->pipefd[0] > fd_max) fd_max = this->pipefd[0];
+
+            sel_rv = select(fd_max + 1, &read_fds, nullptr, nullptr, nullptr);
+            if (sel_rv == -1) {
+                LOG_F(INFO, "%s: socket \"%s\" select sockfd err: %s", get_name().c_str(), this->path.c_str(), strerror(errno));
+            }
+            else if (sel_rv == 0) {
+                LOG_F(ERROR, "%s: socket \"%s\" select sockfd 0", get_name().c_str(), this->path.c_str());
+            }
+            else {
+                if (FD_ISSET(this->pipefd[0], &read_fds)) {
+                    read(this->pipefd[0], &pipe_message, 1); // Drain the pipe
+                    LOG_PIPE_MESSAGE("connection");
+                    if (pipe_message == RECEIVE_THREAD_STOP)
+                        break;
+                }
+                if (FD_ISSET(this->sockfd, &read_fds)) {
+                    sockaddr_un acceptfdaddr;
+                    memset(&acceptfdaddr, 0, sizeof(acceptfdaddr));
+                    socklen_t len = sizeof(acceptfdaddr);
+                    this->acceptfd = accept(this->sockfd, (struct sockaddr *) &acceptfdaddr, &len);
+                    if (this->acceptfd == -1) {
+                        LOG_F(ERROR, "%s: socket \"%s\" accept err: %s", get_name().c_str(), this->path.c_str(), strerror(errno));
+                    }
+                    else {
+                        LOG_F(INFO, "%s: socket \"%s\" accept %d", get_name().c_str(), this->path.c_str(), this->acceptfd);
+                        SocketCache::get_instance()->sockets[this->path].acceptfd = this->acceptfd;
+                    }
                 }
             }
         }
+
+        while (acceptfd != -1 && pipe_message != RECEIVE_THREAD_STOP) {
+            LOG_F(RECEIVETHREAD, "%s: receive_thread waiting for character", get_name().c_str());
+
+            fd_max = -1;
+            FD_ZERO(&read_fds);
+            FD_SET(this->acceptfd, &read_fds); if (this->acceptfd > fd_max) fd_max = this->acceptfd;
+            FD_SET(this->pipefd[0], &read_fds); if (this->pipefd[0] > fd_max) fd_max = this->pipefd[0];
+
+            sel_rv = select(fd_max + 1, &read_fds, nullptr, nullptr, nullptr);
+            if (sel_rv == -1) {
+                LOG_F(ERROR, "%s: socket \"%s\" select acceptfd err: %s",
+                    get_name().c_str(), this->path.c_str(), strerror(errno));
+            }
+            else if (sel_rv == 0) {
+                LOG_F(ERROR, "%s: socket \"%s\" select acceptfd 0", get_name().c_str(), this->path.c_str());
+            }
+            else {
+                if (FD_ISSET(this->pipefd[0], &read_fds)) {
+                    read(this->pipefd[0], &pipe_message, 1); // Drain the pipe
+                    LOG_PIPE_MESSAGE("character");
+                    if (pipe_message == RECEIVE_THREAD_STOP)
+                        break;
+                }
+                if (FD_ISSET(this->acceptfd, &read_fds)) {
+                    pipe_message = RECEIVE_THREAD_WAITING;
+                    if (this->receive_cb)
+                        this->receive_cb();
+                    break;
+                }
+            }
+        }
+
+        while (acceptfd != -1 && pipe_message == RECEIVE_THREAD_WAITING) {
+            LOG_F(RECEIVETHREAD, "%s: receive_thread waiting for acknowledge", get_name().c_str());
+
+            fd_max = -1;
+            FD_ZERO(&read_fds);
+            FD_SET(this->pipefd[0], &read_fds); if (this->pipefd[0] > fd_max) fd_max = this->pipefd[0];
+
+            sel_rv = select(fd_max + 1, &read_fds, nullptr, nullptr, nullptr);
+            if (sel_rv == -1) {
+                LOG_F(ERROR, "%s: socket \"%s\" select acceptfd err: %s",
+                    get_name().c_str(), this->path.c_str(), strerror(errno));
+            }
+            else if (sel_rv == 0) {
+                LOG_F(ERROR, "%s: socket \"%s\" select acceptfd 0", get_name().c_str(), this->path.c_str());
+            }
+            else {
+                if (FD_ISSET(this->pipefd[0], &read_fds)) {
+                    read(this->pipefd[0], &pipe_message, 1); // Drain the pipe
+                    LOG_PIPE_MESSAGE("acknowledge");
+                }
+            }
+        }
+
+    } // while pipe_message != RECEIVE_THREAD_STOP
+
+    LOG_F(INFO, "%s: stopped receive_thread", get_name().c_str());
+}
+
+void CharIoSocket::start_receive_thread()
+{
+    if (this->sockfd == -1) {
+        LOG_F(ERROR, "%s: no socket for receive_thread", get_name().c_str());
+        return;
+    }
+    LOG_F(INFO, "%s: starting receive_thread", get_name().c_str());
+    this->receive_thread = std::thread(&CharIoSocket::receive_thread_fn, this);
+}
+
+void CharIoSocket::stop_receive_thread()
+{
+    if (this->receive_thread.joinable()) {
+        VLOG_SCOPE_F(loguru::Verbosity_INFO, "%s: stopping receive_thread", get_name().c_str());
+        RECEIVE_THREAD_STATE msg = RECEIVE_THREAD_STOP;
+        write(this->pipefd[1], &msg, 1);
+        this->receive_thread.join();
     }
 }
 
@@ -560,9 +651,18 @@ SocketCache::~SocketCache()
         } else {
             LOG_F(INFO, "socket \"%s\" unlink", it.first.c_str());
         }
-        if (it.second.sockfd != -1) {
-            close(it.second.sockfd);
-            it.second.sockfd = -1;
+        auto& sockinfo = it.second;
+        if (sockinfo.sockfd != -1) {
+            close(sockinfo.sockfd);
+            sockinfo.sockfd = -1;
+        }
+        if (sockinfo.pipefd[0] != -1) {
+            close(sockinfo.pipefd[0]);
+            sockinfo.pipefd[0] = -1;
+        }
+        if (sockinfo.pipefd[1] != -1) {
+            close(sockinfo.pipefd[1]);
+            sockinfo.pipefd[1] = -1;
         }
     }
     LOG_F(INFO, "Deleted SocketCache");

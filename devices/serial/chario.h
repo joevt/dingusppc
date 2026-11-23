@@ -28,6 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string>
 #include <map>
 #include <memory>
+#include <thread>
 
 #ifdef _WIN32
 #else
@@ -35,6 +36,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <signal.h>
 #include <sys/select.h>
 #endif
+
+using receive_cb_t = std::function<void()>;
 
 enum {
     CHARIO_BE_NULL  = 0, // NULL backend: swallows everything, receives nothing
@@ -83,6 +86,12 @@ public:
             chars_consecutive_reset = 1 << 29;
         }
     }
+    void set_receive_cb(receive_cb_t cb) {
+        this->receive_cb = cb;
+    }
+
+protected:
+    receive_cb_t receive_cb = nullptr;
 
 private:
     std::string name;
@@ -133,19 +142,25 @@ public:
     int rcv_chars(uint8_t *buf, int len);
 
 private:
-    void check_all_fds(int &sel_rv, fd_set (&sets)[3]);
     void close_accept_fd();
 
     bool    socket_inited = false;
+    int     pipefd[2] = {-1,-1};
     int     sockfd = -1;
     int     acceptfd = -1;
     std::string path;
+
+    std::thread receive_thread;
+    void receive_thread_fn();
+    void start_receive_thread();
+    void stop_receive_thread();
 };
 
 /** Socket cache which servives machine shutdown/restart. */
 class SocketCache {
 public:
     typedef struct {
+        int pipefd[2];
         int sockfd;
         int acceptfd;
     } SocketInfo;
