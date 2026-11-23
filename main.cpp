@@ -405,20 +405,16 @@ int main(int argc, char** argv) {
     // initialize global profiler object
     gProfilerObj.reset(new Profiler());
 
+    struct FatalLogException : std::runtime_error {
+        using std::runtime_error::runtime_error;
+    };
+
     // graceful handling of fatal errors
     loguru::set_fatal_handler([](const loguru::Message& message) {
         // Make sure the reason for the failure is visible (it may have been
         // sent to the logfile only).
         cerr << message.preamble << message.indentation << message.prefix << message.message << endl;
-        set_power_off_reason(po_enter_debugger);
-        DppcDebugger::get_instance()->enter_debugger();
-
-        // Stop the realtime timer thread before any emulator state is torn
-        // down, so it cannot touch guest state while we are dismantling it.
-        stop_realtime_timer_thread();
-
-        // Ensure that NVRAM and other state is persisted before we terminate.
-        delete gMachineObj.release();
+        throw FatalLogException(message.message);
     });
 
     // redirect SIGINT to our own handler
@@ -436,6 +432,7 @@ int main(int argc, char** argv) {
         set_g_idle_cpu_save(true);
     }
 
+    try {
     while (true) {
         {
             app_args = app.remaining_for_passthrough();
@@ -462,6 +459,14 @@ int main(int argc, char** argv) {
             continue;
         }
         break;
+    }
+    } catch (const FatalLogException& e) {
+        set_power_off_reason(po_enter_debugger);
+        DppcDebugger::get_instance()->enter_debugger();
+
+        // Stop the realtime timer thread before any emulator state is torn
+        // down, so it cannot touch guest state while we are dismantling it.
+        stop_realtime_timer_thread();
     }
 
     // if we didn't delete this then delete it now
