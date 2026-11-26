@@ -583,7 +583,7 @@ void ControlVideo::write(uint32_t rgn_start, uint32_t offset, uint32_t value, in
             } else
                 this->swatch_ctrl = value;
             break;
-        case ControlRegs::GBASE:{
+        case ControlRegs::GBASE: {
             uint32_t old_value = this->fb_base;
             uint32_t new_value = value & 0x3FFFE0;
             if (new_value != old_value) {
