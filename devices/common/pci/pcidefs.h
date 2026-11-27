@@ -29,7 +29,7 @@ enum : uint8_t {
     DEVCLASS_UNCLASSIFIED       = 0x00, // unclassified/legacy devices
     DEVCLASS_MASS_STORAGE_CTRL  = 0x01, // mass storage controllers
         SUBCLASS_IDE_CTRL       = 0x01, // IDE controller
-        PROGIF_BUS_MASTER       = 0x80, // bus master (DMA) capable
+            PROGIF_BUS_MASTER   = 0x80, // bus master (DMA) capable
     DEVCLASS_DISPLAY_CTRL       = 0x03, // display controllers
         SUBCLASS_VGA_COMPAT     = 0x00, // VGA-compatible display controller
         SUBCLASS_NON_VGA        = 0x80, // non-VGA display controller
@@ -38,7 +38,7 @@ enum : uint8_t {
         SUBCLASS_PCI2PCI_BRIDGE = 0x04, // PCI-to-PCI bridge
     DEVCLASS_SERIAL_BUS_CTRL    = 0x0C, // serial bus controllers
         SUBCLASS_USB_CTRL       = 0x03, // Universal serial bus (USB) controller
-        PROGIF_OHCI             = 0x10, // conforms to the OpenHCI specification
+            PROGIF_OHCI         = 0x10, // conforms to the OpenHCI specification
     DEVCLASS_UNASSIGNED         = 0xFF
 };
 
