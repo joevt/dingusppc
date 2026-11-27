@@ -28,8 +28,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 enum : uint8_t {
     DEVCLASS_UNCLASSIFIED       = 0x00, // unclassified/legacy devices
     DEVCLASS_MASS_STORAGE_CTRL  = 0x01, // mass storage controllers
+        SUBCLASS_SCSI_CTRL      = 0x00, // SCSI controller
+            PROGIF_VENDOR_SPEC  = 0x00, // vendor specific
         SUBCLASS_IDE_CTRL       = 0x01, // IDE controller
             PROGIF_BUS_MASTER   = 0x80, // bus master (DMA) capable
+        SUBCLASS_OTHER_CTRL     = 0x80, // Other controller
     DEVCLASS_DISPLAY_CTRL       = 0x03, // display controllers
         SUBCLASS_VGA_COMPAT     = 0x00, // VGA-compatible display controller
         SUBCLASS_NON_VGA        = 0x80, // non-VGA display controller
@@ -37,8 +40,12 @@ enum : uint8_t {
         SUBCLASS_HOST_BRIDGE    = 0x00, // host-to-PCI bridge
         SUBCLASS_PCI2PCI_BRIDGE = 0x04, // PCI-to-PCI bridge
     DEVCLASS_SERIAL_BUS_CTRL    = 0x0C, // serial bus controllers
+        SUBCLASS_FIREWIRE_CTRL  = 0x00, // FireWire controller
+            PROGIF_FW_GENERIC   = 0x00, // Generic
+            PROGIF_FW_OHCI      = 0x10, // conforms to the OpenHCI specification
         SUBCLASS_USB_CTRL       = 0x03, // Universal serial bus (USB) controller
             PROGIF_OHCI         = 0x10, // conforms to the OpenHCI specification
+            PROGIF_EHCI         = 0x20, // conforms to the EHCI specification
     DEVCLASS_UNASSIGNED         = 0xFF
 };
 
@@ -54,6 +61,12 @@ enum : uint32_t {
                                   (SUBCLASS_IDE_CTRL << 16) | (PROGIF_BUS_MASTER << 8),
     DEVTYPE_USB_OHCI_CTRL       = (DEVCLASS_SERIAL_BUS_CTRL << 24) |
                                   (SUBCLASS_USB_CTRL << 16) | (PROGIF_OHCI << 8),
+    DEVTYPE_USB_EHCI_CTRL       = (DEVCLASS_SERIAL_BUS_CTRL << 24) |
+                                  (SUBCLASS_USB_CTRL << 16) | (PROGIF_EHCI << 8),
+    DEVTYPE_FIREWIRE_GEN_CTRL   = (DEVCLASS_SERIAL_BUS_CTRL << 24) |
+                                  (SUBCLASS_FIREWIRE_CTRL << 16) | (PROGIF_FW_GENERIC << 8),
+    DEVTYPE_FIREWIRE_OHCI_CTRL  = (DEVCLASS_SERIAL_BUS_CTRL << 24) |
+                                  (SUBCLASS_FIREWIRE_CTRL << 16) | (PROGIF_FW_OHCI << 8),
 };
 
 /** PCI Vendor IDs for devices used in Power Macintosh computers. */
