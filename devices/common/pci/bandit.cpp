@@ -47,7 +47,7 @@ BanditPciDevice::BanditPciDevice(int bridge_num, std::string name, int dev_id, i
     // prepare the PCI config header
     this->vendor_id   = PCI_VENDOR_APPLE;
     this->device_id   = dev_id;
-    this->class_rev   = 0x06000000 | (rev & 0xFFU);
+    this->class_rev   = DEVTYPE_HOST2PCI_BRIDGE | (rev & 0xFFU);
     this->cache_ln_sz = 8;
     this->command     = 0x16;
 

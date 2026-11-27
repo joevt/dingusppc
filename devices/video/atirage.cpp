@@ -144,7 +144,7 @@ ATIRage::ATIRage(uint16_t dev_id)
     this->device_id   = dev_id;
     this->subsys_vndr = PCI_VENDOR_ATI;
     this->subsys_id   = 0x6987; // adapter ID
-    this->class_rev   = (0x030000 << 8) | asic_id;
+    this->class_rev   = DEVTYPE_VGA_COMPAT_VIDCTRL | asic_id;
     this->min_gnt     = 8;
     this->irq_pin     = 1;
     for (int i = 0; i < this->aperture_count; i++) {

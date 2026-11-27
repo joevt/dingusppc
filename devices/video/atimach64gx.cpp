@@ -151,7 +151,7 @@ AtiMach64Gx::AtiMach64Gx()
     // set up PCI configuration space header
     this->vendor_id   = PCI_VENDOR_ATI;
     this->device_id   = ATI_MACH64_GX_DEV_ID;
-    this->class_rev   = (0x030000 << 8) | 0x03;
+    this->class_rev   = DEVTYPE_VGA_COMPAT_VIDCTRL | 0x03;
     this->irq_pin     = 1;
     for (int i = 0; i < this->aperture_count; i++) {
         this->bars_cfg[i] = (uint32_t)(-this->aperture_size[i] | this->aperture_flag[i]);
